@@ -1,21 +1,22 @@
 import numpy as np
 
-def mc_bitset(array,bits):
-    '''
+
+def mc_bitset(array, bits):
+    """
     To determine if the given bits are set in an array.
 
     Input Parameters:
         array - A numpy array to search.
         bits  - A list or numpy array of bits to search.
                 Note that the "first" bit is denoted as zero,
-                while the "second" bit is denoted as 1.  
+                while the "second" bit is denoted as 1.
 
     Optional Parameters:
         None
 
     Output Parameters:
-        Returns a byte array of the same size as array.  A pixel is 
-        set if any of the bits requested are set in the same pixel 
+        Returns a byte array of the same size as array.  A pixel is
+        set if any of the bits requested are set in the same pixel
         of array.
 
     Procedure:
@@ -26,9 +27,9 @@ def mc_bitset(array,bits):
         [1 0 1]
 
     Modification History:
-        2022-03-09 - Written by M. Cushing, University of Toledo.  
+        2022-03-09 - Written by M. Cushing, University of Toledo.
                      Based on the mc_bitset.pro IDL program.
-    '''
+    """
     
 #  Define empty mask
 
