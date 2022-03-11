@@ -7,15 +7,15 @@ def bitset(array, bits):
 
     Input Parameters
     ----------------
-        array : array
-            A numpy array to search.
-        bits : list or array
-            A list or numpy array of bits to search.
-            Note that the "first" bit is denoted as zero,
-            while the "second" bit is denoted as 1.
+    array : array
+        A numpy array to search.
+    bits : list or array
+        A list or numpy array of bits to search.
+        Note that the "first" bit is denoted as zero,
+        while the "second" bit is denoted as 1.
 
     Optional Parameters:
-        None
+    None
 
     Returns
     --------
@@ -26,7 +26,7 @@ def bitset(array, bits):
 
     Procedure
     ---------
-        Uses the Gumley IDL ishft technique.
+    Uses the Gumley IDL ishft technique.
 
     Example
     --------
