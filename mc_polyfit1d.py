@@ -38,7 +38,7 @@ def mc_polyfit1d(x,y,order,yunc=None,silent=None):
 
     Modification History:
         2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the gethdrinfo.pro IDL program.
+                     Based on the gethdrinfo.pro IDL program
     '''
 
     
