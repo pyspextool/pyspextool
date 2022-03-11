@@ -30,13 +30,13 @@ def bitset(array, bits):
 
     Example
     --------
-        print(mc_bitset(np.array([3,4,1]),[0]))
-        [1 0 1]
+    >>> bitset(np.array([3,4,1]),[0])
+    array([1, 0, 1])
 
     Modification History
     --------------------
-        2022-03-09 - Written by M. Cushing, University of Toledo.
-                     Based on the mc_bitset.pro IDL program.
+    2022-03-09 - Written by M. Cushing, University of Toledo.
+                Based on the mc_bitset.pro IDL program.
     """
     
     #  Define empty mask
