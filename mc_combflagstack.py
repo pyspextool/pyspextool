@@ -15,7 +15,7 @@ def mc_combflagstack(stack,nbits=8):
                 routine assumes the bits are set sequentially, starting
                 with the zeroth bit.  So if nbits is 2, then it will
                 check the 0th and 1st bit.  The default is to check all
-                eight bits.
+                eight bits
 
     Output Parameters:
         A bit-set flag array that reflects the bit-set flags from all of
