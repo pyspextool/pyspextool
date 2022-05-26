@@ -50,7 +50,7 @@ def combflagstack(stack,nbits=8):
 
 #  Identify the pixels with the particular bit set
 
-        set = mc_bitset(stack,[i])
+        set = bitset(stack,[i])
         
 #  Collapse everything down one dimension
 
