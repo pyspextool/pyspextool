@@ -1,5 +1,5 @@
-import numpy as np
-
+from numpy import zeros_like as zeros_like
+from numpy import int8 as int8
 
 def bitset(array, bits):
     """
@@ -7,42 +7,66 @@ def bitset(array, bits):
 
     Input Parameters
     ----------------
-    array : array
-        A numpy array to search.
-    bits : list or array
-        A list or numpy array of bits to search.
-        Note that the "first" bit is denoted as zero,
-        while the "second" bit is denoted as 1.
+    array : numpy.ndarray
+        numpy array to search
 
-    Optional Parameters:
-    None
+    bits : int, list, numpy.ndarray
+        bit values to search in `array`
 
     Returns
     --------
-    array
-        Returns a byte array of the same size as array.  A pixel is
-        set if any of the bits requested are set in the same pixel
-        of array.
+    numpy.ndarray
+        Returns an byte array of the same size as `array`.  An element 
+        is set if any of the bits requested are set in the same element
+        of `array`.
 
     Procedure
     ---------
-    Uses the Gumley IDL ishft technique.
+    Uses the Gumley IDL ishft technique.  Note that the "first" bit 
+    is denoted as zero, while the "second" bit is denoted as 1.
+
 
     Example
     --------
-    >>> bitset(np.array([3,4,1]),[0])
-    array([1, 0, 1])
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),0)
+
+    [1, 0, 1]
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),[0,3])
+
+    [1, 0, 1]
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),[2,3])
+
+    [0, 1, 0]
 
     Modification History
     --------------------
     2022-03-09 - Written by M. Cushing, University of Toledo.
-                Based on the mc_bitset.pro IDL program.
+                 Based on the Spextool IDL mc_bitset.pro program.
     """
     
-    #  Define empty mask
-    mask = np.zeros_like(array, dtype=np.int8)
+#  Define empty mask
 
-    #  Loop over every bit requested and identify those pixels for which that bit is set.
+    mask = zeros_like(array, dtype=int8)
+
+#  test to see if bits is iterable
+
+    try:
+
+        iter(bits)
+
+    except TypeError:
+
+        bits = [bits]    
+
+#  Loop over every bit requested and identify those pixels for
+#  which that bit is set.
+
     for val in bits:
         tmp = (array >> val) & 1
         mask = mask | tmp    
