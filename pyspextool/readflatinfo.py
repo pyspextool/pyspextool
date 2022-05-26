@@ -19,57 +19,73 @@ def readflatinfo(file):
        A dictionary with the following keywords:
 
        rotation : int
-                  IDL rotation command for the order numbers to increase 
-                  upwards and wavelength increase to the right
+           IDL rotation command for the order numbers to increase 
+           upwards and wavelength increase to the right
 
-                  Direction  Transpose?  Rotation Counterclockwise
-                  -------------------------------------------------
+           Direction  Transpose?  Rotation Counterclockwise
+           -------------------------------------------------
 
-                  0          No          None
-                  1          No          90 deg
-                  2          No          180 deg
-                  3          No          270 deg
-                  4          Yes         None
-                  5          Yes         90 deg
-                  6          Yes         180 deg
-                  7          Yes         270 deg
+           0          No          None
+           1          No          90 deg
+           2          No          180 deg
+           3          No          270 deg
+           4          Yes         None
+           5          Yes         90 deg
+           6          Yes         180 deg
+           7          Yes         270 deg
 
-       slith_arc  : int
-                   slit height in arcseconds
-       slith_pix  : int
-                   nominal slit height in pixels
+       slith_arc : int
+           slit height in arcseconds
+
+       slith_pix : int
+           nominal slit height in pixels
+
        slith_rng  : list 
-                   [int,int] range of slit heights in pixels
-       orders     : list
-                   order numbers
-       rppix      : float
-                   resolving power per pixel
-       ps         : float
-                   plate scale in arcseconds per pixel
-       fixed      : {0,1}
-                   set if the top and bottom of the slit align with rows
-       step       : int
-                   step size in pixels for tracing
-       flatfrac   : float
-                   see findorders.py
-       comwin     : int 
-                   see findorders.py
-       edgedeg    : int
-                   polynomial degree for the edges of the orders
-       norm_nxg   : int
-                   see normspecflat.py and fiterpolate.py
-       norm_nyg   : int
-                   see normspecflat.py and fiterpolate.py
-       ybuffer    : int
-                   see normspecflat.py
-       ycororder  : int
-                   see adjustguesspos.py
-       xranges    : numpy.ndarray, int, [norders,2] 
-                   the columns over which extraction can occur
+           [int,int] range of slit heights in pixels
+
+       orders : list
+           order numbers
+
+       rppix : float
+           resolving power per pixel
+
+       ps : float
+           plate scale in arcseconds per pixel
+
+       step : int
+           step size in pixels for tracing
+
+       flatfrac : float
+           see findorders.py
+
+       comwin : int 
+           see findorders.py
+
+       edgedeg : int
+           polynomial degree for the edges of the orders
+
+       norm_nxg : int
+           see normspecflat.py and fiterpolate.py
+
+       norm_nyg : int
+           see normspecflat.py and fiterpolate.py
+
+       ybuffer  : int
+           see normspecflat.py
+
+       ycororder : int
+           see adjustguesspos.py
+
+       xranges : numpy.ndarray, int, [norders,2] 
+           the columns over which extraction can occur
+
        edgecoeffs : numpy.ndarray, float, [norders,2,edgedeg+1] 
-       guesspos   : numpy.ndarray, int, [norders,2] 
-                   location of where to start the order search, 
-                   see findorders.py
+           polynomial coefficients giving the location of the orders.
+           [0,0,:] = bottom of first order 
+           [0,1,:] = top of first order
+
+       guesspos : numpy.ndarray, int, [norders,2] 
+           (x,y) of where to start the order search, see findorders.py
 
     Procedure
     ---------
@@ -118,8 +134,8 @@ def readflatinfo(file):
     val = hdul[0].header['PLTSCALE']
     result.update({'ps':val})
 
-    val = hdul[0].header['FIXED']
-    result.update({'fixed':val})        
+#    val = hdul[0].header['FIXED']
+#    result.update({'fixed':val})        
 
     if not val:
 
@@ -143,9 +159,6 @@ def readflatinfo(file):
 
 #    val = hdul[0].header['OVERSAMP']
 #    result.update({'oversamp':val})
-
-    val = hdul[0].header['YBUFFER']
-    result.update({'ybuffer':val})
 
     val = hdul[0].header['YBUFFER']
     result.update({'ybuffer':val})
