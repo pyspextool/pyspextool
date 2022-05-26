@@ -1,6 +1,6 @@
 import numpy
 
-def mc_imgpoly(img,coeffs):
+def imgpoly(img,coeffs):
     '''
     Evaluate a polynomial where the independent variable is an image.
 

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-def mc_polyfit1d(x,y,order,yunc=None,silent=None):
+def polyfit1d(x,y,order,yunc=None,silent=None):
 
     '''
     Fits a polynomial of a given order to a set of 1-D data.

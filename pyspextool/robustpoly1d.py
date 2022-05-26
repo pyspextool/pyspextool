@@ -2,7 +2,7 @@ import numpy as np
 from mc_polyfit1d import mc_polyfit1d
 import matplotlib.pyplot as pl
 
-def mc_robustpoly1d(x,y,order,thresh,eps,yunc=None,goodbad=None,justfit=None,silent=None):
+def robustpoly1d(x,y,order,thresh,eps,yunc=None,goodbad=None,justfit=None,silent=None):
 
 # Check to see if the user passed an uncertainty array.
     

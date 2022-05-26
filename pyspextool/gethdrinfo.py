@@ -1,7 +1,7 @@
 from astropy.io import fits
 import re
 
-def mc_gethdrinfo(hdr,keywords=None):
+def gethdrinfo(hdr,keywords=None):
 
     '''
     Pulls (user requested) hdr values and comments from a FITS file
