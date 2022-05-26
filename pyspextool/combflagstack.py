@@ -1,7 +1,8 @@
 import numpy as np
-from mc_bitset import mc_bitset
+from bitset import bitset
 
 def combflagstack(stack,nbits=8):
+
     '''
     To combine bit-set flag arrays together.
 
