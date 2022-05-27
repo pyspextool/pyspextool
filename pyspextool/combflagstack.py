@@ -61,7 +61,7 @@ def combflagstack(stack,nbits=8):
 
     '''
 
-    # Determine whether this is a spectral stack or image stack
+# Determine whether this is a spectral stack or image stack
     
     ndim = stack.ndim
     shape = stack.shape
