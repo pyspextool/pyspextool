@@ -15,7 +15,7 @@ def avehdrs(hdrs,pair=False):
         {key:[val,com]} where key is the FITS keyword, "val" is the 
         value, and "com" is the comment.
 
-    pair : True, False
+    pair : {False, True}, optional 
         Set to True if the Spextool header list was generated for 
         pair subtraced images
 
