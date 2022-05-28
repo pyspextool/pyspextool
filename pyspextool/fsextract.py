@@ -15,7 +15,11 @@ def fsextract(string,method):
     Returns
     --------
     list
-        A list of strings giving the individual file numbers or file names
+        `method`='index'
+         A list of integers giving the individual file numbers
+
+        `method`='filename'
+         A list of integers giving the individual file names
 
     Procedure
     ---------
