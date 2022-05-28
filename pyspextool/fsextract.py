@@ -1,4 +1,4 @@
-def fsextract(string,index=True,filename=False):
+def fsextract(string,method):
 
     """
     Extracts the indices or filenames from a comma-separated string
@@ -8,11 +8,9 @@ def fsextract(string,index=True,filename=False):
     string : str
         a comma separated string of either file names or file index numbers.
 
-    index : {True, False}, optional 
-        Set if the values passed are index values
-
-    filename : {False, True}, optional 
-        Set if the values passed are file names
+    method : {'index','filename'}
+        'index' if the values passed are index values and 'filename' if the 
+        values passed our file names
 
     Returns
     --------
@@ -32,13 +30,10 @@ def fsextract(string,index=True,filename=False):
 
     Examples
     --------
-    > fsextract('1-3,5,7,10-12'))
-    ['1', '2', '3', '5', '7', '10', '11', '12']
+    > fsextract('1-3,5,7,10-12','index')
+    [1, 2, 3, 5, 7, 10, 11, 12]
 
-    > fsextract('1-3,5,7,10-12',index=True))
-    ['1', '2', '3', '5', '7', '10', '11', '12']
-
-    > fsextract('spc00001.a.fits,spc00002.a.fits',filename=True)
+    > fsextract('spc00001.a.fits,spc00002.a.fits','filename')
     ['spc00001.a.fits', 'spc00002.a.fits']
 
 
@@ -51,7 +46,7 @@ def fsextract(string,index=True,filename=False):
 
 #  Check whether you are in index or filename mode
     
-    if index is True:
+    if method == 'index':
 
 #  Split on the comma
         
@@ -67,21 +62,25 @@ def fsextract(string,index=True,filename=False):
 
 # no dash, just add to output list               
 
-                oarr = oarr+lowupp
+                oarr.append(int(lowupp[0]))
 
             else:
 
 # dash dectected, generate sequential numbers and add to output list
                 
                 arr = list(range(int(lowupp[0]),int(lowupp[1])+1))
-                arr = [str(i) for i in arr]
-                oarr = oarr+arr
-            
+                oarr+=arr
+
         return oarr
 
-    if filename is True:
+    elif method == 'filename':
 
 # Just split on the comma and return
         
         return string.split(',')
         
+    else:
+
+        print('method unknown.')
+        return 
+    
