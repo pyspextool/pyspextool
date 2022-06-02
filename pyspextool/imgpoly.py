@@ -23,6 +23,7 @@ def imgpoly(img,coeffs):
     Modification History:
         2022-03-09 - Written by M. Cushing, University of Toledo.  
                      Based on the mc_polyimg.pro IDL program.
+        2022-06-02 - changed indexing from [*,*,i] to [i,*,*]
     '''
 
     n = coeffs.shape[2]-1
@@ -31,6 +32,6 @@ def imgpoly(img,coeffs):
 
     for i in range(n-1,-1,-1):
 
-        y = y*img + coeffs[:,:,i]
+        y = y*img + coeffs[i,:,:]
     
     return(y)
