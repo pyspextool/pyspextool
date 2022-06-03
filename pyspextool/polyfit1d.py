@@ -6,6 +6,7 @@ from numpy import zeros as npzeros
 from numpy import std as npstd
 from numpy import sqrt as npsqrt
 from numpy import unravel_index as npunravel_index
+from numpy import full as npfull
 from numpy.linalg import solve as npsolve
 from numpy.linalg import inv as npinv
 from numpy import transpose as nptranspose
@@ -88,7 +89,7 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
                      Based on the Spextool IDL program mc_polyfit1d.pro
     '''
     
-    if yunc is None: yunc = np.full(len(x),1.0)
+    if yunc is None: yunc = npfull(len(x),1.0)
 
 # Get rid of NaNs 
 
