@@ -78,6 +78,8 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
     > yerr = np.array([0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05])
     > result = polyfit1d(x,y,1,yunc=yerr)
 
+    Data from Chapter 6 of Data Reduction and Error Analysis for the 
+    Physical Sciences by Bevington & Robinson
 
 
     Modification History
