@@ -1,9 +1,16 @@
 from numpy import isnan as npisnan
 from numpy import size as npsize
 from numpy import sum as npsum
+from numpy import arange as nparange
+from numpy import zeros as npzeros
 from numpy import std as npstd
-
-import numpy as np
+from numpy import sqrt as npsqrt
+from numpy import unravel_index as npunravel_index
+from numpy.linalg import solve as npsolve
+from numpy.linalg import inv as npinv
+from numpy import transpose as nptranspose
+from numpy import diagonal as npdiagonal
+from numpy.polynomial.polynomial import polyval as nppolyval
 
 def polyfit1d(x,y,order,yunc=None,silent=True):
 
@@ -98,9 +105,9 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
 #  Construct the alpha and beta matrix of the normal equations.  
 #  Build only the upper triangle of the alpha array since it is symmetric.  
     
-    exp = np.arange(0,order+1)
-    alpha = np.zeros((ncoeffs,ncoeffs))
-    beta = np.zeros(ncoeffs)
+    exp = nparange(0,order+1)
+    alpha = npzeros((ncoeffs,ncoeffs))
+    beta = npzeros(ncoeffs)
 
     b = yy/yyunc
 
@@ -116,23 +123,23 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
 
 # Now transpose and add to get the other side
 
-    alpha = alpha+np.transpose(alpha)
+    alpha = alpha+nptranspose(alpha)
 
 # Finally, divide the diagonal elements by 2 to make up for the addition
 # in the transpose
 
-    zdiag = np.arange(0,ncoeffs*ncoeffs,ncoeffs+1)
-    zdiag = np.unravel_index(zdiag,(ncoeffs,ncoeffs))
+    zdiag = nparange(0,ncoeffs*ncoeffs,ncoeffs+1)
+    zdiag = npunravel_index(zdiag,(ncoeffs,ncoeffs))
     alpha[zdiag] = alpha[zdiag]/2.
 
 # Solve things (need to remember what you are doing...)
     
-    coeffs = np.linalg.solve(alpha,beta)
-    covar = np.linalg.inv(alpha)
+    coeffs = npsolve(alpha,beta)
+    covar = npinv(alpha)
 
-    var = np.diagonal(covar)
+    var = npdiagonal(covar)
 
-    yfit = np.polynomial.polynomial.polyval(x,coeffs)
+    yfit = nppolyval(x,coeffs)
     residual = y-yfit
     rms = npstd(residual[znonan])
 
@@ -158,7 +165,7 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
         for i in range(0,order+1):
         
             print('Coeff #',str(i).zfill(2),': ',coeffs[i],'+-',\
-                  np.sqrt(var[i]),sep='')
+                  npsqrt(var[i]),sep='')
 
         print(' ')
         print('Covariance Matrix:')
