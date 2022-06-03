@@ -19,17 +19,18 @@ def fsextract(string,method):
          A list of integers giving the individual file numbers
 
         `method`='filename'
-         A list of integers giving the individual file names
+         A list of strings giving the individual file names
 
     Procedure
     ---------
-    index = True
+    `method` = 'index'
     1.  separate into groups based on the comma.
     2.  loop over each group, and separate based on dash.
     3.  if no dash detected, append group (which is a number) to output list.
-    3.  if dash detected, generate sequential numbers between limits and add to         output list.
+    3.  if dash detected, generate sequential numbers between limits and add to
+        output list.
     
-    filename = True
+    'method` = 'filename'
     1.  separate into groups based on the comma.
 
     Examples
