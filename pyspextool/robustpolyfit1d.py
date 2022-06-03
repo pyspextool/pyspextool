@@ -205,8 +205,6 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
         print(fit['covar'])
         print(' ')
 
-    print(len(fit['yfit']))
-
     return({"coeffs":fit['coeffs'],"var":fit['var'],"covar":fit['covar'],
             "ogoodbad":ogoodbad,"yfit":yfit,"nparm":order+1,"ndof":fit['ndof'],
             "chi2":fit['chi2'],"rchi2":fit['rchi2'],"rms":fit['rms']})    
