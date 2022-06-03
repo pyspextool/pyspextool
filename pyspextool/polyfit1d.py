@@ -1,53 +1,90 @@
-# the np.std function does 1/N not 1/N-1
+from numpy import isnan as npisnan
+from numpy import size as npsize
+from numpy import sum as npsum
+from numpy import std as npstd
 
 import numpy as np
 
-def polyfit1d(x,y,order,yunc=None,silent=None):
+def polyfit1d(x,y,order,yunc=None,silent=True):
 
     '''
     Fits a polynomial of a given order to a set of 1-D data.
 
-    Input Parameters:
-        x - A numpy array of independent values.
-        y - A numpy array of dependent values.
-        order - The order of the polynomial.
+    Input Parameters
+    ----------------
+    x : numpy.ndarray
+        an array of independent values
 
-    Optional Parameters:
-        yunc   - A numpy array of uncertainties on the dependent values.
-        silent - Set to note report the results at the command line. 
+    y : numpy.ndarray
+        an array of dependent values
 
-    Output Parameters:
-        A dict where with the following keys:
-        coeffs - the polynomial coefficients
-        var    - the variances of the coefficients
-        covar  - the covariance matrix
-        yfit   - the polynomial evaluated at x.
-        nparm  - the number of parameters of the fit
-        ndof   - the number of degrees of freedom
-        chi2   - the chi^2 value of the fit
-        rchi2  - the reduced chi^2 value of the 
-        rms    - the rms of the fit
+    order : int
+        the order of the polynomial
 
-    Procedure:
-        This program is based on solving the equation A ## coeff = b.  The 
-        alpha (A^T ## A) and beta (A^T ## b) arrays of the normal equations 
-        are constructed and then solved with np.linalg.solve.
+    yunc : numpy.ndarray, optional
+        an array of uncertainties on the dependent values
 
-    Example:
-        NA
+    silent : {True, False}, optional
+        If False, the result of the fit will be written to the command line
 
-    Modification History:
+    Output Parameters
+    -----------------
+    dict
+        a dict where with the following entries:
+
+        coeffs : numpy.ndarray
+            the polynomial coefficients
+
+        var : numpy.ndarray
+            the variances of the coefficients
+
+        covar : numpy.ndarray
+            the covariance matrix
+
+        yfit : numpy.ndarray 
+            the polynomial evaluated at `x`
+
+        nparm : int
+            the number of parameters of the fit
+
+        ndof : int
+            the number of degrees of freedom
+
+        chi2 : float
+            the chi^2 value of the fit
+
+        rchi2 : float
+            the reduced chi^2 value of the fit
+
+        rms : flat
+            the rms of the fit (1/N, not 1/(N-1))
+
+    Procedure
+    ---------
+    compute the alpha and beta matrices of the normal equations and then 
+    solve np.linalg.solve.  See e.g., Numerical Recipes for details.  
+
+    Examples
+    --------
+    > x = np.array([10. ,20. ,30. ,40. ,50., 60. ,70. ,80. ,90.,100.])
+    > y = np.array([0.37,0.58,0.83,1.15,1.36,1.62,1.90,2.18,2.45,math.nan])
+    > yerr = np.array([0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05])
+    > result = polyfit1d(x,y,1,yunc=yerr)
+
+
+
+    Modification History
+    --------------------
         2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the gethdrinfo.pro IDL program
+                     Based on the Spextool IDL program mc_polyfit1d.pro
     '''
-
     
     if yunc is None: yunc = np.full(len(x),1.0)
 
-# Get rid of NaNs
+# Get rid of NaNs 
 
-    znonan = ~np.isnan(y)
-    nnan = np.size(znonan)-np.sum(znonan)
+    znonan = ~npisnan(y)
+    nnan = npsize(znonan)-npsum(znonan)
     xx = x[znonan]
     yy = y[znonan]
     yyunc = yunc[znonan]
@@ -74,8 +111,8 @@ def polyfit1d(x,y,order,yunc=None,silent=None):
             at = (xx**exp[i])/yyunc
             a  = (xx**exp[j])/yyunc
 
-            alpha[i,j] = np.sum(at*a)
-            beta[i] = np.sum(at*b)
+            alpha[i,j] = npsum(at*a)
+            beta[i] = npsum(at*b)
 
 # Now transpose and add to get the other side
 
@@ -97,18 +134,18 @@ def polyfit1d(x,y,order,yunc=None,silent=None):
 
     yfit = np.polynomial.polynomial.polyval(x,coeffs)
     residual = y-yfit
-    rms = np.std(residual[znonan])
+    rms = npstd(residual[znonan])
 
-    chi2 = np.sum( (residual[znonan]/yunc[znonan])**2)
+    chi2 = npsum( (residual[znonan]/yunc[znonan])**2)
     rchi2 = chi2/ndof
     
 # Report results if requested
 
-    if silent is not True:
+    if silent is False:
 
         print(' ')
         print('             Number of points = ',len(x))
-        print('               Number of Nans = ',nnan)
+        print('          Number of NaNs in y = ',nnan)
         print('         Number of parameters = ',order+1)
         print(' Number of degrees of freedom = ',ndof)
         print('                  Chi-Squared = ',chi2)
@@ -129,5 +166,6 @@ def polyfit1d(x,y,order,yunc=None,silent=None):
         print(' ')
 
 
-    return({"coeffs":coeffs,"var":var,"covar":covar,"yfit":yfit,"nparm":order+1,"ndof":ndof,
-            "chi2":chi2,"rchi2":rchi2,"rms":rms})
+    return({"coeffs":coeffs,"var":var,"covar":covar,"yfit":yfit,\
+            "nparm":order+1,"ndof":ndof,"chi2":chi2,"rchi2":rchi2,"rms":rms})
+
