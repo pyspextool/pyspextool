@@ -1,34 +1,53 @@
-import numpy
-
 def imgpoly(img,coeffs):
-    '''
-    Evaluate a polynomial where the independent variable is an image.
 
-    Input Parameters:
-       img    - a 2D numpy array of size (NAXIS1,NAXIS2)
-       coeffs - a 3D numpy array of coefficients (NAXIS1, NAXIS2, ncoeffs)
+    """
+    evaluates a polynomial function of a variable for images
 
-    Optional Parameters:
-       None
+    Input Parameters
+    ----------------
+    img : numpy.ndarray
+        an [nrows,ncols]
 
-    Output Parameters:
-       Returns a 2D numpy array evaluted at each pixel in img.
+    coeffs : numpy.ndarray
+        an [ncoeffs,nrows,ncols] array of polynomial coefficients
+        [0,:,:] is the c_0 array
+        [1,:,:] is the c_1 array
+        etc.
 
-    Procedure:
-       Follows the IDL poly.pro technique to evaluate a polynomial
+    Returns
+    --------
+    numpy.ndarray
+        an [nrows,ncols] array the 
 
-    Example:
-       NA
+    Procedure
+    ---------
+    Follows the IDL poly.pro technique to evaluate a polynomial but does 
+    it for each value in the array at once
 
-    Modification History:
-        2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the mc_polyimg.pro IDL program.
-        2022-06-02 - changed indexing from [*,*,i] to [i,*,*]
-    '''
+    Examples
+    --------
+    > import numpy as np
+    > img = np.array([[1,1,1],[2,2,2],[3,3,3]])
+    > coeffs0 = np.array([[2,2,2],[2,2,2],[2,2,2]])
+    > coeffs1 = np.array([[0.5,0.5,0.5],[0.5,0.5,0.5],[0.5,0.5,0.5]])
+    > coeffs = np.stack((coeffs0,coeffs1))
 
-    n = coeffs.shape[2]-1
+    [[2.5 2.5 2.5]
+     [3.  3.  3. ]
+     [3.5 3.5 3.5]]
 
-    y = coeffs[:,:,n]
+    Modification History
+    --------------------
+    2022-03-09 - Written by M. Cushing, University of Toledo.  
+                 Based on the mc_polyimg.pro IDL program.
+    2022-06-02 - changed indexing from [*,*,i] to [i,*,*]
+    2022-06-03 - updated doc string and fixed bug with n and the indexing of y
+
+    """
+
+    n = coeffs.shape[0]-1
+    
+    y = coeffs[n,:,:]
 
     for i in range(n-1,-1,-1):
 
