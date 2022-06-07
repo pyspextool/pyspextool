@@ -19,8 +19,11 @@ def polyfit1d(x,y,order,yunc=None,justfit=False,silent=True):
     yunc : numpy.ndarray, optional
         an array of uncertainties on the dependent values
 
+    justfit : {False, True}, optional 
+        set to only compute the coefficents
+
     silent : {True, False}, optional
-        If False, the result of the fit will be written to the command line
+        if False, the result of the fit will be written to the command line
 
     Output Parameters
     -----------------
