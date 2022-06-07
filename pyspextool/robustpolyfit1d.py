@@ -125,7 +125,7 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,justfit=False,\
     
 # Compute the residuals and the mean and sigma of the residuals
     
-    residual = yy-fit['yfit']
+    residual = yy-np.polynomial.polynomial.polyval(xx,fit['coeffs'])
 
     mean = np.mean(residual)
     stddev  = np.std(residual)
@@ -145,7 +145,8 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,justfit=False,\
             oldstddev = stddev
             fit = polyfit1d(xx[good],yy[good],order,yunc=yyunc[good],\
                             justfit=justfit,silent=True)
-            residual = yy[good]-fit['yfit']
+            residual = yy[good]-\
+              np.polynomial.polynomial.polyval(xx[good],fit['coeffs'])
             mean = np.mean(residual)
             stddev  = np.std(residual)        
 
