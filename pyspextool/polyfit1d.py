@@ -1,19 +1,6 @@
-from numpy import isnan as npisnan
-from numpy import size as npsize
-from numpy import sum as npsum
-from numpy import arange as nparange
-from numpy import zeros as npzeros
-from numpy import std as npstd
-from numpy import sqrt as npsqrt
-from numpy import unravel_index as npunravel_index
-from numpy import full as npfull
-from numpy.linalg import solve as npsolve
-from numpy.linalg import inv as npinv
-from numpy import transpose as nptranspose
-from numpy import diagonal as npdiagonal
-from numpy.polynomial.polynomial import polyval as nppolyval
+import numpy as np
 
-def polyfit1d(x,y,order,yunc=None,silent=True):
+def polyfit1d(x,y,order,yunc=None,justfit=False,silent=True):
 
     '''
     Fits a polynomial of a given order to a set of 1-D data.
@@ -87,14 +74,15 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
     --------------------
         2022-03-09 - Written by M. Cushing, University of Toledo.  
                      Based on the Spextool IDL program mc_polyfit1d.pro
+        2022-06-07 - Added the justfit parameter
     '''
     
-    if yunc is None: yunc = npfull(len(x),1.0)
+    if yunc is None: yunc = np.full(len(x),1.0)
 
 # Get rid of NaNs 
 
-    znonan = ~npisnan(y)
-    nnan = npsize(znonan)-npsum(znonan)
+    znonan = ~np.isnan(y)
+    nnan = np.size(znonan)-np.sum(znonan)
     xx = x[znonan]
     yy = y[znonan]
     yyunc = yunc[znonan]
@@ -108,9 +96,9 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
 #  Construct the alpha and beta matrix of the normal equations.  
 #  Build only the upper triangle of the alpha array since it is symmetric.  
     
-    exp = nparange(0,order+1)
-    alpha = npzeros((ncoeffs,ncoeffs))
-    beta = npzeros(ncoeffs)
+    exp = np.arange(0,order+1)
+    alpha = np.zeros((ncoeffs,ncoeffs))
+    beta = np.zeros(ncoeffs)
 
     b = yy/yyunc
 
@@ -121,61 +109,70 @@ def polyfit1d(x,y,order,yunc=None,silent=True):
             at = (xx**exp[i])/yyunc
             a  = (xx**exp[j])/yyunc
 
-            alpha[i,j] = npsum(at*a)
-            beta[i] = npsum(at*b)
+            alpha[i,j] = np.sum(at*a)
+            beta[i] = np.sum(at*b)
 
 # Now transpose and add to get the other side
 
-    alpha = alpha+nptranspose(alpha)
+    alpha = alpha+np.transpose(alpha)
 
 # Finally, divide the diagonal elements by 2 to make up for the addition
 # in the transpose
 
-    zdiag = nparange(0,ncoeffs*ncoeffs,ncoeffs+1)
-    zdiag = npunravel_index(zdiag,(ncoeffs,ncoeffs))
+    zdiag = np.arange(0,ncoeffs*ncoeffs,ncoeffs+1)
+    zdiag = np.unravel_index(zdiag,(ncoeffs,ncoeffs))
     alpha[zdiag] = alpha[zdiag]/2.
 
 # Solve things (need to remember what you are doing...)
     
-    coeffs = npsolve(alpha,beta)
-    covar = npinv(alpha)
+    coeffs = np.linalg.solve(alpha,beta)
 
-    var = npdiagonal(covar)
+    if justfit is True:
 
-    yfit = nppolyval(x,coeffs)
-    residual = y-yfit
-    rms = npstd(residual[znonan])
+        return({"coeffs":coeffs,"var":None,"covar":None,"yfit":None,\
+            "nparm":None,"ndof":None,"chi2":None,"rchi2":None,"rms":None})   
+        
+    elif justfit is False:
 
-    chi2 = npsum( (residual[znonan]/yunc[znonan])**2)
-    rchi2 = chi2/ndof
+# Keep going with other outputs and possible command line output
+        
+        covar = np.linalg.inv(alpha)
+        var = np.diagonal(covar)
+
+        yfit = np.polynomial.polynomial.polyval(x,coeffs)
+        residual = y-yfit
+        rms = np.std(residual[znonan])
+
+        chi2 = np.sum( (residual[znonan]/yunc[znonan])**2)
+        rchi2 = chi2/ndof
     
 # Report results if requested
 
-    if silent is False:
-
-        print(' ')
-        print('             Number of points = ',len(x))
-        print('          Number of NaNs in y = ',nnan)
-        print('         Number of parameters = ',order+1)
-        print(' Number of degrees of freedom = ',ndof)
-        print('                  Chi-Squared = ',chi2)
-        print('          Reduced Chi-Squared = ',rchi2)
-        print('         RMS deviation of fit = ',rms)
-        print(' ')
-        print('Coefficients:')
-        print(' ')
-
-        for i in range(0,order+1):
-        
-            print('Coeff #',str(i).zfill(2),': ',coeffs[i],'+-',\
-                  npsqrt(var[i]),sep='')
-
-        print(' ')
-        print('Covariance Matrix:')
-        print(covar)
-        print(' ')
-
-
+        if silent is False:
+            
+            print(' ')
+            print('             Number of points = ',len(x))
+            print('          Number of NaNs in y = ',nnan)
+            print('         Number of parameters = ',order+1)
+            print(' Number of degrees of freedom = ',ndof)
+            print('                  Chi-Squared = ',chi2)
+            print('          Reduced Chi-Squared = ',rchi2)
+            print('         RMS deviation of fit = ',rms)
+            print(' ')
+            print('Coefficients:')
+            print(' ')
+            
+            for i in range(0,order+1):
+            
+                print('Coeff #',str(i).zfill(2),': ',coeffs[i],'+-',\
+                    np.sqrt(var[i]),sep='')
+                    
+            print(' ')
+            print('Covariance Matrix:')
+            print(covar)
+            print(' ')
+            
+            
     return({"coeffs":coeffs,"var":var,"covar":covar,"yfit":yfit,\
             "nparm":order+1,"ndof":ndof,"chi2":chi2,"rchi2":rchi2,"rms":rms})
 
