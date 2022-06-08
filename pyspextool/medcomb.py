@@ -1,12 +1,4 @@
-from numpy import ndim as npndim
-from numpy import shape as npshape
-from numpy import ones as npones
-from numpy import where as npwhere
-from numpy import nanmedian as npnanmedian
-from numpy import abs as npabs
-from numpy import tile as nptile
-from numpy import sum as npsum
-from numpy import sqrt as npsqrt
+import numpy as np
 from math import nan as mnan
 
 def medcomb(data,mask=None,stderr=True):
@@ -143,18 +135,18 @@ def medcomb(data,mask=None,stderr=True):
 
 # Get array dimensions
 
-    ndimen = npndim(data)
-    shape = npshape(data)
+    ndimen = np.ndim(data)
+    shape = np.shape(data)
 
 # If no mask passed, create one.
 
     if mask is None:
 
-        mask = npones(shape,dtype=int)
+        mask = np.ones(shape,dtype=int)
 
 # Now search and replace any masked pixels with NaNs
         
-    data = npwhere(mask != 0, data,mnan)
+    data = np.where(mask != 0, data,mnan)
 
 # Spectral or image stack?
 
@@ -173,14 +165,14 @@ def medcomb(data,mask=None,stderr=True):
     
 # Compute the median and median absolute deviation
 
-    med = npnanmedian(data,axis=0)
+    med = np.nanmedian(data,axis=0)
 
-    mad = npnanmedian(npabs(data-nptile(med,tileshape)),axis=0)
+    mad = np.nanmedian(np.abs(data-np.tile(med,tileshape)),axis=0)
 
     if stderr is not None:
             
         mad *= 1.4826   # assume gaussian distribution
-        unc = mad/npsqrt(npsum(mask, axis=0))
+        unc = mad/np.sqrt(np.sum(mask, axis=0))
             
     else:
 
