@@ -5,7 +5,7 @@ from numpy.polynomial.polynomial import polyval as nppolyval
 def readflatinfo(file):
 
     """
-    To read a Spextool flatinfo calibration file.
+    Reads a Spextool flatinfo calibration file.
 
 
     Input Parameters
@@ -35,16 +35,16 @@ def readflatinfo(file):
            7          Yes         270 deg
 
        slith_arc : int
-           slit height in arcseconds
+           The slit height in arcseconds.
 
        slith_pix : int
-           nominal slit height in pixels
+           The nominal slit height in pixels.
 
-       slith_rng  : list 
-           [int,int] range of slit heights in pixels
+       slith_range  : list of int
+           (2,) list range of slit heights in pixels
 
-       orders : list
-           order numbers
+       orders : list of int
+           The order numbers.
 
        rppix : float
            resolving power per pixel
@@ -58,38 +58,54 @@ def readflatinfo(file):
        flatfrac : float
            see findorders.py
 
-       comwin : int 
-           see findorders.py
+       comwidth : int 
+           The window in units of pixels used to compute the 
+           center-of-mass (COM) (see findorders.py)
 
        edgedeg : int
-           polynomial degree for the edges of the orders
+           Polynomial fit degree for the edges of the orders
+           (see findorders.py)
 
        norm_nxg : int
-           see normspecflat.py and fiterpolate.py
+           See normspecflat.py and fiterpolate.py
 
        norm_nyg : int
-           see normspecflat.py and fiterpolate.py
+           See normspecflat.py and fiterpolate.py
+
+       oversamp : float
+           See normspecflat.py 
 
        ybuffer  : int
-           see normspecflat.py
+           See normspecflat.py
 
        ycororder : int
-           see adjustguesspos.py
+           See adjustguesspos.py
 
-       xranges : numpy.ndarray, int, [norders,2] 
-           the columns over which extraction can occur
+       xranges : array_like of int, [norders,2] 
+           An (norders,2) array giving the column numbers over which to 
+           search.  sranges[0,0] gives the starting column number for 
+           the first order and sranges[0,1] gives the end column number 
+           for the first order.
 
-       edgecoeffs : numpy.ndarray, float, [norders,2,edgedeg+1] 
-           polynomial coefficients giving the location of the orders.
-           [0,0,:] = bottom of first order 
-           [0,1,:] = top of first order
+       edgecoeffs : array_like of float
+           (norders,ncoeffs+1,2) array giving the polynomial 
+           coefficients delineating the top and bottom of each order.  
+           edgecoeffs[0,:,0] gives the coefficients for the bottom of 
+           the order closests to the bottom of `img` and 
+           edgecoeffs[0,:,1] gives the coefficients for the top of said 
+           order.  
 
-       guesspos : numpy.ndarray, int, [norders,2] 
-           (x,y) of where to start the order search, see findorders.py
+       guesspos : array_like of int
+           An (norders,2) array giving the positions to start the 
+           search.  guesspos[0,0] gives the column number for the 
+           first order and guesspos[0,1] gives the row number for the 
+           first order.  Typically the positions are near the center 
+           of the image and center of the slit.
 
     Procedure
     ---------
-    Just reads FITS header information, and calculates the guess positions.
+    Just reads FITS header information, and calculates the guess 
+    positions based on the edgecoeffs and the xranges
 
     Example
     --------
@@ -121,7 +137,7 @@ def readflatinfo(file):
 
     val = hdul[0].header['SLTH_RNG'].split(',')
     val = [int(x) for x in val]
-    result.update({'slith_rng':val})
+    result.update({'slith_range':val})
 
     val = hdul[0].header['ORDERS'].split(',')
     orders = [int(x) for x in val]
@@ -137,16 +153,16 @@ def readflatinfo(file):
 #    val = hdul[0].header['FIXED']
 #    result.update({'fixed':val})        
 
-    if not val:
+#    if not val:
 
-        val = hdul[0].header['STEP']
-        result.update({'step':val})
-
-        val = hdul[0].header['FLATFRAC']
-        result.update({'flatfrac':val})
-
-        val = hdul[0].header['COMWIN']
-        result.update({'comwin':val})                                
+    val = hdul[0].header['STEP']
+    result.update({'step':val})
+    
+    val = hdul[0].header['FLATFRAC']
+    result.update({'flatfrac':val})
+    
+    val = hdul[0].header['COMWIN']
+    result.update({'comwidth':val})                                
 
     deg = int(hdul[0].header['EDGEDEG'])
     result.update({'edgedeg':deg})
@@ -157,8 +173,8 @@ def readflatinfo(file):
     val = hdul[0].header['NORM_NYG']
     result.update({'norm_nyg':val})
 
-#    val = hdul[0].header['OVERSAMP']
-#    result.update({'oversamp':val})
+    val = hdul[0].header['OVERSAMP']
+    result.update({'oversamp':val})
 
     val = hdul[0].header['YBUFFER']
     result.update({'ybuffer':val})
