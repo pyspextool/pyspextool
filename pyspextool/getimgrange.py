@@ -1,6 +1,6 @@
 from astropy.visualization import (PercentileInterval,ZScaleInterval,MinMaxInterval)
 
-def img_range(arr,info):
+def getimgrange(arr,info):
 
     """
     a wrapper for astropy to get image ranges
