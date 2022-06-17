@@ -1,66 +1,83 @@
 import numpy as np
 
-def polyfit1d(x,y,order,yunc=None,justfit=False,silent=True):
+def polyfit1d(x,y,order,yunc=None,doalpha=False,justfit=False,silent=True):
 
     '''
     Fits a polynomial of a given order to a set of 1-D data.
 
     Input Parameters
     ----------------
-    x : numpy.ndarray
-        an array of independent values
+    x : array_like
+        An array of independent values
 
-    y : numpy.ndarray
-        an array of dependent values
+    y : array_like
+        An array of dependent values
 
     order : int
-        the order of the polynomial
+        The order of the polynomial
 
-    yunc : numpy.ndarray, optional
-        an array of uncertainties on the dependent values
+    yunc : array_like, optional
+        An array of uncertainties on the dependent values `y`
+
+    doalpha: {False, True}, optional
+        If true, then A**T * A is computed directly instead of A
 
     justfit : {False, True}, optional 
-        set to only compute the coefficents
+        Set to compute only the coefficents
 
     silent : {True, False}, optional
-        if False, the result of the fit will be written to the command line
+        If False, the result of the fit will be written to the command line
 
     Output Parameters
     -----------------
     dict
-        a dict where with the following entries:
+        A dict where with the following entries:
 
         coeffs : numpy.ndarray
-            the polynomial coefficients
+            The polynomial coefficients
 
         var : numpy.ndarray
-            the variances of the coefficients
+            The variances of the coefficients
 
         covar : numpy.ndarray
-            the covariance matrix
+            The covariance matrix
 
         yfit : numpy.ndarray 
-            the polynomial evaluated at `x`
+            The polynomial evaluated at `x`
 
         nparm : int
-            the number of parameters of the fit
+            The number of parameters of the fit
 
         ndof : int
-            the number of degrees of freedom
+            The number of degrees of freedom
 
         chi2 : float
-            the chi^2 value of the fit
+            The chi^2 value of the fit
 
         rchi2 : float
-            the reduced chi^2 value of the fit
+            The reduced chi^2 value of the fit
 
         rms : flat
-            the rms of the fit (1/N, not 1/(N-1))
+            The rms of the fit (1/N, not 1/(N-1))
 
-    Procedure
-    ---------
-    compute the alpha and beta matrices of the normal equations and then 
-    solve np.linalg.solve.  See e.g., Numerical Recipes for details.  
+    Notes
+    -----
+    Standard least squares fitting (e.g. Numerical Recipes).  
+    The program fits the following function:
+
+    z = f(x) = c_0 + c_1*x + c_2*x**2 + c_3*x**3 + ...
+
+    By default, the design matrix A is constructed.  The alpha 
+    (A^T ## A) and beta (A^T ## b) arrays of the normal equations 
+    are then constructed and then passed to np.linalg.solve.  
+
+    If the dataset to be fit is large and/or the number of coefficients 
+    is large, the design matrix A can be large (ncoeff,ndat) and may 
+    take too much memory and/or too much time to construct.  In this case,
+    set `doalpha` to True and the alpha and beta arrays are constructed 
+    directly.  There is a trade off since constructing the alpha and beta 
+    arrays directly takes longer for smaller surfaces.
+
 
     Examples
     --------
@@ -78,7 +95,10 @@ def polyfit1d(x,y,order,yunc=None,justfit=False,silent=True):
         2022-03-09 - Written by M. Cushing, University of Toledo.  
                      Based on the Spextool IDL program mc_polyfit1d.pro
         2022-06-07 - Added the justfit parameter
+        2022-06-17 - Simplfied the creation of alpha is doalpha=True
     '''
+
+# Construct the uncertainty array if need be
     
     if yunc is None: yunc = np.full(len(x),1.0)
 
@@ -97,36 +117,40 @@ def polyfit1d(x,y,order,yunc=None,justfit=False,silent=True):
     ndof = ndat-ncoeffs # number of degrees of freedom
 
 #  Construct the alpha and beta matrix of the normal equations.  
-#  Build only the upper triangle of the alpha array since it is symmetric.  
     
-    exp = np.arange(0,order+1)
+    exp = np.arange(0,order+1) # exoponents of the basis functions
+    
     alpha = np.zeros((ncoeffs,ncoeffs))
     beta = np.zeros(ncoeffs)
 
     b = yy/yyunc
 
-    for i in range(0,ncoeffs):
+# Now start the linear algebra construction
 
-        for j in range(i,ncoeffs):
+    if doalpha is True:
+    
+        for i in range(0,ncoeffs):
+            
+                for j in range(i,ncoeffs):
+        
+                    at = (xx**exp[i])/yyunc
+                    a  = (xx**exp[j])/yyunc
+                    
+                    alpha[i,j] = np.sum(at*a)
+                    alpha[j,i] = np.sum(at*a)
+                    beta[i] = np.sum(at*b)
+                    
+    elif doalpha is False:
 
-            at = (xx**exp[i])/yyunc
-            a  = (xx**exp[j])/yyunc
+        AT = np.empty((ncoeffs,ndat))
+        for i in range(ncoeffs):
 
-            alpha[i,j] = np.sum(at*a)
-            beta[i] = np.sum(at*b)
+            AT[i,:] = xx**exp[i]/yyunc
 
-# Now transpose and add to get the other side
-
-    alpha = alpha+np.transpose(alpha)
-
-# Finally, divide the diagonal elements by 2 to make up for the addition
-# in the transpose
-
-    zdiag = np.arange(0,ncoeffs*ncoeffs,ncoeffs+1)
-    zdiag = np.unravel_index(zdiag,(ncoeffs,ncoeffs))
-    alpha[zdiag] = alpha[zdiag]/2.
-
-# Solve things (need to remember what you are doing...)
+        alpha = np.matmul(AT,np.transpose(AT))
+        beta = np.matmul(AT,b)        
+                
+# Solve things
     
     coeffs = np.linalg.solve(alpha,beta)
 
@@ -156,7 +180,7 @@ def polyfit1d(x,y,order,yunc=None,justfit=False,silent=True):
             print(' ')
             print('             Number of points = ',len(x))
             print('          Number of NaNs in y = ',nnan)
-            print('         Number of parameters = ',order+1)
+            print('         Number of parameters = ',ncoeffs)
             print(' Number of degrees of freedom = ',ndof)
             print('                  Chi-Squared = ',chi2)
             print('          Reduced Chi-Squared = ',rchi2)

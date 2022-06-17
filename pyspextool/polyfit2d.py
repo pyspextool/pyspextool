@@ -9,39 +9,28 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
 
     Standard least squares fitting (e.g. Numerical Recipes).  This 
     program is based on solving the equation A ## coeff = b.  Except 
-    now, z = f(x,y) = (a_0 + a_1*x) * (b_0 + b_1*y + b_2*y^2)
-    = b_0*a_0 + b_0*a_1*x + b_1*a_0*x + b_1*a_0 + b_1*a_1*x*y...
+    now, 
 
-    The design matrix A is constructed.  The alpha (A^T ## A) and 
-    beta (A^T ## b) arrays of the normal equations are constructed
-    and then passed to np.linalg.solve.  
-
-    If the surface to be fit is large and/or the number of coefficients 
-    is large, set the DOALPHA keyword.  Since the design matrix A can be 
-    large (ncoeff,ndat) it may take too much memory and or too much time.  
-    If `doalpha` is True, the alpha and beta arrays are constructed directly 
-    and passed to GAUSSJ.  There is a trade off since constructing the 
-    alpha and beta arrays directly takes longer for smaller surfaces.
-
+    
     Input Parameters
     ----------------
     x : array_like, int or float
-        an array of independent values
+        An array of independent values
 
     y : array_like, int of float
-        an array of independent values
+        An array of independent values
 
     z : array_like, int or float 
-        an array of dependent values
+        An array of dependent values
 
     xorder : int
-        the order of the polynomial for the x dimension
+        The order of the polynomial for the x dimension
 
     yorder : int
-        the order of the polynomial for the y dimension
+        The order of the polynomial for the y dimension
 
     zunc : array_like, float, optional
-        an array of uncertainties on the dependent values
+        An array of uncertainties on the dependent values
 
     doalpha: {False, True}, optional
         If true, then A**T * A is computed directly instead of A
@@ -55,34 +44,54 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
     Output Parameters
     -----------------
     dict
-        a dict where with the following entries:
+        A dict where with the following entries:
 
         coeffs : numpy.ndarray
-            the polynomial coefficients
+            The polynomial coefficients
 
         var : numpy.ndarray
-            the variances of the coefficients
+            The variances of the coefficients
 
         covar : numpy.ndarray
-            the covariance matrix
+            The covariance matrix
 
         zfit : numpy.ndarray 
-            the polynomial evaluated at `x` and `y`
+            The polynomial evaluated at `x` and `y`
 
         nparm : int
-            the number of parameters of the fit
+            The number of parameters of the fit
 
         ndof : int
-            the number of degrees of freedom
+            The number of degrees of freedom
 
         chi2 : float
-            the chi^2 value of the fit
+            The chi^2 value of the fit
 
         rchi2 : float
-            the reduced chi^2 value of the fit
+            The reduced chi^2 value of the fit
 
         rms : flat
-            the rms of the fit (1/N, not 1/(N-1))
+            The rms of the fit (1/N, not 1/(N-1))
+
+    Notes
+    -----
+    Standard least squares fitting (e.g. Numerical Recipes).  
+    The program fits the following function:
+
+    z = f(x,y) = (a_0 + a_1*x) * (b_0 + b_1*y + b_2*y**2)
+      = b_0*a_0 + b_0*a_1*x + b_1*a_0*x + b_1*a_0 + b_1*a_1*x*y + ...
+      = c_0 + c_1*x + c_2*x*y + c_3*x*y**2 + ...
+
+    By default, the design matrix A is constructed.  The alpha 
+    (A^T ## A) and beta (A^T ## b) arrays of the normal equations 
+    are then constructed and then passed to np.linalg.solve.  
+
+    If the dataset to be fit is large and/or the number of coefficients 
+    is large, the design matrix A can be large (ncoeff,ndat) and may 
+    take too much memory and/or too much time to construct.  In this case,
+    set `doalpha` to True and the alpha and beta arrays are constructed 
+    directly.  There is a trade off since constructing the alpha and beta 
+    arrays directly takes longer for smaller surfaces.
 
     Examples
     --------
@@ -92,8 +101,11 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
     --------------------
         2022-03-09 - Written by M. Cushing, University of Toledo.  
                      Based on the Spextool IDL program mc_polyfit2d.pro
+        2022-06-17 - Simplfied the creation of alpha is doalpha=True
     '''    
 
+# Construct the uncertainty array if necessary
+    
     if zunc is None: zunc = np.full(len(x),1.0)
 
 # Get rid of NaNs 
@@ -115,15 +127,15 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
 
     xexp = np.arange(xorder+1,dtype=int)
     yexp = np.arange(yorder+1,dtype=int)
-    order = np.empty((ncoeffs,2),dtype=int)
+    exp = np.empty((ncoeffs,2),dtype=int)
     idx = 0
 
     for i in range(yorder+1):
 
         for j in range(xorder+1):
 
-            order[idx,0] = xexp[j]
-            order[idx,1] = yexp[i]
+            exp[idx,0] = xexp[j]
+            exp[idx,1] = yexp[i]
             idx +=1
 
 # Create the b array
@@ -141,24 +153,21 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
 
             for j in range(i,ncoeffs):
 
-                at = (xx**order[i,0] * yy**order[i,1])/zzunc
-                a  = (xx**order[j,0] * yy**order[j,1])/zzunc
+                at = (xx**exp[i,0] * yy**exp[i,1])/zzunc
+                a  = (xx**exp[j,0] * yy**exp[j,1])/zzunc
+
+                val = np.sum(at*a)
                     
-                alpha[j,i] = np.sum(at*a)
+                alpha[j,i] = val
+                alpha[i,j] = val
                 beta[i] = np.sum(at*b)                    
                 
-        alpha +=np.transpose(alpha)
-
-        zdiag = np.arange(0,ncoeffs*ncoeffs,ncoeffs+1)
-        zdiag = np.unravel_index(zdiag,(ncoeffs,ncoeffs))
-        alpha[zdiag] = alpha[zdiag]/2.
-
     elif doalpha is False:
 
         AT = np.empty((ncoeffs,ndat))
         for i in range(ncoeffs):
 
-            AT[i,:] = xx**order[i,0]*yy**order[i,1]/zzunc
+            AT[i,:] = xx**exp[i,0]*yy**exp[i,1]/zzunc
 
         alpha = np.matmul(AT,np.transpose(AT))
         beta = np.matmul(AT,b)
@@ -171,10 +180,10 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
 
 # Just return the coefficients
         
-        return({"coeffs":coeffs,"var":None,"covar":None,"yfit":None,\
-            "nparm":None,"ndof":None,"chi2":None,"rchi2":None,"rms":None})   
+        return({"coeffs":coeffs,"var":None,"covar":None,"zfit":None,\
+                "nparm":None,"ndof":None,"chi2":None,"rchi2":None,"rms":None})
 
-    elif justfit is True:
+    elif justfit is False:
 
 # Keep going with other outputs and possible command line output
         
@@ -183,10 +192,10 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
 
         zfit = poly2d(x,y,xorder,yorder,coeffs) 
 
-        residual = zz-zzfit
+        residual = z-zfit
         rms = np.std(residual[znonan])
 
-        chi2 = np.sum( (residual[znonan]/yunc[znonan])**2)
+        chi2 = np.sum( (residual[znonan]/zunc[znonan])**2)
         rchi2 = chi2/ndof
     
 # Report results if requested
@@ -196,7 +205,7 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
             print(' ')
             print('             Number of points = ',len(x))
             print('          Number of NaNs in y = ',nnan)
-            print('         Number of parameters = ',order+1)
+            print('         Number of parameters = ',ncoeffs)
             print(' Number of degrees of freedom = ',ndof)
             print('                  Chi-Squared = ',chi2)
             print('          Reduced Chi-Squared = ',rchi2)
@@ -205,10 +214,10 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
             print('Coefficients:')
             print(' ')
             
-            for i in range(0,order+1):
+            for i in range(0,ncoeffs):
             
                 print('Coeff #',str(i).zfill(2),': ',coeffs[i],'+-',\
-                    npsqrt(var[i]),sep='')
+                    np.sqrt(var[i]),sep='')
 
             print(' ')
             print('Covariance Matrix:')
@@ -216,8 +225,9 @@ def polyfit2d(x,y,z,xorder,yorder,zunc=None,doalpha=False,silent=True,\
             print(' ')
             
 
-        return({"coeffs":coeffs,"var":var,"covar":covar,"yfit":yfit,\
-            "nparm":order+1,"ndof":ndof,"chi2":chi2,"rchi2":rchi2,"rms":rms})
+        return({"coeffs":coeffs,"var":var,"covar":covar,"zfit":zfit,\
+                "nparm":ncoeffs,"ndof":ndof,"chi2":chi2,"rchi2":rchi2,\
+                "rms":rms})
 
 
         
