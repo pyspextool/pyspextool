@@ -63,9 +63,9 @@ def imgquadfit(img,imgunc=None,doalpha=False):
 # Create coordinate images
     
     ximg = np.tile(np.arange(ncols,dtype=float),(nrows,1))
-    yimg = np.tile(np.reshape(np.arange(nrows,dtype=float),(nrows,1)),\
-                   (1,nrows))
-                   
+    yimg = np.tile(np.reshape(np.arange(nrows,dtype=float),\
+                   (nrows,1)),(1,ncols))
+
 # Ravel the images
 
     x = np.ravel(ximg)
