@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import interpolate
 
-def rectorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
+def rectifyorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
 
     """
     Rectifies a spectral order 
@@ -21,10 +21,10 @@ def rectorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
         not up-down. 
 
     edgecoeffs : array_like of float
-        (norders,ncoeffs+1,2) array giving the polynomial coefficients 
-        delineating the top and bottom of each order.  edgecoeffs[0,:,0]
+        (norders,2,ncoeffs+1) array giving the polynomial coefficients 
+        delineating the top and bottom of each order.  edgecoeffs[0,0,:]
         gives the coefficients for the bottom of the order closest to the 
-        bottom of `img` and edgecoeffs[0,:,1] gives the coefficients for 
+        bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for 
         the top of said order.  
 
     xranges : array_like of float
@@ -84,7 +84,6 @@ def rectorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
     stopcol  = xranges[1]
 
     order_ncols = stopcol-startcol+1
-
     cols = np.arange(order_ncols,dtype=int)+startcol
     rows = np.arange(nrows,dtype=int)
 
@@ -144,5 +143,5 @@ def rectorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
 
     spatmap = np.rot90(np.tile(rslit_arc,(order_ncols,1)),k=3)
         
-    return spatmap,order
+    return (spatmap,order)
     

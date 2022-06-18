@@ -21,14 +21,16 @@ def findorders(img,guesspos,sranges,step,slith_range,deg,bufpix,frac,comwidth,
 
     guesspos : array_like of int
         An (norders,2) array giving the positions to start the search.  
-        guesspos[0,0] gives the column number for the first order and 
-        guesspos[0,1] gives the row number for the first order.  Typically
-        the positions are near the center of the image and center of the slit.
+        guesspos[0,0] gives the column number for the order closest to the 
+        bottom of `img` and guesspos[0,1] gives the row number for said 
+        order.  Typically the positions are near the center of the image 
+        and center of the slit.
 
     sranges : array_like of float
         An (norders,2) array giving the column numbers over which to search.
-        sranges[0,0] gives the starting column number for the first order and 
-        sranges[0,1] gives the end column number for the first order.
+        sranges[0,0] gives the starting column number for the order closest 
+        to the bottom of `img` and sranges[0,1] gives the end column number 
+        for said order.
 
     step : int
         The step size in the dispersion or column direction
@@ -58,10 +60,10 @@ def findorders(img,guesspos,sranges,step,slith_range,deg,bufpix,frac,comwidth,
     Output Parameters
     -----------------
     edgecoeffs : array_like of float
-        (norders,ncoeffs+1,2) array giving the polynomial coefficients 
-        delineating the top and bottom of each order.  edgecoeffs[0,:,0]
-        gives the coefficients for the bottom of the order closests to the 
-        bottom of `img` and edgecoeffs[0,:,1] gives the coefficients for 
+        (norders,2,ncoeffs+1) array giving the polynomial coefficients 
+        delineating the top and bottom of each order.  edgecoeffs[0,0,:]
+        gives the coefficients for the bottom of the order closest to the 
+        bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for 
         the top of said order.  
 
     Procedure
