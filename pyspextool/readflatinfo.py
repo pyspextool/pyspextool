@@ -88,11 +88,11 @@ def readflatinfo(file):
            for the first order.
 
        edgecoeffs : array_like of float
-           (norders,ncoeffs+1,2) array giving the polynomial 
+           (norders,2,ncoeffs+1) array giving the polynomial 
            coefficients delineating the top and bottom of each order.  
-           edgecoeffs[0,:,0] gives the coefficients for the bottom of 
+           edgecoeffs[0,0,:] gives the coefficients for the bottom of 
            the order closests to the bottom of `img` and 
-           edgecoeffs[0,:,1] gives the coefficients for the top of said 
+           edgecoeffs[0,1,:] gives the coefficients for the top of said 
            order.  
 
        guesspos : array_like of int
