@@ -168,10 +168,10 @@ def readflatinfo(file):
     result.update({'edgedeg':deg})
 
     val = hdul[0].header['NORM_NXG']
-    result.update({'norm_nxg':val})
+    result.update({'norm_nxg':int(val)})
 
     val = hdul[0].header['NORM_NYG']
-    result.update({'norm_nyg':val})
+    result.update({'norm_nyg':int(val)})
 
     val = hdul[0].header['OVERSAMP']
     result.update({'oversamp':val})
