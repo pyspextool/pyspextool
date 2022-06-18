@@ -60,7 +60,7 @@ def findorders(img,guesspos,sranges,step,slith_range,deg,bufpix,frac,comwidth,
     Output Parameters
     -----------------
     edgecoeffs : array_like of float
-        (norders,2,ncoeffs+1) array giving the polynomial coefficients 
+        (norders,2,ncoeffs) array giving the polynomial coefficients 
         delineating the top and bottom of each order.  edgecoeffs[0,0,:]
         gives the coefficients for the bottom of the order closest to the 
         bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for 
