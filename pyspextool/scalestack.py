@@ -1,6 +1,6 @@
 import numpy as np
 
-def scalestack(stack,*args,mask=None,idx=None):
+def scalestack(stack,var,mask=None,idx=None):
 
     '''
     Scales a stack of spectra or images to a common intensity level
@@ -28,11 +28,11 @@ def scalestack(stack,*args,mask=None,idx=None):
     sstack : numpy.ndarray
         The scaled stack.
 
+    svar : numpy.ndarray or None
+        The scaled variance, if `var` is not None.
+
     scales : numpy.ndarray
         The scale factors.
-
-    svar : numpy.ndarray, optional
-        The scaled variance, if *args is passed.
 
     Notes
     -----
@@ -49,7 +49,7 @@ def scalestack(stack,*args,mask=None,idx=None):
         > spec2 = np.array([2,2,2,2])
         > spec3 = np.array([4,4,4,4])
         > specstack = np.stack((spec1,spec2,spec3))
-        > scaledstack, scales = scalestack(specstack)
+        > scaledstack, var, scales = scalestack(specstack,None)
         > print(scaledstack)
         > print(scales)
           [[2. 2. 2. 2.]
@@ -63,7 +63,7 @@ def scalestack(stack,*args,mask=None,idx=None):
         > spec2 = np.array([2,2,2,2])
         > spec3 = np.array([4,4,4,4])
         > specstack = np.stack((spec1,spec2,spec3))
-        > scaledstack, scales = scalestack(specstack,idx=0)
+        > scaledstack, var, scales = scalestack(specstack,None,idx=0)
         > print(scaledstack)
         > print(scales)
           [[1. 1. 1. 1.]
@@ -77,7 +77,7 @@ def scalestack(stack,*args,mask=None,idx=None):
         > img2 = np.array([[2,2,2],[2,2,2],[2,2,2]])
         > img3 = np.array([[4,4,4],[4,4,4],[4,4,4]])
         > imgstack = np.stack((img1,img2,img3))
-        > scaledstack,scales = scalestack(imgstack)
+        > scaledstack, var, scales = scalestack(imgstack, None)
         > print(scaledstack)
         > print(scales)
           [[[2. 2. 2.]
@@ -99,7 +99,7 @@ def scalestack(stack,*args,mask=None,idx=None):
         > img2 = np.array([[2,2,2],[2,2,2],[2,2,2]])
         > img3 = np.array([[4,4,4],[4,4,4],[4,4,4]])
         > imgstack = np.stack((img1,img2,img3))
-        > scaledstack,scales = scalestack(imgstack)
+        > scaledstack, var, scales = scalestack(imgstack, None)
         > print(scaledstack)
         > print(scales)
 
@@ -187,9 +187,9 @@ def scalestack(stack,*args,mask=None,idx=None):
 
 # Now return the scaled stack and potentially the scaled variance
     
-    if args:
+    if var is not None:
             
         return (sstack,args[0]*sclarr**2,scales)
 
-    else: return (sstack,scales)
+    else: return (sstack,None,scales)
         
