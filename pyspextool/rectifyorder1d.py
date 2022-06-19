@@ -136,7 +136,8 @@ def rectifyorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
 
 # Do the interpolation and store
         
-        f = interpolate.interp1d(slit_arc,img[slitbot_pix:slittop_pix+1,i])
+        f = interpolate.interp1d(slit_arc,img[slitbot_pix:slittop_pix+1,\
+                                 i+startcol])
         order[:,i] = f(rslit_arc)
 
 # Create the spatial map using rslit_arc
