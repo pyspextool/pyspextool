@@ -68,7 +68,7 @@ def bicuval(z,dz1,dz2,dz12,xl,xu,yl,yu,x,y):
 
     for i in range(3,-1,-1):
 
-        nz = t*nz + c[i,0] + u*(c[i,0] + u*(c[i,0] + u*c[i,3]))
+        nz = t*nz + c[i,0] + u*(c[i,1] + u*(c[i,2] + u*c[i,3]))
     
     return nz
     
