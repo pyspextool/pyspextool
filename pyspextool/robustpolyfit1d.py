@@ -1,16 +1,8 @@
-from numpy import isnan as npisnan
-from numpy import size as npsize
-from numpy import sum as npsum
-from numpy import std as npstd
-from numpy import full as npfull
-from numpy import mean as npmean
-from numpy import std as npstd
-from numpy import abs as npabs
-from numpy import sqrt as npsqrt
-from numpy.polynomial.polynomial import polyval as nppolyval
+import numpy as np
 from polyfit1d import polyfit1d
 
-def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
+def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,justfit=False,\
+                    silent=True):
 
     '''
     Fits a "robust" polynomial of a given order to a set of 1-D data.
@@ -35,11 +27,15 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
     yunc : numpy.ndarray, optional
         an array of uncertainties on the dependent values
 
-    goodbad : np.ndarray, optional 
 
+    goodbad : np.ndarray, optional 
+        an array identifying good and bad pixels.  0=bad, 1=good, 2=NaN
+
+    justfit : {False, True}, optional
+        set to only compute the coefficients
 
     silent : {True, False}, optional
-        If False, the result of the fit will be written to the command line
+        if False, the result of the fit will be written to the command line
 
     Output Parameters
     -----------------
@@ -106,17 +102,17 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
 
 # Check to see if the user passed an uncertainty array.
     
-    if yunc is None: yunc = npfull(len(x),1.0)
+    if yunc is None: yunc = np.full(len(x),1.0)
 
 # Set up the ogoodbad array
 
-    ogoodbad = npfull(len(x),2)
+    ogoodbad = np.full(len(x),2)
         
 # Get rid of NaNs
 
-    znotnan = ~npisnan(y)
-    init_goodcnt = npsum(znotnan)
-    nnan = npsum(~znotnan)
+    znotnan = ~np.isnan(y)
+    init_goodcnt = np.sum(znotnan)
+    nnan = np.sum(~znotnan)
     xx = x[znotnan]
     yy = y[znotnan]
     yyunc = yunc[znotnan]
@@ -125,20 +121,19 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
 
 # Do a first pass of the data
 
-    fit = polyfit1d(xx,yy,order,yunc=yyunc,silent=True)
-
+    fit = polyfit1d(xx,yy,order,yunc=yyunc,justfit=justfit,silent=True)
     
 # Compute the residuals and the mean and sigma of the residuals
     
-    residual = yy-fit['yfit']
+    residual = yy-np.polynomial.polynomial.polyval(xx,fit['coeffs'])
 
-    mean = npmean(residual)
-    stddev  = npstd(residual)
+    mean = np.mean(residual)
+    stddev  = np.std(residual)
 
 # Now check for residual points that are outside the threshhold
     
-    good = npabs((residual-mean)/stddev) <= thresh
-    goodcnt = npsum(good)
+    good = np.abs((residual-mean)/stddev) <= thresh
+    goodcnt = np.sum(good)
 
     if goodcnt != init_goodcnt:
 
@@ -148,10 +143,12 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
             itter +=1
 
             oldstddev = stddev
-            fit = polyfit1d(xx[good],yy[good],order,yunc=yyunc[good],silent=True)
-            residual = yy[good]-fit['yfit']
-            mean = npmean(residual)
-            stddev  = npstd(residual)        
+            fit = polyfit1d(xx[good],yy[good],order,yunc=yyunc[good],\
+                            justfit=justfit,silent=True)
+            residual = yy[good]-\
+              np.polynomial.polynomial.polyval(xx[good],fit['coeffs'])
+            mean = np.mean(residual)
+            stddev  = np.std(residual)        
 
 # Check to see if the new stddev isn't much of a change from the old one
 
@@ -159,26 +156,26 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
 
 # Now generate a new full residual array
 
-            residual = yy-nppolyval(xx,fit['coeffs'])
+            residual = yy-np.polynomial.polynomial.polyval(xx,fit['coeffs'])
 
-            good = npabs((residual-mean)/stddev) <= thresh
-            goodcnt = npsum(good)
+            good = np.abs((residual-mean)/stddev) <= thresh
+            goodcnt = np.sum(good)
 
 # Let's reconstuct the goodbad array
 
-    tmp = npfull(init_goodcnt,0)
+    tmp = np.full(init_goodcnt,0)
     tmp[good] = 1
     ogoodbad[znotnan] = tmp
 
 # Create a full yfit
 
-    yfit = nppolyval(x,fit['coeffs'])
+    yfit = np.polynomial.polynomial.polyval(x,fit['coeffs'])
 
 # Report results if requested
 
     if silent is not True:
 
-        nbad = npsum(good == 0)
+        nbad = np.sum(good == 0)
 
         print(' ')
         print('    Number of original points = ',len(x))
@@ -198,7 +195,7 @@ def robustpolyfit1d(x,y,order,thresh,eps,yunc=None,goodbad=None,silent=True):
         for i in range(0,order+1):
         
             print('Coeff #',str(i).zfill(2),': ',fit['coeffs'][i],'+-',\
-                  npsqrt(fit['var'][i]),sep='')
+                  np.sqrt(fit['var'][i]),sep='')
 
         print(' ')
         print('Covariance Matrix:')
