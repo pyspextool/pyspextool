@@ -64,7 +64,7 @@ def bicuval(z,dz1,dz2,dz12,xl,xu,yl,yu,x,y):
     t = (x-xl)/(xu-xl)
     u = (y-yl)/(yu-yl)
 
-    nz = np.empty(x.shape)
+    nz = np.zeros(x.shape)
 
     for i in range(3,-1,-1):
 
