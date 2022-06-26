@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 def scalestack(stack,*var,mask=None,idx=None):
 
@@ -166,8 +167,8 @@ def scalestack(stack,*var,mask=None,idx=None):
         
     else:
 
-        print('Unknown data shape.')
-        return
+        print('scalestack:  Unknown data shape.')
+        sys.exit(1)
 
 # Do the calculation
 
@@ -189,11 +190,7 @@ def scalestack(stack,*var,mask=None,idx=None):
                     
 # Build the final scale array and do the math
 
-    print('reshape',reshape_info)
-    print('tile',tile_info)
-    print('scales',scales)
     sclarr = np.tile(np.reshape(scales,reshape_info),tile_info)
-    print(sclarr.shape)
     
     sstack = stack*sclarr
 
