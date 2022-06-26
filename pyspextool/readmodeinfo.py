@@ -2,7 +2,7 @@ from astropy.io import fits
 from numpy import empty as npempty
 from numpy.polynomial.polynomial import polyval as nppolyval
 
-def readflatinfo(file):
+def readmodeinfo(file):
 
     """
     Reads a Spextool flatinfo calibration file.
@@ -216,9 +216,9 @@ def readflatinfo(file):
         guesspos[i,1] = int((bot+top)/2)
 
 
-    result.update({'xranges':xranges})
-    result.update({'edgecoeffs':edgecoeffs})
-    result.update({'guesspos':guesspos})
+    result.update({'XRANGES':xranges})
+    result.update({'EDGECOEFFS':edgecoeffs})
+    result.update({'GUESSPOS':guesspos})
     hdul.close()
     
 
