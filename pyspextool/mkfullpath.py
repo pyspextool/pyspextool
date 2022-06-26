@@ -1,5 +1,5 @@
 from fsextract import fsextract
-import glob
+from check_file import check_file
 
 def mkfullpath(dir,files,indexinfo:None,exist=False):
 
@@ -95,26 +95,6 @@ def mkfullpath(dir,files,indexinfo:None,exist=False):
         
     if exist == True:
 
-        i = 0        
-        for name in output:
-
-            test = glob.glob(name)
-            if not test:
-
-                print('File ',name, 'does not exist.')
-                return
-
-            else:
-
-                if len(test) > 1:
-
-                    print('More than one file matches ',name)
-                    return
-                    
-                else:
-                
-                    output[i] = test[0]
-
-            i+=1
-
+        test = check_file(output)
+        
     return(output)
