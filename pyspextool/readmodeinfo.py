@@ -216,9 +216,9 @@ def readmodeinfo(file):
         guesspos[i,1] = int((bot+top)/2)
 
 
-    result.update({'XRANGES':xranges})
-    result.update({'EDGECOEFFS':edgecoeffs})
-    result.update({'GUESSPOS':guesspos})
+    result.update({'xranges':xranges})
+    result.update({'edgecoeffs':edgecoeffs})
+    result.update({'guesspos':guesspos})
     hdul.close()
     
 
