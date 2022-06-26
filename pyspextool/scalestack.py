@@ -1,9 +1,9 @@
 import numpy as np
 
-def scalestack(stack,var,mask=None,idx=None):
+def scalestack(stack,*var,mask=None,idx=None):
 
     '''
-    Scales a stack of spectra or images to a common intensity level
+    Scales a stack of spectra or images to a common intensity level.             
 
     Input Parameters
     ----------------
@@ -12,27 +12,34 @@ def scalestack(stack,var,mask=None,idx=None):
 
         (nimgs,nrows,cols) - a stack of images.
 
-    *args : array_like
+
+    *var : array_like, optional
         The variances associated with the spectra or images.
+
 
     mask : array_like, optional
         A mask array with the same shape as `stack`.  
         0 = bad, 1=good
 
+
     idx : int, optional 
         A mask array with the same shape as `data`.  
         0 = bad, 1=good
+
 
     Returns
     --------
     sstack : numpy.ndarray
         The scaled stack.
 
+
     svar : numpy.ndarray or None
-        The scaled variance, if `var` is not None.
+        The scaled variance, if *var is passed.
+
 
     scales : numpy.ndarray
         The scale factors.
+
 
     Notes
     -----
@@ -40,6 +47,7 @@ def scalestack(stack,var,mask=None,idx=None):
     scale factors to scale each spectrum or image to either the median 
     value of the median values or the median value associated 
     with a particular spectrum or image.
+
 
     Examples
     --------
@@ -186,10 +194,9 @@ def scalestack(stack,var,mask=None,idx=None):
     sstack = stack*sclarr
 
 # Now return the scaled stack and potentially the scaled variance
-    
-    if var is not None:
-            
-        return (sstack,args[0]*sclarr**2,scales)
+
+    if len(var) == 1:
+
+        return (sstack,var*sclarr**2,scales)
 
     else: return (sstack,None,scales)
-        
