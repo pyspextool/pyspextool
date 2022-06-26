@@ -1,20 +1,20 @@
 import os.path
 import sys
 
-def check_exist(path):
+def check_exist(paths):
 
     '''
 
     Input Parameters
     ----------------
-    path : str
-        The (full) path of a directory or a file.
+    paths : str, list of str
+        The (full) path(s) or a directory or a file.
 
 
     Returns
     --------
-    str
-        `path`, if the path or file exists, otherwise None.
+    str, list of str
+        `paths`, if the paths or files exists, otherwise None.
 
 
     Notes
@@ -27,15 +27,29 @@ def check_exist(path):
     later
 
     '''
+
+# Make it a list just in case
+
+    paths = [paths] if type(paths) is str else paths
+
+# Now loop and check
     
-    result = os.path.exists(path)
+    for path in paths:  
 
-    if result == True:
+        result = os.path.exists(path)
 
-        return(path)
+        if result == False:
+            
+            print('check_exist: The file or path "',path,\
+                '" does not exist.',sep='')
+            sys.exit(1)
+
+# Now return the results properly
+            
+    if len(paths) == 1:
+
+        return(paths[0])
 
     else:
 
-        print('check_exist: The file or path "',path,\
-              '" does not exist.',sep='')
-        sys.exit(1)
+        return(paths)        
