@@ -162,7 +162,7 @@ def scalestack(stack,*var,mask=None,idx=None):
 
         axis_info = (1,2)
         reshape_info = (shape[0],1,1)
-        tile_info = (1,shape[0],shape[1])        
+        tile_info = (1,shape[1],shape[2])        
         
     else:
 
@@ -189,8 +189,12 @@ def scalestack(stack,*var,mask=None,idx=None):
                     
 # Build the final scale array and do the math
 
+    print('reshape',reshape_info)
+    print('tile',tile_info)
+    print('scales',scales)
     sclarr = np.tile(np.reshape(scales,reshape_info),tile_info)
-                    
+    print(sclarr.shape)
+    
     sstack = stack*sclarr
 
 # Now return the scaled stack and potentially the scaled variance
