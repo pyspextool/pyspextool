@@ -4,7 +4,7 @@ from scipy import interpolate
 def rectifyorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
 
     """
-    Rectifies a spectral order 
+    To rectify a spectral order 
 
     The function "straightens" a spectral order onto a uniform rectangular 
     grid
@@ -20,6 +20,7 @@ def rectifyorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
         with the columns of `img.  That is, orders go left-right and 
         not up-down. 
 
+
     edgecoeffs : array_like of float
         (norders,2,ncoeffs) array giving the polynomial coefficients 
         delineating the top and bottom of each order.  edgecoeffs[0,0,:]
@@ -27,19 +28,23 @@ def rectifyorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
         bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for 
         the top of said order.  
 
+
     xranges : array_like of float
         An (norders,2) array giving the column numbers over which to 
         operate.  xranges[0,0] gives the starting column number for the 
         order nearest the bottom of `img` and xranges[0,1] gives the end 
         column number for said order.
 
+
     slith_arc : float
         The slit height in arcseconds
+
 
     oversamp : float, optional
         The factor by which to oversample the slit during rectification. 
         The new slit length in pixels is given by 
         round(oversamp*min-slit-length-in-native-pixels).  
+
 
     ybuffer : int, optional
         The number of native pixels from the top and bottom of the slit to 
@@ -107,11 +112,13 @@ def rectifyorder1d(img,edgecoeffs,xranges,slith_arc,oversamp=1,ybuffer=0):
 
 # Set the pixels ybuffer from the ends to the values at ybuffer from the edge
 
-    ybuffer = round(ybuffer*oversamp)
+    if ybuffer > 0:
     
-    rslit_arc[0:ybuffer-1] = rslit_arc[ybuffer-1]
-    rslit_arc[(nrslit-ybuffer):nrslit] = rslit_arc[nrslit-ybuffer]
-
+        ybuffer = round(ybuffer*oversamp)
+    
+        rslit_arc[0:ybuffer-1] = rslit_arc[ybuffer-1]
+        rslit_arc[(nrslit-ybuffer):nrslit] = rslit_arc[nrslit-ybuffer]
+        
 # Now do the interpolation one column at a time
 
 # NOTE: this is not the fast way, but I don't see an IDL equivalent of
