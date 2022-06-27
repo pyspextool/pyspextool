@@ -6,14 +6,20 @@ def gethdrinfo(hdr,keywords=None):
     '''
     Pulls (user requested) hdr values and comments from a FITS file
 
-    Input Parameters:
-        hdr - an astropy header of an HDU
-              see https://docs.astropy.org/en/stable/io/fits/index.html
 
-    Optional Parameters:
-        keywords - a list of strings of keywords to obtain.
+    Input Parameters
+    ----------------
+    hdr : astropy HDU.header
+         see https://docs.astropy.org/en/stable/io/fits/index.html
 
-    Output Parameters:
+
+    keywords : list of str, optional
+         A list of keywords to pull.
+
+
+    Returns
+    -------
+    dict
         A dict where each key is the FITS keyword and each value is a list 
         with [keyword value,keyword comment].
 
@@ -21,19 +27,33 @@ def gethdrinfo(hdr,keywords=None):
         hdrinfo['XXX'][0] = value
         hdrinfo['XXX'][1] = comment
 
-    Procedure:
 
-    Example:
-        NA
+    Notes
+    -----
+    The program can use the unix wildcard * for keywords with a common
+    basename, e.g. COEFF_1, COEFF_2, COEFF_3 can be obtained as COEFF*.
 
-    Modification History:
-        2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the gethdrinfo.pro IDL program.
+    
+    Examples
+    --------
+    later
+
+
+    Modification History
+    --------------------
+    2022-05-24 - Written by M. Cushing, University of Toledo.
+    Based on Spextool IDL program mc_gethdrinfo.pro
+
     '''
-
 # Open an empty dict
     
     hdrinfo = {}
+
+# Must do comments and history separately so they can be at the end
+# in order
+
+    docomment = 0
+    dohistory = 0
 
 # Check to see whether the users passed a set of keywords to grab.
 
@@ -57,6 +77,16 @@ def gethdrinfo(hdr,keywords=None):
                
            else:
 
+               if keyword == 'COMMENT':
+
+                   docomment = 1
+                   continue
+
+               if keyword == 'HISTORY':
+
+                   dohistory = 1
+                   continue               
+               
                hdrinfo[keyword] = [hdr[keyword],hdr.comments[keyword]]
 
 
@@ -64,6 +94,38 @@ def gethdrinfo(hdr,keywords=None):
 
         for name in list(hdr.keys()):
 
-           hdrinfo[name] = [hdr[name],hdr.comments[name]]            
-           
+            if name == 'COMMENT':
+
+                docomment = 1
+                continue
+
+            if name == 'HISTORY':
+
+                dohistory = 1
+                continue                           
+        
+            hdrinfo[name] = [hdr[name],hdr.comments[name]]            
+
+# Now do the comments if need be
+            
+    if docomment:
+
+        comments = []
+        for line in hdr['COMMENT']:
+
+            comments.append(str(line.replace('=','')))
+
+        hdrinfo['COMMENT'] = comments
+
+# Now do the history if need be
+        
+    if dohistory:
+
+        history = []        
+        for line in hdr['HISTORY']:
+
+            history.append(str(line))
+
+        hdrinfo['HISTORY'] = history
+        
     return(hdrinfo)
