@@ -348,6 +348,11 @@ def gethdr(hdr,keywords=None):
 
 # INSTRUMENT
     
-    hdrinfo['INSTR'] = ['SpeX',' Instrument']            
+    hdrinfo['INSTR'] = ['SpeX',' Instrument']
 
+# now move the comment key to the end
+    
+    comment = hdrinfo.pop('COMMENT')
+    hdrinfo['COMMENT'] = comment
+    
     return(hdrinfo)
