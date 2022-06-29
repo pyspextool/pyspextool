@@ -331,7 +331,7 @@ def readinstrfile(filename):
 
 # XSPEXTOOL KEYWORDS
     
-    keyword = 'XSPEXTOOL_KEYWORD'
+    keyword = 'XSPEXTOOL_KEYWORDS'
     z = find(labels,keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
@@ -339,7 +339,7 @@ def readinstrfile(filename):
 
 # XCOMBSPEC KEYWORDS
     
-    keyword = 'XCOMBSPEC_KEYWORD'
+    keyword = 'XCOMBSPEC_KEYWORDS'
     z = find(labels,keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
@@ -347,7 +347,7 @@ def readinstrfile(filename):
 
 # XTELLCOR KEYWORDS
     
-    keyword = 'XTELLCOR_KEYWORD'
+    keyword = 'XTELLCOR_KEYWORDS'
     z = find(labels,keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
