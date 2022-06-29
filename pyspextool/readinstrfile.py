@@ -331,27 +331,27 @@ def readinstrfile(filename):
 
 # XSPEXTOOL KEYWORDS
     
-    keyword = 'XSPEXTOOL_KEYWORDS'
+    keyword = 'XSPEXTOOL_KEYWORD'
     z = find(labels,keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
-    output[keyword] = tmp
+    output['XSPEXTOOL_KEYWORDS'] = tmp
 
 # XCOMBSPEC KEYWORDS
     
-    keyword = 'XCOMBSPEC_KEYWORDS'
+    keyword = 'XCOMBSPEC_KEYWORD'
     z = find(labels,keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
-    output[keyword] = tmp
+    output['XCOMBSPEC_KEYWORDS'] = tmp
 
 # XTELLCOR KEYWORDS
     
-    keyword = 'XTELLCOR_KEYWORDS'
+    keyword = 'XTELLCOR_KEYWORD'
     z = find(labels,keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
-    output[keyword] = tmp                                
+    output['XTELLCOR_KEYWORDS'] = tmp                                
     
     return output
     
