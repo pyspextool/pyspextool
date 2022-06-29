@@ -190,7 +190,7 @@ def writeflat(flat,var,flag,hdrlist,rotate,orders,edgecoeffs,xranges,\
         
         for i in range(norders):
 
-            name = 'OR'+str(orders[i]).zfill(3)+'_RMS'
+            name = 'OR'+str(orders[i]).zfill(3)+'RMS'
             comment = ' RMS of normalized order '+str(orders[i]).zfill(3)
             hdr[name] = (rms[i],comment)
 
