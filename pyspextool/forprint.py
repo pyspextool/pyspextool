@@ -1,5 +1,3 @@
-import sys
-
 def forprint(*args):
 
     '''
