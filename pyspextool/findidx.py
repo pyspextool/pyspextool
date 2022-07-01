@@ -7,11 +7,11 @@ def findidx(xarr,x):
 
     Input Parameters
     ----------------
-    xarr : array_like of float
+    xarr : array_like of float or int
         (N,) The array to be searched, must be monotonically increasing or 
         decreasing.
 
-    x : array_like of float or float
+    x : array_like of float or in, or float, or int
         (M,) The value or values whose indices are required.
 
     Returns
@@ -44,7 +44,7 @@ def findidx(xarr,x):
 
 # Convert to numpy arrays and get basic things
     
-    xarr = np.asarray(xarr)
+    xarr = np.asarray(xarr,dtype='float')
     ndat = len(xarr)
 
 # Deal with array_like versus int/float
@@ -52,12 +52,12 @@ def findidx(xarr,x):
     if hasattr(x,'__len__') is False:
 
         single = True
-        x = np.asarray([x])        
+        x = np.asarray([x],dtype='float')        
 
     else:
 
         single = False
-        x = np.asarray(x)                
+        x = np.asarray(x,dtype='float')                
 
 # Initialize binary search area and compute number of divisions needed
 
