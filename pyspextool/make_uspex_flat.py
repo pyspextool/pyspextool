@@ -1,11 +1,10 @@
-import sys
 import os.path
 import numpy as np
 from astropy.io.fits import getheader
 from check_file import check_file
 from check_dir import check_dir
 from readinstrfile import readinstrfile
-from readmodefile import readmodefile
+from readflatcalfile import readflatcalfile
 from mkfullpath import mkfullpath
 from readuspexfits import readuspexfits
 from scalestack import scalestack
@@ -154,8 +153,7 @@ def make_uspex_flat(files,instrfilepath,modefilepath,biasfilepath,oname,\
         
     else:
 
-        print('make_flat: Unknown input_method.')
-        sys.exit(1)
+        raise ValueError('Unknown input_method')
 
 # Load the FITS files into memory
 
@@ -193,7 +191,7 @@ def make_uspex_flat(files,instrfilepath,modefilepath,biasfilepath,oname,\
 
     test = check_file(modefile)    
 
-    modeinfo = readmodefile(modefile)
+    modeinfo = readflatcalfile(modefile)
 
 # Locate the orders
     

@@ -2,7 +2,7 @@ from astropy.io import fits
 from numpy import empty as npempty
 from numpy.polynomial.polynomial import polyval as nppolyval
 
-def readmodeinfo(file):
+def readflatcalfile(file):
 
     """
     Reads a Spextool flatinfo calibration file.
