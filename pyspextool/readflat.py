@@ -45,9 +45,9 @@ def readflat(flatfile):
             int -> The number of orders on the image.
 
         ``"orders"``
-            list of int -> The orders numbers.  orders[0] is the order 
-            number of the order nearest the bottom of the image after 
-            rotation. 
+            numpy.ndarray of int -> The orders numbers.  orders[0] is 
+            the order number of the order nearest the bottom of the 
+            image after rotation. 
 
         ``"edgedeg"``
             int -> The polynomial degree for the fits to the edge of 
@@ -157,7 +157,7 @@ def readflat(flatfile):
 
     orders = hdr['ORDERS'].split(',')
     orders = [int(o) for o in orders]
-    flatinfo.update({'orders':orders})
+    flatinfo.update({'orders':np.array(orders,dtype=int)})
 
     edgedeg = hdr['EDGEDEG']
     flatinfo.update({'edgedeg':edgedeg})
