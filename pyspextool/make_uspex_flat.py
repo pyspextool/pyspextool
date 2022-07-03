@@ -254,5 +254,5 @@ def make_uspex_flat(files,instrfilepath,modefilepath,biasfilepath,oname,\
                 edgecoeffs,modeinfo['xranges'],modeinfo['ps'],\
                 modeinfo['slith_pix'],modeinfo['slith_arc'],\
                 slitw_pix,slitw_arc,mode,rms,resolvingpower,'1.0beta',\
-                history,oname,overwrite=overwrite) 
+                history,os.path.join(calpath,oname),overwrite=overwrite) 
     
