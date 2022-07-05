@@ -8,7 +8,7 @@ def robustsetup(*args,goodbad=None):
 
     Input Parameters
     ----------------
-    *args : array_like 
+    *args : array_like or None
         (ndat,) arrays to be used in a robust fit.  Typically the are the
         dependent variable array and its associated uncertainty.  
 
@@ -55,9 +55,11 @@ def robustsetup(*args,goodbad=None):
 
     for arg in args:
 
-        znan = np.isnan(arg)
-        if np.sum(znan) > 0:
+        if arg is not None:
+        
+            znan = np.isnan(arg)
+            if np.sum(znan) > 0:
             
-            goodbad[znan] = 2
+                goodbad[znan] = 2
 
     return goodbad
