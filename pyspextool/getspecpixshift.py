@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as pl
-from bufrange import bufrange
+from getyrange import getyrange
 import scipy
 from scipy import signal
 from fitpeak1d import fitpeak1d
@@ -158,7 +158,7 @@ def getspecpixshift(xanchor,yanchor,xsource,ysource,savitzky_golay=True,\
                                         constrained_layout=True)
 # Plot the two spectra
 
-        yrange = bufrange([yanchor,ysource],0.1)
+        yrange = getyrange([yanchor,ysource],frac=0.1)
         
         axes1.margins(x=0)
         axes1.step(xanchor,yanchor,'#1f77b4')
@@ -174,7 +174,7 @@ def getspecpixshift(xanchor,yanchor,xsource,ysource,savitzky_golay=True,\
         
 # Plot the entire cross correlation results
 
-        yrange = bufrange(xcor,0.1)
+        yrange = getyrange(xcor,frac=0.1)
 
         axes2.margins(x=0)        
         axes2.tick_params(axis='x')
@@ -187,7 +187,7 @@ def getspecpixshift(xanchor,yanchor,xsource,ysource,savitzky_golay=True,\
 
 # Plot a zoom in of the cross correlation and the fit        
 
-        yrange = bufrange([fitxcor,r['fit']],0.1)
+        yrange = getyrange([fitxcor,r['fit']],frac=0.1)
 
         axes3.margins(x=0)        
         
