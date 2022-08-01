@@ -1,0 +1,29 @@
+# Compiled files
+*.a
+*.o
+*.so
+*.pyd
+*.dll
+__pycache__
+
+# Packages/installer info
+*.egg
+*.egg-info
+dist
+build
+eggs
+.eggs
+parts
+bin
+var
+sdist
+develop-eggs
+
+# Other
+.cache
+.tox
+
+# Mac OSX
+.DS_Store
+
+.tmp

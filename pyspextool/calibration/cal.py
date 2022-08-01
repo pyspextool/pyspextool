@@ -2,12 +2,10 @@
 
 
 import numpy as np
-from rectifyorder1d import rectifyorder1d
-from fiterpolate import fiterpolate
+from pyspextool.fit.interpolate import fiterpolate
 from scipy import interpolate
 from scipy.signal import medfilt2d
-from loopprogress import loopprogress
-from moments import moments
+from pyspextool.utils.math import loopprogress, moments
 
 
 def normspecflat(img,edgecoeffs,xranges,slith_arc,nxgrid,nygrid,var=None,\

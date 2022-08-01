@@ -15,27 +15,14 @@ from numpy import absolute as npabsolute
 from numpy import shape as npshape
 from astropy.io import fits
 
-from check_file import check_file
-from check_dir import check_dir
-from readinstrfile import readinstrfile
-from readflatcalfile import readflatcalfile
-from mkfullpath import mkfullpath
-from readuspexfits import readuspexfits
-from scalestack import scalestack
-from medstack import medstack
-from findorders import findorders
-from normspecflat import normspecflat
-from avehdrs import avehdrs
-from combflagstack import combflagstack
-from writeflat import writeflat
-from splittext import splittext
-from pyspextool.utils.wherelist import wherelist
-from gethdrinfo import gethdrinfo
-from combflagstack import combflagstack
-from imgpoly import imgpoly
-from uspexampcor import uspexampcor
-from idlrotate import idlrotate
-
+from pyspextool.utils.ioutils import check_file, check_dir, mkfullpath
+from pyspextool.utils.fitsutils import medcomb, avehdrs, gethdrinfo, idlrotate
+from pyspextool.utils.image import scalestack
+from pyspextool.utils.spec import findorders, combflagstack
+from pyspextool.utils.text import splittext, wherelist
+from pyspextool.io.fits import readinstrfile, readflatcalfile, writeflat
+from pyspextool.calibration.cal import normspecflat
+from pyspextool.fit.image import imgpoly
 
 
 def make_uspex_flat(files,instrfilepath,modefilepath,biasfilepath,oname,\
@@ -202,7 +189,7 @@ def make_uspex_flat(files,instrfilepath,modefilepath,biasfilepath,oname,\
 
     if clupdate is True: print('Medianing the images...')
 
-    med,munc = medstack(simgs)
+    med,munc = medcomb(simgs)
 
     # Get the mode name and read modefile
 
