@@ -5,9 +5,9 @@ import numpy as np
 from scipy.stats import describe
 
 
-def findidx(xarr,x):
+def findidx(xarr, x):
 
-    '''
+    """
     Finds the effective index of a function value in an ordered array.
 
     Input Parameters
@@ -45,56 +45,46 @@ def findidx(xarr,x):
     --------------------
     2022-06-30 - Written by M. Cushing, University of Toledo.
 
-    '''
+    """
 
     # Convert to numpy arrays and get basic things
-    
-    xarr = np.asarray(xarr,dtype='float')
+
+    try:
+        xarr = np.asarray(xarr, dtype='float')
+    except ValueError:
+        raise
+
     ndat = len(xarr)
 
     # Deal with array_like versus int/float
-
-    if hasattr(x,'__len__') is False:
-
+    if isinstance(x, int) or isinstance(x, float) is True:
         single = True
-        x = np.asarray([x],dtype='float')        
-
+        x = np.asarray([x], dtype='float')
     else:
-
         single = False
-        x = np.asarray(x,dtype='float')                
+        x = np.asarray(x, dtype='float')
 
     # Initialize binary search area and compute number of divisions needed
 
-    ileft = np.zeros(len(x),dtype=int)
-    iright = np.zeros(len(x),dtype=int)
+    ileft = np.zeros(len(x), dtype=int)
+    iright = np.zeros(len(x), dtype=int)
 
     ndivisions = int(np.log10(ndat)/np.log10(2) + 1)
 
-    # Test for monotonicity
-
-    i = xarr - np.roll(xarr,1)
+    # Test array for monotonicity. If not, raise ValueError
+    i = xarr - np.roll(xarr, 1)
     i = i[1:]
 
-    # Is it increasing?
-    
+    # is it increasing or decreasing
     a = i >= 0
-
     if np.sum(a) == ndat-1:
-
-        iright +=ndat-1
-
+        iright += ndat-1
     else:
-
         a = i <= 0
-
         if np.sum(a) == ndat-1:
-
-            ileft +=ndat-1        
-
+            ileft += ndat-1
         else:
-
-            raise ValueError('findidx:  arr is not monotonic.')
+            raise ValueError('findidx:  array is not monotonic.')
 
     # Perform binary search by dividing search interval in half NDIVISIONS times
 
