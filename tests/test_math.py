@@ -16,7 +16,7 @@ def test_find_index():
 
 
 def test_find_index_errors():
-    # input not monotonic, should raise ValueError
+    # input not monotonic
     with pytest.raises(ValueError):
         array_bad = [1, 2.5, 2, 5.5]
         test_points = [1.5, 3.1, 6]
@@ -26,3 +26,8 @@ def test_find_index_errors():
     with pytest.raises(ValueError):
         array_bad2 = ('1234', 4.0, [1, 2])
         result_bad2 = find_index(array_bad2, test_points)
+
+    with pytest.raises(ValueError):
+        array = [1., 5, 10]
+        test_points_bad = (1, 2.0, [1, 2])
+        result_bad3 = find_index(array, test_points_bad)
