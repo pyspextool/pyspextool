@@ -66,7 +66,7 @@ def fitpeak1d(x,y,type='gaussian',nparms=4,p0=None,positive=False,\
 
     Model     p[0]*exp(-0.5*u^2)        p[0]/(u^2 + 1) 
 
-    p[0]         Peak Value               Peak Value    
+    P[0]         Peak Value               Peak Value    
     p[1]        Peak Centroid           Peak Centroid  
     p[2]       Gaussian Sigma               HWHM%      
     p[3]         + p[3]    *               + p[3]   *   
