@@ -37,8 +37,8 @@ def findidx(xarr,x):
 
     Examples
     --------
-    > x = [1,2.5,3,5.5]
-    > findidx(x,[1.5,3.1,6])
+    > x = [1, 2.5, 3, 5.5]
+    > findidx(x, [1.5, 3.1, 6])
       [0.33333333 2.04              nan]
 
     Modification History
