@@ -20,7 +20,7 @@ def find_index(x_array, x):
 
     Returns
     -------
-    numpy.ndarray or float
+    ndarray or float
         Effective indices in `x_array` for `x`.
 
     Raises
@@ -60,13 +60,19 @@ def find_index(x_array, x):
 
     ndat = len(x_array)
 
-    # Deal with array_like versus int/float
+    # Deal with array_like versus int/float and convert to array
     if isinstance(x, int) or isinstance(x, float) is True:
-        single = True
-        x = np.asarray([x], dtype='float')
+        try:
+            x = np.asarray([x], dtype='float')
+            single = True
+        except ValueError:
+            raise
     else:
-        single = False
-        x = np.asarray(x, dtype='float')
+        try:
+            single = False
+            x = np.asarray(x, dtype='float')
+        except ValueError:
+            raise
 
     # Initialize binary search area and compute number of divisions needed
     ileft = np.zeros(len(x), dtype=int)
