@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from pyspextool.utils.math import *
 
 
@@ -31,3 +32,12 @@ def test_find_index_errors():
         array = [1., 5, 10]
         test_points_bad = (1, 2.0, [1, 2])
         result_bad3 = find_index(array, test_points_bad)
+
+
+def test_round():
+    result = round(np.array([-3.5,-2.5,2.5,3.5]))
+    assert result[0] == -4.0
+    assert result[1] == -3.0
+    assert result[2] == 3.0
+    assert result[3] == 4.0
+    
