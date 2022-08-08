@@ -44,7 +44,7 @@ def find_index(x_array, x):
     --------
     >>> x_array = [1, 2.5, 3, 5.5]
     >>> x = [1.5, 3.1, 6]
-    >>> findidx(x_array, x)
+    >>> find_index(x_array, x)
     array([0.33333333, 2.04      ,        nan])
 
     Modification History
