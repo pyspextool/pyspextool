@@ -122,7 +122,7 @@ def find_index(x_array, x):
     return ieff[0] if single is True else ieff
 
 
-def mkimgidxs(nrows, ncols, dtype=int):
+def make_img_indices(nrows, ncols, dtype=int):
 
     """
 
@@ -178,7 +178,7 @@ def mkimgidxs(nrows, ncols, dtype=int):
     return ximg, yimg
 
 
-def nantrim(arr, flag=0, trim=False):
+def nan_trim(arr, flag=0, trim=False):
 
     """
     To clip NaNs from an array.
@@ -281,7 +281,7 @@ def nantrim(arr, flag=0, trim=False):
         return z
 
 
-def idlrotate(img, direction):
+def rotate(img, direction):
 
     """
     Rotates and/or tranposes an image (rotate is in multiples of 90deg)
