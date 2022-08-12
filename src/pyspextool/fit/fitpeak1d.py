@@ -1,6 +1,3 @@
-"""Functions for fitting peaks."""
-
-
 import numpy as np
 import scipy
 from scipy import optimize
@@ -16,7 +13,7 @@ def fitpeak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
     At the moment, very basic.  Will add complexity as necessary.
     
     Parameters
-    ----------------
+    ----------
     x : array-like
         (nx,) array of independent variables.
 
@@ -164,7 +161,7 @@ def lorentz1d(x, amp, mean, hwhm, *args):
     y =  amp/(u**2 + 1) + aergs[0] + args[1]*x
 
     Parameters
-    ----------------
+    ----------
     x : array-like
         (nx,) array of independent variables.
 
@@ -234,7 +231,7 @@ def gauss1d(x, amp, mean, sigma, *args):
     y =  amp*exp(-0.5*u**2)
 
     Parameters
-    ----------------
+    ----------
     x : array-like
         (nx,) array of independent variables.
 
@@ -301,7 +298,7 @@ def cmest(x, y, nan=False, positive=False, negative=False):
 
 
     Parameters
-    ----------------
+    ----------
     x : arrqy-like
         (nx,) array of independent variables.
 

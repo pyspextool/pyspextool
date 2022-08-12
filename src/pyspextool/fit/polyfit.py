@@ -1,6 +1,3 @@
-"""Functions for polynomial fitting."""
-
-
 import numpy as np
 
 
@@ -10,7 +7,7 @@ def poly2d(x, y, xorder, yorder, coeffs):
     evaluates a polynomial function of two independent variables
     
 
-    Input Parameters
+    Parameters
     ----------------
     x : array_like, int or float
         an array of independent values
@@ -66,7 +63,7 @@ def polyfit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True)
     """
     Fits a polynomial of a given order to a set of 1-D data.
 
-    Input Parameters
+    Parameters
     ----------------
     x : array_like
         An array of independent values
@@ -89,8 +86,8 @@ def polyfit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True)
     silent : {True, False}, optional
         If False, the result of the fit will be written to the command line
 
-    Output Parameters
-    -----------------
+    Returns
+    -------
     dict
         A dict where with the following entries:
 
@@ -277,7 +274,7 @@ def polyfit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
     now, 
 
     
-    Input Parameters
+    Parameters
     ----------------
     x : array_like, int or float
         An array of independent values
@@ -306,8 +303,8 @@ def polyfit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
     justfit : {False, True}, optional
         If True, only the coefficients are computed and returned
 
-    Output Parameters
-    -----------------
+    Returns
+    -------
     dict
         A dict where with the following entries:
 
@@ -502,7 +499,7 @@ def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
     """
     Fits a "robust" polynomial of a given order to a set of 1-D data.
 
-    Input Parameters
+    Parameters
     ----------------
     x : numpy.ndarray
         an array of independent values
@@ -532,8 +529,8 @@ def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
     silent : {True, False}, optional
         if False, the result of the fit will be written to the command line
 
-    Output Parameters
-    -----------------
+    Returns
+    -------
     dict
         a dict where with the following entries:
 
@@ -564,8 +561,8 @@ def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
         rms : flat
             the rms of the fit (1/N, not 1/(N-1))
 
-    Procedure
-    ---------
+    Notes
+    -----
  
 
     Examples
@@ -712,8 +709,8 @@ def imgpoly(img, coeffs):
     """
     evaluates a polynomial function of a variable for images
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     img : numpy.ndarray
         an [nrows,ncols]
 
@@ -724,7 +721,7 @@ def imgpoly(img, coeffs):
         etc.
 
     Returns
-    --------
+    -------
     numpy.ndarray
         an [nrows,ncols] array the 
 

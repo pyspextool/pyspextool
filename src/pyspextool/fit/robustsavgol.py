@@ -13,12 +13,12 @@ def robustsavgol(x, y, window_length, polyorder=2, thresh=4, eps=0.1,
     To robustly perform a savizky-golay smoothing.
 
 
-    Input Parameters
-    ----------------
-    x : array-like
+    Parameters
+    ----------
+    x : array_like
         (ndat,) array of independent values.
 
-    y : array-like
+    y : array_like
         (ndat,) array of dependent values.
 
     window_length : int
@@ -138,8 +138,8 @@ def robustsetup(*args, goodbad=None):
     """
     To set up the goodbad array for a robust fit.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     *args : array_like or None
         (ndat,) arrays to be used in a robust fit.  Typically, the
         dependent variable array and its associated uncertainty.

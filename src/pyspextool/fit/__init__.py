@@ -2,8 +2,7 @@
 This subpackage contains functions for fitting.
 """
 
-from .fitpeak import *
-from .image import *
-from .interpolate import *
+from .fitpeak1d import *
+from .fiterpolate import *
 from .polyfit import *
-from .robust import *
+from .robustsavgol import *

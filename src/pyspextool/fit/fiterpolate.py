@@ -1,7 +1,7 @@
 """Functions for interpolation."""
 
 import numpy as np
-from pyspextool.utils.arrays import make_image_indices
+from pyspextool.utils.array import make_image_indices
 
 
 def bicucof(z, dz1, dz2, dz12, nd1, nd2):
@@ -9,7 +9,7 @@ def bicucof(z, dz1, dz2, dz12, nd1, nd2):
     """
     Returns the coefficients used in bicuvals.py.
 
-    Input Parameters
+    Parameters
     ----------------
     z : array_like
         The grid points values starting at the lower left and moving 
@@ -93,7 +93,7 @@ def bicuval(z, dz1, dz2, dz12, xl, xu, yl, yu, x, y):
     """
     Evaluates a bicubic interpolation
 
-    Input Parameters
+    Parameters
     ----------------
     z : array_like
         The grid points values starting at the lower left and moving 
@@ -164,7 +164,7 @@ def fiterpolate(img, ncg, nrg):
     """
     Not sure how to explain!
 
-    Input Parameters
+    Parameters
     ----------------
     img : array_like
         The image to be fiterpolate-d.  
@@ -285,7 +285,7 @@ def imgquadfit(img, imgunc=None, doalpha=False):
     """
     Fits a quadratic surface to an image
 
-    Input Parameters
+    Parameters
     ----------------
     img : array_like
         The image to fit.
