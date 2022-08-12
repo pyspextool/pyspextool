@@ -281,7 +281,7 @@ def nan_trim(arr, flag=0, trim=False):
         return z
 
 
-def rotate(img, direction):
+def idl_rotate(img, direction):
 
     """
     Rotates and/or tranposes an image (rotate is in multiples of 90deg)

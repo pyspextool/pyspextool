@@ -704,7 +704,7 @@ def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
             "rms": fit['rms']})
 
 
-def imgpoly(img, coeffs):
+def image_poly(img, coeffs):
 
     """
     evaluates a polynomial function of a variable for images
