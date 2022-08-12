@@ -1,5 +1,5 @@
 import numpy as np
-from pyspextool.plotting import buffer_range
+from pyspextool.plot import buffer_range
 
 
 def get_spec_range(*args, frac=0.1):

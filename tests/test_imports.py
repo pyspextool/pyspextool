@@ -1,7 +1,7 @@
 from pyspextool.calibration import *
 from pyspextool.fit import *
 from pyspextool.io import *
-from pyspextool.plotting import *
+from pyspextool.plot import *
 from pyspextool.uspex import *
 
 
