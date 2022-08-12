@@ -122,7 +122,7 @@ def find_index(x_array, x):
     return ieff[0] if single is True else ieff
 
 
-def make_img_indices(nrows, ncols, dtype=int):
+def make_image_indices(nrows, ncols, dtype=int):
 
     """
 
