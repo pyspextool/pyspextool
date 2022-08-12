@@ -1,5 +1,5 @@
 import numpy as np
-from pyspextool.arrays import find_index
+from pyspextool.utils.arrays import find_index
 from pyspextool.utils.math import round
 
 
