@@ -58,7 +58,7 @@ def moments(data, goodbad=False, robust=None, silent=True):
     -----
     If goodbad is passed, only points with values of 1 are used.  If
     robust is passed, the median and median absolute deviation and
-    points are idetentified as an outlier if:
+    points are identified as an outlier if:
 
     |x_i - MED|/(1.4826*MAD) > robust
 
@@ -697,7 +697,7 @@ def bit_set(array, bits):
 
     #  Define empty mask
 
-    mask = np.zeros_like(array, dtype=int8)
+    mask = np.zeros_like(array, dtype=np.uint8)
 
     #  test to see if bits is iterable
 
