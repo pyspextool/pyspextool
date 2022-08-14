@@ -6,8 +6,8 @@ def moments(data, goodbad=False, robust=None, silent=True):
     """
     (Robustly) computes various statistics
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     data : numpy.ndarray
 
     goodbad : numpy.ndarray, optional
@@ -176,8 +176,8 @@ def median_data_stack(data, mask=None, stderr=True):
     Median a spectral or image stack with optional mask
 
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     data : numpy.ndarray
         either a stack of spectra [nspec,npoints] or a stack of images 
         [nimgs,nrows,ncols].  
@@ -349,21 +349,21 @@ def median_data_stack(data, mask=None, stderr=True):
     return [med, unc]
 
 
-def scale_data_stack(stack, *var, mask=None, idx=None):
+def scale_data_stack(stack, var, mask=None, idx=None):
 
     """
     Scales a stack of spectra or images to a common intensity level.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     stack : array_like
         (nspec,nwave) - a stack of spectra.
 
         (nimgs,nrows,cols) - a stack of images.
 
 
-    *var : array_like, optional
-        The variances associated with the spectra or images.
+    var : array_like, or None
+        If not None, the variances associated with the spectra or images.
 
 
     mask : array_like, optional
@@ -383,7 +383,7 @@ def scale_data_stack(stack, *var, mask=None, idx=None):
 
 
     svar : numpy.ndarray or None
-        The scaled variance, if *var is passed.
+        The scaled variance, if `var` is not None.
 
 
     scales : numpy.ndarray
@@ -556,8 +556,8 @@ def combine_flag_stack(stack, nbits=8):
     """
     To combine bit-set flag arrays.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     stack : numpy.ndarray
         The stack of bit-set flag arrays to combine.  The stack
         can either be a stack of spectra [nspec,ndat] or a stack
@@ -650,8 +650,8 @@ def bit_set(array, bits):
     """
     To determine if the given bits are set in an array.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     array : numpy.ndarray
         numpy array to search
 
@@ -725,8 +725,8 @@ def round(x):
     To round numbers in a numpy array
 
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     x : numpy.ndarray
 
 
