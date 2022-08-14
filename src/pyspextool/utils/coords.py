@@ -147,11 +147,6 @@ def sixty(val, colons=None, trailsign=False):
     [-0.0, 0.0, 40.04424]
 
     > x = -0.0111234
-    > sixty(x,trainsign=True)
-    
-    [-0.0, 0.0, 40.04424]
-
-    > x = -0.0111234
     > sixty(x,colons={'dec':2,'plus':1},trailsign=True)
 
     -00:00:40.04

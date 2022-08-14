@@ -1,17 +1,17 @@
 import numpy as np
 
 
-def find_index(x_array, x):
+def find_index(x, x_want):
 
     """
     Finds the effective index of a function value in an ordered array.
 
     Parameters
     ----------------
-    x_array : array_like
+    x : array_like
         (N,) The array of floats or integers to be searched,
         must be monotonically increasing or decreasing.
-    x : array_like or float or int
+    x_want : array_like or float or int
         (M,) The value or values whose indices are required.
 
     Returns
@@ -40,7 +40,7 @@ def find_index(x_array, x):
     --------
     >>> x_array = [1, 2.5, 3, 5.5]
     >>> x = [1.5, 3.1, 6]
-    >>> find_index(x_array, x)
+    >>> find_index(x, x_want)
     array([0.33333333, 2.04      ,        nan])
 
     Modification History
@@ -50,34 +50,34 @@ def find_index(x_array, x):
 
     # Convert to numpy arrays and get basic things
     try:
-        x_array = np.asarray(x_array, dtype='float')
+        x = np.asarray(x, dtype='float')
     except ValueError:
         raise
 
-    ndat = len(x_array)
+    ndat = len(x)
 
     # Deal with array_like versus int/float and convert to array
-    if isinstance(x, int) or isinstance(x, float) is True:
+    if isinstance(x_want, int) or isinstance(x_want, float) is True:
         try:
-            x = np.asarray([x], dtype='float')
+            x_want = np.asarray([x_want], dtype='float')
             single = True
         except ValueError:
             raise
     else:
         try:
             single = False
-            x = np.asarray(x, dtype='float')
+            x_want = np.asarray(x_want, dtype='float')
         except ValueError:
             raise
 
     # Initialize binary search area and compute number of divisions needed
-    ileft = np.zeros(len(x), dtype=int)
-    iright = np.zeros(len(x), dtype=int)
+    ileft = np.zeros(len(x_want), dtype=int)
+    iright = np.zeros(len(x_want), dtype=int)
 
     n_divisions = int(np.log10(ndat)/np.log10(2) + 1)
 
     # Test array for monotonicity. If not, raise ValueError
-    i = x_array - np.roll(x_array, 1)
+    i = x - np.roll(x, 1)
     i = i[1:]
     # check if array is increasing or decreasing
     a = i >= 0
@@ -93,29 +93,30 @@ def find_index(x_array, x):
     # Perform binary search by dividing search interval in half NDIVISIONS times
     for i in range(n_divisions):
         idiv = (ileft + iright)//2   # Split interval in half
-        x_val = x_array[idiv]            # Find function values at center
-        greater = x > x_val           # Determine which side of X is on
-        less = x <= x_val
+        x_val = x[idiv]            # Find function values at center
+        greater = x_want > x_val           # Determine which side of X is on
+        less = x_want <= x_val
         np.multiply(ileft, less, out=ileft)
         np.add(ileft, idiv*greater, out=ileft)
         np.multiply(iright, greater, out=iright)
         np.add(iright, idiv*less, out=iright)
 
     # linearly interpolate
-    x_left = x_array[ileft]
-    x_right = x_array[iright]
+    x_left = x[ileft]
+    x_right = x[iright]
 
     mask = x_left == x_right
-    ieff = (x_right-x) * ileft
-    np.add(ieff, (x-x_left) * iright, out=ieff)
+    ieff = (x_right - x_want) * ileft
+    np.add(ieff, (x_want - x_left) * iright, out=ieff)
     np.add(ieff, mask * ileft, out=ieff)
     np.divide(ieff, (x_right - x_left + mask), out=ieff)
 
     # Clip points beyond interpolation to NaN
-    z = ieff < 0
+
+    z = x_want < float(x[0])
     ieff[z] = np.nan
 
-    z = ieff > ndat-1
+    z = x_want > float(x[-1])
     ieff[z] = np.nan
 
     # Return numpy.ndarray of float or float
