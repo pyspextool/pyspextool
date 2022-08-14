@@ -58,7 +58,7 @@ def poly2d(x, y, xorder, yorder, coeffs):
     return z
 
 
-def polyfit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True):
+def poly_fit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True):
 
     """
     Fits a polynomial of a given order to a set of 1-D data.
@@ -142,7 +142,7 @@ def polyfit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True)
     > x = np.array([10. ,20. ,30. ,40. ,50., 60. ,70. ,80. ,90.,100.])
     > y = np.array([0.37,0.58,0.83,1.15,1.36,1.62,1.90,2.18,2.45,math.nan])
     > yerr = np.array([0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05])
-    > result = polyfit1d(x,y,1,yunc=yerr)
+    > result = poly_fit1d(x,y,1,yunc=yerr)
 
     Data from Chapter 6 of Data Reduction and Error Analysis for the 
     Physical Sciences by Bevington & Robinson
@@ -263,7 +263,7 @@ def polyfit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True)
             "rms": rms})
 
 
-def polyfit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
+def poly_fit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
               justfit=False):
 
     """
@@ -493,7 +493,7 @@ def polyfit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
                 "rms": rms})
 
 
-def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
+def robust_poly_fit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
                     justfit=False, silent=True):
 
     """
@@ -614,7 +614,7 @@ def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
 
     # Do a first pass of the data
 
-    fit = polyfit1d(xx, yy, order, yunc=yyunc, justfit=justfit, silent=True)
+    fit = poly_fit1d(xx, yy, order, yunc=yyunc, justfit=justfit, silent=True)
     
     # Compute the residuals and the mean and sigma of the residuals
     
@@ -636,7 +636,7 @@ def robustpolyfit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
             itter += 1
 
             oldstddev = stddev
-            fit = polyfit1d(xx[good], yy[good], order, yunc=yyunc[good],
+            fit = poly_fit1d(xx[good], yy[good], order, yunc=yyunc[good],
                             justfit=justfit, silent=True)
             residual = yy[good] - \
                        np.polynomial.polynomial.polyval(xx[good],
