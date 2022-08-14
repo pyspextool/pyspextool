@@ -1,5 +1,5 @@
 from pyspextool.utils import coords
-from pyspextool.utils import add_entry_to_dictionary
+from pyspextool.utils import add_entry
 
 
 def average_header_info(hdrs, pair=False):

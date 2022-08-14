@@ -1,6 +1,6 @@
 import numpy as np
 from astropy.io import fits
-from pyspextool.utils import add_entry_to_dictionary
+from pyspextool.utils import add_entry
 
 
 def read_flat_fits(flatfile):
