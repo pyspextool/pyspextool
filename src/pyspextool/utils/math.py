@@ -314,7 +314,7 @@ def median_data_stack(data, mask=None, stderr=True):
 
     # Now search and replace any masked pixels with NaNs
 
-    data = np.where(mask != 0, data, mnan)
+    data = np.where(mask != 0, data, np.nan)
 
     # Spectral or image stack?
 
