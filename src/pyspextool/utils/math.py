@@ -179,8 +179,8 @@ def median_data_stack(data, mask=None, stderr=True):
     Parameters
     ----------
     data : numpy.ndarray
-        either a stack of spectra [nspec,npoints] or a stack of images 
-        [nimgs,nrows,ncols].  
+        either a stack of spectra (nspec, npoints) or a stack of images
+        (nimgs, nrows, ncols).
 
     mask : numpy.ndarray, optional
         a mask array with the same shape as `data`.  
@@ -203,16 +203,16 @@ def median_data_stack(data, mask=None, stderr=True):
     ---------
     Spectral stack:
 
-        in this case, the data have the shape [nspec,npoints].  The 
+        in this case, the data have the shape (nspec, npoints).  The
         median of the stack is computed producing an array of size 
-        [npoints]. At each spectral point, the median absolute deviation 
+        (npoints,). At each spectral point, the median absolute deviation
         (MAD=median(|data-med}) is computed.  
 
     Image stack:
 
-        in this case, the data have the shape [nspec,nrows,ncols].  The 
+        in this case, the data have the shape (nspec, nrows, ncols).  The
         median of the stack is computed producing an array of size 
-        [nrows,ncols]. At each image point, the median absolute deviation 
+        (nrows, ncols). At each image point, the median absolute deviation
         (MAD=median(|data-med}) is computed.  
 
 
