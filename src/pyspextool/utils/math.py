@@ -537,7 +537,7 @@ def scale_data_stack(stack, *var, mask=None, idx=None):
 
     # Build the final scale array and do the math
 
-    sclar = np.tile(np.reshape(scales, reshape_info), tile_info)
+    sclarr = np.tile(np.reshape(scales, reshape_info), tile_info)
 
     sstack = stack * sclarr
 
