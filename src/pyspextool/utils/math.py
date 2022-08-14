@@ -349,7 +349,7 @@ def median_data_stack(data, mask=None, stderr=True):
     return [med, unc]
 
 
-def scale_data_stack(stack, var, mask=None, idx=None):
+def scale_data_stack(stack, var, mask=None, index=None):
 
     """
     Scales a stack of spectra or images to a common intensity level.
@@ -371,7 +371,7 @@ def scale_data_stack(stack, var, mask=None, idx=None):
         0 = bad, 1=good
 
 
-    idx : int, optional
+    index : int, optional
         A mask array with the same shape as `data`.
         0 = bad, 1=good
 
@@ -523,7 +523,7 @@ def scale_data_stack(stack, var, mask=None, idx=None):
 
     # Check whether you are scaling to the median or spectrum/image 
 
-    if idx is None:
+    if index is None:
 
         # Scale to the median 
 
@@ -533,7 +533,7 @@ def scale_data_stack(stack, var, mask=None, idx=None):
 
         # Scale to a spectrum or image
 
-        scales = medvals[idx] / medvals
+        scales = medvals[index] / medvals
 
     # Build the final scale array and do the math
 
