@@ -543,7 +543,7 @@ def scale_data_stack(stack, var, mask=None, idx=None):
 
     # Now return the scaled stack and potentially the scaled variance
 
-    if len(var) == 1:
+    if var is not None:
 
         return sstack, var * sclarr**2, scales
 
