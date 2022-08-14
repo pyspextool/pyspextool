@@ -545,7 +545,7 @@ def scale_data_stack(stack, *var, mask=None, idx=None):
 
     if len(var) == 1:
 
-        return sstack, var * sclarr ** 2, scales
+        return sstack, var * sclarr**2, scales
 
     else:
         return sstack, None, scales
