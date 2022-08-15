@@ -179,7 +179,7 @@ def make_image_indices(nrows, ncols, dtype=int):
     return ximg, yimg
 
 
-def nan_trim(arr, flag=0, trim=False):
+def trim_nan(arr, flag=0, trim=False):
 
     """
     To clip NaNs from an array.
@@ -364,7 +364,7 @@ def idl_rotate(img, direction):
         
     elif direction == 6:
 
-        return np.fliplr(np.prot90(img, 1))
+        return np.fliplr(np.rot90(img, 1))
     
     elif direction == 7:               
 
