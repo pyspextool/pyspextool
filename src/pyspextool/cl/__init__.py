@@ -1,1 +1,1 @@
-__all__ = ['config.py','setup.py']
+__all__ = ['config','setup']

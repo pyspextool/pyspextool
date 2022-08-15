@@ -69,6 +69,8 @@ def check_file(files):
     Notes
     -----
     The program is capable of using unix wildcards, see glob.
+    Returning the file names instead of True might seem odd, but
+    it allows glob to find the proper file name using wildcards.
 
 
     Examples
@@ -83,24 +85,36 @@ def check_file(files):
 
     # Now loop and check
 
+    i = 0
     for file in files:  
 
         test = glob.glob(file)
         if not test:
 
-            return False
+            message = 'File '+file+' not found.'
+            raise ValueError(message)
             
         else:
 
             if len(test) > 1:
 
                 message = 'More than one file matches '+file+'.'
-                print(message)
-                return False
+                raise ValueError(message)
 
-    # Now return True
+            else:
 
-    return True
+                files[i] = test[0]
+                i += 1
+
+    # Now return the results properly
+
+    if len(files) == 1:
+
+        return(files[0])
+
+    else:
+
+        return(files)
 
 def extract_filestring(string, method):
 
@@ -194,7 +208,7 @@ def extract_filestring(string, method):
         raise ValueError(message)
 
 
-def make_fullpath(dir, files, indexinfo: None, exist=False):
+def make_full_path(dir, files, indexinfo: None, exist=False):
     """
     constructs fullpath strings for files
 
@@ -274,13 +288,13 @@ def make_fullpath(dir, files, indexinfo: None, exist=False):
 
                 # Now create the file names
 
-        output = [dir + indexinfo['prefix'] +
+        output = [os.path.join(dir,indexinfo['prefix'] +
                   str(root).zfill(indexinfo['nint']) +
-                  indexinfo['suffix'] for root in files]
+                  indexinfo['suffix']) for root in files]
 
     else:
 
-        output = [dir + root for root in files]
+        output = [os.path.join(dir,root) for root in files]
 
         #  Now let's check to see if the file actually exists
 

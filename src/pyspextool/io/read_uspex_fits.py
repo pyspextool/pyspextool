@@ -1,10 +1,12 @@
 import numpy as np
+from astropy.io import fits
+import re
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.utils.math import combine_flag_stack
-from pyspextool.io import get_header_info
-import re
-import sys
+from pyspextool.io.fitsheader import get_header_info
+#import re
+#import sys
 
 
 def read_uspex_fits(files, lininfo, keywords=None, pair=False, rotate=0,

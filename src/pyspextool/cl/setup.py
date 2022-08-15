@@ -2,7 +2,7 @@ import os
 from pyspextool.cl import config
 
 def setup(instrument=config.state['instruments'][0], rawpath=None,
-          calpath=None, procpath=None, qapath=None, clupdate=True):
+          calpath=None, procpath=None, qapath=None, clupdate=False):
     
 
     """
@@ -26,7 +26,7 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     rawpath : str, optional
         The path to the quality assurance directory.
 
-    clupdate : bool, default = True
+    clupdate : bool, default = False
         Set to report the setup results.
 
     Returns
