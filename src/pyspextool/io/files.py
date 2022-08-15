@@ -1,5 +1,5 @@
 import os
-import sys
+import glob
 
 def check_directory(paths):
 
@@ -41,21 +41,12 @@ def check_directory(paths):
         result = os.path.exists(path)
 
         if result is False:
-            
-            print('check_dir: The directory "', path,
-                  '" does not exist.', sep='')
-            sys.exit(1)
 
-    # Now return the results properly
-            
-    if len(paths) == 1:
+            return False
 
-        return paths[0]
+        else:
 
-    else:
-
-        return paths
-
+            return True
 
 def check_file(files):
 
@@ -92,38 +83,24 @@ def check_file(files):
 
     # Now loop and check
 
-    i = 0
     for file in files:  
 
         test = glob.glob(file)
         if not test:
 
-            print('check_file: The file "',file,'" does not exist.',sep='')
-            sys.exit(1)
+            return False
             
         else:
 
             if len(test) > 1:
 
-                print('check_file: More than one files matches "',\
-                          file,'"',sep='')
-                sys.exit(1)                
-                
-            else:
-                
-                files[i] = test[0]
-                i +=1
-                
-    # Now return the results properly
-            
-    if len(files) == 1:
+                message = 'More than one file matches '+file+'.'
+                print(message)
+                return False
 
-        return(files[0])
+    # Now return True
 
-    else:
-
-        return(files) 
-
+    return True
 
 def extract_filestring(string, method):
 
@@ -198,7 +175,7 @@ def extract_filestring(string, method):
 
             else:
 
-                # dash dectected, generate sequential numbers and add to output list
+                # dash detected, generate sequential numbers and add to output list
                 
                 arr = list(range(int(lowupp[0]), int(lowupp[1])+1))
                 oarr+=arr
@@ -213,8 +190,8 @@ def extract_filestring(string, method):
         
     else:
 
-        print('method unknown.')
-        return
+        message = 'Unknown method: `index` or `filename`.'
+        raise ValueError(message)
 
 
 def make_fullpath(dir, files, indexinfo: None, exist=False):
@@ -230,7 +207,7 @@ def make_fullpath(dir, files, indexinfo: None, exist=False):
         a list of strings that either contain the index numbers of the 
         files or the file names
 
-    indexinfo : dict of {'nint':int,'prefix':str,'suffix':str}, optional
+    indexinfo : dict of {'nint': int,'prefix': str,'suffix': str}, optional
         a dictionary giving the information necessary to create the file 
         names from the index numbers.
         
@@ -291,9 +268,9 @@ def make_fullpath(dir, files, indexinfo: None, exist=False):
         for test in files:
 
             if test > 10 ** indexinfo['nint']:
-                print('File numbers >=',
-                      10 ** indexinfo['nint'], 'are not allowed.')
-                return
+
+                message = 'File numbers >='+str(10 ** indexinfo['nint'])+'are not allowed.'
+                raise ValueError(message)
 
                 # Now create the file names
 
