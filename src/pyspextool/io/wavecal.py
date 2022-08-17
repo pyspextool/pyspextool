@@ -1,3 +1,6 @@
+import numpy as np
+from astropy.io import fits
+
 def read_wavecal_file(file):
     """
     To read a pySpextool wavecal calibration file.

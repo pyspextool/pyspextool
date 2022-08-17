@@ -118,7 +118,7 @@ def fitpeak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
         # Check to make sure the number of user parameter estimates equals
         # the number of parameters reqeusted.
 
-    if len(p0) != nterms:
+    if len(p0) != nparms:
 
         exception = 'fitpeak1d: number parameter estimates must ' + \
           'equal the number of parameters.'

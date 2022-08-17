@@ -1,8 +1,8 @@
 import numpy as np
 from pyspextool.utils.arrays import make_image_indices
-from pyspextool.utils.arrays import nan_trim
-from pyspextool.utils import loop_progress
-from pyspextool.spectroscopy import make_aperture_mask
+from pyspextool.utils.arrays import trim_nan
+from pyspextool.utils.loop_progress import loop_progress
+from pyspextool.spectroscopy.make_aperture_mask import make_aperture_mask
 
 
 def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
@@ -182,7 +182,7 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
         # Trim the NaNs if need be
 
-        nonan = nan_trim(owave, flag=2)
+        nonan = trim_nan(owave, flag=2)
 
         # Generate the key
 

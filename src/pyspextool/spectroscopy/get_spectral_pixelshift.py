@@ -1,20 +1,20 @@
 import numpy as np
 import scipy
 from scipy import signal
-from pyspextool.fit import robust_savgol
-from pyspextool.fit import fitpeak1d
-from pyspextool.plot import get_spec_range
+from pyspextool.fit.robust_savgol import robust_savgol
+from pyspextool.fit.fitpeak1d import *
+from pyspextool.plot.limits import get_spec_range
 import matplotlib.pyplot as pl
 import os
 
 
-def getspecpixshift(xanchor, yanchor, xsource, ysource, savitzky_golay=True,
-                    qafileinfo=None):
+def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
+                            savitzky_golay=True, qafileinfo=None):
     """
     To determine the pixel shift between two spectra.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     xanchor : array-like of int
         (nanchor,) array of pixel values.
 

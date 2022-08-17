@@ -1,6 +1,5 @@
 import os
 from pyspextool.cl import config
-from pyspextool.cl.setup import setup
 from pyspextool.io.files import check_file
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.files import make_full_path
@@ -120,7 +119,7 @@ def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
 
     elif input_method == 'filename':
 
-        files = mkfullpath(rawpath,files,exist=True)
+        files = make_full_path(rawpath,files,exist=True)
         
     else:
 
