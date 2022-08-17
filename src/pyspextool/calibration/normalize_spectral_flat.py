@@ -1,10 +1,10 @@
 import numpy as np
-from pyspextool.spectroscopy import rectify_order1d
-from pyspextool.fit import fiterpolate
+from pyspextool.spectroscopy.rectify_order1d import rectify_order1d
+from pyspextool.fit.fiterpolate import *
 from scipy import interpolate
 from scipy.signal import medfilt2d
 from pyspextool.utils.math import moments
-from pyspextool.utils import loop_progress
+from pyspextool.utils.loop_progress import loop_progress
 
 
 def normalize_spectral_flat(img, edgecoeffs, xranges, slith_arc, nxgrid,

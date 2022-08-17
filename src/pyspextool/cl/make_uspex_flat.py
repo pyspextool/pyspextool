@@ -9,9 +9,14 @@ from pyspextool.io.fitsheader import average_header_info
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.math import scale_data_stack
 from pyspextool.utils.math import median_data_stack
+from pyspextool.io.flat import read_flatcal_file
+from pyspextool.spectroscopy.find_orders import find_orders
+from pyspextool.calibration.normalize_spectral_flat import normalize_spectral_flat
+from pyspextool.utils.split_text import split_text
+from pyspextool.io.flat import write_flat
 
 def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
-                    input_method='index', normalize=True, qafilename=None,
+                    input_method='index', normalize=True,
                     clupdate=True, overwrite=True):
 
     """
@@ -45,12 +50,6 @@ def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
 
     normalize : {True, False}, optional
         Set to True to normalize the orders.
-
-
-    qafilename : str, optional
-        The full path and filename for the finderorders quality 
-        assurance plot.
-
 
     clupdate : {True, False}, optional
         Set to True for command line updates during execution. 
@@ -127,8 +126,6 @@ def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
 
         raise ValueError('Unknown input_method.')
 
-    print(files)
-
     # Load the FITS files into memory
 
     if clupdate is True: print('Loading FITS images...')
@@ -169,67 +166,67 @@ def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
     test = check_file(modefile)    
     
     modeinfo = read_flatcal_file(modefile)
-#
-#    # Locate the orders
-#    
-#    if clupdate is True: print('Locating the orders...')
-#    
-#    edgecoeffs = findorders(med,modeinfo['guesspos'],modeinfo['xranges'],\
-#                            modeinfo['step'],modeinfo['slith_range'],\
-#                            modeinfo['edgedeg'],modeinfo['ybuffer'],\
-#                            modeinfo['flatfrac'],modeinfo['comwidth'],\
-#                            qafig=qafilename)
-#
-#    # Normalize the spectrum if requested
-#
-#    if normalize is True:
-#    
-#        if clupdate is True: print('Normalizing the median image...')
-#
-#        nimg, nvar, rms = normspecflat(med,edgecoeffs,\
-#                                        modeinfo['xranges'],\
-#                                        modeinfo['slith_arc'],\
-#                                        modeinfo['nxgrid'],\
-#                                        modeinfo['nygrid'],\
-#                                        var=munc**2,oversamp=1,\
-#                                        ybuffer=modeinfo['ybuffer'],\
-#                                        clupdate=False)
-#
-#    else:
-#
-#        nimg = med
-#        nvar = munc**2
-#        rms = np.full((len(modeinfo['orders'])),np.nan)
-#
-#    # Create the HISTORY
-#
-#    basenames = []
-#    for file in files:
-#
-#        basenames.append(os.path.basename(file))
-#
-#    history = 'This flat was created by scaling the files '+\
-#      ', '.join(str(b) for b in basenames)+' to a common median flux '+\
-#      'level and then medianing the scaled imges.  The variance is '+\
-#      'given by (1.4826*MAD)**2/nimages where MAD is the median absolute '+\
-#      'deviation.  The zeroth bit of pixels in the third extension are '+\
-#      'set if their corresponding intensity values are greater than '+\
-#      'LINCORMAX.  User selected FITS keywords are from the first frame '+\
-#      'in the series.'
-#
-#    history = splittext(history)
-#    
-#        
-#    # Get the slit widths and resolving power and write to disk
-#
-#    slitw_arc = float(avehdr['SLIT'][0][0:3])
-#    slitw_pix = slitw_arc/modeinfo['ps']
-#
-#    resolvingpower = modeinfo['rpppix']/slitw_pix
-#
-#    writeflat(nimg,nvar,flag,avehdr,modeinfo['rotation'],modeinfo['orders'],\
-#                edgecoeffs,modeinfo['xranges'],modeinfo['ps'],\
-#                modeinfo['slith_pix'],modeinfo['slith_arc'],\
-#                slitw_pix,slitw_arc,mode,rms,resolvingpower,'1.0beta',\
-#                history,os.path.join(calpath,oname),overwrite=overwrite) 
+
+    if clupdate is True: print('Locating the orders...')
+    
+    edgecoeffs = find_orders(med,modeinfo['guesspos'],modeinfo['xranges'],
+                             modeinfo['step'],modeinfo['slith_range'],
+                             modeinfo['edgedeg'],modeinfo['ybuffer'],
+                             modeinfo['flatfrac'],modeinfo['comwidth'],
+                             qafig=os.path.join(config.state['qapath'],
+                                                oname+'_findorders.pdf'))
+
+    # Normalize the spectrum if requested
+
+    if normalize is True:
+
+        if clupdate is True: print('Normalizing the median image...')
+
+        nimg, nvar, rms = normalize_spectral_flat(med,edgecoeffs,
+                                                  modeinfo['xranges'],
+                                                  modeinfo['slith_arc'],
+                                                  modeinfo['nxgrid'],
+                                                  modeinfo['nygrid'],
+                                                  var=munc**2,oversamp=1,
+                                                  ybuffer=modeinfo['ybuffer'],
+                                                  clupdate=False)
+
+    else:
+
+        nimg = med
+        nvar = munc**2
+        rms = np.full((len(modeinfo['orders'])),np.nan)
+
+    # Create the HISTORY
+
+    basenames = []
+    for file in files:
+
+        basenames.append(os.path.basename(file))
+
+    history = 'This flat was created by scaling the files '+\
+      ', '.join(str(b) for b in basenames)+' to a common median flux '+\
+      'level and then medianing the scaled imges.  The variance is '+\
+      'given by (1.4826*MAD)**2/nimages where MAD is the median absolute '+\
+      'deviation.  The zeroth bit of pixels in the third extension are '+\
+      'set if their corresponding intensity values are greater than '+\
+      'LINCORMAX.  User selected FITS keywords are from the first frame '+\
+      'in the series.'
+
+    history = split_text(history)
+    
+        
+    # Get the slit widths and resolving power and write to disk
+
+    slitw_arc = float(avehdr['SLIT'][0][0:3])
+    slitw_pix = slitw_arc/modeinfo['ps']
+
+    resolvingpower = modeinfo['rpppix']/slitw_pix
+
+    write_flat(nimg,nvar,flag,avehdr,modeinfo['rotation'],modeinfo['orders'],
+               edgecoeffs,modeinfo['xranges'],modeinfo['ps'],
+               modeinfo['slith_pix'],modeinfo['slith_arc'],
+               slitw_pix,slitw_arc,mode,rms,resolvingpower,'1.0beta',
+               history,os.path.join(config.state['calpath'],oname+'.fits'),
+               overwrite=overwrite) 
     

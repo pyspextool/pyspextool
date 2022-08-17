@@ -1,7 +1,7 @@
 """Functions for interpolation."""
 
 import numpy as np
-from pyspextool.utils.array import make_image_indices
+from pyspextool.utils.arrays import make_image_indices
 
 
 def bicucof(z, dz1, dz2, dz12, nd1, nd2):
@@ -266,8 +266,8 @@ def fiterpolate(img, ncg, nrg):
 
             # Create coordinate images
 
-            ximg, yimg = mkimgidxs(gridinfo[k]['ysize'],
-                                   gridinfo[k]['xsize'])
+            ximg, yimg = make_image_indices(gridinfo[k]['ysize'],
+                                            gridinfo[k]['xsize'])
 
             nimg = bicuval(vals[idx, 0], vals[idx, 1], vals[idx, 2],
                            vals[idx, 3], 0.0, gridinfo[k]['xsize'], 0.0,

@@ -1,4 +1,4 @@
-def loopprogress(idx, bot, top, message=None):
+def loop_progress(idx, bot, top, message=None):
 
     """
     To print a loop update message on the command line

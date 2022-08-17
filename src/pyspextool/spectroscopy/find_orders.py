@@ -3,7 +3,7 @@ import matplotlib.pyplot as pl
 import scipy
 from scipy import ndimage
 from pyspextool.fit.polyfit import *
-from pyspextool.plot import get_image_range
+from pyspextool.plot.limits import get_image_range
 
 np.set_printoptions(threshold=np.inf)
 
@@ -92,6 +92,8 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
                      Based on the Spextool IDL program mc_findorders.pro
     """
 
+    debug = False
+
     # Check for qaplotting and set up empty lists
 
     if qafig is not None:
@@ -117,6 +119,12 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
     simg1 = ndimage.sobel(img / scl, axis=0)
     simg2 = ndimage.sobel(img / scl, axis=1)
     simg = np.sqrt(simg1 ** 2 + simg2 ** 2)
+
+    if debug is not False:
+
+        pl.ion()
+        plotfig = pl.figure(2,figsize=(6,6))
+
 
     # Start looping over each order
 
@@ -155,7 +163,7 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
 
             # Fit the centers, so you can project away from the guess position
 
-            r = polyfit1d(fcols, cens, max(1, deg - 2), justfit=True, silent=True)
+            r = poly_fit1d(fcols, cens, max(1, deg - 2), justfit=True, silent=True)
 
             # Find the new guess position yguess 
 
@@ -166,18 +174,18 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
             yguess = int(np.clip(yguess, bufpix, (nrows - bufpix - 1)))
             iguess = imgcol[yguess]
 
-            bot, top = find_top_bot(rownum, imgcol, sobcol, yguess, iguess, frac,
-                                    halfwin, debug=True)
+            bot, top = find_top_bot(fcols[j], rownum, imgcol, sobcol, yguess,
+                                    iguess, frac, halfwin, debug=debug)
 
             # Confirm that both COMs were computed
 
-            if np.isnan(bot + top) is False:
+            if np.isfinite(bot) == True:
 
                 # Now check to make sure calculated slit height falls within the
                 # parameter slith_pix
 
-                if (((top - bot) > slith_range[0]) and
-                        ((top - bot) < slith_range[1])):
+                if (top-bot >= slith_range[0] and top-bot <= slith_range[1]):
+
                     # Store the results, update the cens array
 
                     edges[:, j] = np.array([bot, top])
@@ -194,7 +202,7 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
 
             # Fit the centers, so you can project away from the guess position
 
-            r = polyfit1d(fcols, cens, max(1, deg - 2), silent=True)
+            r = poly_fit1d(fcols, cens, max(1, deg - 2), silent=True)
 
             # Find the new guess position yguess
 
@@ -205,17 +213,18 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
             yguess = int(np.clip(yguess, bufpix, (nrows - bufpix - 1)))
             iguess = imgcol[yguess]
 
-            bot, top = find_top_bot(rownum, imgcol, sobcol, yguess, iguess, frac,
-                                    halfwin)
+            bot, top = find_top_bot(fcols[j], rownum, imgcol, sobcol, yguess,
+                                    iguess, frac, halfwin,debug=debug)
+
             # Confirm that both COMs were computed
 
-            if np.isnan(bot + top) is False:
+            if np.isfinite(bot + top) == True:
 
                 # Now check to make sure calculated slit height falls within the
                 # parameter slith_pix
 
-                if (((top - bot) > slith_range[0]) and
-                        ((top - bot) < slith_range[1])):
+                if (top-bot >= slith_range[0] and top-bot <= slith_range[1]):
+                    
                     # Store the results, update the cens array
 
                     edges[:, j] = np.array([bot, top])
@@ -226,8 +235,8 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
         tmp = np.empty([2, deg + 1])
         for j in range(0, 2):
 
-            fit = robustpolyfit1d(fcols, edges[j, :], deg, 4, 0.1,
-                                  justfit=True, silent=True)
+            fit = robust_poly_fit1d(fcols, edges[j, :], deg, 4, 0.1,
+                                    justfit=True, silent=True)
             tmp[j, :] = fit['coeffs']
 
             # Store the results for possible plotting         
@@ -250,6 +259,10 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
 
         # Overplot everything
 
+        for i in range(norders):
+
+            pl.plot(guesspos[i, 0],guesspos[i,1],'go')
+        
         for i in range(len(pledges)):
 
             pl.plot(plcols[i], pledges[i], 'go', markersize=1)
@@ -267,7 +280,7 @@ def find_orders(img, guesspos, sranges, step, slith_range, deg, bufpix, frac,
     return edgecoeffs
 
 
-def find_top_bot(rownum, imgcol, sobcol, yguess, imgguess, frac, halfwin,
+def find_top_bot(fcol, rownum, imgcol, sobcol, yguess, imgguess, frac, halfwin,
                  debug=False):
     # Moving up from the guess position, find the index of the first pixel in
     # the column that falls below the flux threshold, i.e. the edge of the slit
@@ -317,16 +330,17 @@ def find_top_bot(rownum, imgcol, sobcol, yguess, imgguess, frac, halfwin,
     else:
         com_bot = np.nan
 
-    #    if debug is not False:
-    #
-    #        plotfig = pl.figure(2)
-    #        pl.plot(rownum,sobcol)
-    #        pl.xlim([com_bot-10,com_top+10])
-    #        pl.axvline(com_top,color='r')
-    #        pl.axvline(com_bot,color='r')
-    #        pl.axvline(yguess,color='g')
-    #        pl.title(fcols[j])
-    #        val = input("-->")
-    #        plotfig.clear()
+    if debug is not False:
+    
+        plotfig = pl.figure(2)
+        pl.plot(rownum,sobcol)
+        pl.xlim([com_bot-10,com_top+10])
+        pl.axvline(com_top,color='r')
+        pl.axvline(com_bot,color='r')
+        pl.axvline(yguess,color='g')
+        pl.title(fcol)
+        pl.pause(0.1)
+#        val = input("-->")
+        plotfig.clear()
 
     return com_bot, com_top
