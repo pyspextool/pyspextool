@@ -1,6 +1,104 @@
 import numpy as np
 from astropy.io import fits
 
+def read_line_list(file):
+
+    """
+    To read a Spextool line list into memory.
+
+
+    Parameters
+    ----------
+    file : str
+        The fullpath to a Spextool line list.
+
+
+    Returns
+    -------
+    dict
+        ``"order"``
+            (numpy.ndarray of int) ->  (nlines,) the order number
+
+        ``"swave"``
+            (numpy.ndarray of str) ->  (nlines,) the wavelengths (microns)
+
+        ``"lineid"``
+            (numpy.ndarray of str) ->  (nlines,) the line identification
+
+        ``"leftwin"``
+            (numpy.ndarray of float) ->  (nlines,) the width of the window 
+            to the left of line center to fit (arcseconds)
+
+        ``"rghtwin"``
+            (numpy.ndarray of float) ->  (nlines,) the width of the window 
+            to the right of line center to fit (arcseconds)
+
+        ``"fittype"``
+            (numpy.ndarray of str) -> (nlines,) G=gaussian, L=Lorentzian, 
+            C=centroid
+
+        ``"nterms"``
+            (numpy.ndarray of int) -> (nlines,) The number of terms in a
+            gaussian or lorentzian fit.  see fitpeak1d.
+
+    Notes
+    -----
+    None
+
+    Examples
+    --------
+    later
+
+    Modification History
+    --------------------
+    2022-07-05 - Written by M. Cushing, University of Toledo.
+    Based on Spextool IDL program readlinelist.pro
+
+    """
+    # Test for `file` being a string
+
+    #if isinstance(file,str) is False:
+    #    raise TypeError(file must be a string.)
+
+    # Check to make sure file exists.
+
+    # set up empty strings
+    
+    order = []
+    swave = []
+    lineid = []
+    lwin = []
+    rwin = []
+    fittype = []
+    nterms = []
+
+# Load them in
+    
+    f = open(file, 'r')
+    for line in f:
+
+        if line[0] == '#':
+            continue
+
+        vals = line.strip().split('|')
+        order.append(int(vals[0]))
+        swave.append(vals[1])
+        lineid.append(vals[2])
+        lwin.append(float(vals[3]))
+        rwin.append(float(vals[4]))
+        fittype.append(vals[5])
+        nterms.append(int(vals[6]))
+
+# Convert to numpy array and dictionary-ify 
+        
+    lineinfo = {'order': np.array(order), 'strwave': np.array(swave),
+                'lindid': np.array(lineid), 'leftwin': np.array(lwin),
+                'rghtwin': np.array(rwin), 'fittype': np.array(fittype),
+                'nterms': np.array(nterms)}
+
+    return lineinfo
+
+
 def read_wavecal_file(file):
     """
     To read a pySpextool wavecal calibration file.
@@ -114,7 +212,7 @@ def read_wavecal_file(file):
     result.update({'wcaltype': wcaltype})
 
     linelist = hdul[0].header['LINELIST']
-    result.update({'wcaltype': linelist})
+    result.update({'linelist': linelist})
 
     xranges = np.empty((norders, 2), dtype=int)
     for i in range(norders):

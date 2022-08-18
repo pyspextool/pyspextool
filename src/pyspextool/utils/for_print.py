@@ -1,4 +1,4 @@
-def forprint(*args):
+def for_print(*args):
 
     """
     Prints lists of data as columns to the command line.

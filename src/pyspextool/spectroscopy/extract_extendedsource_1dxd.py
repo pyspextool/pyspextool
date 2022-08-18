@@ -55,8 +55,6 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
     Returns
     -------
-    list
-        A list of integers giving the individual  numbers
 
 
     Notes
