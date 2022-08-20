@@ -2,7 +2,7 @@ import numpy as np
 import scipy
 from scipy import signal
 from pyspextool.fit.robust_savgol import robust_savgol
-from pyspextool.fit.fitpeak1d import *
+from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.plot.limits import get_spec_range
 import matplotlib.pyplot as pl
 import os
@@ -132,7 +132,7 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
 
     # Do the fit
 
-    r = fitpeak1d(fitlag, fitxcor, nparms=4, positive=True)
+    r = fit_peak1d(fitlag, fitxcor, nparms=4, positive=True)
     offset = r['parms'][1]
 
     if qafileinfo is not None:

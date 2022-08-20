@@ -11,63 +11,65 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
     """
     To extract and extended source.
 
-
     Input Parameters
     ----------------
-    img : numpy.ndarray of float
-        An (nrows,ncols) image with (cross-dispersed) spectral orders.
-        It is assumed that the dispersion direction is roughly aligned
-        with the rows of `img` and the spatial axis is roughly aligned
-        with the columns of `img.  That is, orders go left-right and
-        not up-down.
+    img : numpy.ndarray
+        An (nrows, ncols) image with spectral orders.  It is assumed
+        that the dispersion direction is roughly aligned with the
+        rows of `img` and the spatial axis is roughly aligned with
+        the columns of `img`.  That is, orders go left-right and not
+        up-down.
 
-    var : The variance image for `img`.
+    var : numpy.ndarray
+        (nrows, ncols) variance image for `img`.
 
-    ordermask : numpy.ndarray of int
-        (nrows,cols) order mask image where each pixel is set to its
-        order number.
+    ordermask : numpy.ndarray
+        (nrows, cols) image where each pixel is set to its
+        order number.  Inter-order pixels are set to zero.
 
-    wavecal : numpy.ndarray of float
-        (nrows,ncols) array where each pixel is set to its wavelength.
+    wavecal : numpy.ndarray
+        (nrows,ncols) image where each pixel is set to its wavelength.
 
-    spatcal : numpy.ndarray of float
-        (nrows,ncols) array where each pixel is set to its angular position
+    spatcal : numpy.ndarray
+        (nrows, ncols) array where each pixel is set to its angular position
         on the sky (arcseconds).
 
-    appos : numpy.ndarray of float or float
+    appos : numpy.ndarray
         (naps,) array of aperture positions (arcseconds).
 
-    apradius : numpy.ndarray of float or float
+    apradius : numpy.ndarray
         (naps,) array of aperture radii (arcseconds).
 
-    linmax_bitmask : numpy.ndarray of int, optional
-        (nrows,ncols) array where a pixel is set to unity if its value is
+    linmax_bitmask : numpy.ndarray, optional
+        (nrows, ncols) array where a pixel is set to unity if its value is
         beyond the linearity maximum.
 
-    badpixel_mask : numpy.ndarray of int, optional
-        (nrows,ncols) array where good pixels are set to unity and bad pixels
+    badpixel_mask : numpy.ndarray, optional
+        (nrows, ncols) array where good pixels are set to unity and bad pixels
         are set to zero.
 
-    bginfo : later
+    bginfo : later when you implement it.
 
     clupdate : {True, False}, optional
         Set to True for command line updates during execution.
 
     Returns
     -------
-
+    spectra:  dict
+        The value of each entry is a (4, nwave) numpy.ndarray where:
+        wave = (0,:)
+        intensity = (1,:)
+        uncertainty = (2,:)
+        flags = (3,:)
+        Each key has the form of ORNNN_AP01 where NNN is the order number.
 
     Notes
     -----
-
+    None
 
     Examples
     --------
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mx_extxdspec.pro.
+    later?
 
     """
 

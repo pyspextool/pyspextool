@@ -3,7 +3,7 @@ import scipy
 from scipy import optimize
 
 
-def fitpeak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
+def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
               negative=False, nan=True):
 
     """
@@ -105,7 +105,7 @@ def fitpeak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
             p0 = p0
 
         elif nparms == 5:
-            p0 = np.concatenate(p0, [0])
+            p0 = np.append(p0, 0)
 
         else:
             exception = 'fitpeak1d: possible nparms values are 3, 4,or 5.'

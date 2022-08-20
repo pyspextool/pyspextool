@@ -82,11 +82,11 @@ def read_line_list(file):
 
         vals = line.strip().split('|')
         order.append(int(vals[0]))
-        swave.append(vals[1])
-        lineid.append(vals[2])
+        swave.append(str(vals[1]).strip())
+        lineid.append(str(vals[2]).strip())
         lwin.append(float(vals[3]))
         rwin.append(float(vals[4]))
-        fittype.append(vals[5])
+        fittype.append(str(vals[5]).strip())
         nterms.append(int(vals[6]))
 
 # Convert to numpy array and dictionary-ify 
