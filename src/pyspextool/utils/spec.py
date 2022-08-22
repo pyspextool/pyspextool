@@ -12,7 +12,7 @@ import scipy
 from scipy import ndimage, signal
 
 from pyspextool.utils.ioutils import bitset
-from pyspextool.utils.math import mkimgidxs, loopprogress, nantrim, findidx, round
+from pyspextool.utils.math import *
 from pyspextool.utils.text import forprint
 from pyspextool.fit.polyfit import robustpolyfit1d,polyfit1d
 from pyspextool.utils.fitsutils import getimgrange

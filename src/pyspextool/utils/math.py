@@ -5,24 +5,29 @@ import numpy as np
 from scipy.stats import describe
 
 
-def findidx(xarr,x):
+def find_index(x_array, x):
 
-    '''
+    """
     Finds the effective index of a function value in an ordered array.
 
-    Input Parameters
+    Parameters
     ----------------
-    xarr : array_like of float or int
-        (N,) The array to be searched, must be monotonically increasing or 
-        decreasing.
-
-    x : array_like of float or in, or float, or int
+    x_array : array_like
+        (N,) The array of floats or integers to be searched,
+        must be monotonically increasing or decreasing.
+    x : array_like or float or int
         (M,) The value or values whose indices are required.
 
     Returns
     -------
-    numpy.ndarray of float or float
-        Effective indices in `xarr` for `x`.
+    ndarray or float
+        Effective indices in `x_array` for `x`.
+
+    Raises
+    ------
+    ValueError
+        If input arrays are not array_like or
+        if input array is not monotonic
 
     Notes
     -----
@@ -30,106 +35,94 @@ def findidx(xarr,x):
 
     From its documentation:  A binary search is used to find the values XARR(I) 
     and XARR(I+1) where XARR(I) < X < XARR(I+1).  IEFF is then computed using 
-    linear interpolation between I and I+1.  IEFF = I + (X-XARR(I)) / 
-    (XARR(I+1)-XARR(I)).
+    linear interpolation between I and I+1.
+    IEFF = I + (X-XARR(I)) / (XARR(I+1)-XARR(I)).
 
     IEFF values outside of `xarr` are set to NaN.  
 
     Examples
     --------
-    > x = [1,2.5,3,5.5]
-    > findidx(x,[1.5,3.1,6])
-      [0.33333333 2.04              nan]
+    >>> x_array = [1, 2.5, 3, 5.5]
+    >>> x = [1.5, 3.1, 6]
+    >>> find_index(x_array, x)
+    array([0.33333333, 2.04      ,        nan])
 
     Modification History
     --------------------
     2022-06-30 - Written by M. Cushing, University of Toledo.
-
-    '''
+    """
 
     # Convert to numpy arrays and get basic things
-    
-    xarr = np.asarray(xarr,dtype='float')
-    ndat = len(xarr)
+    try:
+        x_array = np.asarray(x_array, dtype='float')
+    except ValueError:
+        raise
 
-    # Deal with array_like versus int/float
+    ndat = len(x_array)
 
-    if hasattr(x,'__len__') is False:
-
-        single = True
-        x = np.asarray([x],dtype='float')        
-
+    # Deal with array_like versus int/float and convert to array
+    if isinstance(x, int) or isinstance(x, float) is True:
+        try:
+            x = np.asarray([x], dtype='float')
+            single = True
+        except ValueError:
+            raise
     else:
-
-        single = False
-        x = np.asarray(x,dtype='float')                
+        try:
+            single = False
+            x = np.asarray(x, dtype='float')
+        except ValueError:
+            raise
 
     # Initialize binary search area and compute number of divisions needed
+    ileft = np.zeros(len(x), dtype=int)
+    iright = np.zeros(len(x), dtype=int)
 
-    ileft = np.zeros(len(x),dtype=int)
-    iright = np.zeros(len(x),dtype=int)
+    n_divisions = int(np.log10(ndat)/np.log10(2) + 1)
 
-    ndivisions = int(np.log10(ndat)/np.log10(2) + 1)
-
-    # Test for monotonicity
-
-    i = xarr - np.roll(xarr,1)
+    # Test array for monotonicity. If not, raise ValueError
+    i = x_array - np.roll(x_array, 1)
     i = i[1:]
-
-    # Is it increasing?
-    
+    # check if array is increasing or decreasing
     a = i >= 0
-
     if np.sum(a) == ndat-1:
-
-        iright +=ndat-1
-
+        iright += ndat-1
     else:
-
         a = i <= 0
-
         if np.sum(a) == ndat-1:
-
-            ileft +=ndat-1        
-
+            ileft += ndat-1
         else:
-
-            raise ValueError('findidx:  arr is not monotonic.')
+            raise ValueError('find_index:  array is not monotonic.')
 
     # Perform binary search by dividing search interval in half NDIVISIONS times
-
-    for i in range(ndivisions):
-
+    for i in range(n_divisions):
         idiv = (ileft + iright)//2   # Split interval in half
-        xval = xarr[idiv]            # Find function values at center
-        greater = x > xval           # Determine which side of X is on
-        less = x <= xval
+        x_val = x_array[idiv]            # Find function values at center
+        greater = x > x_val           # Determine which side of X is on
+        less = x <= x_val
         np.multiply(ileft, less, out=ileft)
         np.add(ileft, idiv*greater, out=ileft)
         np.multiply(iright, greater, out=iright)
         np.add(iright, idiv*less, out=iright)
 
-    # linearly interpolate 
+    # linearly interpolate
+    x_left = x_array[ileft]
+    x_right = x_array[iright]
 
-    xleft = xarr[ileft]
-    xright = xarr[iright]
-
-    mask = xleft == xright
-    ieff = (xright-x)*ileft
-    np.add(ieff, (x-xleft)*iright, out=ieff)
-    np.add(ieff, mask*ileft, out=ieff)
-    np.divide(ieff, (xright - xleft + mask), out=ieff)
+    mask = x_left == x_right
+    ieff = (x_right-x) * ileft
+    np.add(ieff, (x-x_left) * iright, out=ieff)
+    np.add(ieff, mask * ileft, out=ieff)
+    np.divide(ieff, (x_right - x_left + mask), out=ieff)
 
     # Clip points beyond interpolation to NaN
-    
     z = ieff < 0
     ieff[z] = np.nan
 
     z = ieff > ndat-1
     ieff[z] = np.nan
 
-    # Return numpy.ndarray of float or float    
-
+    # Return numpy.ndarray of float or float
     return ieff[0] if single is True else ieff
     
 
