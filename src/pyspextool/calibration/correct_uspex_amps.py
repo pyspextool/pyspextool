@@ -16,21 +16,16 @@ def correct_uspex_amps(img):
     numpy.ndarray
         The uSpeX image with the bias variations "corrected".
 
-    Procedure
-    ---------
+    Notes
+    -----
     There are 32 amplifiers that talk to 64 columns each.  The median
     intensity of the 64 reference pixels at the bottom of image are
     subtracted from all rows in the 64 columns.
 
     Example
     --------
-    result = uspexampcor(img) (how do we do this properly?)
+    later
 
-
-    Modification History
-    --------------------
-    2022-05-25 - Written by M. Cushing, University of Toledo.
-                Based on the Spextool mc_uspexampcor.pro IDL program.
     """
 
     for i in range(0, 32):

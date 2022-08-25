@@ -1,68 +1,61 @@
 import numpy as np
 from astropy.io import fits
 
-def read_line_list(file):
+from pyspextool.fit.polyfit import poly_2d
+from pyspextool.spectroscopy.make_order_mask import make_order_mask
+from pyspextool.utils.arrays import idl_unrotate
+
+
+def read_line_list(file, delta_to_microns=False):
 
     """
     To read a Spextool line list into memory.
 
-
     Parameters
     ----------
     file : str
-        The fullpath to a Spextool line list.
-
+        The fullpath to a Spextool line list, e.g. "ShortXD_lines.dat".
 
     Returns
     -------
     dict
-        ``"order"``
-            (numpy.ndarray of int) ->  (nlines,) the order number
+        `"order_number"` : numpy.ndarray
+            (nlines,) int array of the order number
 
-        ``"swave"``
-            (numpy.ndarray of str) ->  (nlines,) the wavelengths (microns)
+        `"wavelength"` : numpy.ndarray
+            (nlines,) str array of the wavelengths (microns).
 
-        ``"lineid"``
-            (numpy.ndarray of str) ->  (nlines,) the line identification
+        `"id"` : numpy.ndarray
+            (nlines,) str array with the line identification.
 
-        ``"leftwin"``
-            (numpy.ndarray of float) ->  (nlines,) the width of the window 
-            to the left of line center to fit (arcseconds)
+        `"delta_wavelength_left"` : numpy.ndarray
+            (nlines,) float array with the delta_lambda value
+            for the lower wavelength of the fit range.
 
-        ``"rghtwin"``
-            (numpy.ndarray of float) ->  (nlines,) the width of the window 
-            to the right of line center to fit (arcseconds)
+        `"delta_wavelength_right"` : numpy.ndrray
+            (nlines,) float array with the delta_lambda value
+            for the upper wavelength of the fit range.
 
-        ``"fittype"``
-            (numpy.ndarray of str) -> (nlines,) G=gaussian, L=Lorentzian, 
-            C=centroid
+        `"fit_type"` : numpy.ndarray
+            (nlines,) str array giving the type of fit to use.
+            "G"=gaussian, "L"=Lorentzian, "C"=centroid
 
-        ``"nterms"``
-            (numpy.ndarray of int) -> (nlines,) The number of terms in a
-            gaussian or lorentzian fit.  see fitpeak1d.
+        `"num_params"` : numpy.ndarray
+            (nlines,) int array giving he number of terms in a
+            gaussian or lorentzian fit.  see fitpeak1d for details.
 
     Notes
     -----
-    None
+    The wavelengths are given in microns and the delta_wavelenths are
+    given in Angstroms.
 
     Examples
     --------
     later
 
-    Modification History
-    --------------------
-    2022-07-05 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program readlinelist.pro
-
     """
-    # Test for `file` being a string
 
-    #if isinstance(file,str) is False:
-    #    raise TypeError(file must be a string.)
-
-    # Check to make sure file exists.
-
-    # set up empty strings
+    # set up empty lists
     
     order = []
     swave = []
@@ -91,10 +84,17 @@ def read_line_list(file):
 
 # Convert to numpy array and dictionary-ify 
         
-    lineinfo = {'order': np.array(order), 'strwave': np.array(swave),
-                'lindid': np.array(lineid), 'leftwin': np.array(lwin),
-                'rghtwin': np.array(rwin), 'fittype': np.array(fittype),
-                'nterms': np.array(nterms)}
+    lineinfo = {'order': np.array(order), 'wavelength': np.array(swave),
+                'id': np.array(lineid),
+                'delta_wavelength_left': np.array(lwin),
+                'delta_wavelength_right': np.array(rwin),
+                'fit_type': np.array(fittype), 'num_parms': np.array(nterms)}
+
+    if delta_to_microns:
+        lineinfo['delta_wavelength_left'] = \
+            lineinfo['delta_wavelength_left']/1e4
+        lineinfo['delta_wavelength_right'] = \
+            lineinfo['delta_wavelength_right']/1e4
 
     return lineinfo
 
@@ -103,33 +103,32 @@ def read_wavecal_file(file):
     """
     To read a pySpextool wavecal calibration file.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     file : str
         The fullpath to a calibration file.
 
-        Typicallt the file will end in "_wavecalinfo.fits".
+        Typically, the file will end in "_wavecalinfo.fits".
 
     Returns
     -------
     dict
-        A dictionary with the following keywords:
+        `"spectra"` : numpy.ndarray
+            (4,nwave) flat array where:
 
-        spectra : numpy.ndarray of float
-            (4,n_wave) array
             spectra[0,:] = wave
             spectra[1,:] = ''flux''
             spectra[2,:] = uncertainty
             spectra[3,:] = bit-set mask
 
-        norders : int
+        `"norders"` : int
             The number of orders
 
-        orders : numpy.ndarray of int
-            The order numbers.  orders[0] is the order closest to the bottom
-            of the array.
+        `"orders"` : numpy.ndarray of int
+            (norders,) int array of the order numbers.  By Spextool convention,
+            orders[0] is the order closest to the bottom of the array.
 
-        wcaltype : str
+        `"wcaltype"` : str
             '1D' - A single spectrum where wavelength aligns with the columns
                    of the array.
             '1DXD' - Cross-dispersed spectra where wavelength aligns with the
@@ -139,53 +138,46 @@ def read_wavecal_file(file):
             '2DXD' - Cross-dispersed spectra where wavelength does not align
                    with the columns of the array.
 
-        linelist : str
+        '"linelist"` : str
             The name of the file with the line list.
 
-        xranges : array_like of float
+        `"xranges"` : numpy.ndarray
             An (norders,2) array giving the column numbers over which to
             operate.  xranges[0,0] gives the starting column number for the
             order nearest the bottom of the image and xranges[0,1] gives
             the end column number for said order.
 
-        apradius : float
+        `"apradius"` : float
             The extraction aperture radius (in arcseconds).
 
-        xcororder : int
+        `"xcororder"` : int
             The order number to be used for the cross-correlation.
 
-        dispdeg : int
+        `"dispdeg"` : int
             The polynomial order for the pixel-to-wavelength coefficients.
 
         if `wcaltype`== '1DXD'
 
-        ordrdeg : int
-            The polynomial order for the 2D pixel-to-wavelength coefficients.
-        p2wcoeffs : numpy.ndarray of float
-            The polynomial coefficients to convert a pixel number to a
-            wavelength.
+        `"ordrdeg"` : int, optional
+            If `"wcaltype" == '1DXD', the polynomial order for the
+            2D pixel-to-wavelength coefficients.
 
-        homeorder : int
+        `"p2wcoeffs"` : numpy.ndarray
+            Float array of the polynomial coefficients to convert a pixel
+            number to a wavelength.
+
+        `"homeorder"` : int
             The order the other orders are scaled to for the fit.
 
-        wavefmt : str
+        `"wavefmt"` : str
             The format string for wavelengths.
 
-        spatfmt : str
+        `"spatfmt"` : str
             The format string for spatial angles.
-
-    Notes
-    -----
-
 
     Examples
     --------
     later
-
-    Modification History
-    --------------------
-    2022-07-01 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_readwavecalinfo.pro
 
     """
 
@@ -198,9 +190,6 @@ def read_wavecal_file(file):
 
     result = {'spectra': spectra}
 
-    #    naps = hdul[0].header['NAPS']
-    #    result.update({'naps':naps})
-
     norders = hdul[0].header['NORDERS']
     result.update({'norders': norders})
 
@@ -209,12 +198,13 @@ def read_wavecal_file(file):
     result.update({'orders': orders})
 
     wcaltype = hdul[0].header['WCALTYPE']
-    result.update({'wcaltype': wcaltype})
+    result.update({'wcaltype': wcaltype.strip()})
 
     linelist = hdul[0].header['LINELIST']
-    result.update({'linelist': linelist})
+    result.update({'linelist': linelist.strip()})
 
     xranges = np.empty((norders, 2), dtype=int)
+
     for i in range(norders):
         val = hdul[0].header['OR' + str(orders[i]).zfill(3) + '_XR'].split(',')
         val = [int(x) for x in val]
@@ -236,7 +226,7 @@ def read_wavecal_file(file):
 
     result.update({'xcorspec': xcorspec})
 
-    if wcaltype == '1DXD':
+    if wcaltype == '1dxd':
 
         dispdeg = hdul[0].header['DISPDEG']
         result.update({'dispdeg': dispdeg})
@@ -253,17 +243,77 @@ def read_wavecal_file(file):
             key = 'P2W_C' + str(i).zfill(2)
             p2wcoeffs[i] = hdul[0].header[key]
 
-        result.update({'p2wcoeffs': pswcoeffs})
+        result.update({'p2wcoeffs': p2wcoeffs})
 
         val = hdul[0].header['HOMEORDR']
         result.update({'homeorder': val})
 
     val = hdul[0].header['WAVEFMT']
-    result.update({'wavefmt': val})
+    result.update({'wavefmt': val.strip()})
 
     val = hdul[0].header['SPATFMT']
-    result.update({'spatfmt': val})
+    result.update({'spatfmt': val.strip()})
 
     hdul.close()
 
     return result
+
+
+def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
+                       dispersion_degree, order_degree, home_order, rms,
+                       ngood, nbad, wavecal, spatcal, rotate, flatname,
+                       oname, version, overwrite=True):
+
+    # Get basic things
+
+    norders = len(orders)
+
+    # Create the primary HDU
+
+    phdu = fits.PrimaryHDU()
+    hdr = phdu.header
+
+    # Create the order mask
+
+    omask = make_order_mask(ncols, nrows, edgecoeffs, xranges, orders)
+
+    # Generate the wavelengths
+
+    for i in range(norders):
+
+        z = np.where(omask == orders[i])
+        scale = home_order / orders[i]
+        wavecal[z] = poly_2d(wavecal[z], omask[z],dispersion_degree,
+                            order_degree, coeffs) * scale
+
+
+    hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
+    hdr['NORDERS'] = (norders, ' Number of orders identified')
+    hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
+    hdr['EXTTYPE'] = ('1D', ' Extraction type')
+    hdr['WCTYPE'] = ('1DXD', ' Wavelength calibration type')
+    hdr['RMS'] = (rms, 'RMS of 1DXD wavecal fit in Angstroms')
+    hdr['NGOOD'] = (ngood, ' Number of good points')
+    hdr['NBAD'] = (nbad, 'Number of bad points')
+    hdr['VERSION'] = (version, 'pySpextool version')
+
+    for i in range(norders):
+        name = 'OR' + str(orders[i]).zfill(3) + '_XR'
+        comment = ' Extraction range for order ' + str(orders[i]).zfill(3)
+        hdr[name] = (','.join(str(x) for x in xranges[i, :]), comment)
+
+    # Write the results
+
+    wavecal_hdu = fits.ImageHDU(idl_unrotate(wavecal, rotate))
+    spatcal_hdu = fits.ImageHDU(idl_unrotate(spatcal, rotate))
+
+    hdu = fits.HDUList([phdu, wavecal_hdu, spatcal_hdu])
+    hdu.writeto(oname, overwrite=overwrite)
+
+
+    #fits.writeto('wavecal.fits', wavecal, overwrite=True)
+
+
+
+
+    

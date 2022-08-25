@@ -1,6 +1,9 @@
 import numpy as np
 from astropy.io import fits
 from pyspextool.utils.add_entry import add_entry
+from pyspextool.utils.arrays import idl_rotate
+from pyspextool.utils.arrays import idl_unrotate
+
 
 def read_flat_fits(flatfile):
     """
@@ -107,12 +110,9 @@ def read_flat_fits(flatfile):
         ``"rms"``
             list of float -> (norders,) list of RMS values for each order.
 
-
-
     Notes
     -----
     None
-
 
     Examples
     --------
@@ -132,9 +132,9 @@ def read_flat_fits(flatfile):
 
     hdr = hdul[0].header
 
-    flat = hdul[1].data
-    var = hdul[2].data
-    mask = hdul[3].data
+    flat = idl_rotate(hdul[1].data, hdr['ROTATION'])
+    var = idl_rotate(hdul[2].data, hdr['ROTATION'])
+    mask = idl_rotate(hdul[3].data, hdr['ROTATION'])
 
     hdul.close()
 
@@ -431,23 +431,25 @@ def read_flatcal_file(file):
 
     return result
 
-def write_flat(flat, var, flag, hdrlist, rotate, orders, edgecoeffs, xranges,
-               ps, slith_pix, slith_arc, slitw_pix, slitw_arc, modename, rms, rp,
-               version, history, oname, linmax=None, overwrite=True):
+def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
+               ps, slith_pix, slith_arc, slitw_pix, slitw_arc, modename, rms,
+               rp, version, history, oname, linmax=None, overwrite=True):
     """
     To write a Spextool flat FITS file to disk.
 
 
-    Input Parameters
-    ----------------
-    flat : numpy.ndarray of float
+    Parameters
+    ----------
+    flat : numpy.ndarray
         (nrows, ncols) flat field image.
 
-    var : numpy.ndarray of float
+    var : numpy.ndarray
         (nrows, ncols) variance image.
 
-    flag : numpy.ndarray of int
-        (nrows, ncols) biset image.
+    flag : numpy.ndarray
+        (nrows, ncols) int bitset image.
+
+    hdrinfo : dict
 
     rotate : {0, 1, 2, 3, 4, 5, 6, 7}, optional
         Direction to rotate a raw image so that the dispersion direction
@@ -558,16 +560,16 @@ def write_flat(flat, var, flag, hdrlist, rotate, orders, edgecoeffs, xranges,
 
     # Add the hdrlist keywords and values
 
-    keys = hdrlist.keys()
+    keys = hdrinfo.keys()
     for key in keys:
 
         if key == 'COMMENT':
 
-            comments = hdrlist['COMMENT']
+            comments = hdrinfo['COMMENT']
 
         elif key != 'HISTORY':  # probably not necessary, just in case
 
-            hdr[key] = tuple(hdrlist[key])
+            hdr[key] = tuple(hdrinfo[key])
 
         # Now add new ones
 
@@ -645,9 +647,9 @@ def write_flat(flat, var, flag, hdrlist, rotate, orders, edgecoeffs, xranges,
 
     # Write the results
 
-    img_hdu = fits.ImageHDU(flat)
-    var_hdu = fits.ImageHDU(var)
-    flg_hdu = fits.ImageHDU(flag)
+    img_hdu = fits.ImageHDU(idl_unrotate(flat,rotate))
+    var_hdu = fits.ImageHDU(idl_unrotate(var,rotate))
+    flg_hdu = fits.ImageHDU(idl_unrotate(flag, rotate))
 
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu])
     hdu.writeto(oname, overwrite=overwrite)

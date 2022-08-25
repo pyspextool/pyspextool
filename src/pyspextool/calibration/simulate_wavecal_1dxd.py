@@ -2,6 +2,7 @@ import numpy as np
 
 
 def simulate_wavecal_1dxd(ncols, nrows, edgecoeffs, xranges, slith_arc):
+
     """
     To simulate Spextool wavecal and spatcal arrays.
 
@@ -95,6 +96,7 @@ def simulate_wavecal_1dxd(ncols, nrows, edgecoeffs, xranges, slith_arc):
         # Fill things in
 
         for j in range(stop - start + 1):
+
             wavecal[np.floor(botedge[j]).astype('int'):
                     np.ceil(topedge[j]).astype('int'), x[j]] = x[j]
 

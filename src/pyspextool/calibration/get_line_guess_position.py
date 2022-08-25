@@ -44,7 +44,7 @@ def get_line_guess_position(spectra, orders, xranges, line_info):
     # Get basic information
 
     norders = len(orders)
-    nlines = len(line_info['strwave'])
+    nlines = len(line_info['wavelength'])
     
     # Get output arrays set up
 
@@ -70,9 +70,9 @@ def get_line_guess_position(spectra, orders, xranges, line_info):
 
         # Now let's get the wavelengths we want the positions of
 
-        cen_w_want = line_info['strwave'][z].astype(float)        
-        left_w_want = cen_w_want-line_info['leftwin'][z]
-        rght_w_want = cen_w_want+line_info['rghtwin'][z]
+        cen_w_want = line_info['wavelength'][z].astype(float)        
+        left_w_want = cen_w_want-line_info['range_min_wavelength'][z]
+        rght_w_want = cen_w_want+line_info['range_max_wavelength'][z]
 
         # Trim the left and right side to ensure they don't go below the
         # wavelength range of the order
@@ -101,9 +101,9 @@ def get_line_guess_position(spectra, orders, xranges, line_info):
 
     # Add to line_info dictionary
  
-    line_info['xleft'] = x_left
+    line_info['range_min_xguess'] = x_left
     line_info['xguess'] = x_cen
-    line_info['xright'] = x_rght
+    line_info['range_max_xguess'] = x_rght
 
     return line_info
         

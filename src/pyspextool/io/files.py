@@ -208,7 +208,7 @@ def extract_filestring(string, method):
         raise ValueError(message)
 
 
-def make_full_path(dir, files, indexinfo: None, exist=False):
+def make_full_path(dir, files, indexinfo=None, exist=False):
     """
     constructs fullpath strings for files
 
@@ -221,7 +221,7 @@ def make_full_path(dir, files, indexinfo: None, exist=False):
         a list of strings that either contain the index numbers of the 
         files or the file names
 
-    indexinfo : dict of {'nint': int,'prefix': str,'suffix': str}, optional
+    indexinfo : dict of {'nint': int,'prefix': str,'suffix': str, extension}, optional
         a dictionary giving the information necessary to create the file 
         names from the index numbers.
         
@@ -290,7 +290,8 @@ def make_full_path(dir, files, indexinfo: None, exist=False):
 
         output = [os.path.join(dir,indexinfo['prefix'] +
                   str(root).zfill(indexinfo['nint']) +
-                  indexinfo['suffix']) for root in files]
+                  indexinfo['suffix']+indexinfo['extension'])
+                  for root in files]
 
     else:
 

@@ -1,5 +1,7 @@
 import os
+from astropy.io import fits
 from pyspextool.cl import config
+from pyspextool.io.read_instrument_file import read_instrument_file
 
 def setup(instrument=config.state['instruments'][0], rawpath=None,
           calpath=None, procpath=None, qapath=None, clupdate=False):
@@ -99,8 +101,12 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     
     if rawpath is not None:
 
-        # Is the path real?
-        
+        # deal with ~/
+
+        rawpath = os.path.expanduser(rawpath)
+
+        # is the path real?
+
         if os.path.isdir(rawpath) is True:
 
             # get the absolute path 
@@ -118,8 +124,12 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     
     if calpath is not None:
 
-        # Is the path real?
-        
+        # deal with ~/
+
+        calpath = os.path.expanduser(calpath)
+
+        # is the path real?
+
         if os.path.isdir(calpath) is True:
 
             # get the absolute path 
@@ -137,8 +147,12 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     
     if procpath is not None:
 
-        # Is the path real?
-        
+        # deal with ~/
+
+        procpath = os.path.expanduser(procpath)
+
+        # is the path real?
+
         if os.path.isdir(procpath) is True:
 
             # get the absolute path 
@@ -156,7 +170,11 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     
     if qapath is not None:
 
-        # Is the path real?
+        # deal with ~/
+
+        qapath = os.path.expanduser(qapath)
+
+        # is the path real?
         
         if os.path.isdir(qapath) is True:
 
@@ -191,7 +209,37 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         print('calpath: ',config.state['calpath'])
         print('procpath: ',config.state['procpath'])
         print('qapath: ',config.state['qapath'])
-                                
+
+# Read instrument file
+
+    file = os.path.join(packagepath,'instruments',config.state['instrument'],
+                        'data', config.state['instrument']+'.dat')
+
+    instrumentinfo = read_instrument_file(file)
+    config.state['nint'] = instrumentinfo['NINT']
+    config.state['xspextool_keywords'] = instrumentinfo['XSPEXTOOL_KEYWORDS']
+
+
+
+    biasfile = os.path.join(config.state['packagepath'], 'instruments',
+                            config.state['instrument'], 'data',
+                            config.state['instrument'] + '_bias.fits')
+
+    config.state['biasfile'] = biasfile
+    config.state['lincormax'] = instrumentinfo['LINCORMAX']
+    config.state['linearity_info'] = {'bias': biasfile,
+                                      'max': config.state['lincormax'],
+                                      'bit': 0}
+
+
+
+# Get the bad pixel mask
+
+    file = os.path.join(packagepath,'instruments',config.state['instrument'],
+                        'data', config.state['instrument']+'_bdpxmk.fits')
+    config.state['bad_pixel_mask'] = fits.getdata(file)
+
+#
 
 
             

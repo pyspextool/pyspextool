@@ -151,11 +151,13 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
 
         # A 3 panel figure
 
-        pl.rcParams['font.size'] = '8'
-        pl.rcParams['lines.linewidth'] = 0.75
+        #pl.rcParams['font.size'] = '8'
+        #pl.rcParams['lines.linewidth'] = 0.75
 
         fig, (axes1, axes2, axes3) = pl.subplots(3, figsize=figsize,
-                                                 constrained_layout=True)
+                                                 constrained_layout=False)
+        pl.subplots_adjust(hspace=0.5)
+
         # Plot the two spectra
 
         yrange = get_spec_range([yanchor, ysource], frac=0.1)
@@ -205,6 +207,6 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
 
         pl.savefig(os.path.join(qafileinfo['filepath'],
                                 qafileinfo['filename']) + \
-                   qafileinfo['extension'])
+                   '_shift'+qafileinfo['extension'])
 
     return offset

@@ -1,44 +1,45 @@
+import numpy as np
 import os
+
 from pyspextool.cl import config
-from pyspextool.io.files import check_file
-from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.files import make_full_path
-from pyspextool.io.read_uspex_fits import read_uspex_fits
 from pyspextool.io.fitsheader import average_header_info
+from pyspextool.io.flat import write_flat
+from pyspextool.io.flat import read_flatcal_file
+from pyspextool.io.read_uspex_fits import read_uspex_fits
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.math import scale_data_stack
 from pyspextool.utils.math import median_data_stack
-from pyspextool.io.flat import read_flatcal_file
-from pyspextool.spectroscopy.find_orders import find_orders
-from pyspextool.calibration.normalize_spectral_flat import normalize_spectral_flat
 from pyspextool.utils.split_text import split_text
-from pyspextool.io.flat import write_flat
+from pyspextool.calibration.locate_orders import locate_orders
+from pyspextool.calibration.normalize_flat import normalize_flat
 
-def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
-                    input_method='index', normalize=True,
-                    clupdate=True, overwrite=True):
 
+def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
+                    extension='.fits*', input_method='index',
+                    normalize=True, clupdate=True,
+                    overwrite=True, qafile=False):
     """
     To create a normalized uSpeX flat field file.
 
-
     Parameters
     ----------
-    files : str or list of str
+    files : str or list of str.
+        See input_method parameter for more information.
         
-    oname : str
+    output_name : str
         The filename of the flat field image to written to disk.      
-
 
     prefix : str, default='flat-', optional
         The prefix of the FITS file name (i.e. the stuff before the 
         file numbers.)
 
+    suffix : str, default='.[ab]', optional
+        The suffix of the FITS file name (i.e. the stuff after the
+        file numbers but before the extension.)
 
-    suffix : str, default='.[ab].fits*', optional
-        The prefix of the FITS file name (i.e. the stuff after the 
-        file numbers.)
-
+    extension : str, default='.fits*', optional
+        The file extension
 
     input_method : {'index', 'filename'}, optional
         `index`: `files` is a str of file numbers, e.g., '1-3,5-10'.
@@ -46,59 +47,37 @@ def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
         `filename`: a str or list of strings with full file names, e.g.
             ['flat-00001.a.fits',''flat-00002.a.fits']
 
-
     normalize : {True, False}, optional
         Set to True to normalize the orders.
 
     clupdate : {True, False}, optional
         Set to True for command line updates during execution. 
-        
 
     overwrite : {True, False}, optional
         Set to True to overwrite an existing file.
 
+    qafile : {True, False}, optional
+        Set to create the quality assurance plot.
 
     Returns
     -------
     None
         Writes a FITS file to disk.
 
-
-    Notes
-    -----
-    None
-
-
     Examples
     --------
     later
 
-
-    Modification History
-    --------------------
-    2022-06-28 - Written by M. Cushing, University of Toledo.
-
     """
-    
-    # Construct file names 
 
-    instrfile = os.path.join(config.state['packagepath'],'instruments',
-                             config.state['instrument'],'data',
-                             config.state['instrument']+'.dat')
-    
-    biasfile = os.path.join(config.state['packagepath'],'instruments',
-                             config.state['instrument'],'data',
-                             config.state['instrument']+'_bias.fits')
-            
-    # Check that things things exist
+    #
+    # Load the files into memory
+    #
 
-    test = check_file([instrfile,biasfile])
+    # Get the user requested keywords
 
-    # Read instrument file.  Grab user requested keywords.
+    keywords = config.state['xspextool_keywords']
 
-    instrinfo = read_instrument_file(instrfile)
-    keywords = instrinfo['XSPEXTOOL_KEYWORDS']
-    
     # Add GRAT and DIT so that you can determine the mode.  Users will just have
     # to live with them in their files
 
@@ -106,126 +85,152 @@ def make_uspex_flat(files, oname, prefix='flat-', suffix='.[ab].fits*',
         keywords.append('GRAT')
 
     if 'DIT' not in keywords:
-        keywords.append('DIT')            
+        keywords.append('DIT')
 
     # Now create the file names
-    
+
     if input_method == 'index':
 
-        files = make_full_path(config.state['rawpath'],files,\
-                               indexinfo={'nint':instrinfo['NINT'],\
-                                          'prefix':prefix,'suffix':suffix},\
+        files = make_full_path(config.state['rawpath'], files,
+                               indexinfo={'nint': config.state['nint'],
+                                          'prefix': prefix,
+                                          'suffix': suffix,
+                                          'extension': extension},
                                exist=True)
 
     elif input_method == 'filename':
 
-        files = make_full_path(rawpath,files,exist=True)
-        
+        files = make_full_path(config.state['rawpath'], files, exist=True)
+
     else:
 
         raise ValueError('Unknown input_method.')
 
     # Load the FITS files into memory
 
-    if clupdate is True: print('Loading FITS images...')
-        
-    lininfo = {'bias':biasfile,'max':instrinfo['LINCORMAX'],'bit':0}
-    img,var,hdr,mask = read_uspex_fits(files,lininfo,keywords=keywords,\
-                                       clupdate=clupdate)
+    if clupdate is True:
+        print('Loading FITS images...')
 
-    # Average the headers
+    img, var, hdr, mask = read_uspex_fits(files,
+                                          config.state['linearity_info'],
+                                          keywords=keywords,
+                                          clupdate=clupdate)
 
-    avehdr = average_header_info(hdr)
-    
-    # Combine the masks
+    # And then average the headers
+
+    average_header = average_header_info(hdr)
+
+    # and combine the masks
 
     flag = combine_flag_stack(mask)
-    
+
+    #
+    # Combine the images together
+    #
+
     # Now scale their intensities to a common flux level
 
-    if clupdate is True: print('Scaling images...')
-    
-    simgs,svars,scales = scale_data_stack(img,None)
+    if clupdate is True:
+        print('Scaling images...')
+
+    simgs, svars, scales = scale_data_stack(img, None)
 
     # Now median the scaled images
 
-    if clupdate is True: print('Medianing the images...')
+    if clupdate is True:
+        print('Medianing the images...')
 
-    med,munc = median_data_stack(simgs)
+    med, munc = median_data_stack(simgs)
+
+    #
+    # Locate the orders
+    #
 
     # Get the mode name and read modefile
 
     mode = hdr[0]['GRAT'][0]
 
-    modefile = os.path.join(config.state['packagepath'],'instruments',
-                            config.state['instrument'],'data',
-                            mode+'_flatinfo.fits')
+    modefile = os.path.join(config.state['packagepath'], 'instruments',
+                            config.state['instrument'], 'data',
+                            mode + '_flatinfo.fits')
 
-
-    test = check_file(modefile)    
-    
     modeinfo = read_flatcal_file(modefile)
 
-    if clupdate is True: print('Locating the orders...')
-    
-    edgecoeffs = find_orders(med,modeinfo['guesspos'],modeinfo['xranges'],
-                             modeinfo['step'],modeinfo['slith_range'],
-                             modeinfo['edgedeg'],modeinfo['ybuffer'],
-                             modeinfo['flatfrac'],modeinfo['comwidth'],
-                             qafig=os.path.join(config.state['qapath'],
-                                                oname+'_findorders.pdf'))
+    if clupdate is True:
+        print('Locating the orders...')
 
+    if qafile is True:
+
+        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+                      'filename': output_name, 'extension': '.pdf'}
+    else:
+        qafileinfo = None
+
+    edgecoeffs = locate_orders(med, modeinfo['guesspos'], modeinfo['xranges'],
+                               modeinfo['step'], modeinfo['slith_range'],
+                               modeinfo['edgedeg'], modeinfo['ybuffer'],
+                               modeinfo['flatfrac'], modeinfo['comwidth'],
+                               qafileinfo=qafileinfo)
+
+    #
     # Normalize the spectrum if requested
+    #
 
     if normalize is True:
 
-        if clupdate is True: print('Normalizing the median image...')
+        if clupdate is True:
+            print('Normalizing the median image...')
 
-        nimg, nvar, rms = normalize_spectral_flat(med,edgecoeffs,
-                                                  modeinfo['xranges'],
-                                                  modeinfo['slith_arc'],
-                                                  modeinfo['nxgrid'],
-                                                  modeinfo['nygrid'],
-                                                  var=munc**2,oversamp=1,
-                                                  ybuffer=modeinfo['ybuffer'],
-                                                  clupdate=False)
+        nimg, nvar, rms = normalize_flat(med, edgecoeffs,
+                                         modeinfo['xranges'],
+                                         modeinfo['slith_arc'],
+                                         modeinfo['nxgrid'],
+                                         modeinfo['nygrid'],
+                                         var=munc ** 2, oversamp=1,
+                                         ybuffer=modeinfo['ybuffer'],
+                                         clupdate=False)
 
     else:
 
         nimg = med
-        nvar = munc**2
-        rms = np.full((len(modeinfo['orders'])),np.nan)
+        nvar = munc ** 2
+        rms = np.full((len(modeinfo['orders'])), np.nan)
+
+    #
+    # Write the file to disk
+    #
 
     # Create the HISTORY
 
+    if clupdate is True:
+        print('Writing flat to disk...')
+
     basenames = []
     for file in files:
-
         basenames.append(os.path.basename(file))
 
-    history = 'This flat was created by scaling the files '+\
-      ', '.join(str(b) for b in basenames)+' to a common median flux '+\
-      'level and then medianing the scaled imges.  The variance is '+\
-      'given by (1.4826*MAD)**2/nimages where MAD is the median absolute '+\
-      'deviation.  The zeroth bit of pixels in the third extension are '+\
-      'set if their corresponding intensity values are greater than '+\
-      'LINCORMAX.  User selected FITS keywords are from the first frame '+\
-      'in the series.'
+    history = 'This flat was created by scaling the files ' + \
+              ', '.join(str(b) for b in basenames) + ' to a common median flux ' + \
+              'level and then medianing the scaled imges.  The variance is ' + \
+              'given by (1.4826*MAD)**2/nimages where MAD is the median absolute ' + \
+              'deviation.  The zeroth bit of pixels in the third extension are ' + \
+              'set if their corresponding intensity values are greater than ' + \
+              'LINCORMAX.  User selected FITS keywords are from the first frame ' + \
+              'in the series.'
 
     history = split_text(history)
-    
-        
+
     # Get the slit widths and resolving power and write to disk
 
-    slitw_arc = float(avehdr['SLIT'][0][0:3])
-    slitw_pix = slitw_arc/modeinfo['ps']
+    slitw_arc = float(average_header['SLIT'][0][0:3])
+    slitw_pix = slitw_arc / modeinfo['ps']
 
-    resolvingpower = modeinfo['rpppix']/slitw_pix
+    resolvingpower = modeinfo['rpppix'] / slitw_pix
 
-    write_flat(nimg,nvar,flag,avehdr,modeinfo['rotation'],modeinfo['orders'],
-               edgecoeffs,modeinfo['xranges'],modeinfo['ps'],
-               modeinfo['slith_pix'],modeinfo['slith_arc'],
-               slitw_pix,slitw_arc,mode,rms,resolvingpower,'1.0beta',
-               history,os.path.join(config.state['calpath'],oname+'.fits'),
-               overwrite=overwrite) 
-    
+    write_flat(nimg, nvar, flag, average_header, modeinfo['rotation'],
+               modeinfo['orders'], edgecoeffs, modeinfo['xranges'],
+               modeinfo['ps'], modeinfo['slith_pix'], modeinfo['slith_arc'],
+               slitw_pix, slitw_arc, mode, rms, resolvingpower,
+               config.state['version'], history,
+               os.path.join(config.state['calpath'], output_name + '.fits'),
+               overwrite=overwrite)

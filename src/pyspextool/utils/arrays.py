@@ -34,7 +34,7 @@ def find_index(x, x_want):
     linear interpolation between I and I+1.
     IEFF = I + (X-XARR(I)) / (XARR(I+1)-XARR(I)).
 
-    IEFF values outside of `xarr` are set to NaN.  
+    IEFF values outside `xarr` are set to NaN.
 
     Examples
     --------
@@ -306,7 +306,7 @@ def idl_rotate(img, direction):
         6          Yes         180 deg
         7          Yes         270 deg
 
-    The directions follow the IDL rotate function convention.
+        The directions follow the IDL rotate function convention.
 
 
     Returns
@@ -372,9 +372,109 @@ def idl_rotate(img, direction):
         
     else:
 
-        print('idlrotate:  Unknown direction.')
-        exit(1)
+        raise ValueError('Unknown rotation direction.')
+
+
+def idl_unrotate(img, direction):
+
+    """
+    Rotates and/or tranposes an image (rotate is in multiples of 90deg).
+
+    The program effectively undoes what the idl_rotate program does.
+
+    Input Parameters
+    ----------------
+    img : numpy.ndarray
+        an image
+
+    direction : int
+        This is the direction passed to the idl_rotate function that is 
+        to be undone.  
+
+        Direction  Transpose?  Rotation Counterclockwise
+        -------------------------------------------------
+
+        0          No          None
+        1          No          90 deg
+        2          No          180 deg
+        3          No          270 deg
+        4          Yes         None
+        5          Yes         90 deg
+        6          Yes         180 deg
+        7          Yes         270 deg
+
+        The directions follow the IDL rotate function convention.
+
+
+    Returns
+    --------
+    numpy.ndarray
+        the rotated/transposed image
+
+    Procedure
+    ---------
+
+    uses numpy.rot90, flipud, fliplr, ant transpose to rotate and/or 
+    transpose the image as requested.
+
+    Examples
+    --------
+
+    > import numpy as np
+    > img = np.array([[1,2,3],[4,5,6],[7,8,9]])
+    > idlrotate(img,6)
+
+    [[9 6 3]
+    [8 5 2]
+    [7 4 1]]
+
+    Modification History
+    --------------------
+    2022-06-02 - Written by M. Cushing, University of Toledo.
+    Based on the IDL program rotate.pro
+
+    """
     
+    if direction == 0:
+
+        return img
+
+    elif direction == 1:
+
+        return np.rot90(img, 1)
+
+    elif direction == 2:
+
+        return np.rot90(img, 2)
+
+    elif direction == 3:
+
+        return np.rot90(img, 3)
+        
+    elif direction == 4:
+
+        return np.transpose(img)
+        
+    elif direction == 5:
+
+        return np.fliplr(img)
+        
+    elif direction == 6:
+
+        return np.fliplr(np.rot90(img, 1))
+    
+    elif direction == 7:               
+
+        return np.flipud(img)
+        
+    else:
+
+        raise ValueError('Unknown rotation direction.')
+        
+        
+
+
+
 
 
 

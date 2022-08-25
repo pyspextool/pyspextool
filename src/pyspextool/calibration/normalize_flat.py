@@ -7,9 +7,8 @@ from pyspextool.utils.math import moments
 from pyspextool.utils.loop_progress import loop_progress
 
 
-def normalize_spectral_flat(img, edgecoeffs, xranges, slith_arc, nxgrid,
-                            nygrid, var=None, oversamp=1, ybuffer=0,
-                            clupdate=False):
+def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
+                   var=None, oversamp=1, ybuffer=0, clupdate=False):
     """
     Normalize spectral flat field image
 

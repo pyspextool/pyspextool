@@ -1,14 +1,313 @@
 import numpy as np
+from numpy.polynomial.polynomial import polyval
 
 
-def poly2d(x, y, xorder, yorder, coeffs):
+def goodbad_init(*args, goodbad=None):
+
+    """
+    To set up the goodbad array for a robust fit.
+
+    Parameters
+    ----------
+    *args : array_like, optional
+        (ndat,) arrays to be used in a robust fit.  Typically, the
+        dependent variable array and its associated uncertainty.
+
+    goodbad : array_like, default=None, optional
+         An (ndat,) array of int values where 0=bad, 1=good, 2=NaN.
+
+    Returns
+    -------
+    numpy.ndarray
+         A goodbad array with properties consistent with `goodbad` and
+         `*args`.
+
+    Notes
+    -----
+    The function identifies NaN values in *args and sets those pixels
+    in either a user-passed goodbad array or a function-created goodbad 
+    array to 2.
+
+    Examples
+    --------
+
+    > x= [1,2,np.nan,5,6]
+    > y = [0,1,2,3,np.nan]
+
+    """
+
+    if goodbad is None:
+
+        # Create a good bad array
+
+        goodbad = np.full(len(args[0]), 1, dtype=int)
+
+    else:
+
+        # Convert to a numpy array if need be
+
+        goodbad = np.array(goodbad, dtype=int)
+
+    # Find NaNs if need be
+
+    for arg in args:
+
+        if arg is not None:
+
+            znan = np.isnan(arg)
+            if np.sum(znan) > 0:
+                goodbad[znan] = 2
+
+    return goodbad
+
+
+def image_poly(img, coeffs):
+
+    """
+    Evaluates a polynomial function of a variable for images
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        An (nrows, ncols) image of "independent" values.
+
+    coeffs : numpy.ndarray
+        An (ncoeffs, nrows, ncols) array of polynomial coefficients
+        [0,:,:] is the c_0 array
+        [1,:,:] is the c_1 array
+        etc.
+
+    Returns
+    -------
+    numpy.ndarray
+        an [nrows,ncols] array the 
+
+    Procedure
+    ---------
+    Follows the IDL poly.pro technique to evaluate a polynomial but does 
+    it for each value in the array at once
+
+    Examples
+    --------
+    > import numpy as np
+    > img = np.array([[1,1,1],[2,2,2],[3,3,3]])
+    > coeffs0 = np.array([[2,2,2],[2,2,2],[2,2,2]])
+    > coeffs1 = np.array([[0.5,0.5,0.5],[0.5,0.5,0.5],[0.5,0.5,0.5]])
+    > coeffs = np.stack((coeffs0,coeffs1))
+
+    [[2.5 2.5 2.5]
+     [3.  3.  3. ]
+     [3.5 3.5 3.5]]
+
+    """
+
+    n = coeffs.shape[0]-1
+    
+    y = coeffs[n, :, :]
+
+    for i in range(n-1, -1, -1):
+
+        y = y*img + coeffs[i, :, :]
+    
+    return y
+
+
+def make_alphabeta_1d(x, y, yunc, order, doalpha=False):
+
+    """
+    Creates the alpha and beta arrays of the normal equations of
+    the general linear least squares problem.
+
+    Parameters
+    ----------
+    x : array_like
+        (ndat,) array of independent values.
+
+    y : array_like
+        (ndat,) array of dependent values.
+
+    yunc : array_like
+        (ndat,) array of uncertainties.
+
+    order : int
+        The polynomial order.
+
+    doalpha : {False, True}, optional
+        Set to True to create the alpha directly.  See Notes.
+
+    Returns
+    -------
+    alpha, beta : numpy.ndarray, numpy.ndarray
+
+    Notes
+    -----
+    If `doalpha` is set, the alpha and beta arrays are constructed directly.
+    If not, then the design matrix A and the vector b are constructed which
+    are then used to compute the alpha and beta arrays.  There is a trade-off
+    since constructing the alpha and beta arrays directly takes longer for
+    smaller surfaces.
+
+    Examples
+    --------
+    later
+
+    """
+
+    # How many coefficients
+    
+    ncoeffs = order+1
+
+    # Compute the exponents for the basis functions
+    
+    exp = np.arange(0, order+1)  
+
+    # Create the b vector
+
+    b = y/yunc
+    
+    if doalpha is True:
+
+        # Create empty alpha and beta arrays and compute the b vector
+    
+        alpha = np.zeros((ncoeffs, ncoeffs))
+        beta = np.zeros(ncoeffs)
+
+        # Loop to fill them in
+        
+        for i in range(0, ncoeffs):
+
+            for j in range(i, ncoeffs):
+        
+                at = (x**exp[i])/yunc
+                a = (x**exp[j])/yunc
+
+                alpha[i, j] = np.sum(at*a)
+                alpha[j, i] = np.sum(at*a)
+                beta[i] = np.sum(at*b)
+
+    elif doalpha is False:
+
+        at = np.empty((ncoeffs, len(x)))
+        for i in range(ncoeffs):
+
+            at[i, :] = x**exp[i]/yunc
+
+        alpha = np.matmul(at, np.transpose(at))
+        beta = np.matmul(at, b)
+
+    return alpha, beta
+
+
+def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
+    """
+    Creates the alpha and beta arrays of the normal equations of
+    the general linear least squares problem.
+
+    Parameters
+    ----------
+    x : array_like
+        (ndat,) array of independent values.
+
+    y : array_like
+        (ndat,) array of independent values.
+
+    z : array_like
+        (ndat,) array of dependent values.
+
+    zunc : array_like
+        (ndat,) array of uncertainties.
+
+    xorder : int
+        The polynomial order of the first independent variable.
+
+    yorder : int
+        The polynomial order of the second indepenent variable.
+
+    doalpha : {False, True}, optional
+        Set to True to create the alpha directly.  See Notes.
+
+    Returns
+    -------
+    alpha, beta : numpy.ndarray, numpy.ndarray
+
+    Notes
+    -----
+    If `doalpha` is set, the alpha and beta arrays are constructed directly.
+    If not, then the design matrix A and the vector b are constructed which
+    are then used to compute the alpha and beta arrays.  There is a trade-off
+    since constructing the alpha and beta arrays directly takes longer for
+    smaller surfaces.
+
+    Examples
+    --------
+    later
+
+    """
+
+    # How many coefficients
+    
+    ncoeffs = (xorder+1)*(yorder+1)
+
+    # Determine the exponents of the basis functions
+
+    xexp = np.arange(xorder+1, dtype=int)
+    yexp = np.arange(yorder+1, dtype=int)
+    exp = np.empty((ncoeffs, 2), dtype=int)
+    idx = 0
+
+    for i in range(yorder+1):
+
+        for j in range(xorder+1):
+
+            exp[idx, 0] = xexp[j]
+            exp[idx, 1] = yexp[i]
+            idx += 1
+
+    # Create the b vector
+
+    b = z/zunc
+    
+    if doalpha is True:
+
+        # Create empty alpha and beta arrays and then fill them in.
+        
+        alpha = np.empty((ncoeffs, ncoeffs))
+        beta = np.empty(ncoeffs)
+
+        for i in range(ncoeffs):
+
+            for j in range(i, ncoeffs):
+
+                at = (x**exp[i, 0] * y**exp[i, 1])/zunc
+                a = (x**exp[j, 0] * y**exp[j, 1])/zunc
+
+                val = np.sum(at*a)
+                    
+                alpha[j, i] = val
+                alpha[i, j] = val
+                beta[i] = np.sum(at*b)                    
+                
+    elif doalpha is False:
+
+        at = np.empty((ncoeffs, len(x)))
+        for i in range(ncoeffs):
+
+            at[i, :] = x**exp[i, 0]*y**exp[i, 1]/zunc
+
+        alpha = np.matmul(at, np.transpose(at))
+        beta = np.matmul(at, b)
+
+    return alpha, beta
+
+
+def poly_2d(x, y, xorder, yorder, coeffs):
 
     """
     evaluates a polynomial function of two independent variables
     
 
     Parameters
-    ----------------
+    ----------
     x : array_like, int or float
         an array of independent values
 
@@ -33,55 +332,67 @@ def poly2d(x, y, xorder, yorder, coeffs):
     --------
     later?
 
-    Modification History
-    --------------------
-        2022-06-07 - Written by M. Cushing, University of Toledo.  
-                     Based on the Spextool IDL program mc_poly2d.pro
     """
+    idx = 0
+    z = 0
+    for i in range(yorder+1):
 
-    # Get set up with a bunch of necessary numbers and arrays
-    
-    ndat = x.size
-    ncoeffs = (xorder+1)*(yorder+1)
+        for j in range(xorder+1):
 
-    xexp = np.arange(xorder+1, dtype=int)
-    yexp = np.arange(yorder+1, dtype=int)
-
-    z = np.empty(ndat)
-
-    # Now fill in the data
-    
-    for i in range(ndat):
-
-        z[i] = np.sum(np.ravel(np.outer(y[i]**yexp, x[i]**xexp))*coeffs)
+            z = z+x**j*y**i*coeffs[idx]
+            idx +=1
 
     return z
 
+    # Get set up with a bunch of necessary numbers and arrays
 
-def poly_fit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True):
+    #ndat = x.size
+
+    #xexp = np.arange(xorder+1, dtype=int)
+    #yexp = np.arange(yorder+1, dtype=int)
+
+    #z = np.empty(ndat)
+
+    # Now fill in the data
+    
+    #for i in range(ndat):
+
+    #    z[i] = np.sum(np.ravel(np.outer(y[i]**yexp, x[i]**xexp))*coeffs)
+
+    #return z
+
+
+def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
+                doalpha=False, justfit=False, silent=True):
 
     """
-    Fits a polynomial of a given order to a set of 1-D data.
+    Fits a (robust) polynomial of a given order to a set of 1-D data.
 
     Parameters
     ----------------
     x : array_like
-        An array of independent values
+        (ndat,) array of independent values.
 
     y : array_like
-        An array of dependent values
+        (ndat,) array of dependent values.
 
     order : int
         The order of the polynomial
 
     yunc : array_like, optional
-        An array of uncertainties on the dependent values `y`
+        (ndat,) array of uncertainties on the dependent values `y`
+
+    goodbad : array_like
+        A goodbad array identifying each value.  0=bad, 1=good, 2=NaN.
+
+    robust : dict, optional
+        
 
     doalpha: {False, True}, optional
         If true, then A**T * A is computed directly instead of A
 
     justfit : {False, True}, optional 
-        Set to compute only the coefficents
+        Set to compute only the coefficients.  Faster this way.
 
     silent : {True, False}, optional
         If False, the result of the fit will be written to the command line
@@ -147,13 +458,6 @@ def poly_fit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True
     Data from Chapter 6 of Data Reduction and Error Analysis for the 
     Physical Sciences by Bevington & Robinson
 
-
-    Modification History
-    --------------------
-        2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the Spextool IDL program mc_polyfit1d.pro
-        2022-06-07 - Added the justfit parameter
-        2022-06-17 - Simplfied the creation of alpha is doalpha=True
     """
 
     # Construct the uncertainty array if need be
@@ -161,75 +465,117 @@ def poly_fit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True
     if yunc is None:
         yunc = np.full(len(x), 1.0)
 
-    # Get rid of NaNs 
+    # Create the goodbad array
 
-    znonan = ~np.isnan(y)
-    nnan = np.size(znonan)-np.sum(znonan)
-    xx = x[znonan]
-    yy = y[znonan]
-    yyunc = yunc[znonan]
+    goodbad = goodbad_init(y, yunc, goodbad=goodbad)
 
-    # Get basic parameters
+    # Find the NaNs
+
+    znan = goodbad == 2
+    nnan = np.sum(znan)
+
+    # Find the intial good points
+
+    z_initgood = goodbad == 1
+    n_initgood = np.sum(z_initgood)
+
+    # Clip to the initial good data
+
+    xx = x[z_initgood]
+    yy = y[z_initgood]
+    yyunc = yunc[z_initgood]
+
+    # Create the alpha and beta arrays of the normal equatioon
     
-    ndat = len(xx)       # number of idependent variables
-    ncoeffs = order+1    # number of coefficients
-    ndof = ndat-ncoeffs  # number of degrees of freedom
+    alpha, beta = make_alphabeta_1d(xx, yy, yyunc, order, doalpha=doalpha)
 
-    #  Construct the alpha and beta matrix of the normal equations.  
-    
-    exp = np.arange(0, order+1)  # exoponents of the basis functions
-    
-    alpha = np.zeros((ncoeffs, ncoeffs))
-    beta = np.zeros(ncoeffs)
-
-    b = yy/yyunc
-
-    # Now start the linear algebra construction
-
-    if doalpha is True:
-    
-        for i in range(0, ncoeffs):
-
-            for j in range(i, ncoeffs):
-        
-                at = (xx**exp[i])/yyunc
-                a = (xx**exp[j])/yyunc
-
-                alpha[i, j] = np.sum(at*a)
-                alpha[j, i] = np.sum(at*a)
-                beta[i] = np.sum(at*b)
-
-    elif doalpha is False:
-
-        at = np.empty((ncoeffs, ndat))
-        for i in range(ncoeffs):
-
-            at[i, :] = xx**exp[i]/yyunc
-
-        alpha = np.matmul(at, np.transpose(at))
-        beta = np.matmul(at, b)
-                
     # Solve things
-    
+
     coeffs = np.linalg.solve(alpha, beta)
 
+    # Are we doing a robust fit?  
+    
+    if robust is not None:
+
+        # Compute the residuals and the mean and sigma of the residuals
+    
+        residual = yy-polyval(xx, coeffs)
+
+        mean = np.mean(residual)
+        stddev = np.std(residual)
+
+        # Now check for residual points that are outside the threshhold
+    
+        z_good = np.abs((residual-mean)/stddev) <= robust['thresh']
+        n_bad = np.sum(~z_good)
+
+        if n_bad != 0:
+
+            # Found a bad data point, so start looping
+
+            itter = 0
+            for i in range(11):
+
+                itter += 1
+                old_stddev = stddev
+                alpha, beta = make_alphabeta_1d(xx[z_good], yy[z_good],
+                                                yyunc[z_good], order,
+                                                doalpha=doalpha)                
+
+                coeffs = np.linalg.solve(alpha, beta)
+                
+                residual = yy[z_good]-polyval(xx[z_good], coeffs)
+
+                mean = np.mean(residual)
+                stddev = np.std(residual)
+
+                # Check to see if the new stddev isn't much of a change
+                # from the old one
+
+                if (old_stddev-stddev)/old_stddev < robust['eps']:
+                    break                
+
+                # Create full residual array and search for bad ones
+                
+                residual = yy - polyval(xx, coeffs)                
+                z_good = np.abs((residual-mean)/stddev) <= robust['thresh']
+
+        # Let's reconstuct the goodbad array
+
+        tmp = np.zeros(len(xx))
+        tmp[z_good] = 1
+        goodbad[z_initgood] = tmp
+
+# Start reporting and returning results
+    
     if justfit is True:
 
         return({"coeffs": coeffs, "var": None, "covar": None, "yfit": None,
-                "nparm": None, "ndof": None, "chi2": None, "rchi2": None, "rms": None})
+                "goodbad": goodbad, "nparm": None, "ndof": None,
+                "chi2": None, "rchi2": None, "rms": None})
         
-    elif justfit is False:
+    else:
 
         # Keep going with other outputs and possible command line output
+
+        # Compute the covariance array and get the variances of the parameters
         
         covar = np.linalg.inv(alpha)
         var = np.diagonal(covar)
 
-        yfit = np.polynomial.polynomial.polyval(x, coeffs)
-        residual = y-yfit
-        rms = np.std(residual[znonan])
+        # Get the rms of the fit and the chi2 value
 
-        chi2 = np.sum((residual[znonan]/yunc[znonan])**2)
+        yfit = polyval(x, coeffs)
+        residual = y-yfit
+        z_good = goodbad == 1
+        n_good = np.sum(z_good)
+        rms = np.std(residual[z_good])
+        chi2 = np.sum((residual[z_good]/yunc[z_good])**2)
+
+        # Compute the reduced chi2
+        
+        ncoeffs = order+1
+        ndof = n_good-ncoeffs  # number of degrees of freedom
         rchi2 = chi2/ndof
     
         # Report results if requested
@@ -237,13 +583,15 @@ def poly_fit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True
         if silent is False:
             
             print(' ')
-            print('             Number of points = ', len(x))
-            print('          Number of NaNs in y = ', nnan)
-            print('         Number of parameters = ', ncoeffs)
-            print(' Number of degrees of freedom = ', ndof)
-            print('                  Chi-Squared = ', chi2)
-            print('          Reduced Chi-Squared = ', rchi2)
-            print('         RMS deviation of fit = ', rms)
+            print('                  Number of points = ', len(x))
+            print('               Number of NaNs in y = ', nnan)
+            print('     Number of initial good points = ', n_initgood)       
+            print('Total number of bad/outlier points = ', np.sum(goodbad == 0))
+            print('              Number of parameters = ', ncoeffs)
+            print('      Number of degrees of freedom = ', ndof)
+            print('                       Chi-Squared = ', chi2)
+            print('               Reduced Chi-Squared = ', rchi2)
+            print('              RMS deviation of fit = ', rms)
             print(' ')
             print('Coefficients:')
             print(' ')
@@ -258,13 +606,15 @@ def poly_fit1d(x, y, order, yunc=None, doalpha=False, justfit=False, silent=True
             print(covar)
             print(' ')
 
+        # Return the results
+
     return({"coeffs": coeffs, "var": var, "covar": covar, "yfit": yfit,
-            "nparm": order+1, "ndof": ndof, "chi2": chi2, "rchi2": rchi2,
-            "rms": rms})
+            "goodbad": goodbad, "nparm": order+1, "ndof": ndof, "chi2": chi2,
+            "rchi2": rchi2, "rms": rms})
 
 
-def poly_fit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
-              justfit=False):
+def poly_fit_2d(x, y, z, xorder, yorder, zunc=None, goodbad=None,
+                robust=None, doalpha=False, silent=True, justfit=False):
 
     """
     Fits a 2D polynomial of a given order to a set of 2D data
@@ -364,6 +714,7 @@ def poly_fit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
         2022-03-09 - Written by M. Cushing, University of Toledo.  
                      Based on the Spextool IDL program mc_polyfit2d.pro
         2022-06-17 - Simplfied the creation of alpha is doalpha=True
+
     """
 
     # Construct the uncertainty array if necessary
@@ -371,392 +722,158 @@ def poly_fit2d(x, y, z, xorder, yorder, zunc=None, doalpha=False, silent=True,
     if zunc is None:
         zunc = np.full(len(x), 1.0)
 
-    # Get rid of NaNs 
+    # Create the goodbad array
 
-    znonan = ~np.isnan(z)
-    nnan = np.size(znonan)-np.sum(znonan)
-    xx = x[znonan]
-    yy = y[znonan]
-    zz = z[znonan]
-    zzunc = zunc[znonan]
+    goodbad = goodbad_init(z, zunc, goodbad=goodbad)
 
-    # Get basic parameters
+    # Find the NaNs
+
+    znan = goodbad == 2
+    nnan = np.sum(znan)
+
+    # Find the intial good points
+
+    z_initgood = goodbad == 1
+    n_initgood = np.sum(z_initgood)        
+
+    # Clip to the initial good data
+
+    xx = x[z_initgood]
+    yy = y[z_initgood]
+    zz = z[z_initgood]    
+    zzunc = zunc[z_initgood]
+
+    # Create the alpha and beta arrays of the normal equatioon
     
-    ndat = len(xx)       # number of idependent variables
-    ncoeffs = (xorder+1)*(yorder+1)   # number of coefficients
-    ndof = ndat-ncoeffs  # number of degrees of freedom
-
-    # Determine the exponents of the basis functions
-
-    xexp = np.arange(xorder+1, dtype=int)
-    yexp = np.arange(yorder+1, dtype=int)
-    exp = np.empty((ncoeffs, 2), dtype=int)
-    idx = 0
-
-    for i in range(yorder+1):
-
-        for j in range(xorder+1):
-
-            exp[idx, 0] = xexp[j]
-            exp[idx, 1] = yexp[i]
-            idx += 1
-
-    # Create the b array
-
-    b = zz/zzunc
-
-    # Now start the linear algebra construction
+    alpha, beta = make_alphabeta_2d(xx, yy, zz, zzunc, xorder, yorder,
+                                    doalpha=doalpha)
     
-    if doalpha is True:
-
-        alpha = np.empty((ncoeffs, ncoeffs))
-        beta = np.empty(ncoeffs)
-
-        for i in range(ncoeffs):
-
-            for j in range(i, ncoeffs):
-
-                at = (xx**exp[i, 0] * yy**exp[i, 1])/zzunc
-                a = (xx**exp[j, 0] * yy**exp[j, 1])/zzunc
-
-                val = np.sum(at*a)
-                    
-                alpha[j, i] = val
-                alpha[i, j] = val
-                beta[i] = np.sum(at*b)                    
-                
-    elif doalpha is False:
-
-        at = np.empty((ncoeffs, ndat))
-        for i in range(ncoeffs):
-
-            at[i, :] = xx**exp[i, 0]*yy**exp[i, 1]/zzunc
-
-        alpha = np.matmul(at, np.transpose(at))
-        beta = np.matmul(at, b)
-        
-    # Solve things (need to remember what you are doing...)
+    # Solve things
     
     coeffs = np.linalg.solve(alpha, beta)
 
+    # Are we doing a robust fit?  
+    
+    if robust is not None:
+
+        # Compute the residuals and the mean and sigma of the residuals
+
+        residual = zz-poly_2d(xx, yy, xorder, yorder, coeffs)
+
+        mean = np.mean(residual)
+        stddev = np.std(residual)
+
+        # Now check for residual points that are outside the threshhold
+    
+        z_good = np.abs((residual-mean)/stddev) <= robust['thresh']
+        n_bad = np.sum(~z_good)
+
+        if n_bad != 0:
+
+            # Found a bad data point, so start looping
+
+            itter = 0
+            for i in range(11):
+
+                itter += 1
+                old_stddev = stddev
+                alpha, beta = make_alphabeta_2d(xx[z_good], yy[z_good],
+                                                zz[z_good], zzunc[z_good],
+                                                xorder, yorder, 
+                                                doalpha=doalpha)                
+
+                coeffs = np.linalg.solve(alpha, beta)
+                
+                residual = zz[z_good] - poly_2d(xx[z_good], yy[z_good],
+                                                xorder, yorder, coeffs)
+
+                mean = np.mean(residual)
+                stddev = np.std(residual)
+
+                # Check to see if the new stddev isn't much of a change
+                # from the old one
+
+                if (old_stddev-stddev)/old_stddev < robust['eps']:
+                    break                
+
+                # Create full residual array and search for bad ones
+                
+                residual = zz - poly_2d(xx, yy, xorder, yorder, coeffs)    
+                z_good = np.abs((residual-mean)/stddev) <= robust['thresh']
+
+        # Let's reconstuct the goodbad array
+
+        tmp = np.zeros(len(xx))
+        tmp[z_good] = 1
+        goodbad[z_initgood] = tmp
+
+# Start reporting and returning results
+    
     if justfit is True:
 
-        # Just return the coefficients
-        
         return({"coeffs": coeffs, "var": None, "covar": None, "zfit": None,
-                "nparm": None, "ndof": None, "chi2": None, "rchi2": None,
-                "rms": None})
-
-    elif justfit is False:
+                "goodbad": goodbad, "nparm": None, "ndof": None,
+                "chi2": None, "rchi2": None, "rms": None})
+        
+    else:
 
         # Keep going with other outputs and possible command line output
+
+        # Compute the covariance array and get the variances of the parameters
         
         covar = np.linalg.inv(alpha)
         var = np.diagonal(covar)
 
-        zfit = poly2d(x, y, xorder, yorder, coeffs)
+        # Get the rms of the fit and the chi2 value
 
+        zfit = poly_2d(x, y, xorder, yorder, coeffs)
         residual = z-zfit
-        rms = np.std(residual[znonan])
+        z_good = goodbad == 1
+        n_good = np.sum(z_good)
+        rms = np.std(residual[z_good])
+        chi2 = np.sum((residual[z_good]/zunc[z_good])**2)
 
-        chi2 = np.sum((residual[znonan]/zunc[znonan])**2)
+        # Compute the reduced chi2
+        
+        ncoeffs = (xorder+1)*(yorder+1)
+        ndof = n_good-ncoeffs  # number of degrees of freedom
         rchi2 = chi2/ndof
     
         # Report results if requested
 
         if silent is False:
-
+            
             print(' ')
-            print('             Number of points = ', len(x))
-            print('          Number of NaNs in y = ', nnan)
-            print('         Number of parameters = ', ncoeffs)
-            print(' Number of degrees of freedom = ', ndof)
-            print('                  Chi-Squared = ', chi2)
-            print('          Reduced Chi-Squared = ', rchi2)
-            print('         RMS deviation of fit = ', rms)
+            print('                  Number of points = ', len(x))
+            print('               Number of NaNs in y = ', nnan)
+            print('     Number of initial good points = ', n_initgood)       
+            print('Total number of bad/outlier points = ', np.sum(goodbad == 0))
+            print('              Number of parameters = ', ncoeffs)
+            print('      Number of degrees of freedom = ', ndof)
+            print('                       Chi-Squared = ', chi2)
+            print('               Reduced Chi-Squared = ', rchi2)
+            print('              RMS deviation of fit = ', rms)
             print(' ')
             print('Coefficients:')
             print(' ')
             
-            for i in range(0, ncoeffs):
+            for i in range(0, order+1):
             
                 print('Coeff #', str(i).zfill(2), ': ', coeffs[i], '+-',
                       np.sqrt(var[i]), sep='')
-
+                    
             print(' ')
             print('Covariance Matrix:')
             print(covar)
             print(' ')
 
-        return({"coeffs": coeffs, "var": var, "covar": covar, "zfit": zfit,
-                "nparm": ncoeffs, "ndof": ndof, "chi2": chi2, "rchi2": rchi2,
-                "rms": rms})
+        # Return the results
 
-
-def robust_poly_fit1d(x, y, order, thresh, eps, yunc=None, goodbad=None,
-                    justfit=False, silent=True):
-
-    """
-    Fits a "robust" polynomial of a given order to a set of 1-D data.
-
-    Parameters
-    ----------------
-    x : numpy.ndarray
-        an array of independent values
-
-    y : numpy.ndarray
-        an array of dependent values
-
-    order : int
-        the order of the polynomial
-
-    thresh : float
-        sigma threshold to identify outliers.
-
-    eps : float
-        limit of the fractional change in the standar deviation of the fit.
-      
-    yunc : numpy.ndarray, optional
-        an array of uncertainties on the dependent values
-
-
-    goodbad : np.ndarray, optional 
-        an array identifying good and bad pixels.  0=bad, 1=good, 2=NaN
-
-    justfit : {False, True}, optional
-        set to only compute the coefficients
-
-    silent : {True, False}, optional
-        if False, the result of the fit will be written to the command line
-
-    Returns
-    -------
-    dict
-        a dict where with the following entries:
-
-        coeffs : numpy.ndarray
-            the polynomial coefficients
-
-        var : numpy.ndarray
-            the variances of the coefficients
-
-        covar : numpy.ndarray
-            the covariance matrix
-
-        yfit : numpy.ndarray 
-            the polynomial evaluated at `x`
-
-        nparm : int
-            the number of parameters of the fit
-
-        ndof : int
-            the number of degrees of freedom
-
-        chi2 : float
-            the chi^2 value of the fit
-
-        rchi2 : float
-            the reduced chi^2 value of the fit
-
-        rms : flat
-            the rms of the fit (1/N, not 1/(N-1))
-
-    Notes
-    -----
- 
-
-    Examples
-    --------
-    > import numpy as np
-    > import math
-    > N = 100
-    > x = np.linspace(0, 4, N)
-    > y = x**3 - 6*x**2 + 12*x - 9 
-    > y += np.random.normal(0, 2, size=len(y))
-    > sigma = 1.5
-    > yerr = np.ones(N)*sigma 
-    > y[50] = 30
-    > y[30] = math.nan
-    > 
-    > result = robustpolyfit1d(x,y,3,3,0.1,yunc=yerr,silent=False)
-    > yfit = result['yfit']
-    > pl.plot(x,y,'o')
-    > pl.plot(x,yfit,'r-')
-    > z = np.where(result['ogoodbad'] == 0)
-    > pl.plot(x[z],y[z],'ro')
-    > pl.show()
-
-    Modification History
-    --------------------
-        2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the Spextool IDL program mc_robustpoly1d.pro
-    """
-
-    # Check to see if the user passed an uncertainty array.
-    
-    if yunc is None:
-        yunc = np.full(len(x), 1.0)
-
-    # Set up the ogoodbad array
-
-    ogoodbad = np.full(len(x), 2)
+    return({"coeffs": coeffs, "var": var, "covar": covar, "zfit": zfit,
+            "goodbad": goodbad, "nparm": ncoeffs, "ndof": ndof, "chi2": chi2,
+            "rchi2": rchi2, "rms": rms})        
         
-    # Get rid of NaNs
 
-    znotnan = ~np.isnan(y)
-    init_goodcnt = np.sum(znotnan)
-    nnan = np.sum(~znotnan)
-    xx = x[znotnan]
-    yy = y[znotnan]
-    yyunc = yunc[znotnan]
 
-    ogoodbad[znotnan] = 1
 
-    # Do a first pass of the data
-
-    fit = poly_fit1d(xx, yy, order, yunc=yyunc, justfit=justfit, silent=True)
     
-    # Compute the residuals and the mean and sigma of the residuals
-    
-    residual = yy-np.polynomial.polynomial.polyval(xx, fit['coeffs'])
-
-    mean = np.mean(residual)
-    stddev = np.std(residual)
-
-    # Now check for residual points that are outside the threshhold
-    
-    good = np.abs((residual-mean)/stddev) <= thresh
-    goodcnt = np.sum(good)
-
-    if goodcnt != init_goodcnt:
-
-        itter = 0
-        for i in range(0, 11):
-
-            itter += 1
-
-            oldstddev = stddev
-            fit = poly_fit1d(xx[good], yy[good], order, yunc=yyunc[good],
-                            justfit=justfit, silent=True)
-            residual = yy[good] - \
-                       np.polynomial.polynomial.polyval(xx[good],
-                                                        fit['coeffs'])
-            mean = np.mean(residual)
-            stddev = np.std(residual)
-
-            # Check to see if the new stddev isn't much of a change from the
-            # old one
-
-            if (oldstddev-stddev)/oldstddev < eps:
-                break
-
-            # Now generate a new full residual array
-
-            residual = yy-np.polynomial.polynomial.polyval(xx, fit['coeffs'])
-
-            good = np.abs((residual-mean)/stddev) <= thresh
-            goodcnt = np.sum(good)
-
-    # Let's reconstuct the goodbad array
-
-    tmp = np.full(init_goodcnt, 0)
-    tmp[good] = 1
-    ogoodbad[znotnan] = tmp
-
-    # Create a full yfit
-
-    yfit = np.polynomial.polynomial.polyval(x, fit['coeffs'])
-
-    # Report results if requested
-
-    if silent is not True:
-
-        nbad = np.sum(good == 0)
-
-        print(' ')
-        print('    Number of original points = ', len(x))
-        print('              Sigma threshold = ', thresh)
-        print('              Number of loops = ', itter)
-        print('           Number of outliers = ', nbad)
-        print('          Number of NaNs in y = ', nnan)
-        print('         Number of parameters = ', order+1)
-        print(' Number of degrees of freedom = ', fit["ndof"])
-        print('                  Chi-Squared = ', fit["chi2"])
-        print('          Reduced Chi-Squared = ', fit["rchi2"])
-        print('         RMS deviation of fit = ', fit["rms"])
-        print(' ')
-        print('Coefficients:')
-        print(' ')
-
-        for i in range(0, order+1):
-        
-            print('Coeff #', str(i).zfill(2), ': ', fit['coeffs'][i], '+-',
-                  np.sqrt(fit['var'][i]), sep='')
-
-        print(' ')
-        print('Covariance Matrix:')
-        print(fit['covar'])
-        print(' ')
-
-    return({"coeffs": fit['coeffs'], "var": fit['var'], "covar": fit['covar'],
-            "ogoodbad": ogoodbad, "yfit": yfit, "nparm": order+1,
-            "ndof": fit['ndof'], "chi2": fit['chi2'], "rchi2": fit['rchi2'],
-            "rms": fit['rms']})
-
-
-def image_poly(img, coeffs):
-
-    """
-    evaluates a polynomial function of a variable for images
-
-    Parameters
-    ----------
-    img : numpy.ndarray
-        an [nrows,ncols]
-
-    coeffs : numpy.ndarray
-        an [ncoeffs,nrows,ncols] array of polynomial coefficients
-        [0,:,:] is the c_0 array
-        [1,:,:] is the c_1 array
-        etc.
-
-    Returns
-    -------
-    numpy.ndarray
-        an [nrows,ncols] array the 
-
-    Procedure
-    ---------
-    Follows the IDL poly.pro technique to evaluate a polynomial but does 
-    it for each value in the array at once
-
-    Examples
-    --------
-    > import numpy as np
-    > img = np.array([[1,1,1],[2,2,2],[3,3,3]])
-    > coeffs0 = np.array([[2,2,2],[2,2,2],[2,2,2]])
-    > coeffs1 = np.array([[0.5,0.5,0.5],[0.5,0.5,0.5],[0.5,0.5,0.5]])
-    > coeffs = np.stack((coeffs0,coeffs1))
-
-    [[2.5 2.5 2.5]
-     [3.  3.  3. ]
-     [3.5 3.5 3.5]]
-
-    Modification History
-    --------------------
-    2022-03-09 - Written by M. Cushing, University of Toledo.  
-                 Based on the mc_polyimg.pro IDL program.
-    2022-06-02 - changed indexing from [*,*,i] to [i,*,*]
-    2022-06-03 - updated doc string and fixed bug with n and the indexing of y
-
-    """
-
-    n = coeffs.shape[0]-1
-    
-    y = coeffs[n, :, :]
-
-    for i in range(n-1, -1, -1):
-
-        y = y*img + coeffs[i, :, :]
-    
-    return y
