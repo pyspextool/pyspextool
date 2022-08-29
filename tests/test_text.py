@@ -28,7 +28,7 @@ def test_forprint():
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_splittext():
-	pass
+	assert  0 
 
 def test_wherelist():
     x = [1,'two',3]

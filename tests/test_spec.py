@@ -20,19 +20,19 @@ def test_combflagstack():
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_extr_xs1dxd():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_findorders():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_find_top_bot():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_getspecpixshift():
-	pass
+	assert  0 
 
 def test_mkapmask():
 	slit_arc = np.arange(100)
@@ -48,5 +48,5 @@ def test_mkapmask():
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_simwavecal1dxd():
-	pass
+	assert  0 
 

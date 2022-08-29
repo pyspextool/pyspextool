@@ -8,8 +8,8 @@ import pytest
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_normspecflat():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_rectifyorder1d():
-	pass
+	assert  0 

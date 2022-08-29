@@ -7,8 +7,8 @@ import pytest
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_robustsavgol():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_robustsetup():
-	pass
+	assert  0 

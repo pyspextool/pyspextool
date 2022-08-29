@@ -8,24 +8,24 @@ import pytest
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_readflat():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_readflatcalfile():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_readinstrfile():
-	pass 
+	assert  0 
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_readwavecalfile():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_writeflat():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_find():
-	pass
+	assert  0 

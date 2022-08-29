@@ -7,15 +7,15 @@ import pytest
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_avehdrs():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_gethdrinfo():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_getimgrange():
-	pass
+	assert  0 
 
 def test_idlrotate():
 	img = np.array([[1,2,3],[4,5,6],[7,8,9]])

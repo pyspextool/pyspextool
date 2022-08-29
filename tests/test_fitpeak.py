@@ -9,17 +9,17 @@ import pytest
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_fitpeak1d():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_lorentz1d():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_gauss1d():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_cmest():
-	pass
+	assert  0 
 

@@ -12,11 +12,11 @@ def test_biset():
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_check_dir():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="will implement later once we figure out path navigation")
 def test_check_file():
-	pass
+	assert  0 
 
 def test_fsextract():
 	assert fsextract('1-3,5,7,10-12','index') ==[1, 2, 3, 5, 7, 10, 11, 12]

@@ -8,16 +8,16 @@ import pytest
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_bicuof():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_bicuval():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_fiterpolate():
-	pass
+	assert  0 
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_imgquadfit():
-	pass
+	assert  0 

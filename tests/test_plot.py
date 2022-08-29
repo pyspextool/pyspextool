@@ -12,4 +12,4 @@ def test_bufrange():
 
 @pytest.mark.skip(reason="example not implemented in docstring")
 def test_getyrange():
-	pass
+	assert  0 
