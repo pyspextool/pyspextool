@@ -1,6 +1,5 @@
-from pyspextool.fit.poly_fit_1d import poly_fit_1d
+from pyspextool.fit.polyfit import poly_fit_1d
 import numpy as np
-from pyspextool.utils.for_print import for_print
 import matplotlib.pyplot as pl
 
 #x = np.array([10. ,20. ,30. ,40. ,50., 60. ,70. ,80. ,90.])
