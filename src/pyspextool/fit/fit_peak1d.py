@@ -1,26 +1,24 @@
-"""Functions for fitting peaks."""
-
-
 import numpy as np
 import scipy
 from scipy import optimize
 
 
-def fitpeak1d(x,y,type='gaussian',nparms=4,p0=None,positive=False,\
-            negative=False,nan=True):
+def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
+              negative=False, nan=True):
 
-    '''
+    """
     To fit 1D data with either a Gaussian or Lorentzian function.
+
 
     At the moment, very basic.  Will add complexity as necessary.
     
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     x : array-like
         (nx,) array of independent variables.
 
     y : array-like
-        (nx,) array of dependent variables.
+        (ny,) array of dependent variables.
 
     type: {'gaussian','lorentzian'}, optional
         The type of fit.
@@ -33,7 +31,7 @@ def fitpeak1d(x,y,type='gaussian',nparms=4,p0=None,positive=False,\
         will use these to start the fit.  Otherwise, it will estimate them
         on its own.  
 
-        See Notes for descrption of each element.  
+        See Notes for description of each element.
         
     positive : {False, True}, optional
         if `p0` is not given, set to search for a positive peak.  If 
@@ -87,33 +85,29 @@ def fitpeak1d(x,y,type='gaussian',nparms=4,p0=None,positive=False,\
     2022-07-01 - Written by M. Cushing, University of Toledo.
     Based on IDL Craig Markwardt mpfitpeak.pro 
 
-    '''
+    """
 
     # Convert inputs to numpy arrays
 
     x = np.array(x)
-    y = np.array(x)
+    y = np.array(y)
     
-    if p0 == None:
+    if p0 is None:
 
         # Estimate the start parameters
         
-        p0 = cmest(x,y,positive=positive,negative=negative,nan=nan)
+        p0 = cmest(x, y, positive=positive, negative=negative, nan=nan)
 
         if nparms == 3:
-
             p0 = p0[0:3]
 
         elif nparms == 4:
-
             p0 = p0
 
         elif nparms == 5:
-
-            p0 = np.concatenate(p0,[0])
+            p0 = np.append(p0, 0)
 
         else:
-
             exception = 'fitpeak1d: possible nparms values are 3, 4,or 5.'
             raise Exception(exception)
             
@@ -121,16 +115,15 @@ def fitpeak1d(x,y,type='gaussian',nparms=4,p0=None,positive=False,\
 
         p0 = np.arrqy(p0)
         
-        # Check to make sure the number of user parameter estimates equals the number
-        # of parameters reqeusted.
+        # Check to make sure the number of user parameter estimates equals
+        # the number of parameters reqeusted.
 
-    if len(p0) != nterms:
+    if len(p0) != nparms:
 
-        exception = 'fitpeak1d: number parameter estimates must '+\
+        exception = 'fitpeak1d: number parameter estimates must ' + \
           'equal the number of parameters.'
 
         raise Exception(exception)
-
 
     # Select the function
 
@@ -149,17 +142,17 @@ def fitpeak1d(x,y,type='gaussian',nparms=4,p0=None,positive=False,\
 
     # Now do the call
 
-    popt, pcov = scipy.optimize.curve_fit(f,x,y,p0=p0)
+    popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)
 
-    fit = {'parms':popt}
-    fit['fit'] = f(x,*popt)
+    fit = {'parms': popt}
+    fit['fit'] = f(x, *popt)
 
     return fit
     
         
-def lorentz1d(x,amp,mean,hwhm,*args):
+def lorentz1d(x, amp, mean, hwhm, *args):
 
-    '''
+    """
     Computes values of a lorentzian function given user parameters.
 
     The function is given by,
@@ -167,8 +160,8 @@ def lorentz1d(x,amp,mean,hwhm,*args):
     u = (x - mean)/hwhm
     y =  amp/(u**2 + 1) + aergs[0] + args[1]*x
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     x : array-like
         (nx,) array of independent variables.
 
@@ -198,11 +191,11 @@ def lorentz1d(x,amp,mean,hwhm,*args):
 
     $Id: mpfitpeak.pro,v 1.19 2011/12/08 17:51:33 cmarkwar Exp $
 
-    Copyright (C) 1997-2001, 2003, 2005, 2007, 2008, 2009, 2010, Craig Markwardt                    
-    This software is provided as is without any warranty whatsoever.
-    Permission to use, copy, modify, and distribute modified or
-    unmodified copies is granted, provided this copyright and disclaimer
-    are included unchanged.
+    Copyright (C) 1997-2001, 2003, 2005, 2007, 2008, 2009, 2010,
+    Craig Markwardt.  This software is provided as is without any
+    warranty whatsoever.  Permission to use, copy, modify, and
+    distribute modified or unmodified copies is granted, provided
+    this copyright and disclaimer are included unchanged.
 
     Examples
     --------
@@ -211,24 +204,25 @@ def lorentz1d(x,amp,mean,hwhm,*args):
     --------------------
     2022-06-29 - Written by M. Cushing, University of Toledo.
 
-    '''
+    """
 
     u = (x-mean)/hwhm
 
     # Deal with the baseline
         
     nargs = len(args)
-    bl = args[0] if nargs >= 1 else  0
-    if nargs == 2: bl = bl + args[1]*x
+    bl = args[0] if nargs >= 1 else 0
+    if nargs == 2:
+        bl = bl + args[1]*x
 
     #   Compute the values and return 
 
     return bl + amp/(u**2 + 1)
 
 
-def gauss1d(x,amp,mean,sigma,*args):
+def gauss1d(x, amp, mean, sigma, *args):
 
-    '''
+    """
     Computes values of a gaussian function given user parameters.
 
     The function is given by,
@@ -236,8 +230,8 @@ def gauss1d(x,amp,mean,sigma,*args):
     u = (x - mean)/hwhm
     y =  amp*exp(-0.5*u**2)
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     x : array-like
         (nx,) array of independent variables.
 
@@ -267,11 +261,11 @@ def gauss1d(x,amp,mean,sigma,*args):
 
     $Id: mpfitpeak.pro,v 1.19 2011/12/08 17:51:33 cmarkwar Exp $
 
-    Copyright (C) 1997-2001, 2003, 2005, 2007, 2008, 2009, 2010, Craig Markwardt
-    This software is provided as is without any warranty whatsoever.
-    Permission to use, copy, modify, and distribute modified or
-    unmodified copies is granted, provided this copyright and disclaimer
-    are included unchanged.
+    Copyright (C) 1997-2001, 2003, 2005, 2007, 2008, 2009, 2010,
+    Craig Markwardt.  This software is provided as is without any
+    warranty whatsoever.  Permission to use, copy, modify, and
+    distribute modified or unmodified copies is granted, provided
+    this copyright and disclaimer are included unchanged.
 
     Examples
     --------
@@ -280,7 +274,7 @@ def gauss1d(x,amp,mean,sigma,*args):
     --------------------
     2022-06-29 - Written by M. Cushing, University of Toledo.
 
-    '''
+    """
 
     u = (x-mean)/sigma
     uz = np.exp(-0.5*u**2)
@@ -288,22 +282,23 @@ def gauss1d(x,amp,mean,sigma,*args):
     # Deal with the baseline
         
     nargs = len(args)
-    bl = args[0] if nargs >= 1 else  0
-    if nargs == 2: bl = bl + args[1]*x
+    bl = args[0] if nargs >= 1 else 0
+    if nargs == 2:
+        bl = bl + args[1]*x
 
     #   Compute the values and return
 
     return bl + amp*uz
 
 
-def cmest(x,y,nan=False,positive=False,negative=False):
+def cmest(x, y, nan=False, positive=False, negative=False):
 
-    '''
+    """
     To estimate the parameters for peak fitting.
 
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     x : arrqy-like
         (nx,) array of independent variables.
 
@@ -314,12 +309,12 @@ def cmest(x,y,nan=False,positive=False,negative=False):
         Set to True to ignore NaN values.
 
     positive : {False, True}, optional
-        Set to True if the peak is positive.  If neither `positive` or `negative`
-        is set to True, the function decides automatically.
+        Set to True if the peak is positive.  If neither `positive` nor
+        `negative` is set to True, the function decides automatically.
 
     negative : {False, True}, optional
-        Set to True if the peak is negative.  If neither `positive` or `negative`
-        is set to True, the function decides automatically.
+        Set to True if the peak is negative.  If neither `positive` nor
+        `negative` is set to True, the function decides automatically.
 
     Returns
     -------
@@ -339,14 +334,14 @@ def cmest(x,y,nan=False,positive=False,negative=False):
 
     $Id: mpfitpeak.pro,v 1.19 2011/12/08 17:51:33 cmarkwar Exp $
 
-    Copyright (C) 1997-2001, 2003, 2005, 2007, 2008, 2009, 2010, Craig Markwardt
-    This software is provided as is without any warranty whatsoever.
-    Permission to use, copy, modify, and distribute modified or
-    unmodified copies is granted, provided this copyright and disclaimer
-    are included unchanged.
+    Copyright (C) 1997-2001, 2003, 2005, 2007, 2008, 2009, 2010,
+    Craig Markwardt.  This software is provided as is without any
+    warranty whatsoever.  Permission to use, copy, modify, and
+    distribute modified or unmodified copies is granted, provided
+    this copyright and disclaimer are included unchanged.
 
-    If neither positive or negative are True, then the largest magnitude peak is
-    identified.
+    If neither positive nor negative are True, then the largest
+    magnitude peak is identified.
 
 
     Examples
@@ -357,13 +352,12 @@ def cmest(x,y,nan=False,positive=False,negative=False):
     --------------------
     2022-07-01 - Written by M. Cushing, University of Toledo.
 
-    '''
+    """
 
     # Here is the secret - the width is estimated based on the area
     # above/below the average.  Thus, as the signal becomes more
     # noisy the width automatically broadens as it should.
 
-        
     # Determine which sum function to use based on the nan keyword
     
     sumfunc = np.sum if nan is False else np.nansum
@@ -380,15 +374,16 @@ def cmest(x,y,nan=False,positive=False,negative=False):
     miny = np.min(ys)
     maxy = np.max(ys)    
 
-    dx = 0.5*np.concatenate(([xs[1]-xs[0]],xs[2:]-xs[0:-2],[xs[-1]-xs[-2]]))
-    totarea = sumfunc(dx*ys) # Total area under the curve
-    av = totarea/(maxx-minx) # Average height
+    dx = 0.5*np.concatenate(([xs[1]-xs[0]], xs[2:]-xs[0:-2],
+                             [xs[-1]-xs[-2]]))
+    totarea = sumfunc(dx*ys)  # Total area under the curve
+    av = totarea/(maxx-minx)  # Average height
 
     # Check degenerate case:  all flat with no noise    
 
     if miny == maxy:  
 
-        return np.array([0,xs[nx//2],(xs[-1]-xs[0])//2,ys[0]])
+        return np.array([0, xs[nx//2], (xs[-1]-xs[0])//2, ys[0]])
 
     # Compute the spread in values above and below average... we
     # take the narrowest one as the one with the peak
@@ -401,30 +396,30 @@ def cmest(x,y,nan=False,positive=False,negative=False):
 
     if ct1 == 0 or ct2 == 0:
 
-        raise Exception('Average y value should fall within the '+\
-                         'range of y values but does not.')
+        raise Exception('Average y value should fall within the range' + \
+                        'of y values but does not.')
                          
     sd1 = np.sum(x[wh1]**2)/ct1 - (np.sum(x[wh1])/ct1)**2
     sd2 = np.sum(x[wh2]**2)/ct2 - (np.sum(x[wh2])/ct2)**2
 
     # Compute area above/below average
     
-    if sd1 < sd2 or positive is True: # Positive peak
-        
+    if sd1 < sd2 or positive is True:  # Positive peak
         cent = x[y == maxy]
         cent = cent[0]
         peak = maxy-av
         
-    if sd1 >= sd2 or negative is True: # Negative peak
-        
+    if sd1 >= sd2 or negative is True:  # Negative peak
         cent = x[y == miny]
         cent = cen[0]
         peak = miny-av
 
     peakarea = totarea - sumfunc(dx*np.where(ys < av, ys, av))
-    if peakarea == 0 : peak = 0.5*peakarea
+    if peakarea == 0:
+        peak = 0.5*peakarea
     width = peakarea/(2*np.abs(peak))
-    if width ==0 or width == np.nan: width=np.median(dx)
+    if width == 0 or width == np.nan:
+        width = np.median(dx)
 
     est = np.array([peak, cent, width, av])
 

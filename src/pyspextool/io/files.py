@@ -1,89 +1,9 @@
-"""Functions for Input/Output utlitiy management."""
-
-
-import os.path
-import sys
+import os
 import glob
-from numpy import zeros_like as zeros_like
-from numpy import int8 as int8
 
+def check_directory(paths):
 
-def bitset(array, bits):
     """
-    To determine if the given bits are set in an array.
-
-    Input Parameters
-    ----------------
-    array : numpy.ndarray
-        numpy array to search
-
-    bits : int, list, numpy.ndarray
-        bit values to search in `array`
-
-    Returns
-    --------
-    numpy.ndarray
-        Returns an byte array of the same size as `array`.  An element 
-        is set if any of the bits requested are set in the same element
-        of `array`.
-
-    Procedure
-    ---------
-    Uses the Gumley IDL ishft technique.  Note that the "first" bit 
-    is denoted as zero, while the "second" bit is denoted as 1.
-
-
-    Example
-    --------
-
-    > import numpy as np
-    > bitset(np.array([3,4,1]),0)
-
-    [1, 0, 1]
-
-    > import numpy as np
-    > bitset(np.array([3,4,1]),[0,3])
-
-    [1, 0, 1]
-
-    > import numpy as np
-    > bitset(np.array([3,4,1]),[2,3])
-
-    [0, 1, 0]
-
-    Modification History
-    --------------------
-    2022-03-09 - Written by M. Cushing, University of Toledo.
-                 Based on the Spextool IDL mc_bitset.pro program.
-    """
-    
-    #  Define empty mask
-
-    mask = zeros_like(array, dtype=int8)
-
-    #  test to see if bits is iterable
-
-    try:
-
-        iter(bits)
-
-    except TypeError:
-
-        bits = [bits]    
-
-    #  Loop over every bit requested and identify those pixels for
-    #  which that bit is set.
-
-    for val in bits:
-        tmp = (array >> val) & 1
-        mask = mask | tmp    
-
-    return mask
-
-
-def check_dir(paths):
-
-    '''
     To check whether a directory exists.
 
 
@@ -108,7 +28,7 @@ def check_dir(paths):
     --------
     later when the package stuff is worked out.
 
-    '''
+    """
 
     # Make it a list just in case
 
@@ -120,22 +40,13 @@ def check_dir(paths):
 
         result = os.path.exists(path)
 
-        if result == False:
-            
-            print('check_dir: The directory "',path,\
-                '" does not exist.',sep='')
-            sys.exit(1)
+        if result is False:
 
-    # Now return the results properly
-            
-    if len(paths) == 1:
+            return False
 
-        return(paths[0])
+        else:
 
-    else:
-
-        return(paths)  
-
+            return True
 
 def check_file(files):
 
@@ -158,6 +69,8 @@ def check_file(files):
     Notes
     -----
     The program is capable of using unix wildcards, see glob.
+    Returning the file names instead of True might seem odd, but
+    it allows glob to find the proper file name using wildcards.
 
 
     Examples
@@ -178,40 +91,38 @@ def check_file(files):
         test = glob.glob(file)
         if not test:
 
-            print('check_file: The file "',file,'" does not exist.',sep='')
-            sys.exit(1)
+            message = 'File '+file+' not found.'
+            raise ValueError(message)
             
         else:
 
             if len(test) > 1:
 
-                print('check_file: More than one files matches "',\
-                          file,'"',sep='')
-                sys.exit(1)                
-                
+                message = 'More than one file matches '+file+'.'
+                raise ValueError(message)
+
             else:
-                
+
                 files[i] = test[0]
-                i +=1
-                
+                i += 1
+
     # Now return the results properly
-            
+
     if len(files) == 1:
 
         return(files[0])
 
     else:
 
-        return(files) 
+        return(files)
 
-
-def fsextract(string,method):
+def extract_filestring(string, method):
 
     """
     Extracts the indices or filenames from a comma-separated string
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     string : str
         a comma separated string of either file names or file index numbers.
 
@@ -242,7 +153,7 @@ def fsextract(string,method):
 
     Examples
     --------
-    > fsextract('1-3,5,7,10-12','index')
+    > extract_filestring('1-3,5,7,10-12','index')
     [1, 2, 3, 5, 7, 10, 11, 12]
 
     > fsextract('spc00001.a.fits,spc00002.a.fits','filename')
@@ -278,9 +189,9 @@ def fsextract(string,method):
 
             else:
 
-                # dash dectected, generate sequential numbers and add to output list
+                # dash detected, generate sequential numbers and add to output list
                 
-                arr = list(range(int(lowupp[0]),int(lowupp[1])+1))
+                arr = list(range(int(lowupp[0]), int(lowupp[1])+1))
                 oarr+=arr
 
         return oarr
@@ -293,24 +204,24 @@ def fsextract(string,method):
         
     else:
 
-        print('method unknown.')
-        return 
-    
+        message = 'Unknown method: `index` or `filename`.'
+        raise ValueError(message)
 
-def mkfullpath(dir,files,indexinfo:None,exist=False):
 
+def make_full_path(dir, files, indexinfo=None, exist=False):
     """
     constructs fullpath strings for files
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     dir : str
-        the directory where the files are located 
+        the directory where the files are located
+
     files : list 
         a list of strings that either contain the index numbers of the 
         files or the file names
 
-    indexinfo : dict of {'nint':int,'prefix':str,'suffix':str}, optional
+    indexinfo : dict of {'nint': int,'prefix': str,'suffix': str, extension}, optional
         a dictionary giving the information necessary to create the file 
         names from the index numbers.
         
@@ -359,37 +270,37 @@ def mkfullpath(dir,files,indexinfo:None,exist=False):
     """
 
     #  Check whether you are in filename or index mode
-    
+
     if indexinfo:
 
         #  Parse the index numbers
 
-        files = fsextract(files,'index')
+        files = extract_filestring(files, 'index')
 
         #  Check to see if any of the numbers are too large.
 
         for test in files:
 
-            if test > 10**indexinfo['nint']:
+            if test > 10 ** indexinfo['nint']:
 
-                print('File numbers >=',\
-                      10**indexinfo['nint'] ,'are not allowed.')
-                return 
-        
-        # Now create the file names
+                message = 'File numbers >='+str(10 ** indexinfo['nint'])+'are not allowed.'
+                raise ValueError(message)
 
-        output = [dir+indexinfo['prefix']+\
-                  str(root).zfill(indexinfo['nint'])+\
-                  indexinfo['suffix'] for root in files]
+                # Now create the file names
+
+        output = [os.path.join(dir,indexinfo['prefix'] +
+                  str(root).zfill(indexinfo['nint']) +
+                  indexinfo['suffix']+indexinfo['extension'])
+                  for root in files]
 
     else:
 
-        output = [dir+root for root in files] 
+        output = [os.path.join(dir,root) for root in files]
 
-    #  Now let's check to see if the file actually exists
-        
-    if exist == True:
+        #  Now let's check to see if the file actually exists
 
+    if exist is True:
         test = check_file(output)
-        
-    return(output)
+
+    return output    
+    
