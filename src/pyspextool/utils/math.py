@@ -1,263 +1,23 @@
-"""Functions for math utlitiy management."""
-
-
 import numpy as np
 from scipy.stats import describe
 
 
-def find_index(x_array, x):
-
+def moments(data, goodbad=False, robust=None, silent=True):
     """
-    Finds the effective index of a function value in an ordered array.
-
-    Parameters
-    ----------------
-    x_array : array_like
-        (N,) The array of floats or integers to be searched,
-        must be monotonically increasing or decreasing.
-    x : array_like or float or int
-        (M,) The value or values whose indices are required.
-
-    Returns
-    -------
-    ndarray or float
-        Effective indices in `x_array` for `x`.
-
-    Raises
-    ------
-    ValueError
-        If input arrays are not array_like or
-        if input array is not monotonic
-
-    Notes
-    -----
-    Near line-by-line copy of IDL Astronomy User's Library routine tabinv.pro. 
-
-    From its documentation:  A binary search is used to find the values XARR(I) 
-    and XARR(I+1) where XARR(I) < X < XARR(I+1).  IEFF is then computed using 
-    linear interpolation between I and I+1.
-    IEFF = I + (X-XARR(I)) / (XARR(I+1)-XARR(I)).
-
-    IEFF values outside of `xarr` are set to NaN.  
-
-    Examples
-    --------
-    >>> x_array = [1, 2.5, 3, 5.5]
-    >>> x = [1.5, 3.1, 6]
-    >>> find_index(x_array, x)
-    array([0.33333333, 2.04      ,        nan])
-
-    Modification History
-    --------------------
-    2022-06-30 - Written by M. Cushing, University of Toledo.
-    """
-
-    # Convert to numpy arrays and get basic things
-    try:
-        x_array = np.asarray(x_array, dtype='float')
-    except ValueError:
-        raise
-
-    ndat = len(x_array)
-
-    # Deal with array_like versus int/float and convert to array
-    if isinstance(x, int) or isinstance(x, float) is True:
-        try:
-            x = np.asarray([x], dtype='float')
-            single = True
-        except ValueError:
-            raise
-    else:
-        try:
-            single = False
-            x = np.asarray(x, dtype='float')
-        except ValueError:
-            raise
-
-    # Initialize binary search area and compute number of divisions needed
-    ileft = np.zeros(len(x), dtype=int)
-    iright = np.zeros(len(x), dtype=int)
-
-    n_divisions = int(np.log10(ndat)/np.log10(2) + 1)
-
-    # Test array for monotonicity. If not, raise ValueError
-    i = x_array - np.roll(x_array, 1)
-    i = i[1:]
-    # check if array is increasing or decreasing
-    a = i >= 0
-    if np.sum(a) == ndat-1:
-        iright += ndat-1
-    else:
-        a = i <= 0
-        if np.sum(a) == ndat-1:
-            ileft += ndat-1
-        else:
-            raise ValueError('find_index:  array is not monotonic.')
-
-    # Perform binary search by dividing search interval in half NDIVISIONS times
-    for i in range(n_divisions):
-        idiv = (ileft + iright)//2   # Split interval in half
-        x_val = x_array[idiv]            # Find function values at center
-        greater = x > x_val           # Determine which side of X is on
-        less = x <= x_val
-        np.multiply(ileft, less, out=ileft)
-        np.add(ileft, idiv*greater, out=ileft)
-        np.multiply(iright, greater, out=iright)
-        np.add(iright, idiv*less, out=iright)
-
-    # linearly interpolate
-    x_left = x_array[ileft]
-    x_right = x_array[iright]
-
-    mask = x_left == x_right
-    ieff = (x_right-x) * ileft
-    np.add(ieff, (x-x_left) * iright, out=ieff)
-    np.add(ieff, mask * ileft, out=ieff)
-    np.divide(ieff, (x_right - x_left + mask), out=ieff)
-
-    # Clip points beyond interpolation to NaN
-    z = ieff < 0
-    ieff[z] = np.nan
-
-    z = ieff > ndat-1
-    ieff[z] = np.nan
-
-    # Return numpy.ndarray of float or float
-    return ieff[0] if single is True else ieff
-    
-
-def loopprogress(idx,bot,top,message=None):
-
-    '''
-    To print a loop update message on the command line
-
-    Parameters
-    ----------------
-    idx : int
-          the current loop index number, e.g. i
-
-    bot : int
-          the bottom of the loop, e.g. range(bot,top)
-
-    top : int
-          the bottom of the loop, e.g. range(bot,top)
-
-    message : str
-              A string to print before the update begin, optional.
-
-    Returns
-    --------
-    None
-
-    Procedure
-    ---------
-    Just prints a updating message on the command line
-
-    Example
-    --------
-    >>> looprogress(i,0,100)
-     90% |*************************************                       |
-
-
-    Modification History
-    --------------------
-    2022-05-25 - Written by M. Cushing, University of Toledo.
-                Based on the Spextool mc_loopprogress.pro IDL program.
-    '''
-    
-    # Print the message if necessary
-    
-    if idx == 0 and message is not None:
-
-        print(message)
-
-    # Run counter        
-            
-    frac = (idx+1-bot)/(top-bot)
-    stars = "{:<70}".format('*'*round(frac*70))
-    print(str(round(frac*100)).rjust(3),'% ', '|', stars,'|',\
-          sep='',end='\r')
-
-    # Now get your prompt back
-
-    if idx == top-1:
-
-        print()
-
-
-def mkimgidxs(nrows,ncols,dtype=int):
-
-    '''
-
-    To generate indice grids for an image
-
-    Input Parameters
-    ----------------
-    nrows : int
-        The number of rows in the image
-
-    ncols : int
-        The number of columns in the image
-        
-    dtype : dtype, default, `int`, optional
-        The type of the output grids
-
-
-    Returns
-    --------
-    ximg, yimg : numpy.ndnarray, numpy.ndnarray of `dtype`
-         A list of integers giving the individual file numbers
-
-
-    Notes
-    -----
-    https://stackoverflow.com/questions/1550130/\
-    cloning-row-or-column-vectors
-
-    Examples
-    --------
-    > ximg, yimg = mkimgidxs(3,5)
-    > print(ximg)
-      [[0 1 2 3 4]
-       [0 1 2 3 4]
-       [0 1 2 3 4]]
-
-    > print(yimg)
-      [[0 0 0 0 0]
-      [1 1 1 1 1]
-      [2 2 2 2 2]]
-
-    Modification History
-    --------------------
-    2022-06-17 - Written by M. Cushing, University of Toledo.
-    Just the old reform/rebin trick from IDL.
-
-    '''
-        
-    ximg = np.tile(np.arange(ncols,dtype=dtype),(nrows,1))
-    yimg = np.tile(np.reshape(np.arange(nrows,dtype=dtype),\
-                   (nrows,1)),(1,ncols))
-
-    return (ximg, yimg)
-
-
-def moments(data,goodbad=False,robust=None,silent=True):
-
-    '''
     (Robustly) computes various statistics
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     data : numpy.ndarray
-        
+
     goodbad : numpy.ndarray, optional
-        An array with the same shape as `data` that identifies good and 
+        An array with the same shape as `data` that identifies good and
         bad data points.  0=bad, 1=good, 2=NaN
 
     robust : float, optional
-        If given, outliers are identified before computing the stats.  
+        If given, outliers are identified before computing the stats.
         See notes for details.
-        
+
     silent : {True, False}, optional
         If False, the result will be written to the command line.
 
@@ -273,15 +33,15 @@ def moments(data,goodbad=False,robust=None,silent=True):
             The mean of the (non-NaN, good) data points.
 
         variance : float
-            Estimate of the variance of the (non-NaN, good) data points.  
+            Estimate of the variance of the (non-NaN, good) data points.
             That is, the denominator is 1/(ndat-1).
 
         stddev : float
-            Estimate of the standard deviation of the (non-NaN, good) 
+            Estimate of the standard deviation of the (non-NaN, good)
             data points.  That is, the denominator is 1/(ndat-1).
 
         stderr : float
-            The standard error of the (non-NaN, good) data points.  
+            The standard error of the (non-NaN, good) data points.
             `stddev`/sqrt(ndat)
 
         skewness : float
@@ -289,27 +49,27 @@ def moments(data,goodbad=False,robust=None,silent=True):
 
         kurtosis : float
             The kurtosis of the (non-NaN, good) data points.
-        
+
         goodbad : numpy.ndarray of int
-            An array with the same shape as `data` that identifies good and 
-            bad data points.  0=bad, 1=good, 2=NaN        
+            An array with the same shape as `data` that identifies good and
+            bad data points.  0=bad, 1=good, 2=NaN
 
     Notes
     -----
-    If goodbad is passed, only points with values of 1 are used.  If 
-    robust is passed, the median and median absolute deviation and 
-    points are idetentified as an outlier if:
+    If goodbad is passed, only points with values of 1 are used.  If
+    robust is passed, the median and median absolute deviation and
+    points are identified as an outlier if:
 
     |x_i - MED|/(1.4826*MAD) > robust
 
-    where MAD = median(|x_i - MED|) and 1.4826*MAD is a robust estimate 
-    of the standard deviation for a gaussian distribution. Outliers are 
-    labelled `bad` in the goodbad array.  Finally, the statistics are 
-    computed using scipy.stats.describe.  
+    where MAD = median(|x_i - MED|) and 1.4826*MAD is a robust estimate
+    of the standard deviation for a gaussian distribution. Outliers are
+    labelled `bad` in the goodbad array.  Finally, the statistics are
+    computed using scipy.stats.describe.
 
-    NOTE:  The variance and standard deviations are *estimates* of the 
-    variance and standard deviation of the parent population and so 
-    have 1/(ndat-1) in the denominator. 
+    NOTE:  The variance and standard deviations are *estimates* of the
+    variance and standard deviation of the parent population and so
+    have 1/(ndat-1) in the denominator.
 
     Examples
     --------
@@ -337,11 +97,12 @@ def moments(data,goodbad=False,robust=None,silent=True):
     2022-05-24 - Written by M. Cushing, University of Toledo.
     Based on Spextool IDL program mc_moments.pro.
 
-    '''
-    
+    """
+
     # Set up goodbad array if need be
-    
-    if goodbad is False: goodbad = np.full_like(data,1,dtype=int)
+
+    if goodbad is False:
+        goodbad = np.full_like(data, 1, dtype=int)
 
     # Check for NaNs and update goodbad array
 
@@ -349,9 +110,9 @@ def moments(data,goodbad=False,robust=None,silent=True):
     goodbad[nanbool] = 2
 
     nnan = np.sum((goodbad == 2))
-    
+
     # Now find the sample you are working with
-    
+
     zsample = np.where(goodbad == 1)
 
     sample = data[zsample]
@@ -363,167 +124,609 @@ def moments(data,goodbad=False,robust=None,silent=True):
         # Compute the median and 1.4826*median absolute deviation (gmad).
 
         med = np.median(sample)
-        gmad = 1.4826*np.median(np.abs(sample-med))
+        gmad = 1.4826 * np.median(np.abs(sample - med))
 
         #  Generate the mask
-        
-        mask = ((sample-med)/gmad) <= robust
+
+        mask = ((sample - med) / gmad) <= robust
 
     elif robust is None:
 
-        mask = np.full_like(sample,True, dtype=bool)
-        
+        mask = np.full_like(sample, True, dtype=bool)
+
     # update the goodbad array
 
     goodbad[zsample] = np.array(mask)
-        
+
     # Do the stats
-        
+
     stats = describe(sample[mask])
 
     ngood = stats.nobs
     mean = stats.mean
     var = stats.variance
     stddev = np.sqrt(stats.variance)
-    stderr = np.sqrt(var/ngood)
+    stderr = np.sqrt(var / ngood)
     skewness = stats.skewness
     kurtosis = stats.kurtosis
 
     # Report the results if asked
 
     if silent is False:
-
-        print('Moments results:')        
+        print('Moments results:')
         print()
-        print(' Total number of input points = ',np.size(data))
-        print('        Number of good points = ',ngood)
-        print('               Number of NaNs = ',nnan)
+        print(' Total number of input points = ', np.size(data))
+        print('        Number of good points = ', ngood)
+        print('               Number of NaNs = ', nnan)
         print()
-        print('              Mean = ',mean)
-        print('          Variance = ',var)
-        print(' Standar Deviation = ',stddev)
-        print('    Standard Error = ',stderr)
+        print('              Mean = ', mean)
+        print('          Variance = ', var)
+        print(' Standar Deviation = ', stddev)
+        print('    Standard Error = ', stderr)
         print('          Skewness = ', skewness)
         print('          Kurtosis = ', kurtosis)
-        
-    return {'ndat':ngood,'mean':mean,'var':var,'stddev':stddev,\
-            'stderr':stderr,'skewness':skewness,'kurtosis':kurtosis,\
-            'goodbad':goodbad}
-    
 
-def nantrim(arr,flag=0,trim=False):
-
-    '''
-    To clip NaNs from an array.
+    return {'ndat': ngood, 'mean': mean, 'var': var, 'stddev': stddev,
+            'stderr': stderr, 'skewness': skewness, 'kurtosis': kurtosis,
+            'goodbad': goodbad}
 
 
-    Input Parameters
-    ----------------
-    arr : array_like
-        An (ndat,) array
+def median_data_stack(data, mask=None, stderr=True):
+    """
+    Median a spectral or image stack with optional mask
 
-    flag : {0,1,2,3}, optional
-        0 - The trailing NaNs are removed (default).
-        1 - The leading NaNs are removed.
-        2 - Both leading and trailing NaNs are removed.
-        3 -  All NaNs are removed.
 
-    trim : {False, True}, optional
-        If True, the program will return the trimmed array instead of a bool
-        array.
+    Parameters
+    ----------
+    data : numpy.ndarray
+        either a stack of spectra (nspec, npoints) or a stack of images
+        (nimgs, nrows, ncols).
+
+    mask : numpy.ndarray, optional
+        a mask array with the same shape as `data`.  
+        0 = bad, 1=good
+
+    stderr : {True, False}, optional
+        Set to return 1.4826*MAD/sqrt(n) instead of just 1.4826*MAD 
+        (see Procedure)
 
     Returns
-    -------
-    numpy.ndarray
-         A bool array where True indicates the number is not a NaN and False 
-         indicates the number is a NaN. 
+    --------
+    list
+        list[0] : numpy.ndarray 
+            the median of the spectral or image stack
 
-    Notes
-    -----
-    None
+        list[1] : numpy.ndarray
+            the uncertainty of the spectral or image stack (see Procedure)
+
+    Procedure
+    ---------
+    Spectral stack:
+
+        in this case, the data have the shape (nspec, npoints).  The
+        median of the stack is computed producing an array of size 
+        (npoints,). At each spectral point, the median absolute deviation
+        (MAD=median(|data-med}) is computed.  
+
+    Image stack:
+
+        in this case, the data have the shape (nspec, nrows, ncols).  The
+        median of the stack is computed producing an array of size 
+        (nrows, ncols). At each image point, the median absolute deviation
+        (MAD=median(|data-med}) is computed.  
+
+
+    The estimate of the standard deviation assuming the data arises from 
+    a gaussian is given by 1.4826*MAD.  Finally, if stderr is set, then the 
+    standard error is computed as 1.4826*MAD/root(n), where n is the number 
+    of data points at a given spectral point.
+
+    Note:  Points excluded by the mask are ignore in all calculations.
 
     Examples
     --------
-    > x = np.array([np.nan,2,3,4,np.nan,7,89,90,np.nan])
-    > nantrim(x,flag=0,trim=True)
-      [nan  2.  3.  4. nan  7. 89. 90.]
-    > nantrim(x,flag=1,trim=True)
-      [ 2.  3.  4. nan  7. 89. 90. nan]
-    > nantrim(x,flag=2,trim=True)
-      [ 2.  3.  4. nan  7. 89. 90.]
-    > nantrim(x,flag=3,trim=True)
-      [ 2.  3.  4.  7. 89. 90.]
+
+    > import numpy as np
+    > ss = np.array([[1,2,3,7],[0,5,8,2],[2,9,4,6]])
+    > msk = np.ones((3,4),dtype=int)
+    > msk[0,0] = 0
+    > print(ss)
+    > print(msk)
+    > med,unc=medcomb(ss,mask=msk)
+    > print(med)
+    > print(unc)
+
+      [[1 2 3 7]
+       [0 5 8 2]
+       [2 9 4 6]]
+      [[0 1 1 1]
+       [1 1 1 1]
+       [1 1 1 1]]
+      [1. 5. 4. 6.]
+      [1.04835651 2.56793853 0.85597951 0.85597951]
+
+    > istack = np.array([[[1,2,3],[4,5,6],[7,8,9]],\
+                         [[6,3,1],[9,2,4],[1,5,0]],\
+                         [[3,4,9],[5,7,7],[3,9,1]],\
+                         [[1,6,5],[2,1,9],[5,2,7]]])              
+    > msk = np.ones((4,3,3),dtype=int)
+    > msk[0,0,0] = 0
+    > print('Image Stack Test')
+    > print(istack)
+    > print(msk)
+    > med,unc=medcomb(istack,mask=msk)
+    > print(med)
+    > print(unc)
+
+      [[[1 2 3]
+        [4 5 6]
+        [7 8 9]]
+
+       [[6 3 1]
+        [9 2 4]
+        [1 5 0]]
+
+       [[3 4 9]
+        [5 7 7]
+        [3 9 1]]
+
+       [[1 6 5]
+        [2 1 9]
+        [5 2 7]]]
+      [[[0 1 1]
+        [1 1 1]
+        [1 1 1]]
+
+       [[1 1 1]
+        [1 1 1]
+        [1 1 1]]
+
+       [[1 1 1]
+        [1 1 1]
+        [1 1 1]]
+
+       [[1 1 1]
+        [1 1 1]
+        [1 1 1]]]
+      [[3.  3.5 4. ]
+       [4.5 3.5 6.5]
+       [4.  6.5 4. ]]
+      [[1.71195902 0.7413     1.4826    ]
+       [1.11195    1.4826     1.11195   ]
+       [1.4826     1.4826     2.59455   ]]
 
     Modification History
     --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_nantrim.pro.
+    2022-06-01 - Written by M. Cushing, University of Toledo.
+        Based on the Spextool IDL program mc_medcomb.pro.
 
-    '''
-    
-    # Test for correct flags
+    """
 
-    if flag not in [0,1,2,3]:
+    # Get array dimensions
 
-        raise ValueError('unknown flag.')
+    ndimen = np.ndim(data)
+    shape = np.shape(data)
 
-    # Convert to numpy array
-    
-    arr = np.array(arr)
+    # If no mask passed, create one.
 
-    # Test for 1D
-    
-    if arr.ndim != 1:
+    if mask is None:
+        mask = np.ones(shape, dtype=int)
 
-        raise ValueError('must be 1D.')        
+    # Now search and replace any masked pixels with NaNs
 
-    ndat = len(arr)
-    
-    # test the easy cases of non NaNs
+    data = np.where(mask != 0, data, np.nan)
 
-    test = np.isnan(arr)
+    # Spectral or image stack?
 
-    if flag == 3 or sum(test) == 0:
+    if ndimen == 2:
 
-        z = np.invert(test)
-        
-    if flag == 0:
+        tileshape = (shape[0], 1)  # spectral stack
 
-        cumsum = np.nancumsum(np.flip(arr))
-        z = np.flip(cumsum) != 0
-        
-    elif flag == 1:
+    elif ndimen == 3:
 
-        cumsum = np.nancumsum(arr)
-        z = cumsum !=0
-
-    elif flag == 2:
-
-        cumsum = np.nancumsum(arr)
-        zleading = cumsum != 0
-
-        cumsum = np.nancumsum(np.flip(arr))
-        ztrailing = np.flip(cumsum) != 0
-
-        z = zleading*ztrailing
-
-    if trim is True:
-
-        return(arr[z])
+        tileshape = (shape[0], 1, 1)  # image stack
 
     else:
 
-        return(z)
+        print('Unknown data shape.')
+        return
+
+    # Compute the median and median absolute deviation
+
+    med = np.nanmedian(data, axis=0)
+
+    mad = np.nanmedian(np.abs(data - np.tile(med, tileshape)), axis=0)
+
+    if stderr is not None:
+
+        mad *= 1.4826  # assume gaussian distribution
+        unc = mad / np.sqrt(np.sum(mask, axis=0))
+
+    else:
+
+        unc = mad / 1.4826  # assume gaussian distribution
+
+    return [med, unc]
+
+
+def scale_data_stack(stack, var, mask=None, index=None):
+
+    """
+    Scales a stack of spectra or images to a common intensity level.
+
+    Parameters
+    ----------
+    stack : array_like
+        (nspec,nwave) - a stack of spectra.
+
+        (nimgs,nrows,cols) - a stack of images.
+
+
+    var : array_like, or None
+        If not None, the variances associated with the spectra or images.
+
+
+    mask : array_like, optional
+        A mask array with the same shape as `stack`.
+        0 = bad, 1=good
+
+
+    index : int, optional
+        A mask array with the same shape as `data`.
+        0 = bad, 1=good
+
+
+    Returns
+    --------
+    sstack : numpy.ndarray
+        The scaled stack.
+
+
+    svar : numpy.ndarray or None
+        The scaled variance, if `var` is not None.
+
+
+    scales : numpy.ndarray
+        The scale factors.
+
+
+    Notes
+    -----
+    Computes the median of each spectrum or image and then determines
+    scale factors to scale each spectrum or image to either the median
+    value of the median values or the median value associated
+    with a particular spectrum or image.
+
+
+    Examples
+    --------
+    Spectral stack, scale to median:
+
+        > spec1 = np.array([1,1,1,1])
+        > spec2 = np.array([2,2,2,2])
+        > spec3 = np.array([4,4,4,4])
+        > specstack = np.stack((spec1,spec2,spec3))
+        > scaledstack, var, scales = scalestack(specstack,None)
+        > print(scaledstack)
+        > print(scales)
+          [[2. 2. 2. 2.]
+           [2. 2. 2. 2.]
+           [2. 2. 2. 2.]]
+          [2.  1.  0.5]
+
+    Spectral stack, scale to first spectrum:
+
+        > spec1 = np.array([1,1,1,1])
+        > spec2 = np.array([2,2,2,2])
+        > spec3 = np.array([4,4,4,4])
+        > specstack = np.stack((spec1,spec2,spec3))
+        > scaledstack, var, scales = scalestack(specstack,None,idx=0)
+        > print(scaledstack)
+        > print(scales)
+          [[1. 1. 1. 1.]
+           [1. 1. 1. 1.]
+           [1. 1. 1. 1.]]
+          [1.   0.5  0.25]
+
+    Image stack, scale to median:
+
+        > img1 = np.array([[1,1,1],[1,1,1],[1,1,1]])
+        > img2 = np.array([[2,2,2],[2,2,2],[2,2,2]])
+        > img3 = np.array([[4,4,4],[4,4,4],[4,4,4]])
+        > imgstack = np.stack((img1,img2,img3))
+        > scaledstack, var, scales = scalestack(imgstack, None)
+        > print(scaledstack)
+        > print(scales)
+          [[[2. 2. 2.]
+            [2. 2. 2.]
+            [2. 2. 2.]]
+
+           [[2. 2. 2.]
+            [2. 2. 2.]
+            [2. 2. 2.]]
+
+           [[2. 2. 2.]
+            [2. 2. 2.]
+            [2. 2. 2.]]]
+          [2.  1.  0.5]
+
+    Image stack, scale to first image:
+
+        > img1 = np.array([[1,1,1],[1,1,1],[1,1,1]])
+        > img2 = np.array([[2,2,2],[2,2,2],[2,2,2]])
+        > img3 = np.array([[4,4,4],[4,4,4],[4,4,4]])
+        > imgstack = np.stack((img1,img2,img3))
+        > scaledstack, var, scales = scalestack(imgstack, None)
+        > print(scaledstack)
+        > print(scales)
+
+          [[[1. 1. 1.]
+            [1. 1. 1.]
+            [1. 1. 1.]]
+
+           [[1. 1. 1.]
+            [1. 1. 1.]
+            [1. 1. 1.]]
+
+           [[1. 1. 1.]
+            [1. 1. 1.]
+            [1. 1. 1.]]]
+          [1.   0.5  0.25]
+
+    Modification History
+    --------------------
+    2022-06-18 - Written by M. Cushing, University of Toledo.
+    Based on Spextool IDL program mc_getspecscales.pro
+
+    """
+
+    # Get array dimensions
+
+    ndimen = np.ndim(stack)
+    shape = np.shape(stack)
+
+    # If no mask passed, create one.
+
+    if mask is None:
+        mask = np.ones(shape, dtype=int)
+
+    # Now search and replace any masked pixels with NaNs
+
+    stack = np.where(mask != 0, stack, np.nan)
+
+    # Set up median, reshape, and axis variables
+
+    if ndimen == 2:
+
+        # Spectral stack
+
+        axis_info = 1
+        reshape_info = (shape[0], 1)
+        tile_info = (1, shape[1])
+
+    elif ndimen == 3:
+
+        # Image stack
+
+        axis_info = (1, 2)
+        reshape_info = (shape[0], 1, 1)
+        tile_info = (1, shape[1], shape[2])
+
+    else:
+
+        print('scalestack:  Unknown data shape.')
+        return -1
+
+    # Do the calculation
+
+    medvals = np.nanmedian(stack, axis=axis_info)
+
+    # Check whether you are scaling to the median or spectrum/image 
+
+    if index is None:
+
+        # Scale to the median 
+
+        scales = np.median(medvals) / medvals
+
+    else:
+
+        # Scale to a spectrum or image
+
+        scales = medvals[index] / medvals
+
+    # Build the final scale array and do the math
+
+    sclarr = np.tile(np.reshape(scales, reshape_info), tile_info)
+
+    sstack = stack * sclarr
+
+    # Now return the scaled stack and potentially the scaled variance
+
+    if var is not None:
+
+        return sstack, var * sclarr**2, scales
+
+    else:
+        return sstack, None, scales
+
+
+def combine_flag_stack(stack, nbits=8):
+
+    """
+    To combine bit-set flag arrays.
+
+    Parameters
+    ----------
+    stack : numpy.ndarray
+        The stack of bit-set flag arrays to combine.  The stack
+        can either be a stack of spectra [nspec,ndat] or a stack
+        of images [nimg,nx,ny].
+
+    nbits : int, optional
+        The number of bits that can potentially be set.  This
+        routine assumes the bits are set sequentially, starting
+        with the zeroth bit.  So if nbits is 2, then it will
+        check the 0th and 1st bit.  The default is to check all
+        eight bits
+
+    Output Parameters
+    ------------------
+    numpy.ndarray
+        A bit-set flag array that reflects the bit-set flags from all
+        the spectra or images.
+
+    Procedure
+    ---------
+    Just some basic math.
+
+    Example
+    -------
+    Consider a two spectra masks
+
+    > spec1 = np.array([0,4,4,2])
+    > spec2 = np.array([0,0,3,1])
+    > stack = np.stack((spec1,spec2))
+    > combflagstack(stack)
+
+    [0 4 7 3]
+
+    Consider two image masks
+
+    > img1 = np.array([[0,2,0],[3,0,4],[0,0,0]])
+    > img2 = np.array([[1,0,0],[1,0,0],[0,0,0]])
+    > stack = np.stack((img1,img2))
+    > combflagstack(stack)
+
+    [[1 2 0]
+     [3 0 4]
+     [0 0 0]]
+
+    Modification History
+    --------------------
+    2022-03-09 - Written by M. Cushing, University of Toledo.
+    Based on the mc_combflagstack.pro IDL program.
+
+    """
+
+    # Determine whether this is a spectral stack or image stack
+
+    ndim = stack.ndim
+    shape = stack.shape
+
+    # Set up the output array
+    # Replace with match case statement when you upgrade to 3.10.
+
+    if ndim == 2:
+        comb = np.zeros(shape[1], dtype=np.int8)
+
+    if ndim == 3:
+        comb = np.zeros(shape[1:2], dtype=np.int8)
+
+    # Now just loop over each bit requested.
+
+    for i in range(0, nbits):
+        #  Identify the pixels with the particular bit set
+
+        set = bit_set(stack, i)
+
+        #  Collapse everything down one dimension
+
+        sum = np.sum(set, axis=0)
+
+        #  Identify which pixels are set
+
+        mask = sum > 0
+
+        #  Set them to the proper bit value and add to the comb
+
+        comb = comb + mask * 2 ** i
+
+    return comb
+
+
+def bit_set(array, bits):
+
+    """
+    To determine if the given bits are set in an array.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        numpy array to search
+
+    bits : int, list, numpy.ndarray
+        bit values to search in `array`
+
+    Returns
+    --------
+    numpy.ndarray
+        Returns a byte array of the same size as `array`.  An element
+        is set if any of the bits requested are set in the same element
+        of `array`.
+
+    Procedure
+    ---------
+    Uses the Gumley IDL ishft technique.  Note that the "first" bit 
+    is denoted as zero, while the "second" bit is denoted as 1.
+
+
+    Example
+    --------
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),0)
+
+    [1, 0, 1]
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),[0,3])
+
+    [1, 0, 1]
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),[2,3])
+
+    [0, 1, 0]
+
+    Modification History
+    --------------------
+    2022-03-09 - Written by M. Cushing, University of Toledo.
+                 Based on the Spextool IDL mc_bitset.pro program.
+    """
+
+    #  Define empty mask
+
+    mask = np.zeros_like(array, dtype=np.uint8)
+
+    #  test to see if bits is iterable
+
+    try:
+
+        iter(bits)
+
+    except TypeError:
+
+        bits = [bits]
+
+        #  Loop over every bit requested and identify those pixels for
+    #  which that bit is set.
+
+    for val in bits:
+        tmp = (array >> val) & 1
+        mask = mask | tmp
+
+    return mask
 
 
 def round(x):
 
-    '''
+    """
     To round numbers in a numpy array
 
-   
-    Input Parameters
-    ----------------
+
+    Parameters
+    ----------
     x : numpy.ndarray
 
 
@@ -531,7 +734,7 @@ def round(x):
     --------
     numpy.ndarray like `x`
         The numbers are rounded to the nearest integer, and tied away \
-        from zero. 
+        from zero.
 
     Notes
     -----
@@ -548,7 +751,7 @@ def round(x):
     --------------------
     2022-06-19 - Written by M. Cushing, University of Toledo.
 
-    '''
+    """
     
     mask = (x >= 0)
     out = np.empty_like(x)
