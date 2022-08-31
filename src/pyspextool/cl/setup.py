@@ -3,10 +3,9 @@ from astropy.io import fits
 from pyspextool.cl import config
 from pyspextool.io.read_instrument_file import read_instrument_file
 
+
 def setup(instrument=config.state['instruments'][0], rawpath=None,
           calpath=None, procpath=None, qapath=None, clupdate=False):
-    
-
     """
     Set up basic information for pyspextool to run.
 
@@ -48,37 +47,36 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
     # Get the package path
 
-    dir = os.path.dirname(config.__file__)+'../../../../'
+    dir = os.path.dirname(config.__file__) + '../../../../'
     packagepath = os.path.normpath(dir)
     config.state['packagepath'] = packagepath
-    
+
     # Get the instrument directory
 
-    test = os.path.join(packagepath,'instruments',instrument)
+    test = os.path.join(packagepath, 'instruments', instrument)
     if os.path.isdir(test) is True:
 
         config.state['instrument'] = instrument
 
     else:
 
-        message = 'Unknown instrument.  Possible instruments are: '+\
-          str.join(", ",config.state['instruments'])+'.'
+        message = 'Unknown instrument.  Possible instruments are: ' + \
+                  str.join(", ", config.state['instruments']) + '.'
         raise ValueError(message)
 
     # Now do the paths.  First we check for the .path file in the user's home
     # directory
 
-    homedir = os.path.expanduser('~')    
-    filename = os.path.join(homedir, '.pyspextool_'+\
-                            config.state['instrument']+'.dat')
-    filename = os.path.join(homedir,filename)
+    homedir = os.path.expanduser('~')
+    filename = os.path.join(homedir, '.pyspextool_' + \
+                            config.state['instrument'] + '.dat')
+    filename = os.path.join(homedir, filename)
 
     if os.path.isfile(filename) is True:
 
         f = open(filename, 'r')
         paths = []
         for line in f:
-
             paths.append(line.strip())
 
         config.state['rawpath'] = paths[0]
@@ -93,12 +91,11 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         config.state['calpath'] = cwd
         config.state['procpath'] = cwd
         config.state['qapath'] = cwd
-                                
-        
-# Now let's modify the paths based on the user
-        
+
+    # Now let's modify the paths based on the user
+
     # Is rawpath passed?
-    
+
     if rawpath is not None:
 
         # deal with ~/
@@ -110,18 +107,18 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         if os.path.isdir(rawpath) is True:
 
             # get the absolute path 
-            
+
             config.state['rawpath'] = os.path.abspath(rawpath)
-            
+
         else:
 
             # Path is not real.
-            
+
             message = 'rawpath not a directory.'
             raise ValueError(message)
 
     # Is calpath passed?
-    
+
     if calpath is not None:
 
         # deal with ~/
@@ -133,18 +130,18 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         if os.path.isdir(calpath) is True:
 
             # get the absolute path 
-            
+
             config.state['calpath'] = os.path.abspath(calpath)
-            
+
         else:
 
             # Path is not real.
-            
+
             message = 'calpath not a directory.'
             raise ValueError(message)
 
     # Is procpath passed?
-    
+
     if procpath is not None:
 
         # deal with ~/
@@ -156,18 +153,18 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         if os.path.isdir(procpath) is True:
 
             # get the absolute path 
-            
+
             config.state['procpath'] = os.path.abspath(procpath)
-            
+
         else:
 
             # Path is not real.
-            
+
             message = 'procpath not a directory.'
             raise ValueError(message)
 
     # Is qapath passed?
-    
+
     if qapath is not None:
 
         # deal with ~/
@@ -175,51 +172,48 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         qapath = os.path.expanduser(qapath)
 
         # is the path real?
-        
+
         if os.path.isdir(qapath) is True:
 
             # get the absolute path 
-            
+
             config.state['qapath'] = os.path.abspath(qapath)
-            
+
         else:
 
             # Path is not real.
-            
+
             message = 'qapath not a directory.'
             raise ValueError(message)
-        
-# Now write the paths to the user home directory
 
-    f = open(os.path.join(homedir,'.pyspextool_'+config.state['instrument']+\
-                          '.dat'),'w')
-    f.write('%s \n' % config.state['rawpath'])   
+    # Now write the paths to the user home directory
+
+    f = open(os.path.join(homedir, '.pyspextool_' + config.state['instrument'] + \
+                          '.dat'), 'w')
+    f.write('%s \n' % config.state['rawpath'])
     f.write('%s \n' % config.state['calpath'])
     f.write('%s \n' % config.state['procpath'])
     f.write('%s \n' % config.state['qapath'])
     f.close()
 
     if clupdate is True:
-
         print('Pyspextool Setup')
         print('----------------')
-        print('Instrument: ',config.state['instrument'])
+        print('Instrument: ', config.state['instrument'])
         print()
-        print('rawpath: ',config.state['rawpath'])
-        print('calpath: ',config.state['calpath'])
-        print('procpath: ',config.state['procpath'])
-        print('qapath: ',config.state['qapath'])
+        print('rawpath: ', config.state['rawpath'])
+        print('calpath: ', config.state['calpath'])
+        print('procpath: ', config.state['procpath'])
+        print('qapath: ', config.state['qapath'])
 
-# Read instrument file
+    # Read instrument file
 
-    file = os.path.join(packagepath,'instruments',config.state['instrument'],
-                        'data', config.state['instrument']+'.dat')
+    file = os.path.join(packagepath, 'instruments', config.state['instrument'],
+                        'data', config.state['instrument'] + '.dat')
 
     instrumentinfo = read_instrument_file(file)
     config.state['nint'] = instrumentinfo['NINT']
     config.state['xspextool_keywords'] = instrumentinfo['XSPEXTOOL_KEYWORDS']
-
-
 
     biasfile = os.path.join(config.state['packagepath'], 'instruments',
                             config.state['instrument'], 'data',
@@ -231,21 +225,10 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
                                       'max': config.state['lincormax'],
                                       'bit': 0}
 
+    # Get the bad pixel mask
 
-
-# Get the bad pixel mask
-
-    file = os.path.join(packagepath,'instruments',config.state['instrument'],
-                        'data', config.state['instrument']+'_bdpxmk.fits')
+    file = os.path.join(packagepath, 'instruments', config.state['instrument'],
+                        'data', config.state['instrument'] + '_bdpxmk.fits')
     config.state['bad_pixel_mask'] = fits.getdata(file)
 
 #
-
-
-            
-        
-
-        
-
-    
-

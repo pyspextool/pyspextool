@@ -5,7 +5,7 @@ import os
 from pyspextool.fit.polyfit import poly_fit_2d
 
 
-def fit_lines_1dxd(orders, line_info, home_order, dispersion_degree,
+def wavecal_solution_1dxd(orders, line_info, home_order, dispersion_degree,
                    order_degree, clupdate=True, qafileinfo=None):
     """
     To perform a 2D fit to the x position and order number of wavelength
