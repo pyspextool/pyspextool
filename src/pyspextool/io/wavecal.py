@@ -7,7 +7,6 @@ from pyspextool.utils.arrays import idl_unrotate
 
 
 def read_line_list(file, delta_to_microns=False):
-
     """
     To read a Spextool line list into memory.
 
@@ -56,7 +55,7 @@ def read_line_list(file, delta_to_microns=False):
     """
 
     # set up empty lists
-    
+
     order = []
     swave = []
     lineid = []
@@ -65,8 +64,8 @@ def read_line_list(file, delta_to_microns=False):
     fittype = []
     nterms = []
 
-# Load them in
-    
+    # Load them in
+
     f = open(file, 'r')
     for line in f:
 
@@ -82,8 +81,8 @@ def read_line_list(file, delta_to_microns=False):
         fittype.append(str(vals[5]).strip())
         nterms.append(int(vals[6]))
 
-# Convert to numpy array and dictionary-ify 
-        
+    # Convert to numpy array and dictionary-ify
+
     lineinfo = {'order': np.array(order), 'wavelength': np.array(swave),
                 'id': np.array(lineid),
                 'delta_wavelength_left': np.array(lwin),
@@ -92,9 +91,9 @@ def read_line_list(file, delta_to_microns=False):
 
     if delta_to_microns:
         lineinfo['delta_wavelength_left'] = \
-            lineinfo['delta_wavelength_left']/1e4
+            lineinfo['delta_wavelength_left'] / 1e4
         lineinfo['delta_wavelength_right'] = \
-            lineinfo['delta_wavelength_right']/1e4
+            lineinfo['delta_wavelength_right'] / 1e4
 
     return lineinfo
 
@@ -226,6 +225,19 @@ def read_wavecal_file(file):
 
     result.update({'xcorspec': xcorspec})
 
+
+    val = hdul[0].header['NLINES']
+    result.update({'nlines': val})
+
+    val = hdul[0].header['NGOOD']
+    result.update({'ngood': val})
+
+    val = hdul[0].header['NBAD']
+    result.update({'nbad': val})
+
+    val = hdul[0].header['RMS']
+    result.update({'rms': val})    
+
     if wcaltype == '1dxd':
 
         dispdeg = hdul[0].header['DISPDEG']
@@ -243,7 +255,18 @@ def read_wavecal_file(file):
             key = 'P2W_C' + str(i).zfill(2)
             p2wcoeffs[i] = hdul[0].header[key]
 
-        result.update({'p2wcoeffs': p2wcoeffs})
+        result.update({'coeffs': p2wcoeffs})
+
+        # Get the covariance matrix
+
+        p2wcovar = np.empty((ncoeffs,ncoeffs))
+        for i in range(ncoeffs):
+
+            for j in range(ncoeffs):
+                key = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
+                p2wcovar[j,i] = hdul[0].header[key]
+
+        result.update({'covar': p2wcovar})
 
         val = hdul[0].header['HOMEORDR']
         result.update({'homeorder': val})
@@ -260,10 +283,9 @@ def read_wavecal_file(file):
 
 
 def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
-                       dispersion_degree, order_degree, home_order, rms,
-                       ngood, nbad, wavecal, spatcal, rotate, flatname,
+                       covar, dispersion_degree, order_degree, home_order, rms,
+                       nlines, ngood, nbad, wavecal, spatcal, rotate, flatname,
                        oname, version, overwrite=True):
-
     # Get basic things
 
     norders = len(orders)
@@ -280,12 +302,10 @@ def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     # Generate the wavelengths
 
     for i in range(norders):
-
         z = np.where(omask == orders[i])
         scale = home_order / orders[i]
-        wavecal[z] = poly_2d(wavecal[z], omask[z],dispersion_degree,
-                            order_degree, coeffs) * scale
-
+        wavecal[z] = poly_2d(wavecal[z], omask[z], dispersion_degree,
+                             order_degree, coeffs) * scale
 
     hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
     hdr['NORDERS'] = (norders, ' Number of orders identified')
@@ -293,15 +313,41 @@ def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     hdr['EXTTYPE'] = ('1D', ' Extraction type')
     hdr['WCTYPE'] = ('1DXD', ' Wavelength calibration type')
     hdr['RMS'] = (rms, 'RMS of 1DXD wavecal fit in Angstroms')
+    hdr['NLINES'] = (nlines, ' Number of lines in the fit')
     hdr['NGOOD'] = (ngood, ' Number of good points')
     hdr['NBAD'] = (nbad, 'Number of bad points')
     hdr['VERSION'] = (version, 'pySpextool version')
 
+    # Write the extract ranges
+    
     for i in range(norders):
         name = 'OR' + str(orders[i]).zfill(3) + '_XR'
         comment = ' Extraction range for order ' + str(orders[i]).zfill(3)
         hdr[name] = (','.join(str(x) for x in xranges[i, :]), comment)
 
+    # Write the coefficients
+
+    ncoeffs = (dispersion_degree+1) * (order_degree+1)
+
+    for i in range(ncoeffs):
+
+        name = 'COEFF_' + str(i).zfill(2)
+        comment = ' c'+str(i)+' coefficient for solution'
+        hdr[name] = (coeffs[i], comment)
+
+    # Write the covariance 
+
+    for i in range(ncoeffs):
+
+        for j in range(ncoeffs):        
+
+            name = 'COV_'+str(i).zfill(2)+str(j).zfill(2)
+            comment = str(i)+','+str(j)+\
+            ' (col,row) element of the covariance'
+            hdr[name] = (covar[j,i], comment)
+
+
+        
     # Write the results
 
     wavecal_hdu = fits.ImageHDU(idl_unrotate(wavecal, rotate))
@@ -310,10 +356,4 @@ def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     hdu = fits.HDUList([phdu, wavecal_hdu, spatcal_hdu])
     hdu.writeto(oname, overwrite=overwrite)
 
-
-    #fits.writeto('wavecal.fits', wavecal, overwrite=True)
-
-
-
-
-    
+    # fits.writeto('wavecal.fits', wavecal, overwrite=True)

@@ -135,4 +135,8 @@ def wavecal_solution_1dxd(orders, line_info, home_order, dispersion_degree,
                                 '_residuals' +
                                 qafileinfo['extension']))
 
-    return fit['coeffs'], fit['rms'], ntot, nbad
+        solution = {'coeffs':fit['coeffs'], 'covar':fit['covar'],
+                    'rms':fit['rms'], 'nlines':ntot, 'ngood':ntot-nbad,
+                    'nbad':nbad}
+
+    return solution

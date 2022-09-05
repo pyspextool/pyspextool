@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pickle
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.calibration.get_line_guess_position import get_line_guess_position
@@ -165,9 +166,9 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
 
     if use_stored_solution is False:
 
-        #
-        # Locate the line positions
-        #
+       #
+       # Locate the line positions
+       #
 
         # Get the line list to search for lines
 
@@ -177,13 +178,13 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
 
         lineinfo = read_line_list(filename, delta_to_microns=True)
 
-        #    with open('data.sav', 'wb') as f:
-        #        pickle.dump([spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal], f)
-        #
-        #    return
-        #
-        #    with open('data.sav', 'rb') as f:
-        #        spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal,   = pickle.load(f)
+        with open('data.sav', 'wb') as f:
+                pickle.dump([spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal], f)
+        
+        return
+        
+#        with open('data.sav', 'rb') as f:
+#          spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal,   = pickle.load(f)
 
         #     Determine the guess position and search range for each
 
@@ -200,7 +201,7 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
         # Now find the lines
 
         if clupdate:
-        print('Finding the lines...')
+            print('Finding the lines...')
 
         if qafile_findlines is True:
 
@@ -234,20 +235,29 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
         if wavecalinfo['wcaltype'] == '1D':
             print('hi')
 
-        if wavecalinfo['wcaltype'] == '1DXD':
+        if wavecalinfo['wcaltype'] == '1dxd':
 
-            p2w_coeffs, rms, ngood, nbad = wavecal_solution_1dxd(wavecalinfo['orders'],
-                                                             lineinfo,
-                                                             wavecalinfo['homeorder'],
-                                                             wavecalinfo['dispdeg'],
-                                                             wavecalinfo['ordrdeg'],
-                                                             qafileinfo=qafileinfo,
-                                                             clupdate=clupdate)
+            solution = wavecal_solution_1dxd(wavecalinfo['orders'],lineinfo,
+                                             wavecalinfo['homeorder'],
+                                             wavecalinfo['dispdeg'],
+                                             wavecalinfo['ordrdeg'],
+                                             qafileinfo=qafileinfo,
+                                             clupdate=clupdate)
 
+            
+
+            
     else:
 
-
-
+#        with open('data.sav', 'rb') as f:
+#           spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal,   = pickle.load(f)
+        
+        solution = {'coeffs':wavecalinfo['coeffs'],
+                    'covar':wavecalinfo['covar'],
+                    'rms':wavecalinfo['rms'],
+                    'nlines':wavecalinfo['nlines'],
+                    'ngood':wavecalinfo['ngood'],
+                    'nbad':wavecalinfo['nbad']}
 
 
     #
@@ -260,13 +270,15 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
     if wavecalinfo['wcaltype'] == '1D':
         print('later')
 
-    elif wavecalinfo['wcaltype'] == '1DXD':
+    elif wavecalinfo['wcaltype'] == '1dxd':
 
         write_wavecal_1dxd(flatinfo['ncols'], flatinfo['nrows'],
                            flatinfo['orders'], flatinfo['edgecoeffs'],
-                           flatinfo['xranges'], p2w_coeffs,
-                           wavecalinfo['dispdeg'], wavecalinfo['ordrdeg'],
-                           wavecalinfo['homeorder'], rms * 1e4, ngood, nbad,
+                           flatinfo['xranges'], solution['coeffs'],
+                           solution['covar'], wavecalinfo['dispdeg'],
+                           wavecalinfo['ordrdeg'], wavecalinfo['homeorder'],
+                           solution['rms'] * 1e4, solution['nlines'],
+                           solution['ngood'], solution['nbad'],
                            wavecal, spatcal, flatinfo['rotation'], flatfile,
                            os.path.join(config.state['calpath'], oname + '.fits'),
                            config.state['version'], overwrite=overwrite)

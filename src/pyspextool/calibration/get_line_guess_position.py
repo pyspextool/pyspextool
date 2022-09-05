@@ -71,8 +71,8 @@ def get_line_guess_position(spectra, orders, xranges, line_info):
         # Now let's get the wavelengths we want the positions of
 
         cen_w_want = line_info['wavelength'][z].astype(float)        
-        left_w_want = cen_w_want-line_info['range_min_wavelength'][z]
-        rght_w_want = cen_w_want+line_info['range_max_wavelength'][z]
+        left_w_want = cen_w_want-line_info['delta_wavelength_left'][z]
+        rght_w_want = cen_w_want+line_info['delta_wavelength_right'][z]
 
         # Trim the left and right side to ensure they don't go below the
         # wavelength range of the order
