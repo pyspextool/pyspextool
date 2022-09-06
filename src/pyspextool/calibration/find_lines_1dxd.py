@@ -2,6 +2,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as pl
 from matplotlib.backends.backend_pdf import PdfPages
+from scipy import interpolate
 
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.plot.limits import get_spec_range
@@ -131,23 +132,34 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
 
             fit = fit_peak1d(x[zline],y[zline],nparms=line_info['num_parms'][i],
                              type=type,positive=True)
-        
+
+            # Store the results
+    
+            line_xpos[i] = fit['parms'][1]
+            line_fwhm[i] = fit['parms'][2]*2.354
+            line_inten[i] = fit['parms'][0]
+                    
         else:
 
-            print('do later.')
+            med = np.median((y[zline][0],y[zline][-1]))
 
-        # Store the results
-    
-        line_xpos[i] = fit['parms'][1]
-        line_fwhm[i] = fit['parms'][2]*2.354
-        line_inten[i] = fit['parms'][0]
+            m1 = np.sum(x[zline]*(y[zline]-med)) / np.sum(y[zline]-med)
+            
+            m2 = np.sum((x[zline]-m1)**2*(y[zline]-med)) / np.sum(y[zline]-med)
+
+            f = interpolate.interp1d(x[zline],y[zline])
+            inten = f(m1)
+
+            line_xpos[i] = m1            
+            line_fwhm[i] = np.sqrt(m2)*2.354
+            line_inten[i] = inten
 
         # Now let's check to see whether it is a good find or not.
 
 
-        if (fit['parms'][1] <= line_info['xguess'][i]+pix_thresh) and \
-           (fit['parms'][1] >= line_info['xguess'][i]-pix_thresh) and \
-           (fit['parms'][2] > 0) and (fit['parms'][0] > 0):
+        if (line_xpos[i] <= line_info['xguess'][i]+pix_thresh) and \
+           (line_xpos[i] >= line_info['xguess'][i]-pix_thresh) and \
+           (line_fwhm[i] > 0) and (line_inten[i] > 0):
            line_goodbad[i] = 1
     
         if qafileinfo:
@@ -178,8 +190,10 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
             axes2.set(xlabel='Column Number (pixels)',ylabel='Intensity')
             axes2.axvline(x=line_info['xguess'][i], linestyle='solid',
                           color='r')
-            axes2.axvline(x=fit['parms'][1], linestyle='solid', color='g')            
-            axes2.step(x[zline], fit['fit'], 'g')
+            axes2.axvline(x=line_xpos[i], linestyle='solid', color='g')            
+            if type != 'centroid':
+                axes2.step(x[zline], fit['fit'], 'g')
+
             axes2.set_title(goodbad)
             
             axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])

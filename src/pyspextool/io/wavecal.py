@@ -180,14 +180,21 @@ def read_wavecal_file(file):
 
     """
 
+    # Open the file
+    
     hdul = fits.open(file)
-    spectra = hdul[0].data
 
+    # Store the spectrum 
+
+    spectra = hdul[0].data
+    if spectra.ndim == 2:
+        spectra = np.expand_dims(spectra,0)
+
+    result = {'spectra': spectra}
+        
     # Clean the header and grab important keywords
 
     hdul[0].verify('silentfix')  # this was needed for to correct hdr problems
-
-    result = {'spectra': spectra}
 
     norders = hdul[0].header['NORDERS']
     result.update({'norders': norders})
@@ -218,13 +225,12 @@ def read_wavecal_file(file):
 
     xcororder = hdul[0].header['XCORORDR']
     result.update({'xcororder': xcororder})
-
+    
     z = orders == xcororder
     xcorspec = np.squeeze(spectra[z, :, :])
     xcorspec[0, :] = np.arange(xranges[z, 0], xranges[z, 1] + 1)
 
     result.update({'xcorspec': xcorspec})
-
 
     val = hdul[0].header['NLINES']
     result.update({'nlines': val})
@@ -238,39 +244,45 @@ def read_wavecal_file(file):
     val = hdul[0].header['RMS']
     result.update({'rms': val})    
 
+    dispdeg = hdul[0].header['DISPDEG']
+    result.update({'dispdeg': dispdeg})
+    
     if wcaltype == '1dxd':
-
-        dispdeg = hdul[0].header['DISPDEG']
-        result.update({'dispdeg': dispdeg})
-
-        ordrdeg = hdul[0].header['ORDRDEG']
-        result.update({'ordrdeg': ordrdeg})
-
-        # Now get the pixel to wavelength coefficients
-
-        ncoeffs = (dispdeg + 1) * (ordrdeg + 1)
-        p2wcoeffs = np.empty(ncoeffs)
-
-        for i in range(ncoeffs):
-            key = 'P2W_C' + str(i).zfill(2)
-            p2wcoeffs[i] = hdul[0].header[key]
-
-        result.update({'coeffs': p2wcoeffs})
-
-        # Get the covariance matrix
-
-        p2wcovar = np.empty((ncoeffs,ncoeffs))
-        for i in range(ncoeffs):
-
-            for j in range(ncoeffs):
-                key = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
-                p2wcovar[j,i] = hdul[0].header[key]
-
-        result.update({'covar': p2wcovar})
 
         val = hdul[0].header['HOMEORDR']
         result.update({'homeorder': val})
 
+        ordrdeg = hdul[0].header['ORDRDEG']
+        result.update({'ordrdeg': ordrdeg})
+
+        ncoeffs = (dispdeg + 1) * (ordrdeg + 1)
+
+
+    elif wcaltype == '1d':
+
+        ncoeffs = (dispdeg + 1)
+        
+    # Now get the pixel to wavelength coefficients
+
+    p2wcoeffs = np.empty(ncoeffs)
+
+    for i in range(ncoeffs):
+            key = 'P2W_C' + str(i).zfill(2)
+            p2wcoeffs[i] = hdul[0].header[key]
+
+    result.update({'coeffs': p2wcoeffs})
+
+    # Get the covariance matrix
+
+    p2wcovar = np.empty((ncoeffs,ncoeffs))
+    for i in range(ncoeffs):
+
+        for j in range(ncoeffs):
+            key = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
+            p2wcovar[j,i] = hdul[0].header[key]
+           
+    result.update({'covar': p2wcovar})
+   
     val = hdul[0].header['WAVEFMT']
     result.update({'wavefmt': val.strip()})
 
@@ -285,7 +297,7 @@ def read_wavecal_file(file):
 def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
                        covar, dispersion_degree, order_degree, home_order, rms,
                        nlines, ngood, nbad, wavecal, spatcal, rotate, flatname,
-                       oname, version, overwrite=True):
+                       oname, version, stored_solution=False, overwrite=True):
     # Get basic things
 
     norders = len(orders)
@@ -312,6 +324,7 @@ def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
     hdr['EXTTYPE'] = ('1D', ' Extraction type')
     hdr['WCTYPE'] = ('1DXD', ' Wavelength calibration type')
+    hdr['STORED'] = (stored_solution, ' Use stored solution?')
     hdr['RMS'] = (rms, 'RMS of 1DXD wavecal fit in Angstroms')
     hdr['NLINES'] = (nlines, ' Number of lines in the fit')
     hdr['NGOOD'] = (ngood, ' Number of good points')

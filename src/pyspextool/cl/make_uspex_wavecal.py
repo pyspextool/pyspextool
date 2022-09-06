@@ -178,10 +178,10 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
 
         lineinfo = read_line_list(filename, delta_to_microns=True)
 
-        with open('data.sav', 'wb') as f:
-                pickle.dump([spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal], f)
+#        with open('data.sav', 'wb') as f:
+#                pickle.dump([spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal], f)
         
-        return
+#        return
         
 #        with open('data.sav', 'rb') as f:
 #          spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal,   = pickle.load(f)
@@ -205,7 +205,8 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
 
         if qafile_findlines is True:
 
-            qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+            qafileinfo = {'figsize': (8.5, 11),
+                          'filepath': config.state['qapath'],
                           'filename': oname, 'extension': '.pdf'}
 
         else:
@@ -214,9 +215,9 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
         # Find the lines
 
         lineinfo = find_lines_1dxd(spectra, wavecalinfo['orders'], lineinfo,
-                                   flatinfo['slitw_pix'], qafileinfo=None,
+                                   flatinfo['slitw_pix'], qafileinfo=qafileinfo,
                                    clupdate=clupdate)
-
+        return
         #
         # Let's do the actual calibration
         #
@@ -226,7 +227,8 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
 
         if qafile_fitlines is True:
 
-            qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+            qafileinfo = {'figsize': (8.5, 11),
+                          'filepath': config.state['qapath'],
                           'filename': oname, 'extension': '.pdf'}
 
         else:
@@ -251,6 +253,9 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
 
 #        with open('data.sav', 'rb') as f:
 #           spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal,   = pickle.load(f)
+
+        if clupdate:
+            print('Using stored solution...')
         
         solution = {'coeffs':wavecalinfo['coeffs'],
                     'covar':wavecalinfo['covar'],
@@ -281,7 +286,9 @@ def make_uspex_wavecal(files, flatfile, oname, prefix='arc-',
                            solution['ngood'], solution['nbad'],
                            wavecal, spatcal, flatinfo['rotation'], flatfile,
                            os.path.join(config.state['calpath'], oname + '.fits'),
-                           config.state['version'], overwrite=overwrite)
+                           config.state['version'],
+                           stored_solution=use_stored_solution,
+                           overwrite=overwrite)
 
     else:
         print('unknown wcaltype.')
