@@ -121,6 +121,12 @@ def read_instrument_file(filename):
     z = find_keyword(labels, keyword)
     output[keyword] = vals[z].item()
 
+    # EXTENSION
+
+    keyword = 'EXTENSION'
+    z = find_keyword(labels, keyword)
+    output[keyword] = vals[z].item()    
+
     # FITSREADPROGRAM
 
     keyword = 'FITSREADPROGRAM'

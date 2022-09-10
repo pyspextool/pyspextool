@@ -64,6 +64,11 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
                   str.join(", ", config.state['instruments']) + '.'
         raise ValueError(message)
 
+    # Store things
+
+
+
+    
     # Now do the paths.  First we check for the .path file in the user's home
     # directory
 
@@ -208,10 +213,15 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
     # Read instrument file
 
+    if (config.state['instrument'] in ['uspex','spex']):
+            config.state['irtf'] = True
+
+        
     file = os.path.join(packagepath, 'instruments', config.state['instrument'],
                         'data', config.state['instrument'] + '.dat')
 
     instrumentinfo = read_instrument_file(file)
+    config.state['suffix'] = instrumentinfo['SUFFIX']
     config.state['nint'] = instrumentinfo['NINT']
     config.state['xspextool_keywords'] = instrumentinfo['XSPEXTOOL_KEYWORDS']
 

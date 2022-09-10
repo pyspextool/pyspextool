@@ -299,6 +299,38 @@ def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
 
     return alpha, beta
 
+def poly_1d(x, coeffs):
+
+    """
+    evaluates a polynomial function of two independent variables
+    
+
+    Parameters
+    ----------
+    x : array_like, int or float
+        an array of independent values
+
+    coeffs : np.ndarray
+        an array of coefficients from polyfit2d
+
+    Output Parameters
+    -----------------
+    numpy.ndarray
+        the polynomial evaluated at `x`
+
+    Examples
+    --------
+    later?
+
+    """
+
+    z = 0
+    for i in range(len(coeffs)):
+
+            z = z+coeffs[i]*x**i
+
+    return z
+
 
 def poly_2d(x, y, xorder, yorder, coeffs):
 

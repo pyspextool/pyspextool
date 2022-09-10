@@ -23,7 +23,8 @@
 #
  FILEREADMODE=Index
  OPREFIX=spectra
- SUFFIX=*.fits*
+ SUFFIX=.[ab]
+ EXTENSION=*.fits*
  FITSREADPROGRAM=mc_readuspexfits
 #
 # Reduction Mode

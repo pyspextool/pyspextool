@@ -1,6 +1,8 @@
 import numpy as np
+#from numpy.polynomial.polynomial import polyval 
 from astropy.io import fits
 
+from pyspextool.fit.polyfit import poly_1d
 from pyspextool.fit.polyfit import poly_2d
 from pyspextool.spectroscopy.make_order_mask import make_order_mask
 from pyspextool.utils.arrays import idl_unrotate
@@ -294,10 +296,11 @@ def read_wavecal_file(file):
     return result
 
 
-def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
-                       covar, dispersion_degree, order_degree, home_order, rms,
-                       nlines, ngood, nbad, wavecal, spatcal, rotate, flatname,
-                       oname, version, stored_solution=False, overwrite=True):
+def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
+                     covar, dispersion_degree, rms, nlines, ngood, nbad,
+                     wavecal, spatcal, rotate, flatname, oname, version,
+                     XD=None, stored_solution=False, overwrite=True):
+
     # Get basic things
 
     norders = len(orders)
@@ -313,22 +316,46 @@ def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Generate the wavelengths
 
-    for i in range(norders):
-        z = np.where(omask == orders[i])
-        scale = home_order / orders[i]
-        wavecal[z] = poly_2d(wavecal[z], omask[z], dispersion_degree,
-                             order_degree, coeffs) * scale
+    if XD is None:
 
+    # This is the pure 1D case.
+        
+        for i in range(norders):
+            z = np.where(omask == orders[i])
+            wavecal[z] = poly_1d(wavecal[z], coeffs)
+
+        ncoeffs = dispersion_degree+1
+        
+    else:
+
+    # This is the 1DXD case.
+        
+        for i in range(norders):
+            z = np.where(omask == orders[i])
+            scale = home_order / orders[i]
+            wavecal[z] = poly_2d(wavecal[z], omask[z], dispersion_degree,
+                                order_degree, coeffs) * scale
+
+        ncoeffs = (dispersion_degree+1) * (order_degree+1)
+
+            
     hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
     hdr['NORDERS'] = (norders, ' Number of orders identified')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
     hdr['EXTTYPE'] = ('1D', ' Extraction type')
     hdr['WCTYPE'] = ('1DXD', ' Wavelength calibration type')
-    hdr['STORED'] = (stored_solution, ' Use stored solution?')
-    hdr['RMS'] = (rms, 'RMS of 1DXD wavecal fit in Angstroms')
+    hdr['DISPDEG'] = (dispersion_degree, ' Dispersion fit degree')
+
+    if XD is not None:
+
+        hdr['ORDRDEG'] = (xd[0], ' Order fit degree')
+        hdr['HOMEDEG'] = (xd[1], ' Home Order')        
+    
+    hdr['RMS'] = (rms, 'RMS of fit in Angstroms')
     hdr['NLINES'] = (nlines, ' Number of lines in the fit')
     hdr['NGOOD'] = (ngood, ' Number of good points')
     hdr['NBAD'] = (nbad, 'Number of bad points')
+    hdr['STORED'] = (stored_solution, ' Use stored solution?')
     hdr['VERSION'] = (version, 'pySpextool version')
 
     # Write the extract ranges
@@ -339,8 +366,6 @@ def write_wavecal_1dxd(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
         hdr[name] = (','.join(str(x) for x in xranges[i, :]), comment)
 
     # Write the coefficients
-
-    ncoeffs = (dispersion_degree+1) * (order_degree+1)
 
     for i in range(ncoeffs):
 
