@@ -9,7 +9,7 @@ from pyspextool.calibration.wavecal_solution_1d import wavecal_solution_1d
 from pyspextool.cl import config
 from pyspextool.io.check_parameter import check_parameter
 from pyspextool.io.files import make_full_path
-from pyspextool.io.read_uspex_fits import read_uspex_fits
+from pyspextool.io.read_uspex_fits import main as readfits
 from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.wavecal import read_line_list
 from pyspextool.io.wavecal import read_wavecal_file
@@ -88,12 +88,11 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     # Load the FITS files into memory
 
     if clupdate is True:
+        print(' ')
         print('Loading FITS images...')
 
-    img, var, hdr, mask = read_uspex_fits(files,
-                                          config.state['linearity_info'],
-                                          keywords=keywords,
-                                          clupdate=clupdate)
+    img, var, hdr, mask = readfits(files, config.state['linearity_info'],
+                                   keywords=keywords, clupdate=clupdate)
 
     #
     # Combine images as necessary
@@ -259,7 +258,8 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
         else:
 
             figsize = (8.5,11)
-            xd = (wavecalinfo['homeorder'], wavecalinfo['ordrdeg'],)
+            xd = {'homeorder':wavecalinfo['homeorder'],
+                  'orderdeg':wavecalinfo['ordrdeg']}
 
         if qafile_fitlines is True:
 
@@ -327,9 +327,13 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                          os.path.join(config.state['calpath'],
                                         output_name + '.fits'),
                          config.state['version'],
-                         xd=(wavecalinfo['ordrdeg'],wavecalinfo['homeorder'],),
+                         xd={'orderdeg':wavecalinfo['ordrdeg'],
+                             'homeorder':wavecalinfo['homeorder']},
                          stored_solution=use_stored_solution,
                          overwrite=overwrite)
 
     else:
         print('unknown wcaltype.')
+
+    if clupdate:
+        print('Wavecal '+output_name+'.fits written to disk.')        

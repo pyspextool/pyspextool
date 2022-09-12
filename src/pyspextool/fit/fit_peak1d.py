@@ -411,7 +411,7 @@ def cmest(x, y, nan=False, positive=False, negative=False):
         
     if sd1 >= sd2 or negative is True:  # Negative peak
         cent = x[y == miny]
-        cent = cen[0]
+        cent = cent[0]
         peak = miny-av
 
     peakarea = totarea - sumfunc(dx*np.where(ys < av, ys, av))

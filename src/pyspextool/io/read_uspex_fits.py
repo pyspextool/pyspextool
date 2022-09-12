@@ -1,16 +1,21 @@
 import numpy as np
 from astropy.io import fits
 import re
-from pyspextool.utils.arrays import idl_rotate
+import os
+
+from pyspextool.cl import config
 from pyspextool.fit.polyfit import image_poly
-from pyspextool.utils.math import combine_flag_stack
 from pyspextool.io.fitsheader import get_header_info
+from pyspextool.utils.arrays import idl_rotate
+from pyspextool.utils.math import combine_flag_stack
+
 #import re
 #import sys
 
 
-def read_uspex_fits(files, lininfo, keywords=None, pair=False, rotate=0,
-                    lincor=None, ampcor=False, clupdate=False):
+def main(files, lininfo, keywords=None, pair=False, rotate=0,
+         linearity_correction=True, ampcor=False, clupdate=False):
+
     """
     To read an upgraded SpeX FITS image file.
 
@@ -47,8 +52,8 @@ def read_uspex_fits(files, lininfo, keywords=None, pair=False, rotate=0,
 
         The directions follow the IDL rotate function convention.
         
-    lincor : str, optional
-        the fullpath to the FITS file of linearity correction coefficients
+    linearity_correction : {True, False}, optional
+        Set to correct for non-linearity.
 
     ampcor : {False, True}, optional
         Set to correct for amplifying drift (see uspexampcor.py)
@@ -85,13 +90,16 @@ def read_uspex_fits(files, lininfo, keywords=None, pair=False, rotate=0,
 
     nfiles = len(files)
 
-    dolincor = [0, 1][lincor is not None]
+#    dolincor = [0, 1][lincor is not None]
 
     # Correct for non-linearity?
 
-    if dolincor:
+    if linearity_correction is True:
 
-        lc_coeffs = fits.getdata(lincor)
+        linearity_file = os.path.join(config.state['packagepath'],
+                                      'instruments', 'uspex', 'data',
+                                      'uspex_lincorr.fits')
+        lc_coeffs = fits.getdata(linearity_file)
 
     else:
 

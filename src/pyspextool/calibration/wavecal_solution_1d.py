@@ -111,13 +111,13 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree,
 
         # Do the 2D fit.  First generate the scale factor for each line
 
-        scales = line_info['order'] / home_order
+        scales = line_info['order'] / xd['homeorder']
         scaled_wavelengths = line_info['wavelength'].astype(np.float16) * scales
 
         # Now do the fit
     
         fit = poly_fit_2d(line_info['x'], line_info['order'],
-                          scaled_wavelengths, dispersion_degree, order_degree,
+                          scaled_wavelengths, dispersion_degree, xd['orderdeg'],
                           goodbad=line_info['goodbad'],
                           robust={'thresh': 4, 'eps': 0.1})
 
@@ -189,7 +189,7 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree,
                 # Label the fit
                 
                 label = '$\lambda$ degree=' + str(dispersion_degree) + \
-                  '\n order degree=' + str(order_degree) + \
+                  '\n order degree=' + str(xd['orderdeg']) + \
                   '\n RMS=' + "{:#.3g}".format(fit['rms'] * 1e4) + \
                   ' $\mathrm{\AA}$\n n$_\mathrm{tot}$=' + str(ntot) + \
                   ', n$_\mathrm{bad}$=' + str(nbad)

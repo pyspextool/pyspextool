@@ -119,7 +119,7 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
             # Path is not real.
 
-            message = 'rawpath not a directory.'
+            message = '`rawpath` not a directory.'
             raise ValueError(message)
 
     # Is calpath passed?
@@ -142,7 +142,7 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
             # Path is not real.
 
-            message = 'calpath not a directory.'
+            message = '`calpath` not a directory.'
             raise ValueError(message)
 
     # Is procpath passed?
@@ -165,7 +165,7 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
             # Path is not real.
 
-            message = 'procpath not a directory.'
+            message = '`procpath` not a directory.'
             raise ValueError(message)
 
     # Is qapath passed?
@@ -188,13 +188,13 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
             # Path is not real.
 
-            message = 'qapath not a directory.'
+            message = '`qapath` not a directory.'
             raise ValueError(message)
 
     # Now write the paths to the user home directory
 
-    f = open(os.path.join(homedir, '.pyspextool_' + config.state['instrument'] + \
-                          '.dat'), 'w')
+    f = open(os.path.join(homedir, '.pyspextool_' + \
+                          config.state['instrument'] + '.dat'), 'w')
     f.write('%s \n' % config.state['rawpath'])
     f.write('%s \n' % config.state['calpath'])
     f.write('%s \n' % config.state['procpath'])
@@ -211,16 +211,22 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         print('procpath: ', config.state['procpath'])
         print('qapath: ', config.state['qapath'])
 
-    # Read instrument file
 
     if (config.state['instrument'] in ['uspex','spex']):
             config.state['irtf'] = True
 
-        
+    # Read instrument file
+
+            
     file = os.path.join(packagepath, 'instruments', config.state['instrument'],
                         'data', config.state['instrument'] + '.dat')
 
     instrumentinfo = read_instrument_file(file)
+    
+    # Fill out the state variable
+
+    config.state['readfits'] = instrumentinfo['READFITS']
+
     config.state['suffix'] = instrumentinfo['SUFFIX']
     config.state['nint'] = instrumentinfo['NINT']
     config.state['xspextool_keywords'] = instrumentinfo['XSPEXTOOL_KEYWORDS']
@@ -239,6 +245,4 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
     file = os.path.join(packagepath, 'instruments', config.state['instrument'],
                         'data', config.state['instrument'] + '_bdpxmk.fits')
-    config.state['bad_pixel_mask'] = fits.getdata(file)
-
-#
+    config.state['rawbadpixelmask'] = fits.getdata(file)

@@ -129,7 +129,7 @@ def read_instrument_file(filename):
 
     # FITSREADPROGRAM
 
-    keyword = 'FITSREADPROGRAM'
+    keyword = 'READFITS'
     z = find_keyword(labels, keyword)
     output[keyword] = vals[z].item()
 

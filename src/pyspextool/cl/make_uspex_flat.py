@@ -6,7 +6,7 @@ from pyspextool.io.files import make_full_path
 from pyspextool.io.fitsheader import average_header_info
 from pyspextool.io.flat import write_flat
 from pyspextool.io.flat import read_flatcal_file
-from pyspextool.io.read_uspex_fits import read_uspex_fits
+from pyspextool.io.read_uspex_fits import main as readfits
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.math import scale_data_stack
 from pyspextool.utils.math import median_data_stack
@@ -109,12 +109,11 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
     # Load the FITS files into memory
 
     if clupdate is True:
+        print(' ')            
         print('Loading FITS images...')
 
-    img, var, hdr, mask = read_uspex_fits(files,
-                                          config.state['linearity_info'],
-                                          keywords=keywords,
-                                          clupdate=clupdate)
+    img, var, hdr, mask = readfits(files, config.state['linearity_info'],
+                                   keywords=keywords, clupdate=clupdate)
 
     # And then average the headers
 
@@ -234,3 +233,7 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
                config.state['version'], history,
                os.path.join(config.state['calpath'], output_name + '.fits'),
                overwrite=overwrite)
+
+    if clupdate is True:
+        print('Flat field '+output_name+'.fits written to disk.')
+

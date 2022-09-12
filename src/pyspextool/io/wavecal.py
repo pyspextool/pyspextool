@@ -1,11 +1,12 @@
 import numpy as np
-#from numpy.polynomial.polynomial import polyval 
 from astropy.io import fits
 
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.fit.polyfit import poly_2d
+from pyspextool.io.check_parameter import check_parameter
 from pyspextool.spectroscopy.make_order_mask import make_order_mask
 from pyspextool.utils.arrays import idl_unrotate
+from pyspextool.utils.arrays import idl_rotate
 
 
 def read_line_list(file, delta_to_microns=False):
@@ -56,6 +57,15 @@ def read_line_list(file, delta_to_microns=False):
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('read_line_list', 'file', file, 'str')
+    check_parameter('read_line_list', 'delta_to_microns', delta_to_microns,
+                    'bool')    
+
+    
     # set up empty lists
 
     order = []
@@ -101,6 +111,7 @@ def read_line_list(file, delta_to_microns=False):
 
 
 def read_wavecal_file(file):
+
     """
     To read a pySpextool wavecal calibration file.
 
@@ -182,6 +193,12 @@ def read_wavecal_file(file):
 
     """
 
+    #
+    # Check the parameters
+    #
+    
+    check_parameter('read_wavecal_file', 'file', file, 'str')
+    
     # Open the file
     
     hdul = fits.open(file)
@@ -299,7 +316,7 @@ def read_wavecal_file(file):
 def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
                      covar, dispersion_degree, rms, nlines, ngood, nbad,
                      wavecal, spatcal, rotate, flatname, oname, version,
-                     XD=None, stored_solution=False, overwrite=True):
+                     xd=None, stored_solution=False, overwrite=True):
 
     # Get basic things
 
@@ -316,7 +333,7 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Generate the wavelengths
 
-    if XD is None:
+    if xd is None:
 
     # This is the pure 1D case.
         
@@ -332,24 +349,25 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
         
         for i in range(norders):
             z = np.where(omask == orders[i])
-            scale = home_order / orders[i]
+            scale = xd['homeorder'] / orders[i]
             wavecal[z] = poly_2d(wavecal[z], omask[z], dispersion_degree,
-                                order_degree, coeffs) * scale
+                                xd['orderdeg'], coeffs) * scale
 
-        ncoeffs = (dispersion_degree+1) * (order_degree+1)
+        ncoeffs = (dispersion_degree+1) * (xd['orderdeg']+1)
 
             
     hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
+    hdr['ROTATION'] = (rotate, ' IDL rotate value')    
     hdr['NORDERS'] = (norders, ' Number of orders identified')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
     hdr['EXTTYPE'] = ('1D', ' Extraction type')
     hdr['WCTYPE'] = ('1DXD', ' Wavelength calibration type')
     hdr['DISPDEG'] = (dispersion_degree, ' Dispersion fit degree')
 
-    if XD is not None:
+    if xd is not None:
 
-        hdr['ORDRDEG'] = (xd[0], ' Order fit degree')
-        hdr['HOMEDEG'] = (xd[1], ' Home Order')        
+        hdr['ORDRDEG'] = (xd['orderdeg'], ' Order fit degree')
+        hdr['HOMEORDR'] = (xd['homeorder'], ' Home Order')        
     
     hdr['RMS'] = (rms, 'RMS of fit in Angstroms')
     hdr['NLINES'] = (nlines, ' Number of lines in the fit')
@@ -394,4 +412,98 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     hdu = fits.HDUList([phdu, wavecal_hdu, spatcal_hdu])
     hdu.writeto(oname, overwrite=overwrite)
 
-    # fits.writeto('wavecal.fits', wavecal, overwrite=True)
+
+def read_wavecal_fits(file, rotate=True):
+
+    
+    #
+    # Check the parameters
+    #
+    
+    check_parameter('read_wavecal_fits', 'file', file, 'str')
+
+    #
+    # Read the data 
+    #
+    
+    hdul = fits.open(file)
+    hdul[0].verify('silentfix')
+
+    hdr = hdul[0].header
+
+    if rotate is True:
+
+        rotation = hdr['ROTATION']
+        
+    else:
+
+        rotation = 0
+    
+
+    wavecal = idl_rotate(hdul[1].data, rotation)
+    spatcal = idl_rotate(hdul[2].data, rotation)
+
+    hdul.close()
+
+    #
+    # Now create the wavecalinfo dictionary
+    #
+    
+    wavecalinfo = {'wavecal': wavecal}
+    wavecalinfo.update({'spatcal':spatcal})
+
+    # Do the header info
+
+
+    wavecalinfo.update({'flatfile': hdr['FLATFILE']})
+    wavecalinfo.update({'rotation': hdr['ROTATION']})    
+    wavecalinfo.update({'norders': hdr['NORDERS']})
+    wavecalinfo.update({'orders': hdr['ORDERS']})
+    orders = hdr['ORDERS'].split(',')
+    orders = [int(o) for o in orders]    
+    wavecalinfo.update({'exttype': hdr['EXTTYPE']})
+    wavecalinfo.update({'wctype': hdr['WCTYPE']})
+    wavecalinfo.update({'dispdeg': hdr['DISPDEG']})
+
+    if wavecalinfo['wctype'] in ['1DXD', '2DXD']:
+
+        wavecalinfo.update({'orderdeg': hdr['ORDRDEG']})
+        wavecalinfo.update({'homeorder': hdr['HOMEORDR']})
+
+        ncoeffs = (hdr['ORDRDEG']+1)*(hdr['DISPDEG']+1)
+
+    else:
+ 
+        ncoeffs = hdr['DISPDEG']+1
+        
+    wavecalinfo.update({'rms': hdr['RMS']})
+    wavecalinfo.update({'nlines': hdr['NLINES']})
+    wavecalinfo.update({'ngood': hdr['NGOOD']})
+    wavecalinfo.update({'nbad': hdr['NGOOD']})
+    wavecalinfo.update({'stored': hdr['STORED']})
+    wavecalinfo.update({'version': hdr['VERSION']})        
+
+    # Get the xranges, coeffs, and covariance matrix
+
+    xranges = np.empty([hdr['NORDERS'], 2], dtype=int)    
+    coeffs = np.empty(ncoeffs, dtype=float)
+    covar = np.empty([ncoeffs, ncoeffs], dtype=float)
+
+    for i in range(hdr['NORDERS']):
+
+        name = 'OR' + str(orders[i]).zfill(3) + '_XR' 
+        xranges[i, :] = [int(x) for x in hdr[name].split(',')]
+
+    for i in range(ncoeffs):
+
+        name = 'COEFF_' + str(i).zfill(2)
+        coeffs[i] = hdr[name]
+
+    for i in range(ncoeffs):
+
+        for j in range(ncoeffs):
+
+            name = 'COV_' + str(i).zfill(2)+str(j).zfill(2)
+            covar[j,i] = hdr[name]
+        
+    return wavecalinfo

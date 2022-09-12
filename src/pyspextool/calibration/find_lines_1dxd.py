@@ -130,8 +130,19 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
 
             offset = np.min(y[zline]) if line_info['num_parms'][i] == 3 else 0
 
-            fit = fit_peak1d(x[zline],y[zline],nparms=line_info['num_parms'][i],
-                             type=type,positive=True)
+
+
+            try:
+
+                fit = fit_peak1d(x[zline],y[zline],
+                                 nparms=line_info['num_parms'][i],
+                                 type=type,positive=True)
+
+            except RuntimeError:
+
+                fit = {'parms':[np.nan, np.nan, np.nan],
+                       'fit':np.full(len(x[zline]), np.nan)}
+
 
             # Store the results
     
@@ -161,7 +172,7 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
            (line_xpos[i] >= line_info['xguess'][i]-pix_thresh) and \
            (line_fwhm[i] > 0) and (line_inten[i] > 0):
            line_goodbad[i] = 1
-    
+
         if qafileinfo:
 
             fig, (axes1, axes2) = pl.subplots(2, figsize=qafileinfo['figsize'],

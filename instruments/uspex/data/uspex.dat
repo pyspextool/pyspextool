@@ -25,7 +25,7 @@
  OPREFIX=spectra
  SUFFIX=.[ab]
  EXTENSION=*.fits*
- FITSREADPROGRAM=mc_readuspexfits
+ READFITS=read_uspex_fits
 #
 # Reduction Mode
 #
