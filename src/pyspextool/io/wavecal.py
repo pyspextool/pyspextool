@@ -315,8 +315,8 @@ def read_wavecal_file(file):
 
 def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
                      covar, dispersion_degree, rms, nlines, ngood, nbad,
-                     wavecal, spatcal, rotate, flatname, oname, version,
-                     xd=None, stored_solution=False, overwrite=True):
+                     wavecal, spatcal, indices, rotate, flatname, oname,
+                     version, xd=None, stored_solution=False, overwrite=True):
 
     # Get basic things
 
@@ -342,6 +342,7 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
             wavecal[z] = poly_1d(wavecal[z], coeffs)
 
         ncoeffs = dispersion_degree+1
+        wctype = '1D'
         
     else:
 
@@ -355,13 +356,15 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
         ncoeffs = (dispersion_degree+1) * (xd['orderdeg']+1)
 
+        wctype = '1DXD'
+        
             
     hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
     hdr['ROTATION'] = (rotate, ' IDL rotate value')    
     hdr['NORDERS'] = (norders, ' Number of orders identified')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
     hdr['EXTTYPE'] = ('1D', ' Extraction type')
-    hdr['WCTYPE'] = ('1DXD', ' Wavelength calibration type')
+    hdr['WCTYPE'] = (wctype, ' Wavelength calibration type')
     hdr['DISPDEG'] = (dispersion_degree, ' Dispersion fit degree')
 
     if xd is not None:
@@ -409,7 +412,16 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     wavecal_hdu = fits.ImageHDU(idl_unrotate(wavecal, rotate))
     spatcal_hdu = fits.ImageHDU(idl_unrotate(spatcal, rotate))
 
-    hdu = fits.HDUList([phdu, wavecal_hdu, spatcal_hdu])
+    list_hdu = [phdu, wavecal_hdu, spatcal_hdu]
+
+    # Add the indices
+    
+    for i in range(norders):
+
+        idx_hdu = fits.ImageHDU(indices[i])        
+        list_hdu.append(idx_hdu)
+
+    hdu = fits.HDUList(list_hdu)
     hdu.writeto(oname, overwrite=overwrite)
 
 
@@ -443,6 +455,20 @@ def read_wavecal_fits(file, rotate=True):
     wavecal = idl_rotate(hdul[1].data, rotation)
     spatcal = idl_rotate(hdul[2].data, rotation)
 
+    # Grab the indices
+    
+    indices = []
+
+    for i in range(hdr['NORDERS']):
+
+        tmp = hdul[i+3].data
+        x = tmp[0,0,1:]
+        y = tmp[0,0,1:]        
+        xidx = tmp[0,1:,1:]
+        yidx = tmp[1,1:,1:]
+        
+        indices.append({'x':x, 'y':y, 'xidx':xidx, 'yidx':yidx})
+    
     hdul.close()
 
     #
@@ -451,6 +477,7 @@ def read_wavecal_fits(file, rotate=True):
     
     wavecalinfo = {'wavecal': wavecal}
     wavecalinfo.update({'spatcal':spatcal})
+    wavecalinfo.update({'rectindices':indices})    
 
     # Do the header info
 

@@ -10,6 +10,7 @@ from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.wavecal import read_wavecal_fits
 from pyspextool.utils.arrays import idl_rotate
+from pyspextool.spectroscopy.rectify_order import rectify_order
 
 
 
@@ -241,7 +242,30 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
             print('Image not flat fielded...')
 
     #
+    # Rotate the bad pixel mask
+    #
+
+    config.state['badpixelmask'] = idl_rotate(config.state['rawbadpixelmask'],
+                                              flatinfo['rotation'])
+    #
     # Rectify the orders
     #
+
+    rectorders = []
+    for i in range(config.state['norders']):
+
+        indices = wavecalinfo['rectindices']
+        
+        order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'],
+                              var=var, bpmask=config.state['badpixelmask'],
+                              bsmask = mask)
+        rectorders.append(order)
+
+    # Store the results
+
     
+        
     
+
+
+        

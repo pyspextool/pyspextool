@@ -1,8 +1,11 @@
 import numpy as np
-from pyspextool.spectroscopy.rectify_order1d import rectify_order1d
-from pyspextool.fit.fiterpolate import *
 from scipy import interpolate
 from scipy.signal import medfilt2d
+from scipy import interpolate
+
+from pyspextool.fit.fiterpolate import *
+from pyspextool.spectroscopy.rectify_order import rectify_order
+from pyspextool.spectroscopy.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.utils.math import moments
 from pyspextool.utils.loop_progress import loop_progress
 
@@ -44,11 +47,6 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
 
     var : numpy.ndarray
 
-    oversamp : float, default 0, optional
-        The factor by which to oversample the slit during rectification.
-        The new slit length in pixels is given by
-        round(oversamp*min-slit-length-in-native-pixels).
-
     ybuffer : int, default 1, optional
         The number of native pixels from the top and bottom of the slit to
         avoid during the operation.  Useful to account for the fact that
@@ -82,12 +80,6 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
     --------
     later
 
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_normspecflat.pro
-
     """
 
     # Get basic info and do basic things
@@ -108,32 +100,45 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
 
     for i in range(norders):
 
+        #
         # Rectify the order
+        #
 
-        spatmap, order = rectify_order1d(img, edgecoeffs[i, :, :], xranges[i, :],
-                                         slith_arc, oversamp=oversamp,
-                                         ybuffer=ybuffer)
+        # Get the rectification indices
 
+        xidx,yidx,wavemap,spatmap = make_interp_indices_1d(edgecoeffs[i, :, :],
+                                                            xranges[i,:],
+                                                            slith_arc)
+
+        # Do the rectification
+
+        order = rectify_order(img, xidx, yidx, ybuffer=ybuffer)
+                
         # Fiterpolate the results after median smoothing to minimize bad pixels
 
-        model = fiterpolate(medfilt2d(order, kernel_size=(5, 5)), nxgrid, nygrid)
+        model = fiterpolate(medfilt2d(order['img'], kernel_size=(5, 5)), nxgrid,
+                            nygrid)
 
         # Now normalize the raw data using the fiterpolated model
 
         # Get useful things and set up
-
+        
         startcol = xranges[i, 0]
         stopcol = xranges[i, 1]
 
         order_ncols = stopcol - startcol + 1
         order_cols = np.arange(order_ncols, dtype=int) + startcol
 
-        botedge = np.polynomial.polynomial.polyval(order_cols, edgecoeffs[i, 0, :])
-        topedge = np.polynomial.polynomial.polyval(order_cols, edgecoeffs[i, 1, :])
+        botedge = np.polynomial.polynomial.polyval(order_cols,
+                                                   edgecoeffs[i, 0, :])
+        topedge = np.polynomial.polynomial.polyval(order_cols,
+                                                   edgecoeffs[i, 1, :])
         dif = topedge - botedge
 
-        # Loop over each column, interpolate the model onto the data sampling, and
-        # divide
+        # Loop over each column, interpolate the model onto the data
+        # sampling, and divide.
+
+        # NOTE:  This has to be redone at some point...
 
         mask = np.full((nrows, ncols), 0)
         for j in range(order_ncols):
@@ -152,7 +157,7 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
 
             # Do the linterpolation
 
-            f = interpolate.interp1d(spatmap[:, 0], model[:, j])
+            f = interpolate.interp1d(spatmap[:,0], model[:, j])
             tmp = np.polynomial.polynomial.polyval(ypix_slit, [m, b])
 
             slit_model = f(np.polynomial.polynomial.polyval(ypix_slit, [m, b]))

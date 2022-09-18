@@ -180,8 +180,7 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
         if clupdate is True:
             print('Normalizing the median image...')
 
-        nimg, nvar, rms = normalize_flat(med, edgecoeffs,
-                                         modeinfo['xranges'],
+        nimg, nvar, rms = normalize_flat(med, edgecoeffs, modeinfo['xranges'],
                                          modeinfo['slith_arc'],
                                          modeinfo['nxgrid'],
                                          modeinfo['nygrid'],
@@ -209,13 +208,13 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
         basenames.append(os.path.basename(file))
 
     history = 'This flat was created by scaling the files ' + \
-              ', '.join(str(b) for b in basenames) + ' to a common median flux ' + \
-              'level and then medianing the scaled imges.  The variance is ' + \
-              'given by (1.4826*MAD)**2/nimages where MAD is the median absolute ' + \
-              'deviation.  The zeroth bit of pixels in the third extension are ' + \
-              'set if their corresponding intensity values are greater than ' + \
-              'LINCORMAX.  User selected FITS keywords are from the first frame ' + \
-              'in the series.'
+              ', '.join(str(b) for b in basenames) + ' to a common '+ \
+              'median flux level and then medianing the scaled imges.  ' + \
+              'The variance is given by (1.4826*MAD)**2/nimages where MAD ' + \
+              'is the median absolute deviation.  The zeroth bit of pixels ' + \
+              'in the third extension are set if their corresponding '+ \
+              'intensity values are greater than LINCORMAX.  User selected ' + \
+              'FITS keywords are from the first frame in the series.'
 
     history = split_text(history)
 

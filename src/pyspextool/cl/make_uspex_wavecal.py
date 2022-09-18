@@ -16,6 +16,7 @@ from pyspextool.io.wavecal import read_wavecal_file
 from pyspextool.io.wavecal import write_wavecal_1d
 from pyspextool.spectroscopy.extract_extendedsource_1dxd import extract_extendedsource_1dxd
 from pyspextool.spectroscopy.get_spectral_pixelshift import get_spectral_pixelshift
+from pyspextool.spectroscopy.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.utils.math import median_data_stack
 from pyspextool.utils.math import scale_data_stack
 
@@ -47,8 +48,6 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     check_parameter('make_uspex_wavecal', 'qafile_fitlines',
                     qafile_fitlines, 'bool')
     check_parameter('make_uspex_wavecal', 'overwrite', overwrite, 'bool')                                
-
-
     #
     # Load the files into memory
     #
@@ -292,7 +291,23 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                     'ngood':wavecalinfo['ngood'],
                     'nbad':wavecalinfo['nbad']}
 
+    #
+    # Creating rectification indices
+    #
 
+    indices = []
+    for i in range(flatinfo['norders']):
+
+        idxs = make_interp_indices_1d(flatinfo['edgecoeffs'][i,:,:],
+                                      flatinfo['xranges'][i,:],
+                                      flatinfo['slith_arc'],
+                                      array_output=True)
+
+        indices.append(idxs)
+        
+        
+        
+            
     #
     # Write the wavecal file to disk.
     #
@@ -300,6 +315,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     if clupdate:
         print('Writing wavecal to disk...')
 
+    print(wavecalinfo['wcaltype'])
     if wavecalinfo['wcaltype'] == '1d':
 
         write_wavecal_1d(flatinfo['ncols'], flatinfo['nrows'],
@@ -308,7 +324,8 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                          solution['covar'], wavecalinfo['dispdeg'],
                          solution['rms']*1e4, solution['nlines'],
                          solution['ngood'], solution['nbad'],
-                         wavecal, spatcal, flatinfo['rotation'], flat_file,
+                         wavecal, spatcal, indices, flatinfo['rotation'],
+                         flat_file,
                          os.path.join(config.state['calpath'],
                                         output_name + '.fits'),
                          config.state['version'],
@@ -323,7 +340,8 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                          solution['covar'], wavecalinfo['dispdeg'],
                          solution['rms']*1e4, solution['nlines'],
                          solution['ngood'], solution['nbad'],
-                         wavecal, spatcal, flatinfo['rotation'], flat_file,
+                         wavecal, spatcal, indices, flatinfo['rotation'],
+                         flat_file,
                          os.path.join(config.state['calpath'],
                                         output_name + '.fits'),
                          config.state['version'],
