@@ -1,6 +1,8 @@
 import numpy as np
 import importlib
 from astropy.io import fits
+import glob
+import os
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.cl import config
@@ -174,7 +176,36 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         wavecalinfo = read_wavecal_fits(full_wavecal_name,rotate=True)
         wavecal = wavecalinfo['wavecal']
         spatcal = wavecalinfo['spatcal']        
-            
+
+        #
+        # Get the atmospheric transmission 
+        #
+
+        # First we have to get the possible file names
+        
+        fullpath = glob.glob(os.path.join(config.state['packagepath'],
+                                          'data','atran*.fits') ) 
+
+        # Then strip the paths off
+
+        basenames = [os.path.basename(x) for x in fullpath]
+
+        # Now get the resolving powers
+        
+        rps = np.array([int(x[5:x.find('.')]) for x in basenames])
+
+        # Find the closest one
+
+        deltas = rps - flatinfo['rp']
+        z = deltas == np.min(deltas)
+
+        # Load that file
+
+        array = fits.getdata(np.array(fullpath)[z][0])
+        config.state['atrans_wave'] = array[0,:]
+        config.state['atrans_trans'] = array[1,:]
+        
+        
     else:
 
         wavecal, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
@@ -183,6 +214,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                                                  flatinfo['xranges'],
                                                  flatinfo['slith_arc'])
 
+        config.state['atrans_wave'] = np.nan
+        config.state['atrans_trans'] = np.nan
+        
     #
     # Load the data
     #
@@ -261,6 +295,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                               bsmask = mask)
         rectorders.append(order)
 
+        
     # Store the results
 
     

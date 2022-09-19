@@ -1,4 +1,6 @@
-state = {'badpixelmask':1,
+state = {'atrans_wave':1,
+         'atrans_trans':1,
+         'badpixelmask':1,
          'biasfile':'',
          'calpath':'',
          'edgecoeffs':1,

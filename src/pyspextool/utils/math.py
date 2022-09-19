@@ -1,176 +1,348 @@
 import numpy as np
 from scipy.stats import describe
 
+from pyspextool.io.check_parameter import check_parameter
 
-def moments(data, goodbad=False, robust=None, silent=True):
+def bit_set(array, bits):
+
     """
-    (Robustly) computes various statistics
+    To determine if the given bits are set in an array.
 
     Parameters
     ----------
-    data : numpy.ndarray
+    array : numpy.ndarray
+        numpy array to search
 
-    goodbad : numpy.ndarray, optional
-        An array with the same shape as `data` that identifies good and
-        bad data points.  0=bad, 1=good, 2=NaN
-
-    robust : float, optional
-        If given, outliers are identified before computing the stats.
-        See notes for details.
-
-    silent : {True, False}, optional
-        If False, the result will be written to the command line.
+    bits : int, list, numpy.ndarray
+        bit values to search in `array`
 
     Returns
     --------
-    dict
-        A dict where with the following entries:
+    numpy.ndarray
+        Returns a byte array of the same size as `array`.  An element
+        is set if any of the bits requested are set in the same element
+        of `array`.
 
-        ndat : int
-            The numger of data points used in the calculation.
+    Procedure
+    ---------
+    Uses the Gumley IDL ishft technique.  Note that the "first" bit 
+    is denoted as zero, while the "second" bit is denoted as 1.
 
-        mean : float
-            The mean of the (non-NaN, good) data points.
 
-        variance : float
-            Estimate of the variance of the (non-NaN, good) data points.
-            That is, the denominator is 1/(ndat-1).
-
-        stddev : float
-            Estimate of the standard deviation of the (non-NaN, good)
-            data points.  That is, the denominator is 1/(ndat-1).
-
-        stderr : float
-            The standard error of the (non-NaN, good) data points.
-            `stddev`/sqrt(ndat)
-
-        skewness : float
-            The skewness of the (non-NaN, good) data points.
-
-        kurtosis : float
-            The kurtosis of the (non-NaN, good) data points.
-
-        goodbad : numpy.ndarray of int
-            An array with the same shape as `data` that identifies good and
-            bad data points.  0=bad, 1=good, 2=NaN
-
-    Notes
-    -----
-    If goodbad is passed, only points with values of 1 are used.  If
-    robust is passed, the median and median absolute deviation and
-    points are identified as an outlier if:
-
-    |x_i - MED|/(1.4826*MAD) > robust
-
-    where MAD = median(|x_i - MED|) and 1.4826*MAD is a robust estimate
-    of the standard deviation for a gaussian distribution. Outliers are
-    labelled `bad` in the goodbad array.  Finally, the statistics are
-    computed using scipy.stats.describe.
-
-    NOTE:  The variance and standard deviations are *estimates* of the
-    variance and standard deviation of the parent population and so
-    have 1/(ndat-1) in the denominator.
-
-    Examples
+    Example
     --------
+
     > import numpy as np
-    > data = np.array([[np.nan,1.2,20],[2.,1.2,2.5]])
-    > m = moments(data,robust=4,silent=False)
-      Moments results:
+    > bitset(np.array([3,4,1]),0)
 
-      Total number of input points =  6
-              Number of good points =  4
-                     Number of NaNs =  1
+    [1, 0, 1]
 
-                    Mean =  1.725
-                Variance =  0.4091666666666667
-       Standar Deviation =  0.6396613687465162
-          Standard Error =  0.3198306843732581
-                Skewness =  0.28952649685958215
-                Kurtosis =  -1.6237779003737334
-      [[2 1 0]
-       [1 1 1]]
+    > import numpy as np
+    > bitset(np.array([3,4,1]),[0,3])
 
+    [1, 0, 1]
+
+    > import numpy as np
+    > bitset(np.array([3,4,1]),[2,3])
+
+    [0, 1, 0]
 
     Modification History
     --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_moments.pro.
+    2022-03-09 - Written by M. Cushing, University of Toledo.
+                 Based on the Spextool IDL mc_bitset.pro program.
+    """
+
+    #  Define empty mask
+
+    mask = np.zeros_like(array, dtype=np.uint8)
+
+    #  test to see if bits is iterable
+
+    try:
+
+        iter(bits)
+
+    except TypeError:
+
+        bits = [bits]
+
+        #  Loop over every bit requested and identify those pixels for
+    #  which that bit is set.
+
+    for val in bits:
+        tmp = (array >> val) & 1
+        mask = mask | tmp
+
+    return mask
+
+def combine_flag_stack(stack, nbits=8):
+
+    """
+    To combine bit-set flag arrays.
+
+    Parameters
+    ----------
+    stack : numpy.ndarray
+        The stack of bit-set flag arrays to combine.  The stack
+        can either be a stack of spectra [nspec,ndat] or a stack
+        of images [nimg,nx,ny].
+
+    nbits : int, optional
+        The number of bits that can potentially be set.  This
+        routine assumes the bits are set sequentially, starting
+        with the zeroth bit.  So if nbits is 2, then it will
+        check the 0th and 1st bit.  The default is to check all
+        eight bits
+
+    Output Parameters
+    ------------------
+    numpy.ndarray
+        A bit-set flag array that reflects the bit-set flags from all
+        the spectra or images.
+
+    Procedure
+    ---------
+    Just some basic math.
+
+    Example
+    -------
+    Consider a two spectra masks
+
+    > spec1 = np.array([0,4,4,2])
+    > spec2 = np.array([0,0,3,1])
+    > stack = np.stack((spec1,spec2))
+    > combflagstack(stack)
+
+    [0 4 7 3]
+
+    Consider two image masks
+
+    > img1 = np.array([[0,2,0],[3,0,4],[0,0,0]])
+    > img2 = np.array([[1,0,0],[1,0,0],[0,0,0]])
+    > stack = np.stack((img1,img2))
+    > combflagstack(stack)
+
+    [[1 2 0]
+     [3 0 4]
+     [0 0 0]]
+
+    Modification History
+    --------------------
+    2022-03-09 - Written by M. Cushing, University of Toledo.
+    Based on the mc_combflagstack.pro IDL program.
 
     """
 
-    # Set up goodbad array if need be
+    # Determine whether this is a spectral stack or image stack
 
-    if goodbad is False:
-        goodbad = np.full_like(data, 1, dtype=int)
+    ndim = stack.ndim
+    shape = stack.shape
 
-    # Check for NaNs and update goodbad array
+    # Set up the output array
+    # Replace with match case statement when you upgrade to 3.10.
 
-    nanbool = np.isnan(data)
-    goodbad[nanbool] = 2
+    if ndim == 2:
+        comb = np.zeros(shape[1], dtype=np.int8)
 
-    nnan = np.sum((goodbad == 2))
+    if ndim == 3:
+        comb = np.zeros(shape[1:2], dtype=np.int8)
 
-    # Now find the sample you are working with
+    # Now just loop over each bit requested.
 
-    zsample = np.where(goodbad == 1)
+    for i in range(0, nbits):
+        #  Identify the pixels with the particular bit set
 
-    sample = data[zsample]
+        set = bit_set(stack, i)
 
-    # Robust calculation?
+        #  Collapse everything down one dimension
 
-    if robust is not None:
+        sum = np.sum(set, axis=0)
 
-        # Compute the median and 1.4826*median absolute deviation (gmad).
+        #  Identify which pixels are set
 
-        med = np.median(sample)
-        gmad = 1.4826 * np.median(np.abs(sample - med))
+        mask = sum > 0
 
-        #  Generate the mask
+        #  Set them to the proper bit value and add to the comb
 
-        mask = ((sample - med) / gmad) <= robust
+        comb = comb + mask * 2 ** i
 
-    elif robust is None:
-
-        mask = np.full_like(sample, True, dtype=bool)
-
-    # update the goodbad array
-
-    goodbad[zsample] = np.array(mask)
-
-    # Do the stats
-
-    stats = describe(sample[mask])
-
-    ngood = stats.nobs
-    mean = stats.mean
-    var = stats.variance
-    stddev = np.sqrt(stats.variance)
-    stderr = np.sqrt(var / ngood)
-    skewness = stats.skewness
-    kurtosis = stats.kurtosis
-
-    # Report the results if asked
-
-    if silent is False:
-        print('Moments results:')
-        print()
-        print(' Total number of input points = ', np.size(data))
-        print('        Number of good points = ', ngood)
-        print('               Number of NaNs = ', nnan)
-        print()
-        print('              Mean = ', mean)
-        print('          Variance = ', var)
-        print(' Standar Deviation = ', stddev)
-        print('    Standard Error = ', stderr)
-        print('          Skewness = ', skewness)
-        print('          Kurtosis = ', kurtosis)
-
-    return {'ndat': ngood, 'mean': mean, 'var': var, 'stddev': stddev,
-            'stderr': stderr, 'skewness': skewness, 'kurtosis': kurtosis,
-            'goodbad': goodbad}
+    return comb
 
 
+def find_outliers(data, thresh, leave_nans=True, silent=False):
+
+    '''
+    To identify outliers in a distribution of data.
+
+    Parameters
+    ----------
+    data : ndarray
+        A array of data with potential outliers and possibly NaNs.  
+
+    thresh : int or float
+        The value over which data is identified as an outlier (see Notes).
+
+    leave_nans : {True, False} optional
+        Set to True to not identify NaNs as an outlier. Set to False to 
+        identify NaNs as outliers.
+
+    silent : {False, True} optional
+        Set to True to report to the command line that no identification 
+        of outliers can be performed because the median absolute deviation is 
+        zero.
+
+    Returns
+    -------
+        ndarray of bool
+
+    Notes
+    -----
+
+    Computes the median and median absolute deviation
+    mad=median(abs(median-data))
+    of the data excluding NaNs and identifies pixels as outliers if 
+    abs( (data-med)/mad ) > thresh).
+
+    Examples
+    --------
+    > x = np.array([1,2,np.nan,3,4.1,6.7,8.2,10.2,1.4])
+    > mask = find_outliers(x, 5)
+      [ True  True  True  True  True  True  True  True  True]
+
+    > x = np.array([1,2,np.nan,3,4.1,6.7,8.2,10.2,1.4])
+    > mask = find_outliers(x, 5, leave_nans=False)
+      [ True  True False  True  True  True  True  True  True]
+
+    > x = np.array([1,2,np.nan,3,4.1,6.7,8.2,10.2,1.4,100])
+    > mask = find_outliers(x, 5)
+      [ True  True  True  True  True  True  True  True  True False]
+
+    > x = np.array([1,2,np.nan,3,4.1,6.7,8.2,10.2,1.4,100])
+    > mask = find_outliers(x, 5, leave_nans=False)
+      No outliers identified because MAD=0.0.
+      [ True  True  True]
+
+    '''
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('find_outliers', 'data', data, 'ndarray')
+    check_parameter('find_outliers', 'thresh', thresh, ['int', 'float'])
+    check_parameter('find_outliers', 'silent', silent, 'bool')        
+    
+    #
+    # Do the search
+    #
+
+    # Create a mask to avoid NaNs
+
+    mask = np.full_like(data, 1, dtype=int)
+    mask[np.isnan(data)] = 2
+
+    # Compute the median and median absolute deviation
+    
+    z = mask != 2
+    med = np.median(data[z])
+    mad = np.median( np.abs(data[z]-med))
+
+    # If the MAD is zero, just return the non NaN data
+    
+    if mad == 0.0:
+        z = mask == 1
+        if silent is False:
+            print('No outliers identified because MAD=0.0.')
+
+        return z
+
+    # Now do the real search
+
+    z = np.where(np.abs( (data-med)/mad ) > thresh)
+    mask[z] = 0
+
+    if leave_nans is True:
+
+        return mask != 0
+
+    else:
+        
+        return mask == 1
+
+def mean_data_stack(data, *args, mask=None, robust=None, stderr=True):
+
+    '''
+    Compute the mean of a spectral or image stack with optional mask
+    
+    Parameters
+    ----------
+    data : numpy.ndarray
+        either a stack of spectra (nspec, npoints) or a stack of images
+        (nimgs, nrows, ncols).
+
+    mask : numpy.ndarray, optional
+        a mask array with the same shape as `data`.  
+        0 = bad, 1=good
+
+    stderr : {True, False}, optional
+
+    '''
+
+    #
+    # Check the parameters
+    #
+    check_parameter('mean_data_stack', 'data', data, 'ndarray', [2, 3])
+    check_parameter('mean_data_stack', 'mask', mask, ['NoneType','ndarray'],
+                    [2, 3])
+    check_parameter('mean_data_stack', 'robust', robust,
+                    ['NoneType','int', 'float'])    
+    check_parameter('mean_data_stack', 'stderr', stderr, 'bool')        
+
+    # Get array dimensions and get set up
+
+    ndimen = np.ndim(data)
+    shape = np.shape(data)
+
+    # Get the weights set up
+
+    if len(args) == 0:
+        weights = np.full_like(data,1,dtype=float)
+
+    else:
+        weights = args[0]
+
+    # Deal with a user mask if passed
+
+    if mask is not None:
+        z = where(mask != 1)
+        weights[z] = 0.0
+
+    # Now check for NaNs
+
+    z = np.isnan(data)
+    weights[z] = 0.0
+    data[z] = 0.0
+
+    # Now do the robust checks
+
+#    if robust is not None:
+
+#        if ndimen == 2:
+            
+    result = np.average(data, axis=0, weights=weights,returned=True)
+    mean = result[0]
+    mvar = result[1]
+
+    if stderr is True:
+
+        ns = weights > 0
+        total = np.sum(ns, axis=0)
+        np.divide(mvar, total, out=mvar)
+
+    return mean, mvar
+    
+    
 def median_data_stack(data, mask=None, stderr=True):
     """
     Median a spectral or image stack with optional mask
@@ -347,6 +519,193 @@ def median_data_stack(data, mask=None, stderr=True):
         unc = mad / 1.4826  # assume gaussian distribution
 
     return [med, unc]
+
+def moments(data, goodbad=False, robust=None, silent=True):
+    """
+    (Robustly) computes various statistics
+    Parameters
+    ----------
+    data : numpy.ndarray
+    goodbad : numpy.ndarray, optional
+        An array with the same shape as `data` that identifies good and
+        bad data points.  0=bad, 1=good, 2=NaN
+    robust : float, optional
+        If given, outliers are identified before computing the stats.
+        See notes for details.
+    silent : {True, False}, optional
+        If False, the result will be written to the command line.
+    Returns
+    --------
+    dict
+        A dict where with the following entries:
+        ndat : int
+            The numger of data points used in the calculation.
+        mean : float
+            The mean of the (non-NaN, good) data points.
+        variance : float
+            Estimate of the variance of the (non-NaN, good) data points.
+            That is, the denominator is 1/(ndat-1).
+        stddev : float
+            Estimate of the standard deviation of the (non-NaN, good)
+            data points.  That is, the denominator is 1/(ndat-1).
+        stderr : float
+            The standard error of the (non-NaN, good) data points.
+            `stddev`/sqrt(ndat)
+        skewness : float
+            The skewness of the (non-NaN, good) data points.
+        kurtosis : float
+            The kurtosis of the (non-NaN, good) data points.
+        goodbad : numpy.ndarray of int
+            An array with the same shape as `data` that identifies good and
+            bad data points.  0=bad, 1=good, 2=NaN
+    Notes
+    -----
+    If goodbad is passed, only points with values of 1 are used.  If
+    robust is passed, the median and median absolute deviation and
+    points are identified as an outlier if:
+    |x_i - MED|/(1.4826*MAD) > robust
+    where MAD = median(|x_i - MED|) and 1.4826*MAD is a robust estimate
+    of the standard deviation for a gaussian distribution. Outliers are
+    labelled `bad` in the goodbad array.  Finally, the statistics are
+    computed using scipy.stats.describe.
+    NOTE:  The variance and standard deviations are *estimates* of the
+    variance and standard deviation of the parent population and so
+    have 1/(ndat-1) in the denominator.
+    Examples
+    --------
+    > import numpy as np
+    > data = np.array([[np.nan,1.2,20],[2.,1.2,2.5]])
+    > m = moments(data,robust=4,silent=False)
+      Moments results:
+      Total number of input points =  6
+              Number of good points =  4
+                     Number of NaNs =  1
+                    Mean =  1.725
+                Variance =  0.4091666666666667
+       Standar Deviation =  0.6396613687465162
+          Standard Error =  0.3198306843732581
+                Skewness =  0.28952649685958215
+                Kurtosis =  -1.6237779003737334
+      [[2 1 0]
+       [1 1 1]]
+    Modification History
+    --------------------
+    2022-05-24 - Written by M. Cushing, University of Toledo.
+    Based on Spextool IDL program mc_moments.pro.
+    """
+
+    # Set up goodbad array if need be
+
+    if goodbad is False:
+        goodbad = np.full_like(data, 1, dtype=int)
+
+    # Check for NaNs and update goodbad array
+
+    nanbool = np.isnan(data)
+    goodbad[nanbool] = 2
+
+    nnan = np.sum((goodbad == 2))
+
+    # Now find the sample you are working with
+
+    zsample = np.where(goodbad == 1)
+
+    sample = data[zsample]
+
+    # Robust calculation?
+
+    if robust is not None:
+
+        # Compute the median and 1.4826*median absolute deviation (gmad).
+
+        med = np.median(sample)
+        gmad = 1.4826 * np.median(np.abs(sample - med))
+
+        #  Generate the mask
+
+        mask = ((sample - med) / gmad) <= robust
+
+    elif robust is None:
+
+        mask = np.full_like(sample, True, dtype=bool)
+
+    # update the goodbad array
+
+    goodbad[zsample] = np.array(mask)
+
+    # Do the stats
+
+    stats = describe(sample[mask])
+
+    ngood = stats.nobs
+    mean = stats.mean
+    var = stats.variance
+    stddev = np.sqrt(stats.variance)
+    stderr = np.sqrt(var / ngood)
+    skewness = stats.skewness
+    kurtosis = stats.kurtosis
+
+    # Report the results if asked
+
+    if silent is False:
+        print('Moments results:')
+        print()
+        print(' Total number of input points = ', np.size(data))
+        print('        Number of good points = ', ngood)
+        print('               Number of NaNs = ', nnan)
+        print()
+        print('              Mean = ', mean)
+        print('          Variance = ', var)
+        print(' Standar Deviation = ', stddev)
+        print('    Standard Error = ', stderr)
+        print('          Skewness = ', skewness)
+        print('          Kurtosis = ', kurtosis)
+
+    return {'ndat': ngood, 'mean': mean, 'var': var, 'stddev': stddev,
+            'stderr': stderr, 'skewness': skewness, 'kurtosis': kurtosis,
+            'goodbad': goodbad}
+
+def round(x):
+
+    """
+    To round numbers in a numpy array
+
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+
+
+    Returns
+    --------
+    numpy.ndarray like `x`
+        The numbers are rounded to the nearest integer, and tied away \
+        from zero.
+
+    Notes
+    -----
+
+    Based on:  https://stackoverflow.com/questions/53201470/how-to-always-round-up-a-xx-5-in-numpy
+
+    Examples
+    --------
+    > import numpy as np
+    > round(np.array([-3.5,-2.5,2.5,3.5]))
+      [-4. -3.  3.  4.]
+
+    Modification History
+    --------------------
+    2022-06-19 - Written by M. Cushing, University of Toledo.
+
+    """
+    
+    mask = (x >= 0)
+    out = np.empty_like(x)
+    out[mask] = np.floor(x[mask] + 0.5)
+    out[~mask] = np.ceil(x[~mask] - 0.5)
+
+    return out
+
 
 
 def scale_data_stack(stack, var, mask=None, index=None):
@@ -551,211 +910,4 @@ def scale_data_stack(stack, var, mask=None, index=None):
         return sstack, None, scales
 
 
-def combine_flag_stack(stack, nbits=8):
 
-    """
-    To combine bit-set flag arrays.
-
-    Parameters
-    ----------
-    stack : numpy.ndarray
-        The stack of bit-set flag arrays to combine.  The stack
-        can either be a stack of spectra [nspec,ndat] or a stack
-        of images [nimg,nx,ny].
-
-    nbits : int, optional
-        The number of bits that can potentially be set.  This
-        routine assumes the bits are set sequentially, starting
-        with the zeroth bit.  So if nbits is 2, then it will
-        check the 0th and 1st bit.  The default is to check all
-        eight bits
-
-    Output Parameters
-    ------------------
-    numpy.ndarray
-        A bit-set flag array that reflects the bit-set flags from all
-        the spectra or images.
-
-    Procedure
-    ---------
-    Just some basic math.
-
-    Example
-    -------
-    Consider a two spectra masks
-
-    > spec1 = np.array([0,4,4,2])
-    > spec2 = np.array([0,0,3,1])
-    > stack = np.stack((spec1,spec2))
-    > combflagstack(stack)
-
-    [0 4 7 3]
-
-    Consider two image masks
-
-    > img1 = np.array([[0,2,0],[3,0,4],[0,0,0]])
-    > img2 = np.array([[1,0,0],[1,0,0],[0,0,0]])
-    > stack = np.stack((img1,img2))
-    > combflagstack(stack)
-
-    [[1 2 0]
-     [3 0 4]
-     [0 0 0]]
-
-    Modification History
-    --------------------
-    2022-03-09 - Written by M. Cushing, University of Toledo.
-    Based on the mc_combflagstack.pro IDL program.
-
-    """
-
-    # Determine whether this is a spectral stack or image stack
-
-    ndim = stack.ndim
-    shape = stack.shape
-
-    # Set up the output array
-    # Replace with match case statement when you upgrade to 3.10.
-
-    if ndim == 2:
-        comb = np.zeros(shape[1], dtype=np.int8)
-
-    if ndim == 3:
-        comb = np.zeros(shape[1:2], dtype=np.int8)
-
-    # Now just loop over each bit requested.
-
-    for i in range(0, nbits):
-        #  Identify the pixels with the particular bit set
-
-        set = bit_set(stack, i)
-
-        #  Collapse everything down one dimension
-
-        sum = np.sum(set, axis=0)
-
-        #  Identify which pixels are set
-
-        mask = sum > 0
-
-        #  Set them to the proper bit value and add to the comb
-
-        comb = comb + mask * 2 ** i
-
-    return comb
-
-
-def bit_set(array, bits):
-
-    """
-    To determine if the given bits are set in an array.
-
-    Parameters
-    ----------
-    array : numpy.ndarray
-        numpy array to search
-
-    bits : int, list, numpy.ndarray
-        bit values to search in `array`
-
-    Returns
-    --------
-    numpy.ndarray
-        Returns a byte array of the same size as `array`.  An element
-        is set if any of the bits requested are set in the same element
-        of `array`.
-
-    Procedure
-    ---------
-    Uses the Gumley IDL ishft technique.  Note that the "first" bit 
-    is denoted as zero, while the "second" bit is denoted as 1.
-
-
-    Example
-    --------
-
-    > import numpy as np
-    > bitset(np.array([3,4,1]),0)
-
-    [1, 0, 1]
-
-    > import numpy as np
-    > bitset(np.array([3,4,1]),[0,3])
-
-    [1, 0, 1]
-
-    > import numpy as np
-    > bitset(np.array([3,4,1]),[2,3])
-
-    [0, 1, 0]
-
-    Modification History
-    --------------------
-    2022-03-09 - Written by M. Cushing, University of Toledo.
-                 Based on the Spextool IDL mc_bitset.pro program.
-    """
-
-    #  Define empty mask
-
-    mask = np.zeros_like(array, dtype=np.uint8)
-
-    #  test to see if bits is iterable
-
-    try:
-
-        iter(bits)
-
-    except TypeError:
-
-        bits = [bits]
-
-        #  Loop over every bit requested and identify those pixels for
-    #  which that bit is set.
-
-    for val in bits:
-        tmp = (array >> val) & 1
-        mask = mask | tmp
-
-    return mask
-
-
-def round(x):
-
-    """
-    To round numbers in a numpy array
-
-
-    Parameters
-    ----------
-    x : numpy.ndarray
-
-
-    Returns
-    --------
-    numpy.ndarray like `x`
-        The numbers are rounded to the nearest integer, and tied away \
-        from zero.
-
-    Notes
-    -----
-
-    Based on:  https://stackoverflow.com/questions/53201470/how-to-always-round-up-a-xx-5-in-numpy
-
-    Examples
-    --------
-    > import numpy as np
-    > round(np.array([-3.5,-2.5,2.5,3.5]))
-      [-4. -3.  3.  4.]
-
-    Modification History
-    --------------------
-    2022-06-19 - Written by M. Cushing, University of Toledo.
-
-    """
-    
-    mask = (x >= 0)
-    out = np.empty_like(x)
-    out[mask] = np.floor(x[mask] + 0.5)
-    out[~mask] = np.ceil(x[~mask] - 0.5)
-
-    return out
