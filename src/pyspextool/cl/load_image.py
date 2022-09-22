@@ -11,8 +11,10 @@ from pyspextool.io.files import *
 from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.wavecal import read_wavecal_fits
-from pyspextool.utils.arrays import idl_rotate
 from pyspextool.spectroscopy.rectify_order import rectify_order
+from pyspextool.utils.arrays import idl_rotate
+from pyspextool.fit.polyfit import poly_1d
+
 
 
 
@@ -284,22 +286,37 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     #
     # Rectify the orders
     #
-
     rectorders = []
+    indices = wavecalinfo['rectindices']
     for i in range(config.state['norders']):
-
-        indices = wavecalinfo['rectindices']
         
-        order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'],
-                              var=var, bpmask=config.state['badpixelmask'],
-                              bsmask = mask)
-        rectorders.append(order)
+        order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'])
+#                              var=var, bpmask=config.state['badpixelmask'],
+#                              bsmask = mask)
 
+
+        # Now get the wavelength solution to tack on
+
+
+        bot = np.ceil(poly_1d(indices[i]['x'],
+                      flatinfo['edgecoeffs'][i,0,:])).astype(int)
+
+        w = wavecal[bot,np.fix(indices[i]['xidx']).astype(int)]
+
+        order.update({'w':w})
+        order.update({'y':indices[i]['y']})        
+
+        rectorders.append(order)
         
     # Store the results
 
+    config.state['recorders'] = rectorders
     
-        
+    # Set the continue flags
+
+
+    config.state['pscontinue'] = 1
+    config.state['xscontinue'] = 1    
     
 
 
