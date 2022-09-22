@@ -463,7 +463,7 @@ def read_wavecal_fits(file, rotate=True):
 
         tmp = hdul[i+3].data
         x = tmp[0,0,1:]
-        y = tmp[0,0,1:]        
+        y = tmp[0,1:,0]        
         xidx = tmp[0,1:,1:]
         yidx = tmp[1,1:,1:]
         

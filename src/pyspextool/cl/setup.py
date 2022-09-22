@@ -246,3 +246,8 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     file = os.path.join(packagepath, 'instruments', config.state['instrument'],
                         'data', config.state['instrument'] + '_bdpxmk.fits')
     config.state['rawbadpixelmask'] = fits.getdata(file)
+
+    # Set the continue variables
+
+    config.state['pscontinue'] = 0
+    config.state['xscontinue'] = 0    
