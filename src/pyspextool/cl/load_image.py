@@ -28,17 +28,25 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     #
 
     check_parameter('load_image', 'files', files, ['str', 'list'])
+
     check_parameter('load_image', 'flat_name', flat_name, 'str')
+
     if len(wavecal_name) !=0:
         check_parameter('load_image', 'wavecal_name', wavecal_name[0], 'str')
+
     check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
                     possible_values=['A', 'A-B', 'A-Sky'])
+
     check_parameter('load_image', 'directory', directory, 'str',
                     possible_values=['raw', 'cal', 'proc'])
+
     check_parameter('load_image', 'suffix', suffix, ['str', 'NoneType'])
+
     check_parameter('load_image', 'flat_field', flat_field, 'bool')
+
     check_parameter('load_image', 'linearity_correction',
                     linearity_correction, 'bool')        
+
     check_parameter('load_image', 'clupdate', clupdate, 'bool')    
 
     # Get the readfits module
@@ -66,16 +74,20 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     full_flat_name = os.path.join(config.state['calpath'], flat_name)
     check_file(full_flat_name)
+    config.state['flatfile'] = flat_name
 
     if len(wavecal_name) !=0:
 
         dowavecal = True
         full_wavecal_name = os.path.join(config.state['calpath'],
                                          wavecal_name[0])
+        check_file(full_wavecal_name)
+        config.state['wavecalfile'] = wavecal_name[0]
         
     else:
 
         dowavecal = False
+        config.state['wavecalfile'] = None
 
     #
     # Create the file names
@@ -289,7 +301,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     rectorders = []
     indices = wavecalinfo['rectindices']
     for i in range(config.state['norders']):
-        
+
         order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'])
 #                              var=var, bpmask=config.state['badpixelmask'],
 #                              bsmask = mask)
@@ -310,7 +322,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         
     # Store the results
 
-    config.state['recorders'] = rectorders
+    config.state['rectorders'] = rectorders
     
     # Set the continue flags
 
