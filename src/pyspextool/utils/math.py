@@ -270,29 +270,57 @@ def find_outliers(data, thresh, leave_nans=True, silent=False):
         
         return mask == 1
 
-def mean_data_stack(data, *args, mask=None, robust=None, stderr=True):
+
+def mean_data_stack(data, weights=None, mask=None, robust=None, stderr=True):
 
     '''
-    Compute the mean of a spectral or image stack with optional mask
+    (Robustly) Compute the mean of a spectral or image stack with optional mask
     
     Parameters
     ----------
-    data : numpy.ndarray
+    data : ndarray
         either a stack of spectra (nspec, npoints) or a stack of images
         (nimgs, nrows, ncols).
 
+    weights : ndarray , optional
+        either a stack for spectra (nspec, npoints) or a stack of 
+        for images (nimgs, nrows, ncols).  For a standard weighted mean, 
+        pass 1/var.
+
     mask : numpy.ndarray, optional
-        a mask array with the same shape as `data`.  
+        an int mask array with the same shape as `data`.  
         0 = bad, 1=good
 
+    robust : float, optional
+        The threshold for identifying outliers.  See find_outliers.
+
     stderr : {True, False}, optional
+        If True, and `weights` is None, then the output `mvar` will be the 
+        standard error.
+
+    Returns
+    -------
+    nndarray, ndarray, ndarray
+       mean : the mean of the data stack
+       mvar : the sample variance of the stack.  That is, the result is divided 
+              by (n-1).  If `stderr` is True, and `weights` is None, then the 
+              `mvar` is the standard error which is the sample standard 
+              deviation divided by sqrt(n).  
+
+    Examples
+    --------
+    later
+       
 
     '''
 
     #
     # Check the parameters
     #
+
     check_parameter('mean_data_stack', 'data', data, 'ndarray', [2, 3])
+    check_parameter('mean_data_stack', 'weights', weights,
+                    ['NoneType','ndarray'], [2, 3])
     check_parameter('mean_data_stack', 'mask', mask, ['NoneType','ndarray'],
                     [2, 3])
     check_parameter('mean_data_stack', 'robust', robust,
@@ -304,43 +332,80 @@ def mean_data_stack(data, *args, mask=None, robust=None, stderr=True):
     ndimen = np.ndim(data)
     shape = np.shape(data)
 
-    # Get the weights set up
+    #
+    # Get the mask set up
+    #
+    
+    if mask is None:
 
-    if len(args) == 0:
-        weights = np.full_like(data,1,dtype=float)
+        # Create a blank mask where all pixels are good
+        
+        mask = np.full_like(data, 1,dtype=int)
 
     else:
-        weights = args[0]
 
-    # Deal with a user mask if passed
-
-    if mask is not None:
-        z = where(mask != 1)
-        weights[z] = 0.0
-
-    # Now check for NaNs
+        # Convert any pixel identified as a NaN to a bad pixel 
+        
+        z = mask == 2
+        mask[z] = 0
+                
+    # Check for NaNs just to make sure.
 
     z = np.isnan(data)
-    weights[z] = 0.0
-    data[z] = 0.0
+    mask[z] = 0
 
-    # Now do the robust checks
+    if weights is not None:
 
-#    if robust is not None:
+        z = np.isnan(weights)
+        mask[z] = 0
 
-#        if ndimen == 2:
-            
-    result = np.average(data, axis=0, weights=weights,returned=True)
-    mean = result[0]
-    mvar = result[1]
+    # Do it robustly if requested
 
-    if stderr is True:
+    if robust is not None:
 
-        ns = weights > 0
-        total = np.sum(ns, axis=0)
-        np.divide(mvar, total, out=mvar)
+        if ndimen == 2:  #  This is a spectral stack
 
-    return mean, mvar
+            for i in range(shape[1]):
+                        
+                submask = find_outliers(data[:,i], robust, leave_nans=True,
+                                        silent=False)
+                mask[~submask,i] = 0                
+
+        else:
+
+            for i in range(shape[1]):
+
+                for j in range(shape[2]):
+                        
+                    submask = find_outliers(data[:,i,j], robust,
+                                            leave_nans=True,
+                                            silent=False)
+                    mask[~submask,i,j] = 0            
+
+    #    
+    # Now do the combining
+    #
+
+    # Combine based on whether it is weighted or not
+    
+    z = mask == 0
+
+    if weights is not None:
+
+        weights[z] = 0.0
+        mvar = 1/np.sum(weights,axis=0)
+        mean = np.sum(np.multiply(data, weights),axis=0)*mvar
+        
+    else:
+
+        data[z] = 0.0
+        ndat = np.sum(mask, axis=0)
+        mean = np.sum(data, axis=0)/ndat
+        mvar = (np.sum(data**2,axis=0)-ndat*mean**2)/(ndat-1)
+        if stderr is True:
+            np.divide(mvar,ndat,out=mvar)
+                
+    return mean, mvar, mask
     
     
 def median_data_stack(data, mask=None, stderr=True):
