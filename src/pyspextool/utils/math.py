@@ -375,7 +375,7 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
                                         silent=False)
                 goodbad[~submask,i] = 0                
 
-        else:
+        else:  #  This is an image stack
 
             for i in range(shape[1]):
 
@@ -590,17 +590,22 @@ def median_data_stack(data, mask=None, stderr=True):
     return [med, unc]
 
 def moments(data, goodbad=False, robust=None, silent=True):
+
     """
     (Robustly) computes various statistics
+
     Parameters
     ----------
     data : numpy.ndarray
+
     goodbad : numpy.ndarray, optional
         An array with the same shape as `data` that identifies good and
         bad data points.  0=bad, 1=good, 2=NaN
+
     robust : float, optional
         If given, outliers are identified before computing the stats.
         See notes for details.
+
     silent : {True, False}, optional
         If False, the result will be written to the command line.
     Returns
@@ -609,21 +614,28 @@ def moments(data, goodbad=False, robust=None, silent=True):
         A dict where with the following entries:
         ndat : int
             The numger of data points used in the calculation.
+
         mean : float
             The mean of the (non-NaN, good) data points.
+
         variance : float
             Estimate of the variance of the (non-NaN, good) data points.
             That is, the denominator is 1/(ndat-1).
+
         stddev : float
             Estimate of the standard deviation of the (non-NaN, good)
             data points.  That is, the denominator is 1/(ndat-1).
+
         stderr : float
             The standard error of the (non-NaN, good) data points.
             `stddev`/sqrt(ndat)
+
         skewness : float
             The skewness of the (non-NaN, good) data points.
+
         kurtosis : float
             The kurtosis of the (non-NaN, good) data points.
+
         goodbad : numpy.ndarray of int
             An array with the same shape as `data` that identifies good and
             bad data points.  0=bad, 1=good, 2=NaN
@@ -632,11 +644,10 @@ def moments(data, goodbad=False, robust=None, silent=True):
     If goodbad is passed, only points with values of 1 are used.  If
     robust is passed, the median and median absolute deviation and
     points are identified as an outlier if:
-    |x_i - MED|/(1.4826*MAD) > robust
-    where MAD = median(|x_i - MED|) and 1.4826*MAD is a robust estimate
-    of the standard deviation for a gaussian distribution. Outliers are
-    labelled `bad` in the goodbad array.  Finally, the statistics are
-    computed using scipy.stats.describe.
+    |x_i - MED|/(MAD) > robust where MAD = median(|x_i - MED|) (1.4826*MAD 
+    is a robust estimate of the standard deviation for a gaussian 
+    distribution.). Outliers are labelled `bad` in the goodbad array.  
+    Finally, the statistics are computed using scipy.stats.describe.
     NOTE:  The variance and standard deviations are *estimates* of the
     variance and standard deviation of the parent population and so
     have 1/(ndat-1) in the denominator.
@@ -657,10 +668,7 @@ def moments(data, goodbad=False, robust=None, silent=True):
                 Kurtosis =  -1.6237779003737334
       [[2 1 0]
        [1 1 1]]
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_moments.pro.
+
     """
 
     # Set up goodbad array if need be
@@ -685,10 +693,10 @@ def moments(data, goodbad=False, robust=None, silent=True):
 
     if robust is not None:
 
-        # Compute the median and 1.4826*median absolute deviation (gmad).
+        # Compute the median and median absolute deviation (gmad).
 
         med = np.median(sample)
-        gmad = 1.4826 * np.median(np.abs(sample - med))
+        gmad = np.median(np.abs(sample - med))
 
         #  Generate the mask
 
