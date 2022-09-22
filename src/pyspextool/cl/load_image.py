@@ -3,6 +3,7 @@ import importlib
 from astropy.io import fits
 import glob
 import os
+from pyspextool.utils.for_print import for_print
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.cl import config
@@ -313,11 +314,11 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         bot = np.ceil(poly_1d(indices[i]['x'],
                       flatinfo['edgecoeffs'][i,0,:])).astype(int)
 
-        w = wavecal[bot,np.fix(indices[i]['xidx']).astype(int)]
+        w = wavecal[bot,np.fix(indices[i]['x']).astype(int)]
 
         order.update({'w':w})
         order.update({'y':indices[i]['y']})        
-
+        
         rectorders.append(order)
         
     # Store the results
