@@ -282,13 +282,15 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         if clupdate is True:
             print('Flat fielding the image...')
 
-        np.divide(img, flatinfo['flat'], out=img)
-        np.divide(var, flatinfo['flat']**2, out=var)
+#        np.divide(img, flatinfo['flat'], out=img)
+#        np.divide(var, flatinfo['flat']**2, out=var)
             
     else:
 
         if clupdate is True:
             print('Image not flat fielded...')
+
+    config.state['workimage'] = img
 
     #
     # Rotate the bad pixel mask

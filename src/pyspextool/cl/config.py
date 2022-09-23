@@ -38,6 +38,7 @@ state = {'atrans_wave':1,
          'version':'1beta',
          'wavecalfile':None,
          'workfiles':'',
+         'workimage':1,
          'xranges':1,
          'xsdoorders':1}
 
