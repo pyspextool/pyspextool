@@ -70,10 +70,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
                 
             dimen = len(parameter.shape)
             
-            if (dimen in dimens):
-                return True
-
-            else:
+            if (dimen not in dimens):
 
                 dimens_str = [str(x) for x in dimens]
                 
@@ -84,8 +81,6 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
                 raise ValueError(message)
                 return False
 
-        return True        
-                            
     else:
         
         message = 'Parameter `'+str(parameter_name)+'` of '+ \
@@ -95,18 +90,16 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
         raise TypeError(message)
         return False
         
-    
+
     if possible_values is not None:
 
-        if (parameter_type in types):        
+        if (parameter not in possible_values):        
 
-            return True
+            values_str = ['`'+str(x)+'`' for x in possible_values]
 
-        else:
-
-            values_str = [str(x) for x in values]
-            
             message = 'Parameter `'+str(parameter_name)+'` of '+ \
-            caller_name+' has a value of'+string(parameter)+'.  Acceptable ' \
-            'values are, '.join(values_str)+'.'            
-    
+              caller_name+' has a value of `'+str(parameter)+ \
+              '`.  Acceptable values are, '+', '.join(values_str)+'.'            
+            raise ValueError(message)
+
+    return True
