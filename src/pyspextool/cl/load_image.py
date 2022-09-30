@@ -154,8 +154,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     flatinfo = read_flat_fits(full_flat_name)
 
     config.state['flat'] = flatinfo['flat']
-    config.state['omask'] = flatinfo['ordermask']
+    config.state['ordermask'] = flatinfo['ordermask']
     config.state['edgecoeffs'] = flatinfo['edgecoeffs']
+    config.state['edgedeg'] = flatinfo['edgedeg']    
     config.state['orders'] = flatinfo['orders']
     config.state['norders'] = flatinfo['norders']
     config.state['plate_scale'] = flatinfo['ps']
