@@ -231,6 +231,10 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         config.state['atrans_wave'] = np.nan
         config.state['atrans_trans'] = np.nan
+
+    config.state['wavecal'] = wavecal
+    config.state['spatcal'] = spatcal
+        
         
     #
     # Load the data
