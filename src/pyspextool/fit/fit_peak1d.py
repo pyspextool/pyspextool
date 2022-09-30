@@ -113,7 +113,7 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
             
     else:
 
-        p0 = np.arrqy(p0)
+        p0 = np.array(p0)
         
         # Check to make sure the number of user parameter estimates equals
         # the number of parameters reqeusted.

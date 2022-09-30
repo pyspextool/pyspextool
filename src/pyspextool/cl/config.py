@@ -1,4 +1,6 @@
-state = {'atrans_wave':1,
+state = {'apertures':1,
+         'apsigns':1,
+         'atrans_wave':1,
          'atrans_trans':1,
          'badpixelmask':1,
          'biasfile':'',
