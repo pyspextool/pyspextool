@@ -95,6 +95,23 @@ def define_aperture_positions(method, apertures, fwhm=0.8):
         apsigns = np.abs(apsigns)
 
     #
+    # Determine the average apsign
+    #
+
+    if norders > 1:
+
+        average_apsign = np.sum(apsigns, axis=0)/np.sum(np.abs(apsigns), axis=0)
+        apsigns = np.empty(naps, dtype=int)
+
+        for i in range(naps):
+
+            apsigns[i] = 1 if average_apsign[i] > 0 else -1
+
+    else:
+
+        apsigns = np.squeeze(apsigns)
+        
+    #
     # Store the results into the config variable
     #
     
