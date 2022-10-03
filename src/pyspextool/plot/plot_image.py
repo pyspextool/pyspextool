@@ -5,7 +5,7 @@ from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check_parameter import check_parameter
 from pyspextool.plot.limits import get_image_range
 
-def plot_image(image, edgecoeffs, xranges, orders):
+def plot_image(image, orders_plotinfo=None, trace_plotinfo=None):
 
     '''
     To plot a spectral image along with the edges and order numbers
@@ -52,42 +52,62 @@ def plot_image(image, edgecoeffs, xranges, orders):
     
     check_parameter('plot_image', 'image', image, 'ndarray', 2)
 
-    check_parameter('plot_image', 'edgecoeffs', edgecoeffs, 'ndarray', [2, 3])
+#    check_parameter('plot_image', 'edgecoeffs', edgecoeffs, 'ndarray', [2, 3])
 
-    check_parameter('plot_image', 'xranges', xranges, 'ndarray', [1, 2])
+#    check_parameter('plot_image', 'xranges', xranges, 'ndarray', [1, 2])
 
-    check_parameter('plot_image', 'orders', orders, ['int', 'ndarray'], [0,1])
+#    check_parameter('plot_image', 'orders', orders, ['int', 'ndarray'], [0,1])
 
     #
     # Just plot it up
     #
     
-    norders = len(orders)
-        
     minmax = get_image_range(image, 'zscale')
     fig = pl.figure(figsize=(7, 7))
     pl.imshow(image, vmin=minmax[0], vmax=minmax[1], cmap='gray',
                   origin='lower')
     pl.xlabel('Columns (pixels)')
     pl.ylabel('Rows (pixels)')
-    
-    for i in range(norders):
 
-        x = np.arange(xranges[i,0],xranges[i,1]+1)
-        bot = poly_1d(x,edgecoeffs[i,0,:])
-        top = poly_1d(x,edgecoeffs[i,1,:])
+    if orders_plotinfo is not None:
+
+        xranges = orders_plotinfo['xranges']
+        edgecoeffs = orders_plotinfo['edgecoeffs']
+        orders = orders_plotinfo['orders']
+        norders = len(orders)
+            
+        for i in range(norders):
+
+            x = np.arange(xranges[i,0],xranges[i,1]+1)
+            bot = poly_1d(x,edgecoeffs[i,0,:])
+            top = poly_1d(x,edgecoeffs[i,1,:])
+            
+            pl.plot(x,bot,color='purple')
+            pl.plot(x,top,color='purple')                
+            pl.fill_between(x,bot,y2=top,color='purple',alpha=0.15)
+            
+            delta = xranges[i,1] - xranges[i,0]
+            idx = np.fix(delta*0.02).astype(int)
+            
+            pl.text(x[idx],(top[idx]+bot[idx])/2., str(orders[i]),
+                        color='yellow', verticalalignment='center')
+
+
+    if trace_plotinfo is not None:
         
-        pl.plot(x,bot,color='purple')
-        pl.plot(x,top,color='purple')                
-        pl.fill_between(x,bot,y2=top,color='purple',alpha=0.15)
+        pl.plot(trace_plotinfo['x'],trace_plotinfo['y'],'go', markersize=1)
+        bad = trace_plotinfo['goodbad'] == 0
+        pl.plot(trace_plotinfo['x'][bad],trace_plotinfo['y'][bad], 'bo',
+                markersize=1)
+
+#        for i in range(len(trace_plotinfo['fits'])):
+
+
+#            print(trace_plotinfo['fits'][i][1,:])
+#            pl.plot(trace_plotinfo['fits'][i][0,:],
+#                    trace_plotinfo['fits'][i][1,:],'ro')
+
         
-        delta = xranges[i,1] - xranges[i,0]
-        idx = np.fix(delta*0.02).astype(int)
-        
-        pl.text(x[idx],(top[idx]+bot[idx])/2., str(orders[i]),
-                    color='yellow', verticalalignment='center')
-        
-                
     pl.show()
 
     
