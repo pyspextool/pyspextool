@@ -1,16 +1,43 @@
 import numpy as np
 import matplotlib.pyplot as pl
+import os 
 
 from pyspextool.plot.limits import get_spec_range
 
-def plot_profiles(profiles,slith_arc, doorders, apertures=None):
+def plot_profiles(profiles,slith_arc, doorders, apertures=None,
+                  qafileinfo=None):
+
+    '''
+    qafileinfo : dict, optional
+        `"figsize"` : tuple
+            (2,) tuple of the figure size (inches).
+
+        `"filepath"` : str
+            The directory to write the QA figure.
+
+        `"filename"` : str
+            The name of the file, sans suffix/extension.
+
+        `"extension"` : str
+            The file extension.  Must be compatible with the savefig
+            function of matplotlib.
+
+    '''    
 
     norders = len(profiles)
 
-    pl.figure(figsize=(8.5,8))
+    if qafileinfo is not None:
+
+        figsize = qafileinfo['figsize']
+
+    else:
+
+        figsize = (8.5,11)
+    
+
+    pl.figure(figsize=figsize)
     pl.subplots_adjust(hspace=2)
 
-    print(doorders)
     for i in range(norders):
 
         if doorders[i] == 0:
@@ -51,7 +78,16 @@ def plot_profiles(profiles,slith_arc, doorders, apertures=None):
             axe.vlines(apertures[i,1],yrange[0], yrange[1],
                        color=aperture_color)            
         
-    pl.show()
+
+    if qafileinfo is not None:
+
+        pl.savefig(os.path.join(qafileinfo['filepath'],
+                                qafileinfo['filename'] +
+                                qafileinfo['extension']))
+
+    else:
+
+        pl.show()
 
         
     

@@ -170,15 +170,15 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     config.state['ncols'] = flatinfo['ncols']
     config.state['nrows'] = flatinfo['nrows']
     config.state['badpixelmask'] = idl_rotate(config.state['rawbadpixelmask'],
-                                              flatinfo['rotation'])    
+                                              flatinfo['rotation'])
 
     # Let's deal with the mode
 
     if config.state['modename'] != flatinfo['mode']:
  
         config.state['modename'] = flatinfo['mode']
-        config.state['psdoorders'] = np.ones(flatinfo['norders'])
-        config.state['xsdoorders'] = np.ones(flatinfo['norders'])
+        config.state['psdoorders'] = np.ones(flatinfo['norders'], dtype=int)
+        config.state['xsdoorders'] = np.ones(flatinfo['norders'], dtype=int)
 
     #
     # Load the wavcal image
@@ -333,7 +333,6 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     config.state['rectorders'] = rectorders
     
     # Set the continue flags
-
 
     config.state['pscontinue'] = 1
     config.state['xscontinue'] = 1    

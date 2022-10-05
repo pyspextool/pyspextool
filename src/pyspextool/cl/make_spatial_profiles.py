@@ -2,18 +2,23 @@ import numpy as np
 from scipy import interpolate
 
 from pyspextool.cl import config
+from pyspextool.cl.check_continue import check_continue
+from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.utils.math import mean_data_stack
 
 
-def make_spatial_profiles():
+def make_spatial_profiles(iplot=True, qafile=False):
 
     #
     # Check the continue variables
     #
     
-    if config.state['pscontinue'] < 1 or config.state['xscontinue'] < 1:
-        print('Previous reductions steps not complete.')
+    check_continue(2)
 
+    #
+    # Build the profiles
+    #
+    
     profiles = []
         
     for i in range(config.state['norders']):
@@ -74,3 +79,29 @@ def make_spatial_profiles():
                          'p':np.flip(mean)})
 
     config.state['profiles'] = profiles
+
+    if iplot is True:
+
+        plot_profiles(config.state['profiles'], config.state['slith_arc'],
+                      np.ones(config.state['norders'],dtype=int))
+
+
+    if qafile is True:
+
+        qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
+                      'filename': 'profile', 'extension':'.pdf'}
+
+        plot_profiles(config.state['profiles'], config.state['slith_arc'],
+                      np.ones(config.state['norders'],dtype=int),
+                      qafileinfo=qafileinfo)
+                      
+        
+
+    # Set the continue flags
+
+    config.state['pscontinue'] = 3
+    config.state['xscontinue'] = 3
+
+
+
+        
