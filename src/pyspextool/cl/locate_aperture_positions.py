@@ -2,9 +2,11 @@ import numpy as np
 
 from pyspextool.cl import config
 from pyspextool.io.check_parameter import check_parameter
+from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.spectroscopy.find_peaks import find_peaks
 
-def define_aperture_positions(method, apertures, fwhm=0.8):
+def locate_aperture_positions(method, apertures, fwhm=0.8, iplot=True,
+                              qafile=False):
 
     """
     To determine the locations of spectral extraction apertures
@@ -117,3 +119,22 @@ def define_aperture_positions(method, apertures, fwhm=0.8):
     
     config.state['apertures'] = apertures
     config.state['apsigns'] = apsigns
+    config.state['naps'] = len(apsigns)
+
+    if iplot is True:
+
+        plot_profiles(config.state['profiles'],config.state['slith_arc'],
+                      np.ones(config.state['norders'],dtype=int),
+                      apertures=config.state['apertures'])
+    
+
+    if qafile is True:
+
+        qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
+                      'filename': 'profile', 'extension':'.pdf'}
+
+        plot_profiles(config.state['profiles'], config.state['slith_arc'],
+                      np.ones(config.state['norders'],dtype=int),
+                      apertures=config.state['apertures'],                      
+                      qafileinfo=qafileinfo)
+        
