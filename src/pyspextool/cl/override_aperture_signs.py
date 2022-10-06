@@ -1,7 +1,7 @@
 import numpy as np
 
 from pyspextool.cl import config
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 
 def override_aperture_signs(apsigns):
 

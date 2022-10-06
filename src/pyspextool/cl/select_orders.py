@@ -1,7 +1,7 @@
 import numpy as np
 
 from pyspextool.cl import config
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 
 def select_orders(include=None, exclude=None, plot_profiles=True):

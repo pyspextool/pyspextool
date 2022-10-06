@@ -3,7 +3,7 @@ from astropy.io import fits
 
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.fit.polyfit import poly_2d
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.spectroscopy.make_order_mask import make_order_mask
 from pyspextool.utils.arrays import idl_unrotate
 from pyspextool.utils.arrays import idl_rotate

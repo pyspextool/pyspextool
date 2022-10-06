@@ -1,7 +1,7 @@
 import numpy as np
 
 from pyspextool.fit.fit_peak1d import *
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.utils.arrays import find_index
 from pyspextool.utils.arrays import trim_nan
 

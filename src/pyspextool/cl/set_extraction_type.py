@@ -1,6 +1,6 @@
 from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 
 def set_extraction_type(type,clupdate=True):
 

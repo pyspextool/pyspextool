@@ -7,7 +7,7 @@ from pyspextool.utils.for_print import for_print
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.cl import config
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import *
 from pyspextool.io.files import *
 from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files

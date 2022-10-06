@@ -1,7 +1,7 @@
 import numpy as np
 
 from pyspextool.cl import config
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.spectroscopy.find_peaks import find_peaks
 

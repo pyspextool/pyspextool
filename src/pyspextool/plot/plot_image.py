@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 
 from pyspextool.fit.polyfit import poly_1d
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
 def plot_image(image, orders_plotinfo=None, trace_plotinfo=None):

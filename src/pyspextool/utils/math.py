@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import describe
 
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 
 def bit_set(array, bits):
 

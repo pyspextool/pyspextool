@@ -7,7 +7,7 @@ from pyspextool.calibration.get_line_guess_position import get_line_guess_positi
 from pyspextool.calibration.find_lines_1dxd import find_lines_1dxd
 from pyspextool.calibration.wavecal_solution_1d import wavecal_solution_1d
 from pyspextool.cl import config
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.io.files import make_full_path
 from pyspextool.io.read_uspex_fits import main as readfits
 from pyspextool.io.flat import read_flat_fits

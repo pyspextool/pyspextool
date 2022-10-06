@@ -1,7 +1,7 @@
 import numpy as np
 
 from pyspextool.fit.polyfit import poly_1d
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 
 def make_interp_indices_1d(edgecoeffs, xranges, slith_arc, array_output=False):
 

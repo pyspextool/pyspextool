@@ -3,9 +3,10 @@ import matplotlib.pyplot as pl
 import os 
 
 from pyspextool.plot.limits import get_spec_range
+from pyspextool.spectroscopy.make_aperture_mask import make_aperture_mask
 
 def plot_profiles(profiles,slith_arc, doorders, apertures=None,
-                  qafileinfo=None):
+                  aperture_radii=None, psf_radius=None, qafileinfo=None):
 
     '''
     qafileinfo : dict, optional
@@ -24,8 +25,21 @@ def plot_profiles(profiles,slith_arc, doorders, apertures=None,
 
     '''    
 
+    # Get basic information
+    
     norders = len(profiles)
 
+    if apertures is not None:
+    
+        if len(doorders) == 1:
+
+            naps = len(apertures)
+
+        else:
+
+            naps = np.shape(apertures)[1]
+
+    
     if qafileinfo is not None:
 
         figsize = qafileinfo['figsize']
@@ -48,7 +62,9 @@ def plot_profiles(profiles,slith_arc, doorders, apertures=None,
         else:
             plot_color = 'black'
             profile_color = 'black'
-            aperture_color = 'blue'            
+            aperture_color = 'cyan'
+            apradii_color = 'green'
+            psfradius_color = 'blue'                                    
         
         # Get the plot range
 
@@ -69,16 +85,36 @@ def plot_profiles(profiles,slith_arc, doorders, apertures=None,
         axe.set_ylim(yrange)        
         axe.set_title('Order '+str(profiles[i]['order']),color=plot_color)
 
-        # Plot the apertures
-        
         if apertures is not None:
 
-            axe.vlines(apertures[i,0],yrange[0], yrange[1],
-                       color=aperture_color)
-            axe.vlines(apertures[i,1],yrange[0], yrange[1],
-                       color=aperture_color)            
-        
+            # Now start the aperture loop
+            
+            for j in range(naps):
 
+                axe.vlines(apertures[i,j],yrange[0], yrange[1],
+                           color=aperture_color)
+
+                if aperture_radii is not None:
+
+                    mask = make_aperture_mask(profiles[i]['y'],
+                                              np.squeeze(apertures[i,:]),
+                                              aperture_radii)
+
+                    z = mask <= 0.0
+                    tmp = profiles[i]['p']
+                    tmp[z] = np.nan
+                    axe.plot(profiles[i]['y'], tmp ,color=apradii_color)
+
+                if psf_radius is not None:
+
+                    axe.vlines(apertures[i,j]-psf_radius,yrange[0], yrange[1],
+                            color=psfradius_color, linestyle='dotted')
+                    axe.vlines(apertures[i,j]+psf_radius,yrange[0], yrange[1],
+                            color=psfradius_color, linestyle='dotted')                                        
+
+            
+
+            
     if qafileinfo is not None:
 
         pl.savefig(os.path.join(qafileinfo['filepath'],

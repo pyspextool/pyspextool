@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import interpolate
 
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 
 def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
                   ybuffer=0):
