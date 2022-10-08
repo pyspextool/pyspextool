@@ -1,16 +1,17 @@
 import numpy as np
 
 
-def find_index(x, x_want):
+def find_index(x, x_want, ends_to_nan=False):
 
     """
     Finds the effective index of a function value in an ordered array.
 
     Parameters
-    ----------------
+    ----------
     x : array_like
         (N,) The array of floats or integers to be searched,
         must be monotonically increasing or decreasing.
+
     x_want : array_like or float or int
         (M,) The value or values whose indices are required.
 
@@ -43,9 +44,6 @@ def find_index(x, x_want):
     >>> find_index(x, x_want)
     array([0.33333333, 2.04      ,        nan])
 
-    Modification History
-    --------------------
-    2022-06-30 - Written by M. Cushing, University of Toledo.
     """
 
     # Convert to numpy arrays and get basic things
@@ -114,10 +112,10 @@ def find_index(x, x_want):
     # Clip points beyond interpolation to NaN
 
     z = x_want < float(x[0])
-    ieff[z] = np.nan
+    ieff[z] = np.nan if ends_to_nan is True else 0
 
     z = x_want > float(x[-1])
-    ieff[z] = np.nan
+    ieff[z] = np.nan if ends_to_nan is True else ndat-1
 
     # Return numpy.ndarray of float or float
     return ieff[0] if single is True else ieff
