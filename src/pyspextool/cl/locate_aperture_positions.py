@@ -1,12 +1,13 @@
 import numpy as np
 
 from pyspextool.cl import config
+from pyspextool.cl.check_continue import check_continue
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.spectroscopy.find_peaks import find_peaks
 
-def locate_aperture_positions(method, apertures, fwhm=0.8, iplot=True,
-                              qafile=False):
+def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
+                              qafile=False, clupdate=True):
 
     """
     To determine the locations of spectral extraction apertures
@@ -14,26 +15,38 @@ def locate_aperture_positions(method, apertures, fwhm=0.8, iplot=True,
 
     Parameters
     ----------
-    method : {'auto', 'guess', fixed'}
-        The method by which the apertures are identified (see Notes).
+    apertures : int, float, list, or numpy.ndarray
+        The exact type depends on the extraction type and method.
 
-    apertures : int, list, or numpy.ndarray
+        Extended Source Extraction:
+        An int, float, list, of numpy.ndarray of aperture positions.
+
+        Point Source Extraction:
         `method` = 'auto'
-            the number of apertures to search
+            The int number of apertures to search
         `method` = 'guess'
-            a list of numpy.darray of apertures positions to seaerch around.
+            An int, float, list, numpy.darray of apertures positions.
         `method` = 'fixed'
-            a list of numpy.darray of apertures positions.
+            An int, float, list, numpy.darray of apertures positions.
+
+    method : {'auto', 'guess', fixed'}, optional 
+        The method by which point source apertures are identified.  It has 
+        no impact if the extraction is of an extended source.
 
     fwhm: float, default 0.8 (arcseconds).
         The approximate FWHM of the peak to be identified.  Only used 
         if `method` is 'auto' or 'guess'.
 
+    iplot : {True, False}, optional
+
+    qafile : {False, True}, optional
+
+    clupdate: {True, False}, optional
+        Set to True to report the operation to the command line.
 
     Returns
     -------
-    Bone
-
+    None
 
     Notes
     -----
@@ -46,81 +59,125 @@ def locate_aperture_positions(method, apertures, fwhm=0.8, iplot=True,
     """
 
     #
-    # Check parameters
+    # Check parameters that don't depend on extraction type.
     #
-    
+
     check_parameter('define_aperture_positions', 'method', method, 'str',
                     possible_values=['auto', 'fixed', 'guess'])
 
-    check_parameter('define_aperture_positions', 'apertures', apertures,
-                    ['int', 'list', 'ndarray'])        
+    check_parameter('define_aperture_positions', 'fwhm', fwhm, ['int', 'float'])
+
+    check_parameter('define_aperture_positions', 'iplot', iplot, 'bool')
+
+    check_parameter('define_aperture_positions', 'qafile', qafile, 'bool')
 
     #
-    # Go based off of the method
+    # Update the command line if requested
+    #
     
+    if clupdate is True:
+        print('Locating the apertures...')    
 
-    if method == 'auto':
 
-        apertures, apsigns = find_peaks(config.state['profiles'],
-                                        {'method':'auto', 'peaks':apertures},
-                                        fwhm=fwhm)
+    #
+    # Get useful numbers
+    #
+    
+    norders = len(config.state['profiles'])
 
-    if method == 'guess':
+    #
+    # Check the extraction type
+    #
+    
+    if config.state['exttype'] == 'ps':
 
-        norders = len(config.state['profiles'])
-        naps = len(apertures)
-        apertures = np.tile(apertures, (norders, 1))
+        #
+        # This is a point source extraction
+        #
         
-        apertures, apsigns = find_peaks(config.state['profiles'],
+        #
+        # Which method was requested?
+        #
+
+        if method == 'auto':
+            
+            check_parameter('define_aperture_positions', 'apertures',
+                            apertures, 'int')
+
+            naps = apertures
+            apertures, apsigns = find_peaks(config.state['profiles'],
+                                        {'method':'auto', 'peaks':naps},
+                                        fwhm=fwhm)
+            
+        if method == 'guess':
+
+            check_parameter('define_aperture_positions', 'apertures',
+                            apertures, ['int', 'float', 'list', 'ndarray'])
+
+            apertures = np.tile(apertures, (norders, 1))
+            
+            apertures, apsigns = find_peaks(config.state['profiles'],
                                         {'method':'guess', 'peaks':apertures},
                                         fwhm=fwhm)
 
-    if method == 'fixed':
+            naps = int(np.size(apertures)/norders)
+            
+        if method == 'fixed':
 
-        norders = len(config.state['profiles'])
-        naps = len(apertures)
-        apertures = np.tile(apertures, (norders, 1))        
+            check_parameter('define_aperture_positions', 'apertures',
+                            apertures, ['int', 'float', 'list', 'ndarray'])
 
-        apertures, apsigns = find_peaks(config.state['profiles'],
+            apertures = np.tile(apertures, (norders, 1))        
+
+            apertures, apsigns = find_peaks(config.state['profiles'],
                                         {'method':'fixed', 'peaks':apertures},
-                                        fwhm=fwhm)                
+                                        fwhm=fwhm)
 
-    #
-    # Now check to see if we are doing an extended source extraction.  If so,
-    # then set all aperture signs to 1.
-    #
-    
-    if config.state['exttype'] == 'xs':
+            naps = int(np.size(apertures)/norders)            
 
-        # Set all aperture signs to positive
+        #
+        # Determine the average apsign
+        #
 
-        apsigns = np.abs(apsigns)
+        if norders > 1:
 
-    #
-    # Determine the average apsign
-    #
+            average_apsign = np.sum(apsigns, axis=0)/np.sum(np.abs(apsigns),
+                                                            axis=0)
+            apsigns = np.empty(naps, dtype=int)
 
-    if norders > 1:
+            for i in range(naps):
 
-        average_apsign = np.sum(apsigns, axis=0)/np.sum(np.abs(apsigns), axis=0)
-        apsigns = np.empty(naps, dtype=int)
+                apsigns[i] = 1 if average_apsign[i] > 0 else -1
 
-        for i in range(naps):
+        else:
 
-            apsigns[i] = 1 if average_apsign[i] > 0 else -1
+            apsigns = np.squeeze(apsigns)
 
     else:
 
-        apsigns = np.squeeze(apsigns)
+        #
+        # This is an extended source extraction
+        #
         
+        try:
+
+            naps = len(apertures)
+
+        except TypeError:
+
+            naps = 1            
+
+        apertures = np.tile(apertures, (norders, 1))        
+        apsigns = np.full_like(apertures, 1, dtype=int)
+
     #
     # Store the results into the config variable
     #
     
     config.state['apertures'] = apertures
     config.state['apsigns'] = apsigns
-    config.state['naps'] = len(apsigns)
-
+    config.state['naps'] = naps
+    
     if iplot is True:
 
         plot_profiles(config.state['profiles'],config.state['slith_arc'],
