@@ -7,6 +7,7 @@ from pyspextool.utils.for_print import for_print
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.cl import config
+from pyspextool.cl.check_continue import check_continue
 from pyspextool.io.check import *
 from pyspextool.io.files import *
 from pyspextool.io.flat import read_flat_fits
@@ -334,9 +335,5 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     
     # Set the continue flags
 
-    config.state['pscontinue'] = 1
-    config.state['xscontinue'] = 1    
-    
-
-
+    config.state['continue'] = 1
         

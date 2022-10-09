@@ -37,6 +37,12 @@ def set_extraction_type(type,clupdate=True):
                     possible_values=['ps', 'xs', 'point source',
                                      'extended source'])
 
+    #
+    # Check the continue variable
+    #
+    
+    check_continue(1)
+
 
     # Set the extraction type
     
@@ -47,11 +53,8 @@ def set_extraction_type(type,clupdate=True):
     if clupdate is True:
 
         label = 'point source' if type == 'ps' else 'extended source'
-        
-        print()
-        print('Extraction type set to '+label+'.')
+        print('Setting extraction type to '+label+'...')
 
     # Set the continue flags
 
-    config.state['pscontinue'] = 2
-    config.state['xscontinue'] = 2            
+    config.state['continue'] = 2 

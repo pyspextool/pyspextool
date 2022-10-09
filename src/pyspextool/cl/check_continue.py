@@ -1,3 +1,5 @@
+import sys
+
 from pyspextool.cl import config
 from pyspextool.io.check import check_parameter
 
@@ -11,17 +13,19 @@ def check_continue(number):
 
     # Do the check
 
-    if config.state['exttype'] == 'ps':
-
-        if number < config.state['pscontinue']:
-
-            message = 'Previous steps not completed.'
-            raise ValueError(message)
+#    if config.state['exttype'] == 'ps':
         
+#        scontinue = config.state['pscontinue']
 
-    if config.state['exttype'] == 'xs':
-    
-        if number < config.state['xscontinue']:
+#    else:
 
-            message = 'Previous steps not completed.'
-            raise ValueError(message)
+#        scontinue = config.state['xscontinue']
+
+    if config.state['continue'] < number:
+
+        message = 'Previous steps not completed.  Please run '+\
+                  config.state['steps'][number-1]+'.'
+        print(message)
+        sys.exit(1)
+
+        
