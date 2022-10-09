@@ -12,7 +12,7 @@ def make_spatial_profiles(iplot=True, qafile=False):
     #
     # Check the continue variables
     #
-    
+
     check_continue(2)
 
     #
@@ -99,9 +99,5 @@ def make_spatial_profiles(iplot=True, qafile=False):
 
     # Set the continue flags
 
-    config.state['pscontinue'] = 3
-    config.state['xscontinue'] = 3
-
-
-
+    config.state['continue'] = 3
         

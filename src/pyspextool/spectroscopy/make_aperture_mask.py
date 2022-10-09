@@ -125,10 +125,10 @@ def make_aperture_mask(slit_arc, appos, apradius, psbginfo=None, xsbginfo=None):
 
             leftbg = [appos[i] - bgstart - bgwidth, appos[i] - bgstart]
             rghtbg = [appos[i] + bgstart, appos[i] + bgstart + bgwidth]
-
+            
             leftidx = find_index(slit_arc, leftbg)
             rghtidx = find_index(slit_arc, rghtbg)
-
+            
             mask[int(leftidx[0]):int(leftidx[1])] = -1
             mask[int(rghtidx[0]):int(rghtidx[1])] = -1
 
