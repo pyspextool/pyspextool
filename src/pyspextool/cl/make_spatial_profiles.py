@@ -89,14 +89,13 @@ def make_spatial_profiles(iplot=True, qafile=False):
     if qafile is True:
 
         qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
-                      'filename': 'profile', 'extension':'.pdf'}
+                      'filename': config.state['qafilename']+'_profiles',
+                      'extension':'.pdf'}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'],dtype=int),
                       qafileinfo=qafileinfo)
                       
-        
-
     # Set the continue flags
 
     config.state['continue'] = 3

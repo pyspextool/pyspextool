@@ -13,6 +13,7 @@ from pyspextool.io.files import *
 from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.wavecal import read_wavecal_fits
+from pyspextool.plot.plot_image import plot_image
 from pyspextool.spectroscopy.rectify_order import rectify_order
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.fit.polyfit import poly_1d
@@ -22,7 +23,8 @@ from pyspextool.fit.polyfit import poly_1d
 
 def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                directory='raw',suffix=None, flat_field=True,
-               linearity_correction=True, clupdate=True):
+               linearity_correction=True, clupdate=True, iplot=False,
+               qafile=False):
 
     
     #
@@ -145,6 +147,22 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     config.state['workfiles'] = files
 
+    basenames = []
+    for i in range(len(files)):
+
+        basename = os.path.basename(files[i])
+        root = os.path.splitext(basename)
+        if root[1] == '.gz':
+
+            root = os.path.splittext(root[0])
+
+        basenames.append(root[0])
+
+    qafilename = '_'.join(basenames)
+    config.state['qafilename'] = qafilename
+
+
+    
     #
     # Load the flat field image
     #
@@ -332,8 +350,28 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     # Store the results
 
     config.state['rectorders'] = rectorders
+
+    #
+    # Do the plotting
+    #
+
+    order_plotinfo = {'xranges':config.state['xranges'],
+                      'edgecoeffs':config.state['edgecoeffs'],
+                      'orders':config.state['orders']}
+    
+    if iplot is True:
+
+        plot_image(config.state['workimage'],orders_plotinfo=order_plotinfo)
+
+    if qafile is True:
+
+        qafileinfo = {'figsize': (7,7), 'filepath':config.state['qapath'],
+                      'filename':qafilename+'_image', 'extension':'.pdf'}
+       
+        plot_image(config.state['workimage'],
+                   orders_plotinfo=order_plotinfo,
+                   qafileinfo=qafileinfo)        
     
     # Set the continue flags
 
     config.state['continue'] = 1
-        

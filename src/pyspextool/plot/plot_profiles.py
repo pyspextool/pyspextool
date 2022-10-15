@@ -137,10 +137,11 @@ def plot_profiles(profiles,slith_arc, doorders, apertures=None,
         pl.savefig(os.path.join(qafileinfo['filepath'],
                                 qafileinfo['filename'] +
                                 qafileinfo['extension']))
-
+        
     else:
 
         pl.show()
-
+        
+    pl.close()
         
     

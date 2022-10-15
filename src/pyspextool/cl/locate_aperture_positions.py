@@ -59,6 +59,11 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     """
 
     #
+    # Check continue variable
+    #
+    check_continue(3)
+    
+    #
     # Check parameters that don't depend on extraction type.
     #
 
@@ -177,6 +182,22 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     config.state['apertures'] = apertures
     config.state['apsigns'] = apsigns
     config.state['naps'] = naps
+
+
+    #
+    # Do the trace for extended source and set continue variable
+    #
+
+    if config.state['exttype'] == 'ps':
+
+        config.state['continue'] = 4
+
+    else:
+
+        config.state['continue'] = 4  
+
+
+
     
     if iplot is True:
 
@@ -188,7 +209,8 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     if qafile is True:
 
         qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
-                      'filename': 'profile', 'extension':'.pdf'}
+                      'filename': config.state['qafilename']+\
+                      '_aperturepositions', 'extension':'.pdf'}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'],dtype=int),

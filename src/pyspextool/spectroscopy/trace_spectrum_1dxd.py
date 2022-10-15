@@ -4,16 +4,18 @@ from scipy import interpolate
 
 from pyspextool.fit.fit_peak1d import *
 from pyspextool.fit.polyfit import *
-from pyspextool.io.check_parameter import check_parameter
+from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.arrays import make_image_indices
 from pyspextool.utils.arrays import find_index
 from pyspextool.utils.loop_progress import loop_progress
 
 def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
-                        xranges, apertures, fit_degree=2, step=5,
+                        xranges, apertures, fit_degree=2, step_size=5,
                         summation_width=5, centroid_threshold=2, fwhm=0.8,
                         clupdate=True, qafileinfo=None):
+
+    
 
     #
     # Check parameters
@@ -53,13 +55,15 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
 
         # Create an array of column numbers at which you will fit
         
-        numstep = int((stops-starts)/step)+1
-        columns = np.arange(numstep)*step+starts
+        numstep = int((stops-starts)/step_size)+1
+        columns = np.arange(numstep)*step_size+starts
 
         # Define arrays you fill in
         
         peaks_pix = np.full((numstep,naps),np.nan)
-        peaks_arc = np.full((numstep,naps),np.nan)        
+        peaks_arc = np.full((numstep,naps),np.nan)
+#        fit_pix = np.full((numstep,naps),np.nan)                
+#        fit_arc = np.full((numstep,naps),np.nan)                
         waves = np.full(numstep, np.nan)
 
         # Now loop over the columns
@@ -75,7 +79,7 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
             wavez = wavecal[:, columns[j]]            
 
             # Grab just the pixels in the slit
-            
+
             z = omaskz == orders[i]
 
             slitz = colz[z]
@@ -84,9 +88,6 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
             
             waves[j] = wavez[z][0]
 
-            # Store the conversion for arc2pix
-
-            
             
             # Now loop over each aperture
 
@@ -122,24 +123,39 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
 
             # Fit the trace in w/s space
 
-            fit = poly_fit_1d(waves, peaks_arc[:,k], fit_degree,
+            fit = poly_fit_1d(waves, peaks_arc[:,j], fit_degree,
                               robust={'thresh':4, 'eps':0.1})
 
             coeffs[l,:] = fit['coeffs']
-
+#            fit_arc[:,j] = fit['yfit']
+                        
             # Store the results for plotting
             
             plot_x = plot_x + list(columns)
             plot_y = plot_y + list(peaks_pix[:,j])
             plot_goodbad = plot_goodbad + list(fit['goodbad'])
 
-            x = np.arange(starts, stops + 1)
-            fit = poly_1d(x, fit['coeffs'])
-            plot_fits.append(np.stack([x, fit]))
+        # Now do the coversion between arcseconds and pixels for plotting
+            
+#        for j in range(numstep):
+#
+#            omaskz = order_mask[:, columns[j]]
+#            z = omaskz == orders[i]
+#
+#            slits = spatcal[z, columns[j]]
+#            slity = yy[z, columns[j]]            
+#
+#            f = interpolate.interp1d(slits,slity)
+#            fit_pix[j,:] =f(fit_arc[j,:])
+#
+#        for j in range(naps):
+#
+#            plot_fits.append(np.stack([columns, fit_pix[:,j]]))
 
-        if clupdate is not None:
-            loop_progress(i, 0, norders, message='Tracing spectra...')            
 
+            
+        if clupdate is True:
+            loop_progress(i, 0, norders, message='Tracing apertures...')            
     dictionary = {'coeffs':coeffs, 'x':np.array(plot_x), 'y':np.array(plot_y),
                   'goodbad':np.array(plot_goodbad, dtype=int)}
 

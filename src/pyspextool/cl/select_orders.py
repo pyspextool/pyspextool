@@ -5,7 +5,8 @@ from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 from pyspextool.plot.plot_profiles import plot_profiles
 
-def select_orders(include=None, exclude=None, include_all=False, iplot=False):
+def select_orders(include=None, exclude=None, include_all=False, iplot=False,
+                  qafile=True):
 
     '''
     To set which orders are to be traced and extracted
@@ -34,8 +35,10 @@ def select_orders(include=None, exclude=None, include_all=False, iplot=False):
 
     '''
 
+    #
     # Ensure only one optional argument is passed
-    
+    #
+
     if include is not None and exclude is not None:
 
         message = 'Cannot use both parameters `include` and `remove`.'
@@ -131,7 +134,19 @@ def select_orders(include=None, exclude=None, include_all=False, iplot=False):
 
         plot_profiles(config.state['profiles'],config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'])
-    
+
+
+    if qafile is True:
+
+            qafileinfo = {'figsize': (8.5,11),
+                          'filepath':config.state['qapath'],
+                          'filename': config.state['qafilename']+\
+                          '_aperturepositions', 'extension':'.pdf'}
+        
+            plot_profiles(config.state['profiles'],config.state['slith_arc'],
+                          doorders, apertures=config.state['apertures'],
+                          qafileinfo=qafileinfo)
+        
     
     
     

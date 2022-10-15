@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as pl
 
@@ -5,7 +6,8 @@ from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
-def plot_image(image, orders_plotinfo=None, trace_plotinfo=None):
+def plot_image(image, orders_plotinfo=None, trace_plotinfo=None,
+               qafileinfo=None):
 
     '''
     To plot a spectral image along with the edges and order numbers
@@ -52,18 +54,23 @@ def plot_image(image, orders_plotinfo=None, trace_plotinfo=None):
     
     check_parameter('plot_image', 'image', image, 'ndarray', 2)
 
-#    check_parameter('plot_image', 'edgecoeffs', edgecoeffs, 'ndarray', [2, 3])
-
-#    check_parameter('plot_image', 'xranges', xranges, 'ndarray', [1, 2])
-
-#    check_parameter('plot_image', 'orders', orders, ['int', 'ndarray'], [0,1])
-
     #
     # Just plot it up
     #
     
     minmax = get_image_range(image, 'zscale')
-    fig = pl.figure(figsize=(7, 7))
+
+    if qafileinfo is not None:
+
+        figsize=qafileinfo['figsize']
+
+    else:
+
+        figsize = (7,7)
+
+
+
+    fig = pl.figure(figsize=figsize)
     pl.imshow(image, vmin=minmax[0], vmax=minmax[1], cmap='gray',
                   origin='lower')
     pl.xlabel('Columns (pixels)')
@@ -94,21 +101,34 @@ def plot_image(image, orders_plotinfo=None, trace_plotinfo=None):
 
 
     if trace_plotinfo is not None:
+
+        if 'x' in trace_plotinfo and \
+           'y' in trace_plotinfo and \
+           'goodbad' in trace_plotinfo:
         
-        pl.plot(trace_plotinfo['x'],trace_plotinfo['y'],'go', markersize=1)
-        bad = trace_plotinfo['goodbad'] == 0
-        pl.plot(trace_plotinfo['x'][bad],trace_plotinfo['y'][bad], 'bo',
-                markersize=1)
+            pl.plot(trace_plotinfo['x'],trace_plotinfo['y'],'go', markersize=2)
+            bad = trace_plotinfo['goodbad'] == 0
+            pl.plot(trace_plotinfo['x'][bad],trace_plotinfo['y'][bad], 'bo',
+                    markersize=2)
 
-#        for i in range(len(trace_plotinfo['fits'])):
+        if 'fits' in trace_plotinfo:
+            
+            for i in range(len(trace_plotinfo['fits'])):
 
+                pl.plot(trace_plotinfo['fits'][i][0,:],
+                        trace_plotinfo['fits'][i][1,:],color='cyan',
+                        linewidth=0.5)
 
-#            print(trace_plotinfo['fits'][i][1,:])
-#            pl.plot(trace_plotinfo['fits'][i][0,:],
-#                    trace_plotinfo['fits'][i][1,:],'ro')
+    if qafileinfo is not None:
 
+        pl.savefig(os.path.join(qafileinfo['filepath'],
+                                qafileinfo['filename']+\
+                                qafileinfo['extension']))
+
+    else:
         
-    pl.show()
+        pl.show()
 
+    pl.close()
     
     

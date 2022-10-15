@@ -2,14 +2,14 @@ from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
 from pyspextool.io.check import check_parameter
 
-def set_extraction_type(type,clupdate=True):
+def set_extraction_type(extraction_type,clupdate=True):
 
     '''
     Sets the extraction type
 
     Parameters
     ----------
-    type : str
+    extraction_type : str
     The extraction type, 'point source' or 'extended source' (or 'ps','xs')
 
     clupdate : {True, False} optional
@@ -30,23 +30,31 @@ def set_extraction_type(type,clupdate=True):
     '''
 
     #
-    # Check parameter
-    #
-
-    check_parameter('set_extraction_type', 'type', type, 'str',
-                    possible_values=['ps', 'xs', 'point source',
-                                     'extended source'])
-
-    #
     # Check the continue variable
     #
     
     check_continue(1)
+    
+    #
+    # Check parameter
+    #
 
+    check_parameter('set_extraction_type', 'extraction_type',
+                    extraction_type, 'str',
+                    possible_values=['ps', 'xs', 'point source',
+                                     'extended source'])
 
     # Set the extraction type
+
+    if extraction_type == 'point source':
+
+        extraction_type = 'ps'
+
+    if extraction_type == 'extended source':
+
+        extraction_type = 'xs'        
     
-    config.state['exttype'] = type
+    config.state['exttype'] = extraction_type
 
     # Update if requested
     
@@ -57,4 +65,5 @@ def set_extraction_type(type,clupdate=True):
 
     # Set the continue flags
 
-    config.state['continue'] = 2 
+    config.state['continue'] = 2
+

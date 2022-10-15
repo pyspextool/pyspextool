@@ -140,6 +140,14 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 #
 #            doorders = config.state['xsdoorders']             
 #
+    if config.state['exttype'] == 'xs':
+        
+        doorders = config.state['xsdoorders']
+        
+    else:
+
+        doorders = config.state['psdoorders'] 
+        
     if iplot is True:
 
         plot_profiles(config.state['profiles'],config.state['slith_arc'],
@@ -148,15 +156,17 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                       psbginfo=psbginfo, xsbginfo=xsbginfo)
     
 
-#    if qafile is True:
+    if qafile is True:
 
-#        qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
-#                      'filename': 'profile', 'extension':'.pdf'}
+        qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
+                      'filename':config.state['qafilename']+'_apertureparms',
+                      'extension':'.pdf'}
 
-#        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-#                      np.ones(config.state['norders'],dtype=int),
-#                      apertures=config.state['apertures'],                      
-#                      aperture_radii=aperture_radii, qafileinfo=qafileinfo)
+        plot_profiles(config.state['profiles'], config.state['slith_arc'],
+                      doorders, apertures=config.state['apertures'],
+                      aperture_radii=aperture_radii, psf_radius=psf_radius,
+                      psbginfo=psbginfo, xsbginfo=xsbginfo,
+                      qafileinfo=qafileinfo)
 
 
     
