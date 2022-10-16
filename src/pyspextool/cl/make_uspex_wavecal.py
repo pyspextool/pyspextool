@@ -315,7 +315,6 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     if clupdate:
         print('Writing wavecal to disk...')
 
-    print(wavecalinfo['wcaltype'])
     if wavecalinfo['wcaltype'] == '1d':
 
         write_wavecal_1d(flatinfo['ncols'], flatinfo['nrows'],
