@@ -13,7 +13,54 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                     centroid_threshold=2, fwhm=0.8, clupdate=True,
                     iplot=True, qafile=False):
 
-    
+    '''
+    Command line call for tracing apertures.
+
+    Parameters
+    ----------
+
+    fit_degree : int, optional, default 2
+        The polynomial degree for the fit.
+
+    step_size : int, optional, default 5
+        The step size as the function moves across the array identifying 
+        the peaks in the spatial dimension.
+
+    summation_width : int, optional, default 5
+        The number of columns to combine in order to increase the S/N 
+        of the data fit to identify the peaks in the spatial dimension.
+
+    centroid_threshold : int, optional, default 2
+        If (fit-guess) > centroid_threshold to peak identification is found
+        to fail.
+
+    fwhm : float, optional, default 0.8
+        The approximate FWHM of the peaks in arcseconds.
+
+    clupdate : {True, False}, optional
+        Set to True for command line updates during execution. 
+
+    iplot : {True, False}, optional
+        Set to True to plot the qa plot interactively.
+
+    qafile : {False, True}, optional
+        Set to True to write the qa plot to disk.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Just collects information from the config.state variable, calls 
+    trace_spectrum_1dxd, and then optional plots the qa plot.
+
+
+    Examples
+    --------
+    later
+
+    '''
 
     #
     # Check continue variable
@@ -34,8 +81,13 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     check_parameter('trace_apertures', 'centroid_threshold',
                     centroid_threshold, 'int')
 
-    check_parameter('trace_apertures', 'fwhm', fwhm, 'float')                
+    check_parameter('trace_apertures', 'fwhm', fwhm, 'float')
 
+    check_parameter('trace_apertures', 'clupdate', clupdate, 'bool')
+
+    check_parameter('trace_apertures', 'iplot', iplot, 'bool')
+
+    check_parameter('trace_apertures', 'qafile', qafile, 'bool')                            
     #
     # Run the trace
     #
@@ -59,9 +111,17 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                                 fwhm=fwhm, clupdate=clupdate)
 
         if iplot is True or qafile is True:
-    
+
+            norders, naps = np.shape(config.state['apertures'])
+            info = trace_to_xy(config.state['ordermask'],
+                               config.state['wavecal'],
+                               config.state['spatcal'],
+                               config.state['xranges'],
+                               config.state['orders'], doorders, naps,
+                               trace['coeffs'])
+                    
             plotinfo = {'x':trace['x'], 'y':trace['y'],
-                        'goodbad':trace['goodbad']}
+                        'goodbad':trace['goodbad'], 'fits':info}
                 
     else:
 
@@ -70,10 +130,10 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
         doorders = config.state['xsdoorders']
 
         
-    norders, naps = np.shape(config.state['apertures'])
-    trace_to_xy(config.state['ordermask'], config.state['wavecal'],
-                config.state['spatcal'], config.state['xranges'],
-                config.state['orders'], doorders, naps, trace['coeffs'])
+#    norders, naps = np.shape(config.state['apertures'])
+#    trace_to_xy(config.state['ordermask'], config.state['wavecal'],
+#                config.state['spatcal'], config.state['xranges'],
+#                config.state['orders'], doorders, naps, trace['coeffs'])
                 
 
     if iplot is True:
