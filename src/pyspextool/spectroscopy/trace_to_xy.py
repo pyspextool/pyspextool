@@ -70,13 +70,13 @@ def trace_to_xy(order_mask, wavecal, spatcal, xranges, orders, doorders,
     #
     # Check parameters
     #
-    check_parameter('trace_to_xy', 'order_mask', order_mask, 'ndarray')
+    check_parameter('trace_to_xy', 'order_mask', order_mask, 'ndarray', 2)
 
-    check_parameter('trace_to_xy', 'wavecal', wavecal, 'ndarray')
+    check_parameter('trace_to_xy', 'wavecal', wavecal, 'ndarray', 2)
 
-    check_parameter('trace_to_xy', 'spatcal', spatcal, 'ndarray')
+    check_parameter('trace_to_xy', 'spatcal', spatcal, 'ndarray', 2)
 
-    check_parameter('trace_to_xy', 'xranges', xranges, 'ndarray')
+    check_parameter('trace_to_xy', 'xranges', xranges, 'ndarray', 2)
 
     #
     # Get set up
