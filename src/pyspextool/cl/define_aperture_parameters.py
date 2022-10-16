@@ -2,19 +2,28 @@ import numpy as np
 
 from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
+from pyspextool.io.files  import extract_filestring
 from pyspextool.io.check import check_parameter
+from pyspextool.io.check import check_range
 from pyspextool.plot.plot_profiles import plot_profiles
 
 
 def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
-                               bg_width=None, bg_regions=None, iplot=True,
-                               qafile=False):
+                               bg_width=None, bg_regions=None, bg_fit_degree=1,
+                               iplot=False, qafile=False):
     #
     # Continue status
     #
 
     check_continue(4)
 
+    # Check commone parameters
+    
+    check_parameter('define_aperture_parameters', 'bg_fit_degree',
+                    bg_fit_degree, ['int'], [1, 2])
+
+    # Now things proceed depending on the extraction mode
+    
     if config.state['exttype'] == 'ps':
 
         #
@@ -56,6 +65,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
         if bg_radius is not None:
 
+            print('Updating this section to use check_range')
             if bg_radius <= aperture_radii:
                 message = '`bg_radius` must be > `aperture_radii`.'
                 raise ValueError(message)
@@ -71,11 +81,12 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         #
         # Now store the results
         #
-
+        
         config.state['psfradius'] = psf_radius
         config.state['bgradius'] = bg_radius
         config.state['bgwidth'] = bg_width
-
+        config.state['bgfitdeg'] = bg_fit_degree        
+            
         #
         # Get set up for plotting
         #
@@ -90,6 +101,8 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
             psbginfo = None
 
+        # Force xsbginfo to None 
+            
         xsbginfo = None
 
     else:
@@ -98,32 +111,65 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         # Check parameters
         #
 
+        check_parameter('define_aperture_parameters', 'aperture_radii',
+                        aperture_radii, ['int', 'float', 'list'])
+        
         check_parameter('define_aperture_parameters', 'bg_regions',
-                        bg_regions, ['list', 'NoneType'])
+                        bg_regions, ['list', 'str', 'NoneType'])
 
-        # Check to make sure the aperture_radii is a single number.
+        #
+        # Do some user checking
+        #
 
-        # Now we know we have both bg_width and bg_radius.
+        # Check number of apertures and radii are equal
+        
+        aperture_radii = np.array(aperture_radii)
+        nradii = np.size(aperture_radii)
 
-    #    #
-    #    # Store the results
-    #    #
+        if nradii != config.state['naps']:
+            message = 'Number of aperture radii must equal number apertures.'
+            raise ValueError(message)
 
-    #
-    #    if iplot is True or qafile is True:
-    #
-    #        # Get set up for the plotting.
-    #
-    #        if config.state['exttype'] == 'ps':
-    #
-    #
+        # Now deal with the background region
+        
+        if bg_regions is not None:
 
-    #
-    #
-    #        else:
-    #
-    #            doorders = config.state['xsdoorders']
-    #
+            # String or list?
+            
+            if type(bg_regions).__name__ == 'str':
+
+                # Split on commas
+
+                groups = bg_regions.split(',')
+                xsbginfo = []
+                for regions in groups:
+
+                    ranges = regions.split('-')
+                    ranges = [float(i) for i in ranges]
+                    xsbginfo.append(ranges)
+
+                    
+            else:
+
+                # Must be a list.  Check to ensure in range.  
+                
+                xsbginfo = bg_regions
+                
+            # Check to make sure things are in range
+                
+            check_range(xsbginfo,
+                        [0, config.state['slith_arc']], 'gele',
+                        variable_name='bg_regions')
+
+        # Store the results
+
+        config.state['bgregions'] = xsbginfo
+        config.state['bgfitdeg'] = bg_fit_degree
+            
+        # Force the psbginfo to None
+            
+        psbginfo = None
+        
     if config.state['exttype'] == 'xs':
 
         doorders = config.state['xsdoorders']
@@ -133,12 +179,16 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         doorders = config.state['psdoorders']
 
     if iplot is True:
+
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
                       aperture_radii=aperture_radii, psf_radius=psf_radius,
                       psbginfo=psbginfo, xsbginfo=xsbginfo)
 
+        
+
     if qafile is True:
+
         qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
                       'filename': config.state['qafilename'] + '_apertureparms',
                       'extension': '.pdf'}

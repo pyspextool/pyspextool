@@ -2,6 +2,7 @@ import numpy as np
 
 from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
+from pyspextool.cl.trace_apertures import trace_apertures
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.spectroscopy.find_peaks import find_peaks
@@ -179,7 +180,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     config.state['naps'] = naps
 
     #
-    # Do the trace for extended source and set continue variable
+    # Set continue variable
     #
 
     if config.state['exttype'] == 'ps':
@@ -189,6 +190,10 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     else:
 
         config.state['continue'] = 4
+        
+    #
+    # Plot the results
+    #
 
     if iplot is True:
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
@@ -204,3 +209,13 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
                       np.ones(config.state['norders'], dtype=int),
                       apertures=config.state['apertures'],
                       qafileinfo=qafileinfo)
+
+
+    #
+    # Now run the trace if the source is extended
+    #
+        
+    if config.state['exttype'] == 'xs':
+
+        trace_apertures(clupdate=clupdate, iplot=iplot, qafile=qafile)
+        

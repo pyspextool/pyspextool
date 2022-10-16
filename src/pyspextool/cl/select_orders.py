@@ -1,13 +1,15 @@
 import numpy as np
 
 from pyspextool.cl import config
+from pyspextool.cl.trace_apertures import trace_apertures
 from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 from pyspextool.plot.plot_profiles import plot_profiles
 
 
-def select_orders(include=None, exclude=None, include_all=False, iplot=False,
-                  qafile=True):
+def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
+                  iplot=False, qafile=True):
+
     """
     To set which orders are to be traced and extracted
 
@@ -133,3 +135,14 @@ def select_orders(include=None, exclude=None, include_all=False, iplot=False,
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
                       qafileinfo=qafileinfo)
+
+    #
+    # Do the trace if the extraction is extended source
+    #
+        
+    if config.state['exttype'] == 'xs':
+
+        trace_apertures(clupdate=clupdate, iplot=iplot, qafile=qafile)        
+
+    
+        

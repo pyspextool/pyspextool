@@ -86,6 +86,7 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     check_parameter('trace_apertures', 'iplot', iplot, 'bool')
 
     check_parameter('trace_apertures', 'qafile', qafile, 'bool')
+
     #
     # Run the trace
     #
@@ -125,13 +126,35 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         # Must be an extended source extraction
 
+        # Build the trace coefficients from the aperture positions
+                
+        norders, naps = np.shape(config.state['apertures'])        
+        
         doorders = config.state['xsdoorders']
+        z = doorders == 1
+        ndoorders = np.sum(doorders)        
 
-    #    norders, naps = np.shape(config.state['apertures'])
-    #    trace_to_xy(config.state['ordermask'], config.state['wavecal'],
-    #                config.state['spatcal'], config.state['xranges'],
-    #                config.state['orders'], doorders, naps, trace['coeffs'])
+        coeffs = np.full((ndoorders*naps,2),0)
+        coeffs[:,0] = np.ravel(config.state['apertures'][z,:])
 
+        # Do do the plotting stuff
+            
+        if iplot is True or qafile is True:
+            norders, naps = np.shape(config.state['apertures'])
+            info = trace_to_xy(config.state['ordermask'],
+                               config.state['wavecal'],
+                               config.state['spatcal'],
+                               config.state['xranges'],
+                               config.state['orders'], doorders, naps,
+                               coeffs)
+
+            plotinfo = {'fits': info}
+
+    #
+    # Plot stuff up if requested
+    #
+
+            
     if iplot is True:
         plot_image(config.state['workimage'], trace_plotinfo=plotinfo)
 
@@ -142,3 +165,9 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         plot_image(config.state['workimage'], trace_plotinfo=plotinfo,
                    qafileinfo=qafileinfo)
+
+    #
+    # Set the continue flag
+    #
+
+    config.state['continue'] = 5
