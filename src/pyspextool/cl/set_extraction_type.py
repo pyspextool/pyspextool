@@ -2,9 +2,10 @@ from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
 from pyspextool.io.check import check_parameter
 
-def set_extraction_type(extraction_type,clupdate=True):
 
-    '''
+def set_extraction_type(extraction_type, clupdate=True):
+
+    """
     Sets the extraction type
 
     Parameters
@@ -27,7 +28,7 @@ def set_extraction_type(extraction_type,clupdate=True):
     --------
     later
 
-    '''
+    """
 
     #
     # Check the continue variable
@@ -66,4 +67,3 @@ def set_extraction_type(extraction_type,clupdate=True):
     # Set the continue flags
 
     config.state['continue'] = 2
-

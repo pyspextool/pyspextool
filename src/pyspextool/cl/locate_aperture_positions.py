@@ -6,9 +6,9 @@ from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.spectroscopy.find_peaks import find_peaks
 
+
 def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
                               qafile=False, clupdate=True):
-
     """
     To determine the locations of spectral extraction apertures
 
@@ -62,7 +62,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     # Check continue variable
     #
     check_continue(3)
-    
+
     #
     # Check parameters that don't depend on extraction type.
     #
@@ -79,79 +79,74 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     #
     # Update the command line if requested
     #
-    
+
     if clupdate is True:
-        print('Locating the apertures...')    
+        print('Locating the apertures...')
 
-
-    #
+        #
     # Get useful numbers
     #
-    
+
     norders = len(config.state['profiles'])
 
     #
     # Check the extraction type
     #
-    
+
     if config.state['exttype'] == 'ps':
 
         #
         # This is a point source extraction
         #
-        
+
         #
         # Which method was requested?
         #
 
         if method == 'auto':
-            
             check_parameter('define_aperture_positions', 'apertures',
                             apertures, 'int')
 
             naps = apertures
             apertures, apsigns = find_peaks(config.state['profiles'],
-                                        {'method':'auto', 'peaks':naps},
-                                        fwhm=fwhm)
-            
-        if method == 'guess':
+                                            {'method': 'auto', 'peaks': naps},
+                                            fwhm=fwhm)
 
+        if method == 'guess':
             check_parameter('define_aperture_positions', 'apertures',
                             apertures, ['int', 'float', 'list', 'ndarray'])
 
             apertures = np.tile(apertures, (norders, 1))
-            
+
             apertures, apsigns = find_peaks(config.state['profiles'],
-                                        {'method':'guess', 'peaks':apertures},
-                                        fwhm=fwhm)
+                                            {'method': 'guess', 'peaks': apertures},
+                                            fwhm=fwhm)
 
-            naps = int(np.size(apertures)/norders)
-            
+            naps = int(np.size(apertures) / norders)
+
         if method == 'fixed':
-
             check_parameter('define_aperture_positions', 'apertures',
                             apertures, ['int', 'float', 'list', 'ndarray'])
 
-            apertures = np.tile(apertures, (norders, 1))        
+            apertures = np.tile(apertures, (norders, 1))
 
             apertures, apsigns = find_peaks(config.state['profiles'],
-                                        {'method':'fixed', 'peaks':apertures},
-                                        fwhm=fwhm)
+                                            {'method': 'fixed', 'peaks': apertures},
+                                            fwhm=fwhm)
 
-            naps = int(np.size(apertures)/norders)            
+            naps = int(np.size(apertures) / norders)
 
-        #
+            #
         # Determine the average apsign
         #
 
         if norders > 1:
 
-            average_apsign = np.sum(apsigns, axis=0)/np.sum(np.abs(apsigns),
-                                                            axis=0)
+            average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns),
+                                                              axis=0)
             apsigns = np.empty(naps, dtype=int)
 
             for i in range(naps):
-
                 apsigns[i] = 1 if average_apsign[i] > 0 else -1
 
         else:
@@ -163,26 +158,25 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
         #
         # This is an extended source extraction
         #
-        
+
         try:
 
             naps = len(apertures)
 
         except TypeError:
 
-            naps = 1            
+            naps = 1
 
-        apertures = np.tile(apertures, (norders, 1))        
+        apertures = np.tile(apertures, (norders, 1))
         apsigns = np.full_like(apertures, 1, dtype=int)
 
     #
     # Store the results into the config variable
     #
-    
+
     config.state['apertures'] = apertures
     config.state['apsigns'] = apsigns
     config.state['naps'] = naps
-
 
     #
     # Do the trace for extended source and set continue variable
@@ -194,26 +188,19 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
 
     else:
 
-        config.state['continue'] = 4  
+        config.state['continue'] = 4
 
-
-
-    
     if iplot is True:
-
-        plot_profiles(config.state['profiles'],config.state['slith_arc'],
-                      np.ones(config.state['norders'],dtype=int),
+        plot_profiles(config.state['profiles'], config.state['slith_arc'],
+                      np.ones(config.state['norders'], dtype=int),
                       apertures=config.state['apertures'])
-    
 
     if qafile is True:
-
-        qafileinfo = {'figsize': (8.5,11), 'filepath':config.state['qapath'],
-                      'filename': config.state['qafilename']+\
-                      '_aperturepositions', 'extension':'.pdf'}
+        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+                      'filename': config.state['qafilename'] + \
+                                  '_aperturepositions', 'extension': '.pdf'}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      np.ones(config.state['norders'],dtype=int),
-                      apertures=config.state['apertures'],                      
+                      np.ones(config.state['norders'], dtype=int),
+                      apertures=config.state['apertures'],
                       qafileinfo=qafileinfo)
-        
