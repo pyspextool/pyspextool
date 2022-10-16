@@ -225,7 +225,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
     return True
 
 
-def check_range(values, value_range, test):
+def check_range(values, value_range, test, variable_name=None):
 
     '''
     To check whether a set of numbers or number is in a given range
@@ -243,6 +243,10 @@ def check_range(values, value_range, test):
 
         if 'gt', 'ge', 'lt', or 'le' `values` must be a single value.
         if 'gtlt', 'gtle', 'gelt', or 'gele' `values` must be a (2,) array_like
+
+    variable_name : str, optional
+        The name of the variable being tested.  Useful if called from a 
+        function.  
 
     Returns
     -------
@@ -267,7 +271,10 @@ def check_range(values, value_range, test):
 
     check_parameter('check_value', 'values', test, 'str',
                     possible_values=['gt', 'ge', 'lt', 'le', 'gtlt', 'gtle',
-                                     'gelt', 'gele'])    
+                                     'gelt', 'gele'])
+
+    check_parameter('check_value', 'variable_name', variable_name,
+                    ['str', 'NoneType'])    
 
     #
     # Get basic values
@@ -281,14 +288,16 @@ def check_range(values, value_range, test):
     # Now make sure values has the right form given the requested test
     #
 
+    name = '`values`' if variable_name is None else '`'+variable_name+'`'
+    
     if test in ['gt', 'ge', 'lt', 'le', 'odd', 'even'] and nrange != 1:
 
-        message = '`values` should be a single value.'
+        message = name+' should be a single value.'
         raise ValueError(message)
 
     if test in ['gtlt', 'gtle', 'gelt', 'gele'] and nrange != 2:
-
-        message = '`values` should be two elements.'
+        
+        message = name+' should be two elements.'
         raise ValueError(message)    
 
     #
@@ -318,7 +327,7 @@ def check_range(values, value_range, test):
         value = value_range if nrange == 1 else value_range[1]
         message_2 = '<= '+str(value)
 
-    message = '`values` is out of range.  '+message_1+' `values` '+message_2+'.'
+    message = name+' is out of range.  '+message_1+' '+name+' '+message_2+'.'
 
     #
     # Start the tests
