@@ -315,6 +315,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
             print('Image not flat fielded...')
 
     config.state['workimage'] = img
+    config.state['varimage'] = var
 
     #
     # Rotate the bad pixel mask
