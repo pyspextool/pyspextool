@@ -163,6 +163,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
         # Store the results
 
+        config.state['apradii'] = aperture_radii
         config.state['bgregions'] = xsbginfo
         config.state['bgfitdeg'] = bg_fit_degree
             

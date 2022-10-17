@@ -1,4 +1,5 @@
 state = {'apertures':1,
+         'apradii':1,
          'apsigns':1,
          'atrans_wave':1,
          'atrans_trans':1,
