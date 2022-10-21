@@ -4,6 +4,7 @@ import os
 
 from pyspextool.fit.polyfit import poly_fit_1d
 from pyspextool.fit.polyfit import poly_fit_2d
+from pyspextool.utils.for_print import for_print
 
 def wavecal_solution_1d(orders, line_info, dispersion_degree,
                         xd=None, clupdate=True, qafileinfo=None):
@@ -69,7 +70,8 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree,
             # residuals as a function of column number 
                 
             axes1.axhline(y=0, linestyle='dotted', color='black')
-                
+
+            print('hi')
             axes1.scatter(line_info['x'][zgood], residuals[zgood],
                           color='red', edgecolors='black',
                           s=8 ** 2, alpha=0.8)
@@ -117,10 +119,10 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree,
         # Now do the fit
     
         fit = poly_fit_2d(line_info['x'], line_info['order'],
-                          scaled_wavelengths, dispersion_degree, xd['orderdeg'],
-                          goodbad=line_info['goodbad'],
+                          scaled_wavelengths, dispersion_degree,
+                          xd['orderdeg'], goodbad=line_info['goodbad'],
                           robust={'thresh': 4, 'eps': 0.1})
-
+        
         # Now do the qa plot
 
         if qafileinfo is not None:
@@ -155,34 +157,34 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree,
                 # Residual as a function of order number
                 
                 axes1.axhline(y=0, linestyle='dotted', color='black')
-                
-                axes1.scatter(line_info['order'][zgood], residuals[zgood],
-                            color=(red[i], 0, blue[i]), edgecolors='black',
-                            s=8 ** 2, alpha=0.8)
-                
-#                bad = line_info['goodbad'] == 0
+
+                axes1.plot(line_info['order'][z], residuals[z], 'o', 
+                           markerfacecolor=(red[i], 0, blue[i]),
+                           markeredgecolor='black',
+                           markersize=8, alpha=0.8)                                                   
+                bad = line_info['goodbad'] == 0
                 
                 axes1.plot(line_info['order'][zbad], residuals[zbad], 's',
                         markersize=13, markerfacecolor='none', color='black')
                 
                 axes1.set(xlabel='Order Number',
-                        ylabel='Residual ($\mathrm{\AA}$)')
+                        ylabel='Data-Fit ($\mathrm{\AA}$)')
                 
                 axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
                 
                 # residuals as a function of column number 
                 
                 axes2.axhline(y=0, linestyle='dotted', color='black')
-                
-                axes2.scatter(line_info['x'][zgood], residuals[zgood],
-                            color=(red[i], 0, blue[i]), edgecolors='black',
-                            s=8 ** 2, alpha=0.8)
-                
+
+                axes2.plot(line_info['x'][z], residuals[z], 'o', 
+                           markerfacecolor=(red[i], 0, blue[i]),
+                           markeredgecolor='black',
+                           markersize=8, alpha=0.8)                                                   
                 axes2.plot(line_info['x'][zbad], residuals[zbad], 's',
                         markersize=13, markerfacecolor='none', color='black')
                 
                 axes2.set(xlabel='Column (pixels)',
-                        ylabel='Residual ($\mathrm{\AA}$)')
+                        ylabel='Data-Fit ($\mathrm{\AA}$)')
                 
                 axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
                 
