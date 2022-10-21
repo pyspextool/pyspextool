@@ -68,6 +68,23 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     qafile : {False, True}, optional
         Set to True for a QA plot to be generated.  
 
+    Returns
+    -------
+    None.  Loads data into the config.state variable.
+
+    Notes
+    -----
+    None
+
+    Example
+    -------
+    ---To be updated---
+
+    load_images(['1-2', 'spc-'], 'flat10-14.fits')
+    load_images(['1-2', 'spc-'], 'flat10-14.fits', 'wavecal15.fits')
+    load_images('spc-00001.a.fits, spc-00002.b.fits', 
+                'flat10-14.fits', 'wavecal15.fits')
+
     '''
     
     #
