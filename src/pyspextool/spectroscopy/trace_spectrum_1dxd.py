@@ -1,5 +1,5 @@
 import numpy as np
-# import matplotlib.pyplot as pl
+import matplotlib.pyplot as pl
 from scipy import interpolate
 
 from pyspextool.fit.fit_peak1d import *
@@ -215,18 +215,24 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
                 fit = fit_peak1d(slits, slitz,
                                  p0=[guessz, guesss, fwhm / 2.354, 0])
 
+                if fit['goodfit'] == False:
+                    continue
+                           
+
                 if np.abs(fit['parms'][1] - guesss) <= centroid_threshold:
                     peaks_arc[j, k] = fit['parms'][1]
                     f = interpolate.interp1d(slits, slity)
                     peaks_pix[j, k] = f(fit['parms'][1])
 
-        #            pl.plot(slits, slitz)
-        #            pl.axvline(x=apertures[i,0],color='r', linestyle='dotted')
-        #            pl.axvline(x=peaks_arc[j,0])
-        #            pl.axvline(x=apertures[i,1],color='r', linestyle='dotted')
-        #            pl.axvline(x=peaks_arc[j,1])
-        #            pl.pause(0.01)
-        #            pl.clf()
+                    title = 'Order '+str(orders[i])+', Column '+str(columns[j])
+#                    pl.plot(slits, slitz)
+#                    pl.axvline(x=apertures[i,0],color='r', linestyle='dotted')
+#                    pl.axvline(x=peaks_arc[j,0])
+#                    pl.axvline(x=apertures[i,1],color='r', linestyle='dotted')
+#                    pl.axvline(x=peaks_arc[j,1])
+#                    pl.title(title)
+#                    pl.pause(0.001)
+#                    pl.clf()
 
         for j in range(naps):
             # Generate index number to fill in results
