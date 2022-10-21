@@ -47,6 +47,8 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     Returns
     -------
     None
+    Updates config.state['tracecoeffs'] variable.  
+
 
     Notes
     -----
@@ -110,6 +112,8 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                                     centroid_threshold=centroid_threshold,
                                     fwhm=fwhm, clupdate=clupdate)
 
+        tracecoeffs = trace['coeffs']
+
         if iplot is True or qafile is True:
             norders, naps = np.shape(config.state['apertures'])
             info = trace_to_xy(config.state['ordermask'],
@@ -127,18 +131,18 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
         # Must be an extended source extraction
 
         # Build the trace coefficients from the aperture positions
-                
-        norders, naps = np.shape(config.state['apertures'])        
-        
+
+        norders, naps = np.shape(config.state['apertures'])
+
         doorders = config.state['xsdoorders']
         z = doorders == 1
-        ndoorders = np.sum(doorders)        
+        ndoorders = np.sum(doorders)
 
-        coeffs = np.full((ndoorders*naps,2),0)
-        coeffs[:,0] = np.ravel(config.state['apertures'][z,:])
+        tracecoeffs = np.full((ndoorders * naps, 2), 0)
+        tracecoeffs[:, 0] = np.ravel(config.state['apertures'][z, :])
 
-        # Do do the plotting stuff
-            
+        # Do the plotting stuff
+
         if iplot is True or qafile is True:
             norders, naps = np.shape(config.state['apertures'])
             info = trace_to_xy(config.state['ordermask'],
@@ -146,15 +150,20 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                                config.state['spatcal'],
                                config.state['xranges'],
                                config.state['orders'], doorders, naps,
-                               coeffs)
+                               tracecoeffs)
 
             plotinfo = {'fits': info}
+
+    #
+    # Store the results
+    #
+
+    config.state['tracecoeffs'] = tracecoeffs
 
     #
     # Plot stuff up if requested
     #
 
-            
     if iplot is True:
         plot_image(config.state['workimage'], trace_plotinfo=plotinfo)
 
