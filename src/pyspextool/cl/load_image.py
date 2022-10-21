@@ -18,15 +18,57 @@ from pyspextool.utils.arrays import idl_rotate
 from pyspextool.fit.polyfit import poly_1d
 
 
-
-
 def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                directory='raw',suffix=None, flat_field=True,
                linearity_correction=True, clupdate=True, iplot=False,
                qafile=False):
 
-    
+    '''
+    To load an (pair-subtracted, sky/dark subrtracted) image into memory.
 
+    Parameters
+    ----------
+
+    files : str or list
+        If type is str, then a comma-separated string of full file names, 
+        e.g. 'spc00001.a.fits, spc00002.b.fits'.
+
+        If type is list, then a two-element list where
+        files[0] is a string giving the index numbers of the files and 
+        files[1] is a string giving the perfix, e.g.
+        ['1-2', 'spc'].
+    
+    flat_name : str
+        The full name of a Spextool flat file.
+
+    wavecal_name : str, optional
+        The full name of a Spextool wavecal file.
+
+    reduction_mode : {'A-B', 'A', 'A-Sky/Dark'}, optional
+        The image reduction mode.
+
+    directory : {'raw', 'cal', 'proc'}, optional
+        The directory containing the file(s) to load.
+
+    suffix : str, NoneType, optional
+        An optional suffix if in index mode.
+
+    flat_field : {True, False}, optional
+        Set to False to not flat field the image.
+
+    linearity_correction : {True, False}, optional
+        Set to False to not correct for linearity.
+
+    clupdate : {True, False}, optional
+        Set to True for command line updates during execution. 
+
+    iplot : {False, True}, optional
+        Set to True for an interactive plot to appear.
+
+    qafile : {False, True}, optional
+        Set to True for a QA plot to be generated.  
+
+    '''
     
     #
     # Check the parameters
@@ -40,7 +82,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         check_parameter('load_image', 'wavecal_name', wavecal_name[0], 'str')
 
     check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
-                    possible_values=['A', 'A-B', 'A-Sky'])
+                    possible_values=['A', 'A-B', 'A-Sky/Dark'])
 
     check_parameter('load_image', 'directory', directory, 'str',
                     possible_values=['raw', 'cal', 'proc'])
@@ -103,7 +145,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         # You are in FILENAME mode
 
         config.state['filereadmode'] = 'filename'
-        files = make_full_path(path, files, exist=True)
+        files = files.replace(" ", "").split(',')
+        input_files = make_full_path(path, files, exist=True)
         
     else:
 
@@ -140,9 +183,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         message = 'The A reduction mode requires 1 image.'
         raise ValueError(message)        
 
-    if reduction_mode == 'A-Sky' and nfiles != 1:
+    if reduction_mode == 'A-Sky/Dark' and nfiles != 1:
 
-        message = 'The A-Sky reduction mode requires 1 image.'
+        message = 'The A-Sky/Dark reduction mode requires 1 image.'
         raise ValueError(message)        
 
     if reduction_mode == 'A-B' and nfiles != 2:
