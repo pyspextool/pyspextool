@@ -60,8 +60,17 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
     """
 
     #
+    # Update the command line if requested
+    #
+
+    if clupdate is True:
+        print('Locating the apertures...')
+
+    
+    #
     # Check continue variable
     #
+
     check_continue(3)
 
     #
@@ -77,14 +86,8 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=True,
 
     check_parameter('define_aperture_positions', 'qafile', qafile, 'bool')
 
-    #
-    # Update the command line if requested
-    #
 
-    if clupdate is True:
-        print('Locating the apertures...')
-
-        #
+    #
     # Get useful numbers
     #
 

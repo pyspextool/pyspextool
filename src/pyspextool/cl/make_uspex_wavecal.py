@@ -20,6 +20,8 @@ from pyspextool.spectroscopy.make_interp_indices_1d import make_interp_indices_1
 from pyspextool.utils.math import median_data_stack
 from pyspextool.utils.math import scale_data_stack
 
+from pyspextool.utils.for_print import for_print
+
 
 def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                        suffix='.[ab]', extension='.fits*',
@@ -33,20 +35,32 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     #
 
     check_parameter('make_uspex_wavecal', 'files',files,'str')
+
     check_parameter('make_uspex_wavecal', 'flat_file',flat_file,'str')
+
     check_parameter('make_uspex_wavecal', 'output_name',output_name,'str')
+
     check_parameter('make_uspex_wavecal', 'prefix',prefix,'str')
+
     check_parameter('make_uspex_wavecal', 'suffix',suffix,'str')
+
     check_parameter('make_uspex_wavecal', 'extension',extension,'str')
+
     check_parameter('make_uspex_wavecal', 'input_method',input_method,'str')
+
     check_parameter('make_uspex_wavecal', 'use_stored_solution',
                     use_stored_solution,'bool')
+
     check_parameter('make_uspex_wavecal', 'clupdate', clupdate,'bool')
+
     check_parameter('make_uspex_wavecal', 'qafile_shift', qafile_shift, 'bool')
+
     check_parameter('make_uspex_wavecal', 'qafile_findlines',
                     qafile_findlines, 'bool')
+
     check_parameter('make_uspex_wavecal', 'qafile_fitlines',
                     qafile_fitlines, 'bool')
+
     check_parameter('make_uspex_wavecal', 'overwrite', overwrite, 'bool')                                
     #
     # Load the files into memory
@@ -88,6 +102,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
     if clupdate is True:
         print(' ')
+        print('Creating the wavecal file...')
         print('Loading FITS images...')
 
     img, var, hdr, mask = readfits(files, config.state['linearity_info'],
@@ -146,9 +161,10 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
     # Extract the "arc"                                
 
+    appos = np.full((np.size(flatinfo['orders']),1), flatinfo['slith_arc'] / 2)
     spectra = extract_extendedsource_1dxd(med, var, flatinfo['ordermask'],
                                           flatinfo['orders'], wavecal,
-                                          spatcal, flatinfo['slith_arc'] / 2,
+                                          spatcal, appos,
                                           wavecalinfo['apradius'],
                                           linmax_bitmask=None,
                                           badpixel_mask=None, bginfo=None,
@@ -161,6 +177,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     # Get the anchor order and spectra.
 
     z = flatinfo['orders'] == wavecalinfo['xcororder']
+    z = np.sum(np.where(flatinfo['orders'] == wavecalinfo['xcororder']))
 
     xanchor = np.arange(int(wavecalinfo['xranges'][z, 0]),
                         int(wavecalinfo['xranges'][z, 1] + 1), dtype=int)
@@ -168,9 +185,8 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
     # Get the source order
 
-    key = 'OR' + str(int(flatinfo['orders'][z])).zfill(3) + '_AP01'
-    xsource = np.squeeze(spectra[key][0, :])
-    fsource = np.squeeze(spectra[key][1, :])
+    xsource = np.squeeze(spectra[z][0, :])
+    fsource = np.squeeze(spectra[z][1, :])
 
     if qafile_shift is True:
 

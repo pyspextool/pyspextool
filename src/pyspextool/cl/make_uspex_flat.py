@@ -109,7 +109,8 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
     # Load the FITS files into memory
 
     if clupdate is True:
-        print(' ')            
+        print(' ')
+        print('Creating the flat field...')
         print('Loading FITS images...')
 
     img, var, hdr, mask = readfits(files, config.state['linearity_info'],
