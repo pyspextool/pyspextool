@@ -1,8 +1,5 @@
-import numpy as np
 import importlib
 from astropy.io import fits
-import glob
-import os
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.cl import config
@@ -19,11 +16,10 @@ from pyspextool.fit.polyfit import poly_1d
 
 
 def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
-               directory='raw',suffix=None, flat_field=True,
+               directory='raw', suffix=None, flat_field=True,
                linearity_correction=True, clupdate=True, iplot=False,
                qafile=False):
-
-    '''
+    """
     To load an (pair-subtracted, sky/dark subrtracted) image into memory.
 
     Parameters
@@ -85,8 +81,13 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     load_images('spc-00001.a.fits, spc-00002.b.fits', 
                 'flat10-14.fits', 'wavecal15.fits')
 
-    '''
-    
+    """
+
+    #
+    # Check the continue variable
+    #
+    check_continue(1)
+
     #
     # Check the parameters
     #
@@ -95,7 +96,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     check_parameter('load_image', 'flat_name', flat_name, 'str')
 
-    if len(wavecal_name) !=0:
+    if len(wavecal_name) != 0:
         check_parameter('load_image', 'wavecal_name', wavecal_name[0], 'str')
 
     check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
@@ -109,15 +110,15 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     check_parameter('load_image', 'flat_field', flat_field, 'bool')
 
     check_parameter('load_image', 'linearity_correction',
-                    linearity_correction, 'bool')        
+                    linearity_correction, 'bool')
 
-    check_parameter('load_image', 'clupdate', clupdate, 'bool')    
+    check_parameter('load_image', 'clupdate', clupdate, 'bool')
 
     # Get the readfits module
-    
-    module =  'pyspextool.io.'+config.state['readfits']
+
+    module = 'pyspextool.io.' + config.state['readfits']
     readfits = importlib.import_module(module)
-    
+
     # Get the path
 
     if directory == 'raw':
@@ -130,9 +131,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     elif directory == 'proc':
 
-        path = config.state['procpath']                
-        
-    #
+        path = config.state['procpath']
+
+        #
     # Check for file existence
     #
 
@@ -140,14 +141,14 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     check_file(full_flat_name)
     config.state['flatfile'] = flat_name
 
-    if len(wavecal_name) !=0:
+    if len(wavecal_name) != 0:
 
         dowavecal = True
         full_wavecal_name = os.path.join(config.state['calpath'],
                                          wavecal_name[0])
         check_file(full_wavecal_name)
         config.state['wavecalfile'] = wavecal_name[0]
-        
+
     else:
 
         dowavecal = False
@@ -164,79 +165,73 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         config.state['filereadmode'] = 'filename'
         files = files.replace(" ", "").split(',')
         input_files = make_full_path(path, files, exist=True)
-        
+
     else:
 
         # You are in INDEX mode
 
         config.state['filereadmode'] = 'index'
-        
+
         nums = files[0]
         prefix = files[1]
 
         # Create the files to read into memory
-        
+
         indexinfo = {'nint': config.state['nint'], 'prefix': prefix,
-                     'suffix':config.state['suffix'], 'extension': '.fits*'}
-        
+                     'suffix': config.state['suffix'], 'extension': '.fits*'}
+
         input_files = make_full_path(path, nums, indexinfo=indexinfo,
                                      exist=True)
 
         # Create the corresponding output file names.
-        
+
         indexinfo = {'nint': config.state['nint'],
                      'prefix': config.state['output_prefix'],
-                     'suffix':'', 'extension': '.fits'}
-        
-        output_files = make_full_path(config.state['procpath'], nums,
-                                      indexinfo=indexinfo)        
+                     'suffix': '', 'extension': '.fits'}
 
-    # Got the right number?
-    
+        output_files = make_full_path(config.state['procpath'], nums,
+                                      indexinfo=indexinfo)
+
+        # Got the right number?
+
     nfiles = len(input_files)
 
     if reduction_mode == 'A' and nfiles != 1:
-
         message = 'The A reduction mode requires 1 image.'
-        raise ValueError(message)        
+        raise ValueError(message)
 
     if reduction_mode == 'A-Sky/Dark' and nfiles != 1:
-
         message = 'The A-Sky/Dark reduction mode requires 1 image.'
-        raise ValueError(message)        
+        raise ValueError(message)
 
     if reduction_mode == 'A-B' and nfiles != 2:
-
         message = 'The A-B reduction mode requires 2 images.'
         raise ValueError(message)
 
     # Do we need to reorder because we are IRTF?
-            
+
     if config.state['irtf'] is True:
-            
+
         input_files = reorder_irtf_files(input_files)
 
         if config.state['filereadmode'] == 'index':
-        
-            output_files = reorder_irtf_files(output_files)        
+            output_files = reorder_irtf_files(output_files)
             config.state['output_files'] = output_files
-        
+
     # Create the qafilename root
-        
+
     basenames = []
     for file in input_files:
 
         basename = os.path.basename(file)
         root = os.path.splitext(basename)
         if root[1] == '.gz':
-
-            root = os.path.splittext(root[0])
+            root = os.path.splitext(root[0])
 
         basenames.append(root[0])
 
     qafilename = '_'.join(basenames)
     config.state['qafilename'] = qafilename
-
 
     #
     # Load the flat field image
@@ -244,14 +239,14 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     if clupdate is True:
         print('Loading the flat...')
-    
+
     flatinfo = read_flat_fits(full_flat_name)
 
     config.state['reductionmode'] = reduction_mode
     config.state['flat'] = flatinfo['flat']
     config.state['ordermask'] = flatinfo['ordermask']
     config.state['edgecoeffs'] = flatinfo['edgecoeffs']
-    config.state['edgedeg'] = flatinfo['edgedeg']    
+    config.state['edgedeg'] = flatinfo['edgedeg']
     config.state['orders'] = flatinfo['orders']
     config.state['norders'] = flatinfo['norders']
     config.state['plate_scale'] = flatinfo['ps']
@@ -270,7 +265,6 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     # Let's deal with the mode
 
     if config.state['modename'] != flatinfo['mode']:
- 
         config.state['modename'] = flatinfo['mode']
         config.state['psdoorders'] = np.ones(flatinfo['norders'], dtype=int)
         config.state['xsdoorders'] = np.ones(flatinfo['norders'], dtype=int)
@@ -278,13 +272,13 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     #
     # Load the wavcal image
     #
-    
+
     if clupdate is True:
         print('Loading the wavecal...')
 
     if dowavecal is True:
-        
-        wavecalinfo = read_wavecal_fits(full_wavecal_name,rotate=True)
+
+        wavecalinfo = read_wavecal_fits(full_wavecal_name, rotate=True)
         wavecal = wavecalinfo['wavecal']
         spatcal = wavecalinfo['spatcal']
         wavecaltype = wavecalinfo['wctype']
@@ -294,16 +288,16 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         #
 
         # First we have to get the possible file names
-        
+
         fullpath = glob.glob(os.path.join(config.state['packagepath'],
-                                          'data','atran*.fits') ) 
+                                          'data', 'atran*.fits'))
 
         # Then strip the paths off
 
         basenames = [os.path.basename(x) for x in fullpath]
 
         # Now get the resolving powers
-        
+
         rps = np.array([int(x[5:x.find('.')]) for x in basenames])
 
         # Find the closest one
@@ -314,10 +308,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         # Load that file
 
         array = fits.getdata(np.array(fullpath)[z][0])
-        config.state['atrans_wave'] = array[0,:]
-        config.state['atrans_trans'] = array[1,:]
-        
-        
+        config.state['atrans_wave'] = array[0, :]
+        config.state['atrans_trans'] = array[1, :]
+
     else:
 
         wavecal, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
@@ -331,8 +324,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     config.state['wavecal'] = wavecal
     config.state['spatcal'] = spatcal
-        
-        
+
     #
     # Load the data
     #
@@ -340,36 +332,33 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     if clupdate is True:
 
         if linearity_correction is True:
-           
-            print('Loading the image and correcting for non-linearity...') 
+
+            print('Loading the image and correcting for non-linearity...')
 
         else:
 
-            print('Loading the image and not correcting for non-linearity...') 
+            print('Loading the image and not correcting for non-linearity...')
 
-        
     if reduction_mode == 'A':
 
         if directory == 'raw':
             img, var, hdr, mask = readfits.main(input_files,
-                                            config.state['linearity_info'],
-                                keywords=config.state['xspextool_keywords'],
-                                linearity_correction=linearity_correction,
-                                            clupdate=clupdate)
-
+                                                config.state['linearity_info'],
+                                                keywords=config.state['xspextool_keywords'],
+                                                linearity_correction=linearity_correction,
+                                                clupdate=clupdate)
 
         else:
             print('Do later')
 
-
-    elif reduction_mode =='A-B':
+    elif reduction_mode == 'A-B':
 
         img, var, hdr, mask = readfits.main(input_files,
                                             config.state['linearity_info'],
-                                            pair=True, 
-                                    keywords=config.state['xspextool_keywords'],
-                                    linearity_correction=linearity_correction,
-                                                clupdate=clupdate)
+                                            pair=True,
+                                            keywords=config.state['xspextool_keywords'],
+                                            linearity_correction=linearity_correction,
+                                            clupdate=clupdate)
     else:
 
         print('do later.')
@@ -384,8 +373,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
             print('Flat fielding the image...')
 
         np.divide(img, flatinfo['flat'], out=img)
-        np.divide(var, flatinfo['flat']**2, out=var)
-            
+        np.divide(var, flatinfo['flat'] ** 2, out=var)
+
     else:
 
         if clupdate is True:
@@ -394,7 +383,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     config.state['workimage'] = img
     config.state['varimage'] = var
     config.state['hdrinfo'] = hdr
-    
+
     #
     # Rotate the bad pixel mask
     #
@@ -407,25 +396,22 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     rectorders = []
     indices = wavecalinfo['rectindices']
     for i in range(config.state['norders']):
-
         order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'])
-#                              var=var, bpmask=config.state['badpixelmask'],
-#                              bsmask = mask)
-
+        #                              var=var, bpmask=config.state['badpixelmask'],
+        #                              bsmask = mask)
 
         # Now get the wavelength solution to tack on
 
-
         bot = np.ceil(poly_1d(indices[i]['x'],
-                      flatinfo['edgecoeffs'][i,0,:])).astype(int)
+                              flatinfo['edgecoeffs'][i, 0, :])).astype(int)
 
-        w = wavecal[bot,np.fix(indices[i]['x']).astype(int)]
+        w = wavecal[bot, np.fix(indices[i]['x']).astype(int)]
 
-        order.update({'w':w})
-        order.update({'y':indices[i]['y']})        
-        
+        order.update({'w': w})
+        order.update({'y': indices[i]['y']})
+
         rectorders.append(order)
-        
+
     # Store the results
 
     config.state['rectorders'] = rectorders
@@ -434,24 +420,22 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     # Do the plotting
     #
 
-    order_plotinfo = {'xranges':config.state['xranges'],
-                      'edgecoeffs':config.state['edgecoeffs'],
-                      'orders':config.state['orders']}
-    
-    if iplot is True:
+    order_plotinfo = {'xranges': config.state['xranges'],
+                      'edgecoeffs': config.state['edgecoeffs'],
+                      'orders': config.state['orders']}
 
-        plot_image(config.state['workimage'],orders_plotinfo=order_plotinfo)
+    if iplot is True:
+        plot_image(config.state['workimage'], orders_plotinfo=order_plotinfo)
 
     if qafile is True:
+        qafileinfo = {'figsize': (7, 7), 'filepath': config.state['qapath'],
+                      'filename': qafilename + '_image',
+                      'extension': config.state['qaextension']}
 
-        qafileinfo = {'figsize': (7,7), 'filepath':config.state['qapath'],
-                      'filename':qafilename+'_image',
-                      'extension':config.state['qaextension']}
-       
         plot_image(config.state['workimage'],
                    orders_plotinfo=order_plotinfo,
-                   qafileinfo=qafileinfo)        
-    
-    # Set the continue flags
+                   qafileinfo=qafileinfo)
+
+        # Set the continue flags
 
     config.state['continue'] = 1

@@ -11,7 +11,7 @@ def set_extraction_type(extraction_type, clupdate=True):
     Parameters
     ----------
     extraction_type : str
-    The extraction type, 'point source' or 'extended source' (or 'ps','xs')
+    The extraction type, 'point source' or 'extended source' (or 'ps', 'xs')
 
     clupdate : {True, False} optional
         Set to report the extraction type to the command line.
@@ -19,6 +19,7 @@ def set_extraction_type(extraction_type, clupdate=True):
     Returns
     -------
     None
+    Sets the config.state['exttype'] variable.
 
     Notes
     -----
@@ -26,7 +27,9 @@ def set_extraction_type(extraction_type, clupdate=True):
 
     Examples
     --------
-    later
+    ---To be updated---
+    set_extraction_type('ps')
+    set_extraction_type('xs')
 
     """
 
