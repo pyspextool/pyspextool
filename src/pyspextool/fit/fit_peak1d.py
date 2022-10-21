@@ -55,6 +55,9 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
         `"parms"` : numpy.ndarray of float
             (ncoeffs,) array of fitted parameters.
 
+        `"goodfit"` : bool
+            Set to True if the fit is good.
+
     Notes
     -----
 
@@ -142,11 +145,18 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
 
     # Now do the call
 
-    popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)
+    try:
+    
+        popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)
 
-    fit = {'parms': popt}
-    fit['fit'] = f(x, *popt)
+        fit = {'parms': popt}
+        fit['fit'] = f(x, *popt)
+        fit['goodfit'] = True
+            
+    except RuntimeError:
 
+        fit = {'goodfit':False}
+        
     return fit
     
         
