@@ -47,11 +47,11 @@ def set_extraction_type(extraction_type, clupdate=True):
 
     # Set the extraction type
 
-    if extraction_type == 'point source':
+    if extraction_type == 'point source' or extraction_type == 'ps':
 
         extraction_type = 'ps'
 
-    if extraction_type == 'extended source':
+    if extraction_type == 'extended source' or extraction_type == 'xs':
 
         extraction_type = 'xs'        
     
@@ -61,7 +61,7 @@ def set_extraction_type(extraction_type, clupdate=True):
     
     if clupdate is True:
 
-        label = 'point source' if type == 'ps' else 'extended source'
+        label = 'point source' if extraction_type == 'ps' else 'extended source'
         print('Setting extraction type to '+label+'...')
 
     # Set the continue flags
