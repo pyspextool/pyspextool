@@ -161,7 +161,7 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     if qafile is True:
         qafileinfo = {'figsize': (7, 7), 'filepath': config.state['qapath'],
                       'filename': config.state['qafilename'] + '_trace',
-                      'extension': '.pdf'}
+                      'extension': config.state['qaextension']}
 
         plot_image(config.state['workimage'], trace_plotinfo=plotinfo,
                    qafileinfo=qafileinfo)

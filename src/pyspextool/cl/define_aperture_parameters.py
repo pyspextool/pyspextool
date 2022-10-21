@@ -192,7 +192,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
         qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
                       'filename': config.state['qafilename'] + '_apertureparms',
-                      'extension': '.pdf'}
+                      'extension': config.state['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],

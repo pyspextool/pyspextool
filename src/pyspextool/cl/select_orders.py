@@ -136,7 +136,8 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': config.state['qapath'],
                       'filename': config.state['qafilename'] + \
-                                  '_aperturepositions', 'extension': '.pdf'}
+                                  '_aperturepositions',
+                      'extension': config.state['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
