@@ -93,15 +93,15 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
 
         # Find the order associated with the line
         
-        z  = orders == line_info['order'][i]
-        if np.sum(z) == 0:
+        z = np.where(orders == line_info['order'][i])
+        if np.size(z) == 0:
             continue
 
         # get spectra for this order and clip
     
-        key = 'OR'+str(line_info['order'][i]).zfill(3)+'_AP01'
-        x = trim_nan(spectra[key][0,:],2,trim=True)
-        y = trim_nan(spectra[key][1,:],2,trim=True)        
+        z = np.sum(z)
+        x = trim_nan(spectra[z][0,:],2,trim=True)
+        y = trim_nan(spectra[z][1,:],2,trim=True)        
         
         # Cut the line out
 
