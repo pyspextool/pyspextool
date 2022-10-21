@@ -3,7 +3,6 @@ import importlib
 from astropy.io import fits
 import glob
 import os
-from pyspextool.utils.for_print import for_print
 
 from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.cl import config
@@ -25,6 +24,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                directory='raw',suffix=None, flat_field=True,
                linearity_correction=True, clupdate=True, iplot=False,
                qafile=False):
+
+    
 
     
     #
@@ -101,25 +102,38 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         # You are in FILENAME mode
 
+        config.state['filereadmode'] = 'filename'
         files = make_full_path(path, files, exist=True)
         
     else:
 
         # You are in INDEX mode
 
+        config.state['filereadmode'] = 'index'
+        
         nums = files[0]
         prefix = files[1]
 
-        files = make_full_path(path, nums,
-                               indexinfo={'nint': config.state['nint'],
-                                          'prefix': prefix,
-                                          'suffix': config.state['suffix'],
-                                          'extension': '.fits*'},
-                               exist=True)
+        # Create the files to read into memory
+        
+        indexinfo = {'nint': config.state['nint'], 'prefix': prefix,
+                     'suffix':config.state['suffix'], 'extension': '.fits*'}
+        
+        input_files = make_full_path(path, nums, indexinfo=indexinfo,
+                                     exist=True)
+
+        # Create the corresponding output file names.
+        
+        indexinfo = {'nint': config.state['nint'],
+                     'prefix': config.state['output_prefix'],
+                     'suffix':'', 'extension': '.fits'}
+        
+        output_files = make_full_path(config.state['procpath'], nums,
+                                      indexinfo=indexinfo)        
 
     # Got the right number?
     
-    nfiles = len(files)
+    nfiles = len(input_files)
 
     if reduction_mode == 'A' and nfiles != 1:
 
@@ -131,26 +145,28 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         message = 'The A-Sky reduction mode requires 1 image.'
         raise ValueError(message)        
 
-    
     if reduction_mode == 'A-B' and nfiles != 2:
 
         message = 'The A-B reduction mode requires 2 images.'
         raise ValueError(message)
 
-        
-    if config.state['irtf'] is True:
-        # Reorder files to abab
+    # Do we need to reorder because we are IRTF?
             
-        files = reorder_irtf_files(files)
+    if config.state['irtf'] is True:
+            
+        input_files = reorder_irtf_files(input_files)
 
-    # load the files into the state variable
-
-    config.state['workfiles'] = files
-
+        if config.state['filereadmode'] == 'index':
+        
+            output_files = reorder_irtf_files(output_files)        
+            config.state['output_files'] = output_files
+        
+    # Create the qafilename root
+        
     basenames = []
-    for i in range(len(files)):
+    for file in input_files:
 
-        basename = os.path.basename(files[i])
+        basename = os.path.basename(file)
         root = os.path.splitext(basename)
         if root[1] == '.gz':
 
@@ -162,7 +178,6 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     config.state['qafilename'] = qafilename
 
 
-    
     #
     # Load the flat field image
     #
@@ -172,6 +187,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     
     flatinfo = read_flat_fits(full_flat_name)
 
+    config.state['reductionmode'] = reduction_mode
     config.state['flat'] = flatinfo['flat']
     config.state['ordermask'] = flatinfo['ordermask']
     config.state['edgecoeffs'] = flatinfo['edgecoeffs']
@@ -210,7 +226,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         
         wavecalinfo = read_wavecal_fits(full_wavecal_name,rotate=True)
         wavecal = wavecalinfo['wavecal']
-        spatcal = wavecalinfo['spatcal']        
+        spatcal = wavecalinfo['spatcal']
+        wavecaltype = wavecalinfo['wctype']
 
         #
         # Get the atmospheric transmission 
@@ -274,7 +291,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     if reduction_mode == 'A':
 
         if directory == 'raw':
-            img, var, hdr, mask = readfits.main(files,
+            img, var, hdr, mask = readfits.main(input_files,
                                             config.state['linearity_info'],
                                 keywords=config.state['xspextool_keywords'],
                                 linearity_correction=linearity_correction,
@@ -287,7 +304,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     elif reduction_mode =='A-B':
 
-        img, var, hdr, mask = readfits.main(files,
+        img, var, hdr, mask = readfits.main(input_files,
                                             config.state['linearity_info'],
                                             pair=True, 
                                     keywords=config.state['xspextool_keywords'],
@@ -306,8 +323,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         if clupdate is True:
             print('Flat fielding the image...')
 
-#        np.divide(img, flatinfo['flat'], out=img)
-#        np.divide(var, flatinfo['flat']**2, out=var)
+        np.divide(img, flatinfo['flat'], out=img)
+        np.divide(var, flatinfo['flat']**2, out=var)
             
     else:
 
@@ -316,7 +333,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     config.state['workimage'] = img
     config.state['varimage'] = var
-
+    config.state['hdrinfo'] = hdr
+    
     #
     # Rotate the bad pixel mask
     #
