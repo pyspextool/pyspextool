@@ -2,7 +2,6 @@ import numpy as np
 
 from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
-from pyspextool.io.files  import extract_filestring
 from pyspextool.io.check import check_parameter
 from pyspextool.io.check import check_range
 from pyspextool.plot.plot_profiles import plot_profiles
@@ -11,6 +10,58 @@ from pyspextool.plot.plot_profiles import plot_profiles
 def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                                bg_width=None, bg_regions=None, bg_fit_degree=1,
                                iplot=False, qafile=False):
+
+    """
+    To define the extraction parameters
+
+    Parameters
+    ----------
+    aperture_radii : int, float, or list
+        The aperture radii.
+        If point source extraction, a single value giving the radius for all 
+        apertures.
+        If extended source extraction, (naps,) list of aperture radii. 
+
+    psf_radius : float or None, optional
+        If point source extraction, will perform an optimal extraction 
+        if provided.  
+
+    bg_radius : float or None, optional
+        If point source extraction, the background radius value.
+
+    bg_width : float or None, optional
+        If point source extraction, the background width value.
+
+    bg_regions : list, optional
+        If extended source extraction, the background regions.
+
+    bg_fit_degree : int, default=1, optional
+        The polynomial degree of the fit to the background
+
+    iplot : {False, True}, optional
+        Set to plot the results interactively.
+
+    qafile : {False, True}, optional
+        Set to write the QA plot to disk.
+
+    Returns
+    -------
+    None
+    Updates the config.state['psfradius'], config.state['bgradius'], 
+    config.state['bgwidth'] and, config.state['bgfitdeg'] variables and 
+    optional plots the results.
+
+    Notes
+    -----
+    None
+
+    Examples
+    --------
+    define_apertures_parameters(1.5)         - point source
+    define_apertures_parameters([1.5, 2])    - extended source
+
+    """
+    
     #
     # Continue status
     #
@@ -148,7 +199,6 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                     ranges = [float(i) for i in ranges]
                     xsbginfo.append(ranges)
 
-                    
             else:
 
                 # Must be a list.  Check to ensure in range.  
@@ -185,8 +235,6 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                       doorders, apertures=config.state['apertures'],
                       aperture_radii=aperture_radii, psf_radius=psf_radius,
                       psbginfo=psbginfo, xsbginfo=xsbginfo)
-
-        
 
     if qafile is True:
 
