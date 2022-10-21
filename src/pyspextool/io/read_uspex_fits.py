@@ -162,8 +162,9 @@ def main(files, lininfo, keywords=None, pair=False, rotate=0,
     if not pair:
 
         for i in range(0, nimages):
-            im, va, hd, bm = load_data(files[i], lininfo, bias, keywords=keywords,
-                                       ampcor=ampcor, lccoeffs=lc_coeffs)
+            im, va, hd, bm = load_data(files[i], lininfo, bias,
+                                       keywords=keywords, ampcor=ampcor,
+                                       lccoeffs=lc_coeffs)
 
             data[i, :, :] = idl_rotate(im, rotate)
             var[i, :, :] = idl_rotate(va, rotate)
