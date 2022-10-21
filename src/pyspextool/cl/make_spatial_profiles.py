@@ -3,17 +3,62 @@ from scipy import interpolate
 
 from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
+from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.utils.math import mean_data_stack
 
 
-def make_spatial_profiles(iplot=True, qafile=False):
+def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
+    
+    """
+    To create 1D "average" spatial profiles of the orders.
+
+    Parameters 
+    ----------
+    iplot : {False, True}, optional
+        Set to plot the orders in an interactive window.
+
+    clupdate : {True, False}, optional
+    Set to True for command line updates during execution. 
+    
+
+    qafile : {False, True}, optional
+        Set to plot the QA plot to disk.
+
+    Returns 
+    -------
+    None
+    Fills the config.state['profiles'] variable and optionally creates a 
+    QA file.
+
+    Notes
+    -----
+    
+    Examples
+    --------
+    ---To be updated---
+    
+    make_spatial_profiles()
+
+
+    """
+    
     #
     # Check the continue variables
     #
 
     check_continue(2)
 
+    #
+    # Check the parameters
+    #
+    check_parameter('make_spatial_profiles', 'iplot', iplot, 'bool')
+
+    check_parameter('make_spatial_profiles', 'qafile', qafile, 'bool')    
+
+    if clupdate is True:
+        print('Creating the spatial profiles...')
+    
     #
     # Build the profiles
     #

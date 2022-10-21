@@ -86,7 +86,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     #
     # Check the continue variable
     #
-    check_continue(1)
+    check_continue(0)
 
     #
     # Check the parameters
