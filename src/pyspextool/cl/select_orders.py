@@ -38,6 +38,12 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
     """
 
     #
+    # Update command line if requested.
+    #
+    if clupdate is True:
+        print('Updating order selection...')
+    
+    #
     # Ensure only one optional argument is passed
     #
 
