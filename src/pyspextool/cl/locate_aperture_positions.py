@@ -221,13 +221,6 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
                       qafileinfo=qafileinfo)
 
     #
-    # Now run the trace if the source is extended
-    #
-
-    if config.state['exttype'] == 'xs':
-        trace_apertures(clupdate=clupdate, iplot=iplot, qafile=qafile)
-
-    #
     # Set continue variable
     #
 
@@ -238,3 +231,11 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     else:
 
         config.state['continue'] = 4
+        
+    #
+    # Now run the trace if the source is extended
+    #
+
+    if config.state['exttype'] == 'xs':
+        trace_apertures(clupdate=clupdate, iplot=iplot, qafile=qafile)
+
