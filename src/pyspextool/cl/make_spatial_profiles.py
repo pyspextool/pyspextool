@@ -9,7 +9,6 @@ from pyspextool.utils.math import mean_data_stack
 
 
 def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
-    
     """
     To create 1D "average" spatial profiles of the orders.
 
@@ -42,7 +41,7 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
 
 
     """
-    
+
     #
     # Check the continue variables
     #
@@ -54,11 +53,11 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
     #
     check_parameter('make_spatial_profiles', 'iplot', iplot, 'bool')
 
-    check_parameter('make_spatial_profiles', 'qafile', qafile, 'bool')    
+    check_parameter('make_spatial_profiles', 'qafile', qafile, 'bool')
 
     if clupdate is True:
         print('Creating the spatial profiles...')
-    
+
     #
     # Build the profiles
     #
@@ -75,7 +74,6 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
         y = order['y']
         w = order['w']
 
-        ncols = len(w)
         nrows = len(y)
 
         # Subtract the background
@@ -131,7 +129,7 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
     if qafile is True:
         qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
                       'filename': config.state['qafilename'] + '_profiles',
-                      'extension':config.state['qaextension']}
+                      'extension': config.state['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'], dtype=int),
