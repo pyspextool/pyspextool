@@ -1,8 +1,11 @@
 import numpy as np
+
+from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.spectroscopy.make_aperture_mask import make_aperture_mask
 from pyspextool.utils.arrays import make_image_indices
 from pyspextool.utils.arrays import trim_nan
 from pyspextool.utils.loop_progress import loop_progress
-from pyspextool.spectroscopy.make_aperture_mask import make_aperture_mask
+
 
 
 def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
@@ -11,8 +14,8 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
     """
     To extract and extended source.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     img : numpy.ndarray
         An (nrows, ncols) image with spectral orders.  It is assumed
         that the dispersion direction is roughly aligned with the
@@ -84,7 +87,7 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
     appos = np.array(appos, dtype='float', ndmin=1)
     apradii = np.array(apradii, dtype='float', ndmin=1)
 
-    naps = len(appos)
+    naps = len(apradii)
 
     # Deal with bginfo
 
@@ -114,11 +117,11 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
         # Start the order loop
 
-    output_dict = {}
+    output_list = []
     for i in range(norders):
 
         if clupdate is not None and i == 0:
-            print('Extracting spectra...')
+            print('Extracting apertures...')
 
         zordr = np.where(ordermask == orders[i])
         xmin = np.min(xx[zordr])
@@ -156,9 +159,9 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
             # Generate the aperture mask
 
-            slitmask = make_aperture_mask(slit_arc, appos, apradii,
+            slitmask = make_aperture_mask(slit_arc, appos[i,:], apradii,
                                           xsbginfo=bgregions)
-
+            
             # Do the background subtraction
 
             if bgregions is not None:
@@ -187,13 +190,14 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
         # Generate the key
 
         for k in range(naps):
-            key = 'OR' + str(orders[i]).zfill(3) + '_AP' + str(k + 1).zfill(2)
+#            key = 'OR' + str(orders[i]).zfill(3) + '_AP' + str(k + 1).zfill(2)
             arr = np.stack((owave[nonan], oflux[k, nonan], ounc[k, nonan],
                             omask[k, nonan]))
 
-            output_dict[key] = arr
+            output_list.append(arr)
+#            output_dict[key] = arr
 
         if clupdate is not None:
             loop_progress(i, 0, norders)
 
-    return output_dict
+    return output_list
