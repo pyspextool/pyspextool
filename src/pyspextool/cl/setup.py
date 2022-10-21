@@ -1,17 +1,21 @@
 import os
 from astropy.io import fits
+
 from pyspextool.cl import config
 from pyspextool.io.read_instrument_file import read_instrument_file
+from pyspextool.io.check import check_parameter
 
 
 def setup(instrument=config.state['instruments'][0], rawpath=None,
-          calpath=None, procpath=None, qapath=None, clupdate=False):
+          calpath=None, procpath=None, qapath=None, clupdate=False,
+          qaextension='.pdf'):
+
     """
     Set up basic information for pyspextool to run.
 
 
     Parameters
-    ----------------
+    ----------
     instrument : str, default = config.state['instruments'][0], optional
         The name of the instrument.
 
@@ -30,10 +34,12 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     clupdate : bool, default = False
         Set to report the setup results.
 
+    qaextension : {'pdf', 'png'}, optional
+        Set the file type for all QA plots.
+
     Returns
     -------
     None
-
 
     Notes
     -----
@@ -45,6 +51,20 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
     """
 
+    #
+    # Check parameters
+    #
+    check_parameter('setup', 'instrument', instrument, ['str', 'NoneType'])
+
+    check_parameter('setup', 'rawpath', rawpath, ['str', 'NoneType'])
+
+    check_parameter('setup', 'calpath', calpath, ['str', 'NoneType'])
+
+    check_parameter('setup', 'procpath', procpath, ['str', 'NoneType'])
+
+    check_parameter('setup', 'qapath', qapath, ['str', 'NoneType'])
+
+    check_parameter('setup', 'qaextension', qaextension, 'str')                        
     # Get the package path
 
     dir = os.path.dirname(config.__file__) + '../../../../'
@@ -64,11 +84,6 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
                   str.join(", ", config.state['instruments']) + '.'
         raise ValueError(message)
 
-    # Store things
-
-
-
-    
     # Now do the paths.  First we check for the .path file in the user's home
     # directory
 
@@ -247,6 +262,10 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
                         'data', config.state['instrument'] + '_bdpxmk.fits')
     config.state['rawbadpixelmask'] = fits.getdata(file)
 
+    # Now store things
+
+    config.state['qaextension'] = qaextension
+        
     # Set the continue variables
 
     config.state['pscontinue'] = 0
