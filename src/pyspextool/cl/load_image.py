@@ -385,7 +385,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     if qafile is True:
 
         qafileinfo = {'figsize': (7,7), 'filepath':config.state['qapath'],
-                      'filename':qafilename+'_image', 'extension':'.pdf'}
+                      'filename':qafilename+'_image',
+                      'extension':config.state['qaextension']}
        
         plot_image(config.state['workimage'],
                    orders_plotinfo=order_plotinfo,
