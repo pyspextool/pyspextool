@@ -155,7 +155,9 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
             
     except RuntimeError:
 
-        fit = {'goodfit':False}
+        fit = {'parms': np.full_like(p0, np.nan)}
+        fit['fit'] = np.full_like(y, np.nan)
+        fit['goodfit']=False
         
     return fit
     
