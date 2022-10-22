@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.polynomial.polynomial import polyval
 
+from pyspextool.io.check import check_parameter
+
 
 def goodbad_init(*args, goodbad=None):
 
@@ -60,7 +62,9 @@ def goodbad_init(*args, goodbad=None):
 
     return goodbad
 
-
+#
+#==============================================================================
+#
 def image_poly(img, coeffs):
 
     """
@@ -111,7 +115,9 @@ def image_poly(img, coeffs):
     
     return y
 
-
+#
+#==============================================================================
+#
 def make_alphabeta_1d(x, y, yunc, order, doalpha=False):
 
     """
@@ -197,8 +203,11 @@ def make_alphabeta_1d(x, y, yunc, order, doalpha=False):
 
     return alpha, beta
 
-
+#
+#==============================================================================
+#
 def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
+
     """
     Creates the alpha and beta arrays of the normal equations of
     the general linear least squares problem.
@@ -298,25 +307,34 @@ def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
         beta = np.matmul(at, b)
 
     return alpha, beta
-
-def poly_1d(x, coeffs):
+#
+#==============================================================================
+#
+def poly_1d(x, coeffs, covar=None):
 
     """
-    evaluates a polynomial function of two independent variables
+    Evaluates a polynomial function of an independent variables
     
 
     Parameters
     ----------
     x : array_like, int or float
-        an array of independent values
+        An (ndat,) array of independent values
 
     coeffs : np.ndarray
-        an array of coefficients from polyfit2d
+        An (ndat,) array of coefficients from poly_fit_1d
+
+    covar : np.ndarray, default=None, optional
+        An (ncoefs, ncoeffs) covariance array.
 
     Output Parameters
     -----------------
-    numpy.ndarray
-        the polynomial evaluated at `x`
+    numpy.ndarray, optional numpy.ndarray 
+        The polynomial evaluated at `x`.
+        The variances evaluated at `x`.
+
+    Notes
+    -----
 
     Examples
     --------
@@ -324,14 +342,50 @@ def poly_1d(x, coeffs):
 
     """
 
-    z = 0
-    for i in range(len(coeffs)):
+    #
+    # Check the parameters
+    #
+    check_parameter('poly_1d', 'x', x, ['list','ndarray'])
+    
+    check_parameter('poly_1d', 'coeffs', coeffs, 'ndarray')
 
-            z = z+coeffs[i]*x**i
+    check_parameter('poly_1d', 'covar', covar, ['ndarray', 'NoneType'])
 
-    return z
+    #
+    # Get set up
+    #
+    ncoeffs = len(coeffs)
+    ndat = len(x)
 
+    #
+    # Compute the values at x
+    #
 
+    z = np.zeros(ndat, dtype=float)    
+    for i in range(ncoeffs):
+
+        z = z+coeffs[i]*x**i
+
+    # Compute the variances if requested
+
+    if covar is not None:
+
+        var = np.zeros(ndat, dtype=float)
+        for i in range(ncoeffs):
+
+            for j in range(ncoeffs):
+
+                var = var + covar[j,i]*x**i * x**j
+                
+        return (z, var)
+
+    else:
+
+        return z
+
+#
+#==============================================================================
+#
 def poly_2d(x, y, xorder, yorder, coeffs):
 
     """
@@ -376,24 +430,9 @@ def poly_2d(x, y, xorder, yorder, coeffs):
 
     return z
 
-    # Get set up with a bunch of necessary numbers and arrays
-
-    #ndat = x.size
-
-    #xexp = np.arange(xorder+1, dtype=int)
-    #yexp = np.arange(yorder+1, dtype=int)
-
-    #z = np.empty(ndat)
-
-    # Now fill in the data
-    
-    #for i in range(ndat):
-
-    #    z[i] = np.sum(np.ravel(np.outer(y[i]**yexp, x[i]**xexp))*coeffs)
-
-    #return z
-
-
+#
+#==============================================================================
+#
 def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
                 doalpha=False, justfit=False, silent=True):
 
@@ -437,14 +476,17 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
         coeffs : numpy.ndarray
             The polynomial coefficients
 
-        var : numpy.ndarray
+        coeff_var : numpy.ndarray
             The variances of the coefficients
 
-        covar : numpy.ndarray
+        coeff_covar : numpy.ndarray
             The covariance matrix
 
         yfit : numpy.ndarray 
             The polynomial evaluated at `x`
+
+        yfit_var : numpy.ndarray 
+            The variances of `yfit` calculated using `coeff_covar`.
 
         nparm : int
             The number of parameters of the fit
@@ -582,9 +624,10 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
     
     if justfit is True:
 
-        return({"coeffs": coeffs, "var": None, "covar": None, "yfit": None,
-                "goodbad": goodbad, "nparm": None, "ndof": None,
-                "chi2": None, "rchi2": None, "rms": None})
+        return({"coeffs": coeffs, "coeff_var": None, "coeff_covar": None,
+                "yfit": None, "yfit_var":None, "goodbad": goodbad,
+                "nparm": None, "ndof": None, "chi2": None, "rchi2": None,
+                "rms": None})
         
     else:
 
@@ -593,11 +636,11 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
         # Compute the covariance array and get the variances of the parameters
         
         covar = np.linalg.inv(alpha)
-        var = np.diagonal(covar)
+        coeff_var = np.diagonal(covar)
 
         # Get the rms of the fit and the chi2 value
 
-        yfit = polyval(x, coeffs)
+        yfit, yfit_var = poly_1d(x, coeffs, covar=covar)
         residual = y-yfit
         z_good = goodbad == 1
         n_good = np.sum(z_good)
@@ -631,7 +674,7 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
             for i in range(0, order+1):
             
                 print('Coeff #', str(i).zfill(2), ': ', coeffs[i], '+-',
-                      np.sqrt(var[i]), sep='')
+                      np.sqrt(coeff_var[i]), sep='')
                     
             print(' ')
             print('Covariance Matrix:')
@@ -640,11 +683,14 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
 
         # Return the results
 
-    return({"coeffs": coeffs, "var": var, "covar": covar, "yfit": yfit,
-            "goodbad": goodbad, "nparm": order+1, "ndof": ndof, "chi2": chi2,
-            "rchi2": rchi2, "rms": rms})
+    return({"coeffs": coeffs, "coeff_var": coeff_var, "coeff_covar": covar,
+            "yfit": yfit, "yfit_var":yfit_var, "goodbad": goodbad,
+            "nparm": order+1, "ndof": ndof, "chi2": chi2, "rchi2": rchi2,
+            "rms": rms})
 
-
+#
+#==============================================================================
+#
 def poly_fit_2d(x, y, z, xorder, yorder, zunc=None, goodbad=None,
                 robust=None, doalpha=False, silent=True, justfit=False):
 
