@@ -78,6 +78,10 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     if config.state['exttype'] == 'ps':
 
         #
+        #======================= Point Source ===========================
+        #
+        
+        #
         # Check parameters
         #
 
@@ -159,6 +163,10 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     else:
 
         #
+        #======================= Extended Source ===========================
+        #
+        
+        #
         # Check parameters
         #
 
@@ -187,7 +195,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
             # String or list?
             
-            if type(bg_regions).__name__ == 'str':
+            if isinstance(bg_regions, str) is True:
 
                 # Split on commas
 
@@ -201,7 +209,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
             else:
 
-                # Must be a list.  Check to ensure in range.  
+                # Must be a list.  
                 
                 xsbginfo = bg_regions
                 
@@ -211,10 +219,16 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                         [0, config.state['slith_arc']], 'gele',
                         variable_name='bg_regions')
 
+            config.state['bgregions'] = xsbginfo
+
+        else:
+
+            config.state['bgregions'] = None
+
+            
         # Store the results
 
         config.state['apradii'] = aperture_radii
-        config.state['bgregions'] = xsbginfo
         config.state['bgfitdeg'] = bg_fit_degree
             
         # Force the psbginfo to None
