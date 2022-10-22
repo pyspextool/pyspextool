@@ -165,6 +165,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         config.state['filereadmode'] = 'filename'
         files = files.replace(" ", "").split(',')
         input_files = make_full_path(path, files, exist=True)
+        output_files = None
 
     else:
 
@@ -216,8 +217,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         if config.state['filereadmode'] == 'index':
             output_files = reorder_irtf_files(output_files)
-            config.state['output_files'] = output_files
 
+    config.state['output_files'] = output_files            
+            
     # Create the qafilename root
 
     basenames = []
