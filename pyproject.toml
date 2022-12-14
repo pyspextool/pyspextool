@@ -10,6 +10,7 @@ dependencies = [
     "scipy",
     "matplotlib",
     "numpy",
+    "importlib_resources"
 ]
 [tool.setuptools]
 include-package-data = true
