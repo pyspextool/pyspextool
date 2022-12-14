@@ -200,12 +200,13 @@ def load_data(file, lininfo, bias, keywords=None, ampcor=None, lccoeffs=None):
 
     #  Check for linearity maximum
 
-    mskp = (img_p < (bias - lininfo['max'])) * 2 ** lininfo['bit']
-    msks = (img_s < (bias - lininfo['max'])) * 2 ** lininfo['bit']
+    mskp = ((img_p < (bias - lininfo['max'])) * 2 ** lininfo['bit']).astype(np.uint8)
+    msks = ((img_s < (bias - lininfo['max'])) * 2 ** lininfo['bit']).astype(np.uint8)
 
     #  Combine the masks 
 
-    bitmask = combine_flag_stack(np.stack((mskp, msks)), nbits=lininfo['bit'] + 1)
+    bitmask = combine_flag_stack(np.stack((mskp, msks)),
+                                 nbits=lininfo['bit'] + 1)
 
     #  Create the image
 
@@ -248,7 +249,8 @@ def load_data(file, lininfo, bias, keywords=None, ampcor=None, lccoeffs=None):
 
     # Compute the variance and the final image
 
-    var = np.absolute(img) * crtn / ndrs / (coadds ** 2) / (itime ** 2) / gain + rdvar
+    var = np.absolute(img) * crtn / ndrs / (coadds ** 2) / \
+          (itime ** 2) / gain + rdvar 
     img = img / divisor / itime
 
     # Collect header information

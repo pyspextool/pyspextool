@@ -1,5 +1,7 @@
 import numpy as np
 from astropy.io import fits
+import os
+
 from pyspextool.utils.add_entry import add_entry
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.arrays import idl_unrotate
@@ -419,8 +421,10 @@ def read_flatcal_file(file):
 
         # Now determine the guess position y position 
 
-        bot = np.polynomial.polynomial.polyval(guesspos[i, 0], edgecoeffs[i, 0, :])
-        top = np.polynomial.polynomial.polyval(guesspos[i, 0], edgecoeffs[i, 1, :])
+        bot = np.polynomial.polynomial.polyval(guesspos[i, 0],
+                                               edgecoeffs[i, 0, :])
+        top = np.polynomial.polynomial.polyval(guesspos[i, 0],
+                                               edgecoeffs[i, 1, :])
 
         guesspos[i, 1] = int((bot + top) / 2)
 
@@ -573,6 +577,7 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
 
         # Now add new ones
 
+        hdr['FILENAME'] = (os.path.basename(oname), ' Filename')
         hdr['MODE'] = (modename, ' Instrument Mode')
         hdr['NORDERS'] = (norders, ' Number of orders identified')
         hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
@@ -647,9 +652,16 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
 
     # Write the results
 
+    print(flat.dtype)
+    print(var.dtype)
+    print(flag.dtype)        
     img_hdu = fits.ImageHDU(idl_unrotate(flat,rotate))
     var_hdu = fits.ImageHDU(idl_unrotate(var,rotate))
     flg_hdu = fits.ImageHDU(idl_unrotate(flag, rotate))
 
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu])
     hdu.writeto(oname, overwrite=overwrite)
+
+    fits.writeto('flat.fits', flat, overwrite=True)
+    fits.writeto('var.fits', var, overwrite=True)
+    fits.writeto('flag.fits', flag, overwrite=True)        

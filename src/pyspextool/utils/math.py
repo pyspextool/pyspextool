@@ -71,8 +71,11 @@ def bit_set(array, bits):
     #  which that bit is set.
 
     for val in bits:
+        print('test1', (array >> val).dtype)
         tmp = (array >> val) & 1
-        mask = mask | tmp
+        print('test2', ((array >> val) & 1).dtype)
+        mask = (mask | tmp)
+        print('test3', mask.dtype)
 
     return mask
 
@@ -143,18 +146,19 @@ def combine_flag_stack(stack, nbits=8):
     # Replace with match case statement when you upgrade to 3.10.
 
     if ndim == 2:
-        comb = np.zeros(shape[1], dtype=np.int8)
+        comb = np.zeros(shape[1], dtype=np.uint8)
 
     if ndim == 3:
-        comb = np.zeros(shape[1:2], dtype=np.int8)
+        comb = np.zeros(shape[1:2], dtype=np.uint8)
 
     # Now just loop over each bit requested.
 
     for i in range(0, nbits):
         #  Identify the pixels with the particular bit set
 
+#        print(i, 'in', stack.dtype)
         set = bit_set(stack, i)
-
+#        print(i, 'out', set.dtype)
         #  Collapse everything down one dimension
 
         sum = np.sum(set, axis=0)

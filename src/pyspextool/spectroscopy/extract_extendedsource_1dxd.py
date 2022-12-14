@@ -58,13 +58,12 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
     Returns
     -------
-    spectra:  dict
+    list
         The value of each entry is a (4, nwave) numpy.ndarray where:
         wave = (0,:)
         intensity = (1,:)
         uncertainty = (2,:)
         flags = (3,:)
-        Each key has the form of ORNNN_AP01 where NNN is the order number.
 
     Notes
     -----
@@ -94,7 +93,7 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
     if bginfo is not None:
 
         bgregions = bginfo['regions']
-        bgdeg = bginfo['bgdeg']
+        bgdeg = bginfo['deg']
 
     else:
 
@@ -165,14 +164,30 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
             # Do the background subtraction
 
             if bgregions is not None:
-                print('do subtraction later.')
+
+                z = (slitmask == -1)
+                result = poly_fit_1d(slit_arc[z], slit_img[z],bgdeg,
+                                     robust={'thresh':4, 'eps':0.1},
+                                     silent=True)
+
+                
+                
 
             # Do the sum extraction
 
             for k in range(naps):
+
+                # Find the apertures
+                
                 z = (slitmask > float(k)) & (slitmask <= float(k + 1))
-                oflux[k, j] = np.sum(slit_img[z] * (slitmask[z] - float(k)))
-                varval = np.sum(slit_var[z] * (slitmask[z] - float(k + 1)))
+
+                # Create partial array
+                partial = slitmask[z] - float(k)
+
+                # Now do the sums
+                
+                oflux[k, j] = np.sum(slit_img[z] * partial)
+                varval = np.sum(slit_var[z] * partial**2)
                 ounc[k, j] = np.sqrt(np.abs(varval))
 
             # Check the bitmask for linearity
@@ -190,12 +205,10 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
         # Generate the key
 
         for k in range(naps):
-#            key = 'OR' + str(orders[i]).zfill(3) + '_AP' + str(k + 1).zfill(2)
             arr = np.stack((owave[nonan], oflux[k, nonan], ounc[k, nonan],
                             omask[k, nonan]))
 
             output_list.append(arr)
-#            output_dict[key] = arr
 
         if clupdate is not None:
             loop_progress(i, 0, norders)
