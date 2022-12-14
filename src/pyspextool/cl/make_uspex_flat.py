@@ -125,10 +125,10 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
     # and combine the masks
 
 #    print(mask.dtype)
-    print('Combine----------------------')
+#    print('Combine----------------------')
     flag = combine_flag_stack(mask)
 #    print(flag.dtype)
-    return
+#    return
     
     #
     # Combine the images together
