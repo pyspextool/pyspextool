@@ -1,9 +1,9 @@
 import os
 from astropy.io import fits
-
-from pyspextool.cl import config
+from pyspextool.cl import config # sets initial state dictionary
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter
+from importlib_resources import files
 
 
 def setup(instrument=config.state['instruments'][0], rawpath=None,
@@ -54,7 +54,7 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     #
     # Check parameters
     #
-    check_parameter('setup', 'instrument', instrument, ['str', 'NoneType'])
+    # check_parameter('setup', 'instrument', instrument, ['str', 'NoneType'])
 
     check_parameter('setup', 'rawpath', rawpath, ['str', 'NoneType'])
 
@@ -73,16 +73,13 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
     # Get the instrument directory
 
-    test = os.path.join(packagepath, 'instruments', instrument)
-    if os.path.isdir(test) is True:
-
-        config.state['instrument'] = instrument
-
-    else:
-
-        message = 'Unknown instrument.  Possible instruments are: ' + \
-                  str.join(", ", config.state['instruments']) + '.'
-        raise ValueError(message)
+    # test = os.path.join(packagepath, 'instruments', instrument)
+    # if os.path.isdir(test) is True:
+    #    config.state['instrument'] = instrument
+    # else:
+    #    message = 'Unknown instrument.  Possible instruments are: ' + \
+    #              str.join(", ", config.state['instruments']) + '.'
+    #    raise ValueError(message)
 
     # Now do the paths.  First we check for the .path file in the user's home
     # directory
@@ -226,47 +223,48 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
         print('procpath: ', config.state['procpath'])
         print('qapath: ', config.state['qapath'])
 
-
-    if (config.state['instrument'] in ['uspex','spex']):
-            config.state['irtf'] = True
-
-    # Read instrument file
-
-            
-    file = os.path.join(packagepath, 'instruments', config.state['instrument'],
-                        'data', config.state['instrument'] + '.dat')
-
-    instrumentinfo = read_instrument_file(file)
-    
-    # Fill out the state variable
-
-    config.state['readfits'] = instrumentinfo['READFITS']
-
-    config.state['suffix'] = instrumentinfo['SUFFIX']
-    config.state['nint'] = instrumentinfo['NINT']
-    config.state['xspextool_keywords'] = instrumentinfo['XSPEXTOOL_KEYWORDS']
-
-    biasfile = os.path.join(config.state['packagepath'], 'instruments',
-                            config.state['instrument'], 'data',
-                            config.state['instrument'] + '_bias.fits')
-
-    config.state['biasfile'] = biasfile
-    config.state['lincormax'] = instrumentinfo['LINCORMAX']
-    config.state['linearity_info'] = {'bias': biasfile,
-                                      'max': config.state['lincormax'],
-                                      'bit': 0}
-
-    # Get the bad pixel mask
-
-    file = os.path.join(packagepath, 'instruments', config.state['instrument'],
-                        'data', config.state['instrument'] + '_bdpxmk.fits')
-    config.state['rawbadpixelmask'] = fits.getdata(file)
+    set_instrument_state(config.state['instrument'])
 
     # Now store things
-
     config.state['qaextension'] = qaextension
         
     # Set the continue variables
-
     config.state['pscontinue'] = 0
     config.state['xscontinue'] = 0    
+
+
+def set_instrument_state(instrument):
+    if instrument in ['uspex', 'spex']:
+        config.state['irtf'] = True
+
+    instrument_data_path = files('pyspextool.instrument_data').\
+        joinpath(config.state['instrument'])
+
+    instrument_info_file = instrument_data_path.joinpath(config.state['instrument'] + '.dat')
+
+    if os.path.isfile(instrument_info_file):
+        instrument_info = read_instrument_file(instrument_info_file)
+    else:
+        raise FileNotFoundError(instrument_info_file)
+
+    # Fill out the state variables
+    config.state['readfits'] = instrument_info['READFITS']
+    config.state['suffix'] = instrument_info['SUFFIX']
+    config.state['nint'] = instrument_info['NINT']
+    config.state['xspextool_keywords'] = instrument_info['XSPEXTOOL_KEYWORDS']
+
+    bias_file = instrument_data_path.joinpath(config.state['instrument'] + '_bias.fits')
+    if os.path.isfile(bias_file):
+        config.state['biasfile'] = bias_file
+        config.state['lincormax'] = instrument_info['LINCORMAX']
+        config.state['linearity_info'] = {'bias': bias_file,
+                                          'max': config.state['lincormax'],
+                                          'bit': 0}
+    else:
+        raise FileNotFoundError(bias_file)
+
+    bad_pixel_mask_file = instrument_data_path.joinpath(config.state['instrument'] + '_bdpxmk.fits')
+    if os.path.isfile(bad_pixel_mask_file):
+        config.state['rawbadpixelmask'] = fits.getdata(bad_pixel_mask_file)
+    else:
+        raise FileNotFoundError(bad_pixel_mask_file)
