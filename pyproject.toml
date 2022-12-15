@@ -10,7 +10,7 @@ dependencies = [
     "scipy",
     "matplotlib",
     "numpy",
-    "importlib_resources: python_version < 3.9",
+    "importlib_resources; python_version < '3.9'",
 ]
 
 [tool.setuptools]
