@@ -47,11 +47,11 @@ def setup(instrument_name='uspex', rawpath=None, calpath=None, procpath=None, qa
     # Check parameters
     #
 
-    if not isinstance(instrument_name, str):
-        message = f'Instrument name, {instrument_name} should be a string not {type(instrument_name)}.' \
-                 f'Possible instruments are: ' \
-                 f"{str.join(', ', config.state['instruments'])}."
-        raise TypeError(message)
+    #if not isinstance(instrument_name, str):
+    #    message = f'Instrument name, {instrument_name} should be a string not {type(instrument_name)}.' \
+    #             f'Possible instruments are: ' \
+    #             f"{str.join(', ', config.state['instruments'])}."
+    #    raise TypeError(message)
     # check_parameter('setup', 'instrument_name', instrument_name, ['str', 'NoneType'])
 
     check_parameter('setup', 'rawpath', rawpath, ['str', 'NoneType'])
