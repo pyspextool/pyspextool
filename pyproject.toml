@@ -10,14 +10,11 @@ dependencies = [
     "scipy",
     "matplotlib",
     "numpy",
-    "importlib_resources",
+    "importlib_resources: python_version < 3.9",
 ]
-
-# install_requires=[
-#        'importlib_resources; python_version < "3.9"',
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.package-data]
-"pyspextool.instrument_data" = ["*.dat","*.fits"]
+"*" = ["*.dat","*.fits"] # includes the data files in instrument_data/

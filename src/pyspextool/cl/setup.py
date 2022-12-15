@@ -1,5 +1,6 @@
 import os
 from astropy.io import fits
+import pyspextool
 from pyspextool.cl import config # sets initial state dictionary
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter
@@ -46,11 +47,11 @@ def setup(instrument_name='uspex', rawpath=None, calpath=None, procpath=None, qa
     # Check parameters
     #
 
-    # if not isinstance(instrument_name, str):
-    #    message = f'Instrument name, {instrument_name} should be a string not {type(instrument_name)}.' \
-    #              f'Possible instruments are: ' \
-    #              f"{str.join(', ', config.state['instruments'])}."
-    #    raise TypeError(message)
+    if not isinstance(instrument_name, str):
+        message = f'Instrument name, {instrument_name} should be a string not {type(instrument_name)}.' \
+                 f'Possible instruments are: ' \
+                 f"{str.join(', ', config.state['instruments'])}."
+        raise TypeError(message)
     # check_parameter('setup', 'instrument_name', instrument_name, ['str', 'NoneType'])
 
     check_parameter('setup', 'rawpath', rawpath, ['str', 'NoneType'])
@@ -213,11 +214,11 @@ def setup(instrument_name='uspex', rawpath=None, calpath=None, procpath=None, qa
 
 def set_instrument_state(instrument_name: str):
     if not isinstance(instrument_name, str):
-        message = f"{instrument_name}, {type(instrument_name)} boo"
+        message = f"Instrument name is not a string: {instrument_name}, {type(instrument_name)}"
         return TypeError(message)
 
-    instrument_data_path = files('pyspextool.instrument_data').\
-        joinpath(instrument_name + '_dir')
+    instrument_dir = instrument_name + '_dir'
+    instrument_data_path = (files('pyspextool') / 'instrument_data' / instrument_dir)
 
     if os.path.isdir(instrument_data_path) is True:
         config.state['instrument_name'] = instrument_name
@@ -229,7 +230,7 @@ def set_instrument_state(instrument_name: str):
                   f"{str.join(', ', config.state['instruments'])}."
         raise ValueError(message)
 
-    instrument_info_file = instrument_data_path.joinpath(config.state['instrument_name'] + '.dat')
+    instrument_info_file = instrument_data_path.joinpath(instrument_name + '.dat')
 
     if os.path.isfile(instrument_info_file):
         instrument_info = read_instrument_file(instrument_info_file)
