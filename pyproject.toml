@@ -10,8 +10,12 @@ dependencies = [
     "scipy",
     "matplotlib",
     "numpy",
-    "importlib_resources"
+    "importlib_resources",
 ]
+
+# install_requires=[
+#        'importlib_resources; python_version < "3.9"',
+
 [tool.setuptools]
 include-package-data = true
 

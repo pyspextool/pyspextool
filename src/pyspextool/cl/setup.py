@@ -3,7 +3,10 @@ from astropy.io import fits
 from pyspextool.cl import config # sets initial state dictionary
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter
-from importlib_resources import files
+try:
+    from importlib.resources import files # Python 3.10+
+except ImportError:
+    from importlib_resources import files # Python <=3.9
 
 
 def setup(instrument_name='uspex', rawpath=None, calpath=None, procpath=None, qapath=None,
