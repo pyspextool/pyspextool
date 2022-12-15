@@ -258,8 +258,6 @@ def set_instrument_state(instrument_name: str):
 
     bad_pixel_mask_file = instrument_data_path.joinpath(config.state['instrument_name'] + '_bdpxmk.fits')
     if os.path.isfile(bad_pixel_mask_file):
-        config.state['rawbadpixelmask'] = fits.getdata(bad_pixel_mask_file)
+        config.state['bad_pixel_mask_file'] = bad_pixel_mask_file
     else:
         raise FileNotFoundError(bad_pixel_mask_file)
-
-    print(config.state['lincormax'])
