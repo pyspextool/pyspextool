@@ -14,6 +14,8 @@ from pyspextool.utils.split_text import split_text
 from pyspextool.calibration.locate_orders import locate_orders
 from pyspextool.calibration.normalize_flat import normalize_flat
 
+from astropy.io import fits
+
 
 def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
                     extension='.fits*', input_method='index',
@@ -122,8 +124,12 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
 
     # and combine the masks
 
+#    print(mask.dtype)
+#    print('Combine----------------------')
     flag = combine_flag_stack(mask)
-
+#    print(flag.dtype)
+#    return
+    
     #
     # Combine the images together
     #

@@ -3,12 +3,12 @@ import os
 
 from pyspextool.cl import config
 from pyspextool.cl.check_continue import check_continue
+from pyspextool.io.check import check_parameter
 from pyspextool.io.write_apertures_fits import write_apertures_fits
-#from pyspextool.plot.plot_spectra import plot_spectra
 from pyspextool.spectroscopy.extract_extendedsource_1dxd import extract_extendedsource_1dxd
 
 
-def extract_apertures(output_filename=None):
+def extract_apertures(output_filenames=None):
 
     # Do the extraction
     
@@ -18,8 +18,35 @@ def extract_apertures(output_filename=None):
 
     else:
 
+        #
+        #======================= Extended Source ===========================
+        #
+
+        #
+        # Check parameters
+        #
+        check_parameter('extract_apertures', 'output_filenames',
+                        output_filenames, ['str', 'list'])
+
+        config.state['output_files'] = output_filenames+'.fits'
+
+        # deal with background
+
+        if config.state['bgregions'] is not None:
+
+            bginfo = {'regions': config.state['bgregions'],
+                      'deg': config.state['bgfitdeg']}
+
+        else:
+
+            bginfo = None
+
+        # Grab which orders are being extracted
+            
         z = config.state['xsdoorders'] == 1
 
+        # Do the extraction
+        
         spectra = extract_extendedsource_1dxd(config.state['workimage'],
                                               config.state['varimage'],
                                               config.state['ordermask'],
@@ -27,7 +54,8 @@ def extract_apertures(output_filename=None):
                                               config.state['wavecal'],
                                               config.state['spatcal'],
                                               config.state['apertures'][z],
-                                              config.state['apradii'])
+                                              config.state['apradii'],
+                                              bginfo=bginfo)
         
         #
         # Write the file to disk
