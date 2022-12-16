@@ -1,49 +1,41 @@
 import os
 from astropy.io import fits
-
-from pyspextool.cl import config
+import pyspextool
+from pyspextool.cl import config # sets initial state dictionary
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter
+try:
+    from importlib.resources import files # Python 3.10+
+except ImportError:
+    from importlib_resources import files # Python <=3.9
 
 
-def setup(instrument=config.state['instruments'][0], rawpath=None,
-          calpath=None, procpath=None, qapath=None, clupdate=False,
-          qaextension='.pdf'):
+def setup(instrument_name=None, rawpath=None, calpath=None, procpath=None, qapath=None,
+          clupdate=False, qaextension='.pdf'):
 
     """
     Set up basic information for pyspextool to run.
 
-
     Parameters
     ----------
-    instrument : str, default = config.state['instruments'][0], optional
+    instrument : str, default = 'uspex', optional
         The name of the instrument.
-
     rawpath : str, optional
         The path to the raw directory.
-
     calpath : str, optional
         The path to the calibration directory.
-
     procpath : str, optional
         The path to the processed directory.
-
     rawpath : str, optional
         The path to the quality assurance directory.
-
     clupdate : bool, default = False
         Set to report the setup results.
-
     qaextension : {'pdf', 'png'}, optional
         Set the file type for all QA plots.
 
     Returns
     -------
     None
-
-    Notes
-    -----
-    Hmmm
 
     Examples
     --------
@@ -54,7 +46,16 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     #
     # Check parameters
     #
-    check_parameter('setup', 'instrument', instrument, ['str', 'NoneType'])
+
+    if instrument_name is None:
+        instrument_name = config.state['instruments'][0]
+
+    # if not isinstance(instrument_name, str):
+    #    message = f'Instrument name, {instrument_name} should be a string not {type(instrument_name)}.' \
+    #             f'Possible instruments are: ' \
+    #             f"{str.join(', ', config.state['instruments'])}."
+    #    raise TypeError(message)
+    # check_parameter('setup', 'instrument_name', instrument_name, ['str', 'NoneType'])
 
     check_parameter('setup', 'rawpath', rawpath, ['str', 'NoneType'])
 
@@ -64,47 +65,27 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
 
     check_parameter('setup', 'qapath', qapath, ['str', 'NoneType'])
 
-    check_parameter('setup', 'qaextension', qaextension, 'str')                        
-    # Get the package path
+    check_parameter('setup', 'qaextension', qaextension, 'str')
 
-    dir = os.path.dirname(config.__file__) + '../../../../'
-    packagepath = os.path.normpath(dir)
-    config.state['packagepath'] = packagepath
-
-    # Get the instrument directory
-
-    test = os.path.join(packagepath, 'instruments', instrument)
-    if os.path.isdir(test) is True:
-
-        config.state['instrument'] = instrument
-
-    else:
-
-        message = 'Unknown instrument.  Possible instruments are: ' + \
-                  str.join(", ", config.state['instruments']) + '.'
-        raise ValueError(message)
+    set_instrument_state(instrument_name)
 
     # Now do the paths.  First we check for the .path file in the user's home
     # directory
 
     homedir = os.path.expanduser('~')
     filename = os.path.join(homedir, '.pyspextool_' + \
-                            config.state['instrument'] + '.dat')
+                            config.state['instrument_name'] + '.dat')
     filename = os.path.join(homedir, filename)
 
     if os.path.isfile(filename) is True:
-
         f = open(filename, 'r')
         paths = []
         for line in f:
             paths.append(line.strip())
-
         config.state['rawpath'] = paths[0]
         config.state['calpath'] = paths[1]
         config.state['procpath'] = paths[2]
         config.state['qapath'] = paths[3]
-
-
     else:
         cwd = os.path.abspath(os.getcwd())
         config.state['rawpath'] = cwd
@@ -209,7 +190,7 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     # Now write the paths to the user home directory
 
     f = open(os.path.join(homedir, '.pyspextool_' + \
-                          config.state['instrument'] + '.dat'), 'w')
+                          config.state['instrument_name'] + '.dat'), 'w')
     f.write('%s \n' % config.state['rawpath'])
     f.write('%s \n' % config.state['calpath'])
     f.write('%s \n' % config.state['procpath'])
@@ -219,54 +200,64 @@ def setup(instrument=config.state['instruments'][0], rawpath=None,
     if clupdate is True:
         print('Pyspextool Setup')
         print('----------------')
-        print('Instrument: ', config.state['instrument'])
+        print('Instrument: ', config.state['instrument_name'])
         print()
         print('rawpath: ', config.state['rawpath'])
         print('calpath: ', config.state['calpath'])
         print('procpath: ', config.state['procpath'])
         print('qapath: ', config.state['qapath'])
 
-
-    if (config.state['instrument'] in ['uspex','spex']):
-            config.state['irtf'] = True
-
-    # Read instrument file
-
-            
-    file = os.path.join(packagepath, 'instruments', config.state['instrument'],
-                        'data', config.state['instrument'] + '.dat')
-
-    instrumentinfo = read_instrument_file(file)
-    
-    # Fill out the state variable
-
-    config.state['readfits'] = instrumentinfo['READFITS']
-
-    config.state['suffix'] = instrumentinfo['SUFFIX']
-    config.state['nint'] = instrumentinfo['NINT']
-    config.state['xspextool_keywords'] = instrumentinfo['XSPEXTOOL_KEYWORDS']
-
-    biasfile = os.path.join(config.state['packagepath'], 'instruments',
-                            config.state['instrument'], 'data',
-                            config.state['instrument'] + '_bias.fits')
-
-    config.state['biasfile'] = biasfile
-    config.state['lincormax'] = instrumentinfo['LINCORMAX']
-    config.state['linearity_info'] = {'bias': biasfile,
-                                      'max': config.state['lincormax'],
-                                      'bit': 0}
-
-    # Get the bad pixel mask
-
-    file = os.path.join(packagepath, 'instruments', config.state['instrument'],
-                        'data', config.state['instrument'] + '_bdpxmk.fits')
-    config.state['rawbadpixelmask'] = fits.getdata(file)
-
     # Now store things
-
     config.state['qaextension'] = qaextension
         
     # Set the continue variables
-
     config.state['pscontinue'] = 0
     config.state['xscontinue'] = 0    
+
+
+def set_instrument_state(instrument_name: str):
+    if not isinstance(instrument_name, str):
+        message = f"Instrument name is not a string: {instrument_name}, {type(instrument_name)}"
+        return TypeError(message)
+
+    instrument_dir = instrument_name + '_dir'
+    instrument_data_path = (files('pyspextool') / 'instrument_data' / instrument_dir)
+
+    if os.path.isdir(instrument_data_path) is True:
+        config.state['instrument_name'] = instrument_name
+    else:
+        message = f"Needed instrument data for {instrument_name} is not found. Expecting it here: \n" \
+                  f"{instrument_data_path}."
+        raise FileNotFoundError(message)
+
+    instrument_info_file = instrument_data_path.joinpath(instrument_name + '.dat')
+
+    if os.path.isfile(instrument_info_file):
+        instrument_info = read_instrument_file(instrument_info_file)
+    else:
+        raise FileNotFoundError(instrument_info_file)
+
+    if instrument_name in ['uspex', 'spex']:
+        config.state['irtf'] = True
+
+    # Fill out the state variables
+    config.state['readfits'] = instrument_info['READFITS']
+    config.state['suffix'] = instrument_info['SUFFIX']
+    config.state['nint'] = instrument_info['NINT']
+    config.state['xspextool_keywords'] = instrument_info['XSPEXTOOL_KEYWORDS']
+
+    bias_file = instrument_data_path.joinpath(config.state['instrument_name'] + '_bias.fits')
+    if os.path.isfile(bias_file):
+        config.state['biasfile'] = bias_file
+        config.state['lincormax'] = instrument_info['LINCORMAX']
+        config.state['linearity_info'] = {'bias': bias_file,
+                                          'max': config.state['lincormax'],
+                                          'bit': 0}
+    else:
+        raise FileNotFoundError(bias_file)
+
+    bad_pixel_mask_file = instrument_data_path.joinpath(config.state['instrument_name'] + '_bdpxmk.fits')
+    if os.path.isfile(bad_pixel_mask_file):
+        config.state['bad_pixel_mask_file'] = bad_pixel_mask_file
+    else:
+        raise FileNotFoundError(bad_pixel_mask_file)
