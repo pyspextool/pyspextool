@@ -10,7 +10,7 @@ except ImportError:
     from importlib_resources import files # Python <=3.9
 
 
-def setup(instrument_name='uspex', rawpath=None, calpath=None, procpath=None, qapath=None,
+def setup(instrument_name=None, rawpath=None, calpath=None, procpath=None, qapath=None,
           clupdate=False, qaextension='.pdf'):
 
     """
@@ -47,7 +47,10 @@ def setup(instrument_name='uspex', rawpath=None, calpath=None, procpath=None, qa
     # Check parameters
     #
 
-    #if not isinstance(instrument_name, str):
+    if instrument_name is None:
+        instrument_name = config.state['instruments'][0]
+
+    # if not isinstance(instrument_name, str):
     #    message = f'Instrument name, {instrument_name} should be a string not {type(instrument_name)}.' \
     #             f'Possible instruments are: ' \
     #             f"{str.join(', ', config.state['instruments'])}."
@@ -223,12 +226,9 @@ def set_instrument_state(instrument_name: str):
     if os.path.isdir(instrument_data_path) is True:
         config.state['instrument_name'] = instrument_name
     else:
-        print(instrument_data_path)
-        print(config.state['instrument_name'])
-        print(instrument_name)
-        message = f"Unknown instrument.  Possible instruments are:" \
-                  f"{str.join(', ', config.state['instruments'])}."
-        raise ValueError(message)
+        message = f"Needed instrument data for {instrument_name} is not found. Expecting it here: \n" \
+                  f"{instrument_data_path}."
+        raise FileNotFoundError(message)
 
     instrument_info_file = instrument_data_path.joinpath(instrument_name + '.dat')
 
