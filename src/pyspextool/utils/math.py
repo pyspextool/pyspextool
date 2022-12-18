@@ -71,11 +71,14 @@ def bit_set(array, bits):
     #  which that bit is set.
 
     for val in bits:
-        print('test1', (array >> val).dtype)
+        #print('test1', (array >> val).dtype)
         tmp = (array >> val) & 1
-        print('test2', ((array >> val) & 1).dtype)
+        #print('test2', ((array >> val) & 1).dtype)
+        #print('test2a', (tmp.dtype))
+        #print('test2b', mask.dtype)
+        #print('test2c', np.sum(mask), np.sum(tmp))
         mask = (mask | tmp)
-        print('test3', mask.dtype)
+        #print('test3', mask.dtype)
 
     return mask
 
