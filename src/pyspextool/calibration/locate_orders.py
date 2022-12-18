@@ -152,7 +152,7 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
         # Fill the first few points in the cens array with the guess position
 
-        gpidx = np.asscalar(np.where(np.absolute(fcols - guess_positions[i, 0]) ==
+        gpidx = np.ndarray.item(np.where(np.absolute(fcols - guess_positions[i, 0]) ==
                                      np.absolute(fcols - guess_positions[i, 0]).min())[0])
 
         cens[(gpidx - poly_degree):(gpidx + poly_degree)] = \
