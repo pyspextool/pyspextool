@@ -9,11 +9,13 @@ from pyspextool.io.fitsheader import get_header_info
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.math import combine_flag_stack
 
-#import re
-#import sys
+try:
+    from importlib.resources import files # Python 3.10+
+except ImportError:
+    from importlib_resources import files # Python <=3.9
 
 
-def main(files, lininfo, keywords=None, pair=False, rotate=0,
+def main(files, keywords=None, pair=False, rotate=0,
          linearity_correction=True, ampcor=False, clupdate=False):
 
     """
@@ -68,11 +70,6 @@ def main(files, lininfo, keywords=None, pair=False, rotate=0,
         keyword and the value is a list consiting of the FITS value and FITS 
         comment.
 
-    Procedure
-    ---------
-    ?
-
-
     Example
     --------
     ?
@@ -96,8 +93,7 @@ def main(files, lininfo, keywords=None, pair=False, rotate=0,
 
     if linearity_correction is True:
 
-        linearity_file = os.path.join(config.state['packagepath'],
-                                      'instruments', 'uspex', 'data',
+        linearity_file = os.path.join(config.state['instrument_path'],
                                       'uspex_lincorr.fits')
         lc_coeffs = fits.getdata(linearity_file)
 
@@ -105,7 +101,9 @@ def main(files, lininfo, keywords=None, pair=False, rotate=0,
 
         lc_coeffs = None
 
-    # Get set up for lineary check
+    # Get set up for linearity check
+
+    lininfo = config.state['linearity_info']
 
     hdul = fits.open(lininfo['bias'])
     divisor = hdul[0].header['DIVISOR']
@@ -176,6 +174,7 @@ def main(files, lininfo, keywords=None, pair=False, rotate=0,
 
 
 def load_data(file, lininfo, bias, keywords=None, ampcor=None, lccoeffs=None):
+
     readnoise = 12.0  # per single read
     gain = 1.5  # electrons per DN
 
