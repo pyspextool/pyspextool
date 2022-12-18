@@ -19,7 +19,7 @@ from astropy.io import fits
 
 def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
                     extension='.fits*', input_method='index',
-                    normalize=True, clupdate=True,
+                    normalize=True, verbose=True,
                     overwrite=True, qafile=False):
     """
     To create a normalized uSpeX flat field file.
@@ -52,7 +52,7 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
     normalize : {True, False}, optional
         Set to True to normalize the orders.
 
-    clupdate : {True, False}, optional
+    verbose : {True, False}, optional
         Set to True for command line updates during execution. 
 
     overwrite : {True, False}, optional
@@ -110,40 +110,38 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
 
     # Load the FITS files into memory
 
-    if clupdate is True:
+    if verbose is True:
         print(' ')
         print('Creating the flat field...')
         print('Loading FITS images...')
 
-    img, var, hdr, mask = readfits(files, config.state['linearity_info'],
-                                   keywords=keywords, clupdate=clupdate)
-
-    # And then average the headers
+    img, var, hdr, mask = readfits(files, keywords=keywords,
+                                   clupdate=verbose)
 
     average_header = average_header_info(hdr)
 
     # and combine the masks
 
-#    print(mask.dtype)
-#    print('Combine----------------------')
+    #print(mask.dtype)
+    #print('Combine----------------------')
     flag = combine_flag_stack(mask)
-#    print(flag.dtype)
-#    return
-    
+    #print(flag.dtype)
+    #return
+
     #
     # Combine the images together
     #
 
     # Now scale their intensities to a common flux level
 
-    if clupdate is True:
+    if verbose is True:
         print('Scaling images...')
 
     simgs, svars, scales = scale_data_stack(img, None)
 
     # Now median the scaled images
 
-    if clupdate is True:
+    if verbose is True:
         print('Medianing the images...')
 
     med, munc = median_data_stack(simgs)
@@ -156,13 +154,12 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
 
     mode = hdr[0]['GRAT'][0]
 
-    modefile = os.path.join(config.state['packagepath'], 'instruments',
-                            config.state['instrument'], 'data',
+    modefile = os.path.join(config.state['instrument_path'],
                             mode + '_flatinfo.fits')
 
     modeinfo = read_flatcal_file(modefile)
 
-    if clupdate is True:
+    if verbose is True:
         print('Locating the orders...')
 
     if qafile is True:
@@ -184,7 +181,7 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
 
     if normalize is True:
 
-        if clupdate is True:
+        if verbose is True:
             print('Normalizing the median image...')
 
         nimg, nvar, rms = normalize_flat(med, edgecoeffs, modeinfo['xranges'],
@@ -207,7 +204,7 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
 
     # Create the HISTORY
 
-    if clupdate is True:
+    if verbose is True:
         print('Writing flat to disk...')
 
     basenames = []
@@ -240,6 +237,5 @@ def make_uspex_flat(files, output_name, prefix='flat-', suffix='.[ab]',
                os.path.join(config.state['calpath'], output_name + '.fits'),
                overwrite=overwrite)
 
-    if clupdate is True:
+    if verbose is True:
         print('Flat field '+output_name+'.fits written to disk.')
-
