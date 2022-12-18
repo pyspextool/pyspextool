@@ -26,7 +26,7 @@ from pyspextool.utils.for_print import for_print
 def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                        suffix='.[ab]', extension='.fits*',
                        input_method='index', use_stored_solution=False,
-                       clupdate=True, qafile_shift=True,
+                       verbose=True, qafile_shift=True,
                        qafile_findlines=True, qafile_fitlines=True,
                        overwrite=True):
 
@@ -51,7 +51,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     check_parameter('make_uspex_wavecal', 'use_stored_solution',
                     use_stored_solution,'bool')
 
-    check_parameter('make_uspex_wavecal', 'clupdate', clupdate,'bool')
+    check_parameter('make_uspex_wavecal', 'clupdate', verbose, 'bool')
 
     check_parameter('make_uspex_wavecal', 'qafile_shift', qafile_shift, 'bool')
 
@@ -100,13 +100,13 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
     # Load the FITS files into memory
 
-    if clupdate is True:
+    if verbose is True:
         print(' ')
         print('Creating the wavecal file...')
         print('Loading FITS images...')
 
-    img, var, hdr, mask = readfits(files, config.state['linearity_info'],
-                                   keywords=keywords, clupdate=clupdate)
+    img, var, hdr, mask = readfits(files, keywords=keywords,
+                                   clupdate=verbose)
 
     #
     # Combine images as necessary
@@ -116,7 +116,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
     if len(files) > 1:
 
-        if clupdate is True:
+        if verbose is True:
             print('Scaling images...')
 
         simgs, svars, scales = scale_data_stack(img, None)
@@ -128,7 +128,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
     if len(files) > 1:
 
-        if clupdate is True:
+        if verbose is True:
             print('Medianing the images...')
 
         med, munc = median_data_stack(simgs)
@@ -145,8 +145,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     flat_file = os.path.join(config.state['calpath'], flat_file)
     flatinfo = read_flat_fits(flat_file)
 
-    wavecalfile = os.path.join(config.state['packagepath'], 'instruments',
-                               config.state['instrument'], 'data',
+    wavecalfile = os.path.join(config.state['instrument_path'],
                                flatinfo['mode'] + '_wavecalinfo.fits')
 
     wavecalinfo = read_wavecal_file(wavecalfile)
@@ -168,7 +167,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
                                           wavecalinfo['apradius'],
                                           linmax_bitmask=None,
                                           badpixel_mask=None, bginfo=None,
-                                          clupdate=clupdate)
+                                          clupdate=verbose)
 
     #
     # Find the pixel offset between these spectra and the disk spectra
@@ -210,8 +209,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
         # Get the line list to search for lines
 
-        filename = os.path.join(config.state['packagepath'], 'instruments',
-                                config.state['instrument'], 'data',
+        filename = os.path.join(config.state['instrument_path'],
                                 wavecalinfo['linelist'])
 
         lineinfo = read_line_list(filename, delta_to_microns=True)
@@ -238,7 +236,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
         # Now find the lines
 
-        if clupdate:
+        if verbose:
             print('Finding the lines...')
 
         if qafile_findlines is True:
@@ -254,13 +252,13 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
         lineinfo = find_lines_1dxd(spectra, wavecalinfo['orders'], lineinfo,
                                    flatinfo['slitw_pix'], qafileinfo=qafileinfo,
-                                   clupdate=clupdate)
+                                   clupdate=verbose)
 
         #
         # Let's do the actual calibration
         #
 
-        if clupdate:
+        if verbose:
             print('Determining the wavelength solution...')
 
         # Get set up for either 1d of 1dxd
@@ -287,17 +285,17 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
 
         # Find the solution
 
-        solution = wavecal_solution_1d(wavecalinfo['orders'],lineinfo,
+        solution = wavecal_solution_1d(wavecalinfo['orders'], lineinfo,
                                        wavecalinfo['dispdeg'], xd=xd,
                                        qafileinfo=qafileinfo,
-                                       clupdate=clupdate)    
+                                       clupdate=verbose)
         
     else:
 
 #        with open('data.sav', 'rb') as f:
 #           spectra, wavecalinfo, lineinfo, flatinfo, offset, wavecal, spatcal,   = pickle.load(f)
 
-        if clupdate:
+        if verbose:
             print('Using stored solution...')
         
         solution = {'coeffs':wavecalinfo['coeffs'],
@@ -328,7 +326,7 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     # Write the wavecal file to disk.
     #
 
-    if clupdate:
+    if verbose:
         print('Writing wavecal to disk...')
 
     if wavecalinfo['wcaltype'] == '1d':
@@ -368,5 +366,5 @@ def make_uspex_wavecal(files, flat_file, output_name, prefix='arc-',
     else:
         print('unknown wcaltype.')
 
-    if clupdate:
+    if verbose:
         print('Wavecal '+output_name+'.fits written to disk.')        
