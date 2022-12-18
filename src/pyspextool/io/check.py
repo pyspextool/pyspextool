@@ -2,70 +2,75 @@ import numpy as np
 import os
 import glob
 
-def check_directory(paths):
+
+def check_path(path, make_absolute=False):
 
     """
-    To check whether a directory exists.
+    To check whether a path exists.
 
+    Parameters
+    ----------
+    path : str
+        A path (can be a relative path).
 
-    Input Parameters
-    ----------------
-    paths : str, list of str
-        The path to a directory or a list of paths to directories.
-
+    make_absolute : False, True, optional
+        Set to True to replace the user path with its absolute path.
 
     Returns
     -------
-    str, list of str
-        `paths`, if the directory or directories exist, otherwise None.
-
-
-    Notes
-    -----
-    Just checks to see if the directory exists.
-
+    str
+        `path`, if the path exists.  If `make_absolute` is set to True,
+        `path` is converted to an absolute path before being returned.
 
     Examples
     --------
-    later when the package stuff is worked out.
+    later
 
     """
 
-    # Make it a list just in case
+    #
+    # Check parameter
+    #
 
-    paths = [paths] if type(paths) is str else paths
+    check_parameter('check_path', 'path', path, 'str')
 
-    # Now loop and check
-    
-    for path in paths:  
+    # Expand user path just in case.
 
-        result = os.path.exists(path)
+    path = os.path.expanduser(path)
 
-        if result is False:
+    # Now check if the path exists.
 
-            return False
+    result = os.path.exists(path)
 
-        else:
+    if result is False:
 
-            return True
+        message = 'The path '+path+' does not exist.'
+        raise ValueError(message)
+
+    else:
+
+        # it is good, now convert to absolute if requested.
+
+        if make_absolute is True:
+
+            path = os.path.abspath(path)
+
+    return path
 
 def check_file(files):
 
-    '''
+    """
     To check whether a file exists, and to resolve wildcards in the name.
 
-
-    Input Parameters
+    Parameters
     ----------------
     files : str, list of str
         The path to a file or a list of paths to files.
-
 
     Returns
     -------
     str, list of str
         `files`, if the file or files exist, otherwise None.
-
 
     Notes
     -----
@@ -78,7 +83,7 @@ def check_file(files):
     --------
     later when the package stuff is worked out
 
-    '''
+    """
 
     # Make it a list just in case
 
@@ -111,11 +116,11 @@ def check_file(files):
 
     if len(files) == 1:
 
-        return(files[0])
+        return files[0]
 
     else:
 
-        return(files)
+        return files
 
 
 def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
@@ -172,7 +177,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
     # Check whether `parameter_type` is `types`.  
     
-    if (parameter_type in types):
+    if parameter_type in types:
 
     # Has *dimens been passed and is the type of `parameter` ndarray?
 
