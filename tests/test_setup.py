@@ -1,5 +1,9 @@
 from pyspextool.cl import config
-from pyspextool.cl.setup import *
+from pyspextool.cl.setup_utils import *
+
+
+def test_spex_setup():
+    setup_paths(instrument_name='uspex', verbose=True)
 
 
 def test_set_instrument_state():
@@ -12,5 +16,3 @@ def test_set_instrument_state():
     # TODO: add tests for not_supported instrument
 
 
-def test_spex_setup():
-    setup(instrument_name='uspex', clupdate=True)

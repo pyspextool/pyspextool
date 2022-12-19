@@ -10,7 +10,7 @@ except ImportError:
     from importlib_resources import files # Python <=3.9
 
 
-def setup(instrument_name=None, raw_path=None, cal_path=None, proc_path=None,
+def setup_paths(instrument_name=None, raw_path=None, cal_path=None, proc_path=None,
           qa_path=None, verbose=True, qaextension='.pdf'):
 
     """
@@ -121,9 +121,9 @@ def setup(instrument_name=None, raw_path=None, cal_path=None, proc_path=None,
 
 def set_instrument_state(instrument_name: str):
     
-#    if not isinstance(instrument_name, str):
-#        message = f"Instrument name is not a string: {instrument_name}, {type(instrument_name)}"
-#        return TypeError(message)
+    if not isinstance(instrument_name, str):
+        message = f"Instrument name is not a string: {instrument_name}, {type(instrument_name)}"
+        return TypeError(message)
 
     instrument_data_path = os.path.join(config.state['package_path'],
                                         'instrument_data',
