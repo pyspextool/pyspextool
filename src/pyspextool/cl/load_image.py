@@ -116,9 +116,11 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     # Get the readfits module
 
-    module = 'pyspextool.io.' + config.state['readfits']
-    readfits = importlib.import_module(module)
+    module = 'pyspextool.instrument_data.'+config.state['instrument_name']+\
+        '_dir.'+config.state['instrument_name']
 
+    instr = importlib.import_module(module)
+    
     # Get the path
 
     if directory == 'raw':
@@ -133,7 +135,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         path = config.state['procpath']
 
-        #
+    #
     # Check for file existence
     #
 
@@ -209,7 +211,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         message = 'The A-B reduction mode requires 2 images.'
         raise ValueError(message)
 
-    # Do we need to reorder because we are IRTF?
+        # Do we need to reorder because we are IRTF?
 
     if config.state['irtf'] is True:
 
@@ -291,9 +293,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         # First we have to get the possible file names
 
-        fullpath = glob.glob(os.path.join(config.state['packagepath'],
-                                          'data', 'atran*.fits'))
 
+        fullpath = glob.glob(os.path.join(config.state['package_path'],'..',
+                                          '..', 'data', 'atran*.fits'))
         # Then strip the paths off
 
         basenames = [os.path.basename(x) for x in fullpath]
@@ -344,23 +346,22 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     if reduction_mode == 'A':
 
         if directory == 'raw':
-            img, var, hdr, mask = readfits.main(input_files,
-                                                config.state['linearity_info'],
-                                                keywords=config.state['xspextool_keywords'],
-                                                linearity_correction=linearity_correction,
-                                                clupdate=clupdate)
+            img, var, hdr, mask = instr.read_fits(input_files,
+                                    config.state['linearity_info'],
+                                    keywords=config.state['xspextool_keywords'],
+                                    linearity_correction=linearity_correction,
+                                    clupdate=clupdate)
 
         else:
             print('Do later')
 
     elif reduction_mode == 'A-B':
 
-        img, var, hdr, mask = readfits.main(input_files,
-                                            config.state['linearity_info'],
-                                            pair=True,
-                                            keywords=config.state['xspextool_keywords'],
-                                            linearity_correction=linearity_correction,
-                                            clupdate=clupdate)
+        img, var, hdr, mask = instr.read_fits(input_files,
+                                    config.state['linearity_info'], pair=True,
+                                    keywords=config.state['xspextool_keywords'],
+                                    linearity_correction=linearity_correction,
+                                    clupdate=clupdate)
     else:
 
         print('do later.')

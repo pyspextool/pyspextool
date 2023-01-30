@@ -8,7 +8,7 @@ from pyspextool.io.write_apertures_fits import write_apertures_fits
 from pyspextool.spectroscopy.extract_extendedsource_1dxd import extract_extendedsource_1dxd
 
 
-def extract_apertures(output_filenames=None):
+def extract_apertures(output_filenames=None, verbose=True):
 
     # Do the extraction
     
@@ -28,8 +28,15 @@ def extract_apertures(output_filenames=None):
         check_parameter('extract_apertures', 'output_filenames',
                         output_filenames, ['str', 'list'])
 
-        config.state['output_files'] = output_filenames+'.fits'
+        # Get the File names and make list if it isn't one.
+        
+        full_filenames = output_filenames+'.fits'
+        if isinstance(full_filenames, str):
+            full_filenames = [full_filenames]
 
+#            config.state['output_files'] = output_filenames+'.fits'
+        
+        
         # deal with background
 
         if config.state['bgregions'] is not None:
@@ -80,8 +87,9 @@ def extract_apertures(output_filenames=None):
             hdrinfo = config.state['hdrinfo'][0]
             aimage = hdrinfo['FILENAME'][0]
             sky = config.state['hdrinfo'][1]['FILENAME'][0]
-            output_file = config.state['output_files'][0]
-            hdrinfo['FILENAME'][0] = os.path.basename(output_file)
+            output_fullpath = os.path.join(config.state['procpath'],
+                                           full_filenames[0])
+            hdrinfo['FILENAME'][0] = os.path.basename(output_fullpath)
 
         elif config.state['reductionmode'] == 'A-Sky/Dark':
 
@@ -90,10 +98,7 @@ def extract_apertures(output_filenames=None):
         else:
 
             print('Reduction Mode Unknown.')
-
-            
-
-            
+                    
         write_apertures_fits(spectra, config.state['xranges'][z,:],
                              aimage, sky, config.state['flatfile'],
                              config.state['naps'],
@@ -108,13 +113,7 @@ def extract_apertures(output_filenames=None):
                              config.state['resolvingpower'],
                              'um', 'DN s-1', 'microns', 'flux',
                              config.state['version'],
-                             output_file, wavecalinfo=wavecalinfo)
-                                 
-            
+                             output_fullpath, wavecalinfo=wavecalinfo)
 
-        
-
-                             
-#        plot_spectra(result, config.state['orders'][z])
-    
-    
+        if verbose is True:
+            print('Writing',os.path.basename(output_fullpath), 'to disk.')
