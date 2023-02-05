@@ -1,7 +1,7 @@
 import numpy as np
 
-from pyspextool.cl import config
-from pyspextool.cl.check_continue import check_continue
+from pyspextool.extract import config
+from pyspextool.extract.check_continue import check_continue
 from pyspextool.io.check import check_parameter
 from pyspextool.io.check import check_range
 from pyspextool.plot.plot_profiles import plot_profiles

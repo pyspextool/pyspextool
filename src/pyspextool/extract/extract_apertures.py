@@ -1,8 +1,8 @@
 import numpy as np
 import os
 
-from pyspextool.cl import config
-from pyspextool.cl.check_continue import check_continue
+from pyspextool.extract import config
+from pyspextool.extract.check_continue import check_continue
 from pyspextool.io.check import check_parameter
 from pyspextool.io.write_apertures_fits import write_apertures_fits
 from pyspextool.spectroscopy.extract_extendedsource_1dxd import extract_extendedsource_1dxd

@@ -1,6 +1,6 @@
 import sys
 
-from pyspextool.cl import config
+from pyspextool.extract import config
 from pyspextool.io.check import check_parameter
 
 def check_continue(number):

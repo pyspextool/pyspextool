@@ -1,7 +1,7 @@
 import numpy as np
 
-from pyspextool.cl import config
-from pyspextool.cl.trace_apertures import trace_apertures
+from pyspextool.extract import config
+from pyspextool.extract.trace_apertures import trace_apertures
 from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 from pyspextool.plot.plot_profiles import plot_profiles

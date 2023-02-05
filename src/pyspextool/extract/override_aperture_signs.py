@@ -1,6 +1,6 @@
 import numpy as np
 
-from pyspextool.cl import config
+from pyspextool.extract import config
 from pyspextool.io.check import check_parameter
 
 
