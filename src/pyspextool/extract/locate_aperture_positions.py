@@ -184,7 +184,6 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
         else:
 
 #            apsigns = np.squeeze(apsigns)
-            print(type(apsigns), np.shape(apsigns))
 
     #
     # Store the results into the config variable
