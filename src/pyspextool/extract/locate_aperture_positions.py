@@ -181,10 +181,6 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
         for i in range(naps):
             apsigns[i] = 1 if average_apsign[i] > 0 else -1
 
-        else:
-
-#            apsigns = np.squeeze(apsigns)
-
     #
     # Store the results into the config variable
     #

@@ -1,6 +1,7 @@
 import numpy as np
 
 from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.fit.polyfit import poly_1d
 from pyspextool.spectroscopy.make_aperture_mask import make_aperture_mask
 from pyspextool.utils.arrays import make_image_indices
 from pyspextool.utils.arrays import trim_nan
@@ -10,7 +11,7 @@ from pyspextool.utils.loop_progress import loop_progress
 
 def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
                                 appos, apradii, linmax_bitmask=None,
-                                badpixel_mask=None, bginfo=None, clupdate=True):
+                                badpixel_mask=None, bginfo=None, verbose=True):
     """
     To extract and extended source.
 
@@ -53,17 +54,39 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
     bginfo : later when you implement it.
 
-    clupdate : {True, False}, optional
+    verbose : {True, False}, optional
         Set to True for command line updates during execution.
 
     Returns
     -------
-    list
-        The value of each entry is a (4, nwave) numpy.ndarray where:
-        wave = (0,:)
-        intensity = (1,:)
-        uncertainty = (2,:)
-        flags = (3,:)
+    dict
+
+    bginfo is not None:
+
+        spectrum : list
+            A (norders,) list. Each entry is a (4, nwave) numpy.ndarray where:
+            wave = (0,:)
+            intensity = (1,:)
+            uncertainty = (2,:)
+            flags = (3,:)
+
+        background : list
+            A (norders,) list. Each entry is a (4, nwave) numpy.ndarray where:
+            wave = (0,:)
+            intensity = (1,:)
+            uncertainty = (2,:)
+            flags = (3,:)
+
+    bginfo is None
+
+        spectrum : list
+            A (norders,) list. Each entry is a (4, nwave) numpy.ndarray where:
+            wave = (0,:)
+            intensity = (1,:)
+            uncertainty = (2,:)
+            flags = (3,:)
+
+        background : None
 
     Notes
     -----
@@ -93,7 +116,7 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
     if bginfo is not None:
 
         bgregions = bginfo['regions']
-        bgdeg = bginfo['deg']
+        bgdeg = bginfo['degree']
 
     else:
 
@@ -116,24 +139,43 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
         # Start the order loop
 
-    output_list = []
+    spectrum_list = []
+    background_list = []    
     for i in range(norders):
 
-        if clupdate is not None and i == 0:
-            print('Extracting apertures...')
 
+        if verbose is not None and i == 0:
+
+            message = 'Extracting '+str(naps)+' apertures in '+str(norders)+\
+              ' orders'
+
+            if bgregions is not None:
+                print(message+' (with background subtraction)...')
+            else:
+                print(message+' (without background subtraction)...')                
+                
         zordr = np.where(ordermask == orders[i])
         xmin = np.min(xx[zordr])
         xmax = np.max(xx[zordr])
         nwaves = xmax - xmin + 1
 
+        #
         # Create the output arrays
+        #
+        
+        spectrum_wave = np.full(nwaves, np.nan)
+        spectrum_flux = np.full((naps, nwaves), np.nan)
+        spectrum_unc = np.full((naps, nwaves), np.nan)
+        spectrum_mask = np.zeros((naps, nwaves), dtype=int)
 
-        owave = np.full(nwaves, np.nan)
-        oflux = np.full((naps, nwaves), np.nan)
-        ounc = np.full((naps, nwaves), np.nan)
-        omask = np.zeros((naps, nwaves), dtype=int)
+        if bgregions is not None:
 
+            background_wave = np.full(nwaves, np.nan)
+            background_flux = np.full((naps, nwaves), np.nan)
+            background_unc = np.full((naps, nwaves), np.nan)
+            background_mask = np.zeros((naps, nwaves), dtype=int)            
+
+    
         # Start the wavelength loop
 
         for j in range(nwaves):
@@ -145,7 +187,7 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
             # Store the wavelength
 
-            owave[j] = wavecal[zslit, xmin + j][0]
+            spectrum_wave[j] = wavecal[zslit, xmin + j][0]
 
             # Carve out the slit values            
 
@@ -160,19 +202,30 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
             slitmask = make_aperture_mask(slit_arc, appos[i,:], apradii,
                                           xsbginfo=bgregions)
-            
-            # Do the background subtraction
 
+            #
+            # Do the background subtraction
+            #
+            
             if bgregions is not None:
 
+                # Fit the background
+                
                 z = (slitmask == -1)
                 result = poly_fit_1d(slit_arc[z], slit_img[z],bgdeg,
                                      robust={'thresh':4, 'eps':0.1},
                                      silent=True)
 
+                # Generate a background slit 
                 
-                
+                slit_bg, slit_bg_var = poly_1d(slit_arc, result['coeffs'],
+                                               covar=result['coeff_covar'])
 
+                # Subtract the background and propagate
+
+                slit_img = np.subtract(slit_img, slit_bg)
+                slit_var = slit_var + slit_bg_var
+                
             # Do the sum extraction
 
             for k in range(naps):
@@ -184,33 +237,59 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
                 # Create partial array
                 partial = slitmask[z] - float(k)
 
+                #
                 # Now do the sums
-                
-                oflux[k, j] = np.sum(slit_img[z] * partial)
-                varval = np.sum(slit_var[z] * partial**2)
-                ounc[k, j] = np.sqrt(np.abs(varval))
+                #
 
+                # Spectrum first
+                
+                spectrum_flux[k, j] = np.sum(slit_img[z] * partial)
+                varval = np.sum(slit_var[z] * partial**2)
+                spectrum_unc[k, j] = np.sqrt(np.abs(varval))
+
+                # Background second
+                if bgregions is not None:
+                
+                    background_flux[k, j] = np.sum(slit_bg[z] * partial)
+                    varval = np.sum(slit_bg_var[z] * partial**2)
+                    background_unc[k, j] = np.sqrt(np.abs(varval))                                                
             # Check the bitmask for linearity
 
             z = slit_lmm == 1
             if sum(z) is True:
-                omask[k, j] = 1
+                spectrum_mask[k, j] = 1
 
         # Store the results
 
         # Trim the NaNs if need be
 
-        nonan = trim_nan(owave, flag=2)
+        nonan = trim_nan(spectrum_wave, flag=2)
 
         # Generate the key
 
         for k in range(naps):
-            arr = np.stack((owave[nonan], oflux[k, nonan], ounc[k, nonan],
-                            omask[k, nonan]))
+            spectrum = np.stack((spectrum_wave[nonan],
+                                 spectrum_flux[k, nonan],
+                                 spectrum_unc[k, nonan],
+                                 spectrum_mask[k, nonan]))
 
-            output_list.append(arr)
+            spectrum_list.append(spectrum)
 
-        if clupdate is not None:
+            if bgregions is not None:
+            
+                background = np.stack((spectrum_wave[nonan],
+                                       background_flux[k, nonan],
+                                       background_unc[k, nonan],
+                                       background_mask[k, nonan]))
+                background_list.append(background)                        
+
+        if verbose is not None:
             loop_progress(i, 0, norders)
 
-    return output_list
+    if bgregions is not None:
+
+        return({'spectra':spectrum_list, 'background':background_list})
+
+    else: 
+
+        return({'spectra':spectrum_list, 'background':None})       

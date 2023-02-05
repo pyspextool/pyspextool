@@ -14,6 +14,10 @@ def extract_apertures(output_filenames=None, verbose=True):
     
     if config.state['exttype'] == 'ps':
 
+        #
+        #========================= Point Source ============================
+        #
+
         x = 1
 
     else:
@@ -30,19 +34,16 @@ def extract_apertures(output_filenames=None, verbose=True):
 
         # Get the File names and make list if it isn't one.
         
-        full_filenames = output_filenames+'.fits'
+        full_filenames = output_filenames
         if isinstance(full_filenames, str):
             full_filenames = [full_filenames]
 
-#            config.state['output_files'] = output_filenames+'.fits'
-        
-        
         # deal with background
 
         if config.state['bgregions'] is not None:
 
             bginfo = {'regions': config.state['bgregions'],
-                      'deg': config.state['bgfitdeg']}
+                      'degree': config.state['bgfitdeg']}
 
         else:
 
@@ -68,6 +69,8 @@ def extract_apertures(output_filenames=None, verbose=True):
         # Write the file to disk
         #
 
+        # Let's get set up
+
         if config.state['wavecalfile'] != None:
 
             wavecalinfo = {'file':config.state['wavecalfile'],
@@ -89,7 +92,6 @@ def extract_apertures(output_filenames=None, verbose=True):
             sky = config.state['hdrinfo'][1]['FILENAME'][0]
             output_fullpath = os.path.join(config.state['procpath'],
                                            full_filenames[0])
-            hdrinfo['FILENAME'][0] = os.path.basename(output_fullpath)
 
         elif config.state['reductionmode'] == 'A-Sky/Dark':
 
@@ -98,8 +100,10 @@ def extract_apertures(output_filenames=None, verbose=True):
         else:
 
             print('Reduction Mode Unknown.')
-                    
-        write_apertures_fits(spectra, config.state['xranges'][z,:],
+
+        # Actually do it!
+            
+        write_apertures_fits(spectra['spectra'], config.state['xranges'][z,:],
                              aimage, sky, config.state['flatfile'],
                              config.state['naps'],
                              config.state['orders'][z], hdrinfo,
@@ -113,7 +117,8 @@ def extract_apertures(output_filenames=None, verbose=True):
                              config.state['resolvingpower'],
                              'um', 'DN s-1', 'microns', 'flux',
                              config.state['version'],
-                             output_fullpath, wavecalinfo=wavecalinfo)
+                             output_fullpath,
+                             wavecalinfo=wavecalinfo,
+                             background_spectra=spectra['background'],
+                             xsbginfo=bginfo, verbose=verbose)
 
-        if verbose is True:
-            print('Writing',os.path.basename(output_fullpath), 'to disk.')

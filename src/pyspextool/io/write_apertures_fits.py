@@ -1,15 +1,31 @@
+import os
 from astropy.io import fits
-
 import numpy as np
+
 from pyspextool.io.check import check_parameter
+from pyspextool.utils.split_text import split_text
 
 def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders, 
                          hdrinfo, aperture_positions, apradii, plate_scale,
                          slith_pix, slith_arc, slitw_pix, slitw_arc,
                          resolving_power, xunits, yunits, xtitle, ytitle,
-                         version, output_fullpath, wavecalinfo=None,
-                         psinfo=None, xsinfo=None, lincormax=None,
-                         overwrite=True):
+                         version, output_fullpath, background_spectra=None,
+                         wavecalinfo=None, psinfo=None, psbginfo=None,
+                         xsinfo=None, xsbginfo=None, lincormax=None,
+                         overwrite=True, verbose=True):
+
+    """
+    To write a spextool spectral FITS file to disk
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    None.  Writes FITS files to disk.
+
+
+    """
 
     #
     # Check parameters
@@ -63,7 +79,13 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     check_parameter('write_apertures_fits', 'psinfo', psinfo, 'NoneType')
 
+    check_parameter('write_apertures_fits', 'psbginfo', psbginfo,
+                    ['NoneType', 'dict'])    
+
     check_parameter('write_apertures_fits', 'xsinfo', xsinfo, 'NoneType')
+
+    check_parameter('write_apertures_fits', 'xsbginfo', xsbginfo,
+                    ['NoneType', 'dict'])    
 
     check_parameter('write_apertures_fits', 'wavecalinfo', wavecalinfo,
                     ['dict', 'NoneType'])
@@ -72,9 +94,10 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
                     'NoneType')
 
     check_parameter('write_apertures_fits', 'overwrite', overwrite,
-                    'bool')                                                    
-    
+                    'bool')
 
+    check_parameter('write_apertures_fits', 'verbose', verbose,
+                    'bool')    
 
     #    
     # Get set up
@@ -82,6 +105,10 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     
     orders = np.asarray(orders)
     norders = len(orders)
+
+    #
+    # Get the list of spectra into an array format
+    #
 
     # Determine the maximum size of each aperture array
 
@@ -92,27 +119,51 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     max_npixels = np.max(np.asarray(npixels))
 
-    # Now create an array into which the slices will be placed
+    # Now create arrays into which the slices will be placed
 
     array = np.full((norders*naps, 4, max_npixels), np.nan)
-
-    # Now fill this array
-
+    background_array = np.full((norders*naps, 4, max_npixels), np.nan)
+    
+    # Now fill in the arrays
     
     l = 0
     for slice in spectra:
-
         
         shape = np.shape(slice)
         array[l, :, 0:npixels[l]] = slice
         l += 1
 
-    # Now write the file
+    # Was the background spectra passed?
+        
+    if background_spectra is not None:
 
+        l = 0
+        for slice in background_spectra:
+        
+            shape = np.shape(slice)
+            background_array[l, :, 0:npixels[l]] = slice
+            l += 1            
+
+    #
+    # Now write the file(s) to disk
+    #
+
+    # Create the headers
+            
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
 
-    hdr['CREPROG'] = (' xspextool', ' Creation program')
+    # Add the original file header keywords
+
+    keys = list(hdrinfo.keys())
+
+    for i in range(len(keys)):
+
+        hdr[keys[i]] = (hdrinfo[keys[i]][0],hdrinfo[keys[i]][1])
+
+    # Add spextool keywords
+                
+    hdr['CREMOD'] = (' extract', ' Creation module')
     hdr['VERSION'] = (version, ' Spextool version')
     hdr['AIMAGE'] = (aimage, ' A image')
     hdr['SKYORDRK'] = (sky, ' Sky or dark image')
@@ -135,8 +186,93 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     hdr['SLTH_ARC'] = (slith_arc, ' Slit height (arcseconds)')
     hdr['SLTW_ARC'] = (slitw_arc, ' Slit width (arcseconds)')
     hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit height (pixels)')
-    hdr['SLTW_PIX'] = (slitw_pix, ' Nominal slit width (pixels)')        
+    hdr['SLTW_PIX'] = (slitw_pix, ' Nominal slit width (pixels)')
+
+    # Add the aperture positions
+
+    for i in range(norders):
+
+        name = 'APOSO'+str(orders[i]).zfill(3)
+        comment = ' Aperture positions (arcseconds) for order '+\
+        str(orders[i]).zfill(3)
+        val = ','.join([str(elem) for elem in aperture_positions[i]])
+        hdr[name] = (val, comment)
     
-    fits.writeto(output_fullpath, array, hdr, overwrite=True)
+    # Add the background info 
+    
+    if xsbginfo is not None:
+
+        tmplist = []
+        for val in xsbginfo['regions']:
+
+            region = str(val[0])+'-'+str(val[1])
+            tmplist.append(region)
+
+        hdr['BGREGS'] = (','.join(tmplist),
+                         ' Background regions (arcseconds)')
+        hdr['BGDEGREE'] = (xsbginfo['degree'],
+                        'Background polynomial fit degree')
+
+    hdr['XUNITS'] = (xunits, 'Units of the x axis')
+    hdr['YUNITS'] = (yunits, 'Units of the y axis')    
 
 
+    # Now add the HISTORY
+
+    history = 'Spextool FITS files contain an array of size '\
+              '[nwaves,4,norders*naps]. The ith image (array[*,*,i]) '\
+              'contains the data for a single extraction aperture within '\
+              'an order such that, lambda=array[*,0,i], flux=array[*,1,i], '\
+              'uncertainty=array[*,2,i],flag=array[*,3,i].  The zeroth '\
+              'image (array[*,*,0]) contains the data for the aperture in '\
+              'the order closest to the bottom of the detector that is '\
+              'closest to the bottom of the slit (i.e. also closest to the '\
+              'bottom of the detector).  Moving up the detector, the FITS '\
+              'array is filled in with subsequent extraction apertures.  '\
+              'If no orders have been deselected in the extraction process, '\
+              'the contents of the ith aperture in order j can be found as '\
+              'follows: lambda=array[*,0,{j-min(orders)}*naps + (i-1)], '\
+              'flux=array[*,1,{j-min(orders)}*naps + (i-1)], '\
+              'uncertainty=array[*,2,{j-min(orders)}*naps + (i-1)], '\
+              'flag=array[*,3,{j-min(orders)}*naps + (i-1)].'
+              
+    history = split_text(history, length=65)
+    
+    for hist in history:
+        hdr['HISTORY'] = hist
+    
+
+    # Set the file name for the spectra file and write
+
+    hdr['FILENAME'] = (os.path.basename(output_fullpath)+'.fits', 'File name')
+
+    fits.writeto(output_fullpath+'.fits', array, hdr, overwrite=overwrite)
+
+    if background_spectra is not None:
+    
+        # Set the file name for the background spectra file and write
+
+        hdr['FILENAME'] = (os.path.basename(output_fullpath)+'_bg.fits',
+                           'File name')
+
+        fits.writeto(output_fullpath+'_bg.fits', background_array, hdr,
+                     overwrite=overwrite) 
+
+    #
+    # Update the user
+    #
+    
+    if verbose is True:
+
+        if xsbginfo is None:
+
+            print('Wrote',os.path.basename(output_fullpath)+'.fits',
+                      'to disk.')
+
+        if xsbginfo is not None:
+
+            print('Wrote',os.path.basename(output_fullpath)+'.fits', 'and',
+                  os.path.basename(output_fullpath)+'_bg.fits', 'to disk.')                
+
+
+        
