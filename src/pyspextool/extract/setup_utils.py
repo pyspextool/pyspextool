@@ -271,13 +271,16 @@ def set_instrument(instrument_name : str):
     if instrument_name in ['uspex', 'spex']:
         config.state['irtf'] = True
 
-    # Fill out the state variables
+    # Fill out the state variables 
+    # (SHOULDN'T THIS JUST LOOP THROUGH ALL THE KEYWORDS IN INSTRUMENT INFO?)
     
     config.state['suffix'] = instrument_info['SUFFIX']
 
     config.state['nint'] = instrument_info['NINT']
 
     config.state['xspextool_keywords'] = instrument_info['XSPEXTOOL_KEYWORDS']
+
+    config.state['readfits] = instrument_info['READFITS']
 
     # Now get the bias file and bad pixel mask
     

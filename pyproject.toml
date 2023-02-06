@@ -21,6 +21,9 @@ authors = [
   { name="Kelle Cruz", email="Kelle.cruz@hunter.cuny.edu" },
   { name="Christian Aganze", email="caganze@ucsd.edu" },
   { name="Chris Theissen", email="ctheissen@ucsd.edu" },
+  { name="Chih-Chun “Dino” Hsu", email="chsu@northwestern.edu" },
+  { name="Cristina A Thomas", email="cristina.thomas@nau.edu" },
+  { name="John Rayner", email="rayner@ifa.hawaii.edu" },
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
