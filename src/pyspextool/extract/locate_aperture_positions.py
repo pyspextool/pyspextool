@@ -192,8 +192,8 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     if clupdate is True:
 
         signs = ', '.join(list(apsigns.astype(str)))
-        signs = signs.replace('1', '+')
         signs = signs.replace('-1', '-')
+        signs = signs.replace('1', '+')
         message = 'Aperture signs are (' + signs + ')...'
         print(message)
 
