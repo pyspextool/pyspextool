@@ -127,7 +127,7 @@ def trace_to_xy(order_mask, wavecal, spatcal, xranges, orders, doorders,
 
             if clupdate is True:
                 loop_progress(l, 0, donorders * naps,
-                              message='Collecting plotting data...')
+                              message='Collecting plotting data for trace...')
             l += 1
 
         # Convert these angular positons to pixel coordinates
