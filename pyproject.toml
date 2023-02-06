@@ -5,6 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pyspextool"
 version = "0.0.1"
+readme = "README.md"
+requires-python = "< 3.11"
 dependencies = [
     "astropy",
     "scipy",
@@ -13,6 +15,20 @@ dependencies = [
     "importlib_resources; python_version < '3.9'",
     "git-lfs",
 ]
+authors = [
+  { name="Michael Cushing", email="michael.cushing@utoledo.edu" },
+  { name="Adam Burgasser", email="aburgasser@ucsd.edu" },
+  { name="Kelle Cruz", email="Kelle.cruz@hunter.cuny.edu" },
+  { name="Christian Aganze", email="caganze@ucsd.edu" },
+  { name="Chris Theissen", email="ctheissen@ucsd.edu" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/pyspextool/pyspextool"
 
 [tool.setuptools]
 include-package-data = true
