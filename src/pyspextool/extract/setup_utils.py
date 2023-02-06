@@ -280,8 +280,6 @@ def set_instrument(instrument_name : str):
 
     config.state['xspextool_keywords'] = instrument_info['XSPEXTOOL_KEYWORDS']
 
-    config.state['readfits] = instrument_info['READFITS']
-
     # Now get the bias file and bad pixel mask
     
     bias_file = os.path.join(instrument_data_path,
