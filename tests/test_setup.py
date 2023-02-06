@@ -1,5 +1,5 @@
-from pyspextool.cl import config
-from pyspextool.cl.setup_utils import *
+from pyspextool.extract import config
+from pyspextool.extract.setup_utils import *
 
 
 def test_spex_setup():
