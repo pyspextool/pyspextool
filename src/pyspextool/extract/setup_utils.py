@@ -12,7 +12,7 @@ except ImportError:
     from importlib_resources import files # Python <=3.9
 
 
-def setup(instrument=config.state['instruments'][0], raw_path=None,
+def pyspextool_setup(instrument=config.state['instruments'][0], raw_path=None,
           cal_path=None, proc_path=None, qa_path=None, verbose=True,
           qaextension='.pdf'):
 

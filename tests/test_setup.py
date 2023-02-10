@@ -3,7 +3,7 @@ from pyspextool.extract.setup_utils import *
 
 
 def test_spex_setup():
-    setup(instrument='uspex', verbose=True)
+    pyspextool_setup(instrument='uspex', verbose=True)
 
 
 def test_set_instrument_state():
