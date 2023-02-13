@@ -1,0 +1,4 @@
+Files:
+spc-00001.a.fits & spc-00002.b.fits - bright point sourc
+flat-00018.a.fits trough flat-00021.a.fits - flat field
+arc-00022.a.fits - arc
