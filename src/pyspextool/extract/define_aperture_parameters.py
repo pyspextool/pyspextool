@@ -47,18 +47,10 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     Returns
     -------
     None
+
     Updates the config.state['psfradius'], config.state['bgradius'], 
     config.state['bgwidth'] and, config.state['bgfitdeg'] variables and 
     optional plots the results.
-
-    Notes
-    -----
-    None
-
-    Examples
-    --------
-    define_apertures_parameters(1.5)         - point source
-    define_apertures_parameters([1.5, 2])    - extended source
 
     """
     
@@ -120,7 +112,6 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
         if bg_radius is not None:
 
-            print('Updating this section to use check_range')
             if bg_radius <= aperture_radii:
                 message = '`bg_radius` must be > `aperture_radii`.'
                 raise ValueError(message)
@@ -141,13 +132,11 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         config.state['bgradius'] = bg_radius
         config.state['bgwidth'] = bg_width
         config.state['bgfitdeg'] = bg_fit_degree        
-            
-        #
-        # Get set up for plotting
-        #
 
-        aperture_radii = np.full(config.state['naps'], aperture_radii)
-        doorders = config.state['psdoorders']
+        #
+        # Get the the background psbginfo list together
+        #
+        
         if bg_radius is not None:
 
             psbginfo = [bg_radius, bg_width]
@@ -159,6 +148,11 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         # Force xsbginfo to None 
             
         xsbginfo = None
+                
+        # Store radii 
+
+        config.state['apradii'] = aperture_radii
+
 
     else:
 
@@ -182,12 +176,14 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
         # Check number of apertures and radii are equal
         
-        aperture_radii = np.array(aperture_radii)
+        aperture_radii = np.array(aperture_radii,ndmin=1)
         nradii = np.size(aperture_radii)
 
         if nradii != config.state['naps']:
             message = 'Number of aperture radii must equal number apertures.'
             raise ValueError(message)
+
+        config.state['apradii'] = aperture_radii
 
         # Now deal with the background region
         
@@ -215,8 +211,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                 
             # Check to make sure things are in range
                 
-            check_range(xsbginfo,
-                        [0, config.state['slith_arc']], 'gele',
+            check_range(xsbginfo, [0, config.state['slith_arc']], 'gele',
                         variable_name='bg_regions')
 
             config.state['bgregions'] = xsbginfo
@@ -225,29 +220,35 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
             config.state['bgregions'] = None
 
-            
         # Store the results
 
-        config.state['apradii'] = aperture_radii
         config.state['bgfitdeg'] = bg_fit_degree
             
         # Force the psbginfo to None
             
         psbginfo = None
+
+
+    #
+    # Now do the plotting
+    #
         
     if config.state['exttype'] == 'xs':
 
         doorders = config.state['xsdoorders']
-
+        plot_aperture_radii = aperture_radii
+        
     else:
 
         doorders = config.state['psdoorders']
+        plot_aperture_radii = np.full(config.state['naps'], aperture_radii)
 
+        
     if iplot is True:
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
-                      aperture_radii=aperture_radii, psf_radius=psf_radius,
+                      aperture_radii=plot_aperture_radii, psf_radius=psf_radius,
                       psbginfo=psbginfo, xsbginfo=xsbginfo)
 
     if qafile is True:
@@ -258,6 +259,6 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
-                      aperture_radii=aperture_radii, psf_radius=psf_radius,
+                      aperture_radii=plot_aperture_radii, psf_radius=psf_radius,
                       psbginfo=psbginfo, xsbginfo=xsbginfo,
                       qafileinfo=qafileinfo)

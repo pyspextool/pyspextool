@@ -6,13 +6,14 @@ from pyspextool.io.check import check_parameter
 from pyspextool.utils.split_text import split_text
 
 def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders, 
-                         hdrinfo, aperture_positions, apradii, plate_scale,
-                         slith_pix, slith_arc, slitw_pix, slitw_arc,
-                         resolving_power, xunits, yunits, xtitle, ytitle,
-                         version, output_fullpath, background_spectra=None,
-                         wavecalinfo=None, psinfo=None, psbginfo=None,
-                         xsinfo=None, xsbginfo=None, lincormax=None,
-                         overwrite=True, verbose=True):
+                         header_info, aperture_positions, aperture_radii,
+                         plate_scale, slith_pix, slith_arc, slitw_pix,
+                         slitw_arc, resolving_power, xunits, yunits, xtitle,
+                         ytitle, version, output_fullpath,
+                         background_spectra=None, wavecalinfo=None,
+                         psinfo=None, psbginfo=None, xsinfo=None,
+                         xsbginfo=None, lincormax=None, overwrite=True,
+                         verbose=True):
 
     """
     To write a spextool spectral FITS file to disk
@@ -43,13 +44,14 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     check_parameter('write_apertures_fits', 'orders', orders,
                     ['int', 'list', 'ndarray'])
 
-    check_parameter('write_apertures_fits', 'hdrinfo', hdrinfo,
+    check_parameter('write_apertures_fits', 'header_info', header_info,
                     'dict')
 
     check_parameter('write_apertures_fits', 'aperture_positions',
                     aperture_positions, 'ndarray')
 
-    check_parameter('write_apertures_fits', 'apradii', apradii, 'ndarray')
+    check_parameter('write_apertures_fits', 'aperture_radii', aperture_radii,
+                    ['int', 'float', 'ndarray'])
 
     check_parameter('write_apertures_fits', 'plate_scale', plate_scale, 'float')
     
@@ -155,11 +157,11 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     # Add the original file header keywords
 
-    keys = list(hdrinfo.keys())
+    keys = list(header_info.keys())
 
     for i in range(len(keys)):
 
-        hdr[keys[i]] = (hdrinfo[keys[i]][0],hdrinfo[keys[i]][1])
+        hdr[keys[i]] = (header_info[keys[i]][0],header_info[keys[i]][1])
 
     # Add spextool keywords
                 
@@ -183,10 +185,10 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
 
     hdr['PLTSCALE'] = (plate_scale, ' Plate scale (arcseconds pixel-1)')
-    hdr['SLTH_ARC'] = (slith_arc, ' Slit height (arcseconds)')
+    hdr['SLTH_ARC'] = (slith_arc, ' Nominal slit height (arcseconds)')
     hdr['SLTW_ARC'] = (slitw_arc, ' Slit width (arcseconds)')
     hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit height (pixels)')
-    hdr['SLTW_PIX'] = (slitw_pix, ' Nominal slit width (pixels)')
+    hdr['SLTW_PIX'] = (slitw_pix, ' Slit width (pixels)')
 
     # Add the aperture positions
 
@@ -195,9 +197,20 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         name = 'APOSO'+str(orders[i]).zfill(3)
         comment = ' Aperture positions (arcseconds) for order '+\
         str(orders[i]).zfill(3)
-        val = ','.join([str(elem) for elem in aperture_positions[i]])
+        val = ','.join([str(round(elem,2)) for elem in aperture_positions[i]])
         hdr[name] = (val, comment)
-    
+
+    # Add the aperture radii
+
+    if isinstance(aperture_radii, np.ndarray):
+
+        val = ','.join([str(elem) for elem in aperture_radii])
+        hdr['APRADII'] = (val, ' Aperture radii (arcseconds)')
+
+    else:
+
+        hdr['APRADII'] = (aperture_radii, ' Aperture radii (arcseconds)')       
+        
     # Add the background info 
     
     if xsbginfo is not None:

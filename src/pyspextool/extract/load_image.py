@@ -1,16 +1,16 @@
 import importlib
 from astropy.io import fits
 
-from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
+from pyspextool.extract.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.extract import config
 from pyspextool.extract.check_continue import check_continue
+from pyspextool.extract.rectify_order import rectify_order
 from pyspextool.io.check import *
 from pyspextool.io.files import *
 from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.wavecal import read_wavecal_fits
 from pyspextool.plot.plot_image import plot_image
-from pyspextool.spectroscopy.rectify_order import rectify_order
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.fit.polyfit import poly_1d
 
@@ -190,7 +190,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         indexinfo = {'nint': config.state['nint'],
                      'prefix': config.state['output_prefix'],
-                     'suffix': '', 'extension': '.fits'}
+                     'suffix': '', 'extension': ''}
 
         output_files = make_full_path(config.state['procpath'], nums,
                                       indexinfo=indexinfo)
@@ -213,7 +213,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         # Do we need to reorder because we are IRTF?
 
-    if config.state['irtf'] is True:
+    if reduction_mode =='A-B' and config.state['irtf'] is True:
 
         input_files = reorder_irtf_files(input_files)
 

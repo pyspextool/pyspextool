@@ -3,12 +3,15 @@ from astropy.io import fits
 import re
 import os
 
-from pyspextool.calibration.locate_orders import locate_orders
-from pyspextool.calibration.normalize_flat import normalize_flat
-from pyspextool.calibration.simulate_wavecal_1dxd import simulate_wavecal_1dxd
-from pyspextool.calibration.get_line_guess_position import get_line_guess_position
-from pyspextool.calibration.find_lines_1dxd import find_lines_1dxd
-from pyspextool.calibration.wavecal_solution_1d import wavecal_solution_1d
+from pyspextool.extract.locate_orders import locate_orders
+from pyspextool.extract.normalize_flat import normalize_flat
+from pyspextool.extract.simulate_wavecal_1dxd import simulate_wavecal_1dxd
+from pyspextool.extract.get_line_guess_position import get_line_guess_position
+from pyspextool.extract.find_lines_1dxd import find_lines_1dxd
+from pyspextool.extract.wavecal_solution_1d import wavecal_solution_1d
+from pyspextool.extract.extract_extendedsource_1dxd import extract_extendedsource_1dxd
+from pyspextool.extract.get_spectral_pixelshift import get_spectral_pixelshift
+from pyspextool.extract.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.extract import config
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
@@ -22,9 +25,6 @@ from pyspextool.io.wavecal import read_line_list
 from pyspextool.io.wavecal import read_wavecal_file
 from pyspextool.io.wavecal import write_wavecal_1d
 from pyspextool.utils.arrays import idl_rotate
-from pyspextool.spectroscopy.extract_extendedsource_1dxd import extract_extendedsource_1dxd
-from pyspextool.spectroscopy.get_spectral_pixelshift import get_spectral_pixelshift
-from pyspextool.spectroscopy.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.utils.for_print import for_print
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.math import scale_data_stack
@@ -37,6 +37,43 @@ try:
     from importlib.resources import files # Python 3.10+
 except ImportError:
     from importlib_resources import files # Python <=3.9
+
+def correct_amps(img):
+
+    """
+    To correct for bias voltage drift in an uSpeX FITS image
+
+    Parameters
+    ----------
+    img : numpy array
+        An uSpeX image
+
+    Returns
+    --------
+    numpy.ndarray
+        The uSpeX image with the bias variations "corrected".
+
+    Notes
+    -----
+    There are 32 amplifiers that talk to 64 columns each.  The median
+    intensity of the 64 reference pixels at the bottom of image are
+    subtracted from all rows in the 64 columns.
+
+    Example
+    --------
+    later
+
+    """
+
+    for i in range(0, 32):
+
+        xl = 0+64*i
+        xr = xl+63
+
+        med = np.median(img[2044:2047+1, xl:xr+1])
+        img[:, xl:(xr+1)] -= med
+
+    return img    
 
 
 def make_flat(files, output_name, prefix='flat-', suffix='.[ab]',
@@ -404,7 +441,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc-', suffix='.[ab]',
                                           wavecalinfo['apradius'],
                                           linmax_bitmask=None,
                                           badpixel_mask=None, bginfo=None,
-                                          clupdate=verbose)
+                                          verbose=verbose)
 
     #
     # Find the pixel offset between these spectra and the disk spectra
@@ -421,8 +458,8 @@ def make_wavecal(files, flat_file, output_name, prefix='arc-', suffix='.[ab]',
 
     # Get the source order
 
-    xsource = np.squeeze(spectra[z][0, :])
-    fsource = np.squeeze(spectra[z][1, :])
+    xsource = np.squeeze(spectra['spectra'][z][0, :])
+    fsource = np.squeeze(spectra['spectra'][z][1, :])
 
     if qafile_shift is True:
 
@@ -487,9 +524,9 @@ def make_wavecal(files, flat_file, output_name, prefix='arc-', suffix='.[ab]',
 
         # Find the lines
 
-        lineinfo = find_lines_1dxd(spectra, wavecalinfo['orders'], lineinfo,
-                                   flatinfo['slitw_pix'], qafileinfo=qafileinfo,
-                                   clupdate=verbose)
+        lineinfo = find_lines_1dxd(spectra['spectra'], wavecalinfo['orders'],
+                                   lineinfo, flatinfo['slitw_pix'],
+                                   qafileinfo=qafileinfo, clupdate=verbose)
 
         #
         # Let's do the actual calibration

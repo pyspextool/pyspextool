@@ -3,9 +3,9 @@ from scipy import interpolate
 from scipy.signal import medfilt2d
 from scipy import interpolate
 
+from pyspextool.extract.make_interp_indices_1d import make_interp_indices_1d
+from pyspextool.extract.rectify_order import rectify_order
 from pyspextool.fit.fiterpolate import *
-from pyspextool.spectroscopy.rectify_order import rectify_order
-from pyspextool.spectroscopy.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.utils.math import moments
 from pyspextool.utils.loop_progress import loop_progress
 

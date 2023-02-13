@@ -2,11 +2,10 @@ import numpy as np
 
 from pyspextool.extract import config
 from pyspextool.extract.check_continue import check_continue
+from pyspextool.extract.find_peaks import find_peaks
 from pyspextool.extract.trace_apertures import trace_apertures
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
-from pyspextool.spectroscopy.find_peaks import find_peaks
-
 
 def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
                               qafile=False, clupdate=True):

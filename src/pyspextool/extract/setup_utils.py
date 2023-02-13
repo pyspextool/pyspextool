@@ -211,7 +211,8 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
         print('Qapath: ', config.state['qapath'])
         print()
         print('QA Extension:', config.state['qaextension'])
-
+        print('----------------')
+        print()
 
 def set_instrument(instrument_name : str):
 

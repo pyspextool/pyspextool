@@ -3,7 +3,7 @@ import matplotlib.pyplot as pl
 import os 
 
 from pyspextool.plot.limits import get_spec_range
-from pyspextool.spectroscopy.make_aperture_mask import make_aperture_mask
+from pyspextool.extract.make_aperture_mask import make_aperture_mask
 
 def plot_profiles(profiles,slith_arc, doorders, apertures=None,
                   aperture_radii=None, psf_radius=None, psbginfo=None,

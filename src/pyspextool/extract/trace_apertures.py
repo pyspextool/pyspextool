@@ -2,10 +2,10 @@ import numpy as np
 
 from pyspextool.extract import config
 from pyspextool.extract.check_continue import check_continue
+from pyspextool.extract.trace_spectrum_1dxd import trace_spectrum_1dxd
+from pyspextool.extract.trace_to_xy import trace_to_xy
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_image import plot_image
-from pyspextool.spectroscopy.trace_spectrum_1dxd import trace_spectrum_1dxd
-from pyspextool.spectroscopy.trace_to_xy import trace_to_xy
 
 
 def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
