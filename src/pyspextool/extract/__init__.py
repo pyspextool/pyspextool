@@ -1,4 +1,3 @@
-from .setup_utils import setup
 from .make_flat import make_flat
 from .make_wavecal import make_wavecal
 from .load_image import load_image

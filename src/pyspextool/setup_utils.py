@@ -12,9 +12,9 @@ except ImportError:
     from importlib_resources import files # Python <=3.9
 
 
-def setup(instrument=config.state['instruments'][0], raw_path=None,
-          cal_path=None, proc_path=None, qa_path=None, verbose=True,
-          qaextension='.pdf'):
+def pyspextool_setup(instrument=config.state['instruments'][0], raw_path=None,
+                     cal_path=None, proc_path=None, qa_path=None, verbose=True,
+                     qaextension='.pdf'):
 
     
     
@@ -106,17 +106,17 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     # Check parameters
     #
 
-    check_parameter('setup', 'raw_path', raw_path, ['str', 'NoneType'])
+    check_parameter('set_paths', 'raw_path', raw_path, ['str', 'NoneType'])
 
-    check_parameter('setup', 'cal_path', cal_path, ['str', 'NoneType'])
+    check_parameter('set_paths', 'cal_path', cal_path, ['str', 'NoneType'])
 
-    check_parameter('setup', 'proc_path', proc_path, ['str', 'NoneType'])
+    check_parameter('set_paths', 'proc_path', proc_path, ['str', 'NoneType'])
 
-    check_parameter('setup', 'qa_path', qa_path, ['str', 'NoneType'])
+    check_parameter('set_paths', 'qa_path', qa_path, ['str', 'NoneType'])
 
-    check_parameter('setup', 'verbose', verbose, 'bool')    
+    check_parameter('set_paths', 'verbose', verbose, 'bool')    
 
-    check_parameter('setup', 'qaextension', qaextension, 'str',
+    check_parameter('set_paths', 'qaextension', qaextension, 'str',
                     possible_values=config.state['qaextensions'])
 
     #
@@ -201,6 +201,7 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
 
     if verbose is True:
 
+        print()
         print('Pyspextool Setup')
         print('----------------')
         print('Instrument: ', config.state['instrument_name'])
