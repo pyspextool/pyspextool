@@ -1,4 +1,10 @@
-Files:
-spc-00001.a.fits & spc-00002.b.fits - bright point sourc
-flat-00018.a.fits trough flat-00021.a.fits - flat field
-arc-00022.a.fits - arc
+Test sample files
+from 2015 June 3
+program 2015A078 (PI Rayner)
+uspex/SXD
+file prefix "spc-"
+
+1-8:	HD 100906 (target)
+11-18:	HD 101369 (telluric)
+21-25:	flat
+26:	arc
