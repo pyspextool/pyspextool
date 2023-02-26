@@ -12,9 +12,9 @@ except ImportError:
     from importlib_resources import files # Python <=3.9
 
 
-def pyspextool_setup(instrument=config.state['instruments'][0], raw_path=None,
-                     cal_path=None, proc_path=None, qa_path=None, verbose=True,
-                     qaextension='.pdf'):
+def pyspextool_setup(instrument=config.state['instruments'][0],
+                     raw_path=None, cal_path=None, proc_path=None,
+                     qa_path=None, verbose=True, qaextension='.pdf'):
 
     
     
@@ -60,10 +60,11 @@ def pyspextool_setup(instrument=config.state['instruments'][0], raw_path=None,
     #
 
     if instrument is not None:
+
         set_instrument(instrument)
 
-    set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
-              verbose=verbose, qaextension=qaextension)
+    set_paths(raw_path=raw_path, cal_path=cal_path, proc_path=proc_path,
+              qa_path=qa_path, verbose=verbose, qaextension=qaextension)
 
 
 def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
@@ -215,7 +216,7 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
         print('----------------')
         print()
 
-def set_instrument(instrument_name : str):
+def set_instrument(instrument_name):
 
     """
     Set the instrument.
@@ -235,11 +236,18 @@ def set_instrument(instrument_name : str):
 
     """
 
-    #
-    # Check parameter
+    if instrument_name is None:
 
+        insturment_name = config.state['instruments'][0]
+
+    #
+    # Check parameter and store results
+    #
+        
     check_parameter('set_instrument', 'instrument_name', instrument_name,
-                    'str')    
+                    'str')
+
+    config.state['instrument_name'] = instrument_name
     
     #
     # Set the package path
@@ -281,19 +289,14 @@ def set_instrument(instrument_name : str):
 
     config.state['xspextool_keywords'] = instrument_info['XSPEXTOOL_KEYWORDS']
 
-    # Now get the bias file and bad pixel mask
-    
-    bias_file = os.path.join(instrument_data_path,
-                             config.state['instrument_name'] + '_bias.fits')
-    
-    check_file(bias_file)
+    # Now store linearity numbers
 
-    config.state['biasfile'] = bias_file
     config.state['lincormax'] = instrument_info['LINCORMAX']
-    config.state['linearity_info'] = {'bias': bias_file,
-                                      'max': config.state['lincormax'],
+    config.state['linearity_info'] = {'max': config.state['lincormax'],
                                       'bit': 0}
 
+    # Get the bad pixel mask
+    
     bad_pixel_mask_file = os.path.join(instrument_data_path,
                                        config.state['instrument_name'] + \
                                        '_bdpxmk.fits')

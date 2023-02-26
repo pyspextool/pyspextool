@@ -655,10 +655,9 @@ def read_fits(files, lininfo, keywords=None, pair=False, rotate=0,
     files : list of str
         A list of fullpaths to FITS files.
 
-    lininfo : dict {'bias':str,'max':int,'bit':int}
+    lininfo : dict {'max':int,'bit':int}
         information to identify pixels beyond range of linearity correction
 
-        'bias' is the fullpath to the bias frame
         'max' maximum value in DN
         'bit' the bit to set for pixels beyond `max`
 
@@ -733,7 +732,9 @@ def read_fits(files, lininfo, keywords=None, pair=False, rotate=0,
 
 #    lininfo = config.state['linearity_info']
 
-    hdul = fits.open(lininfo['bias'])
+    bias_file = os.path.join(config.state['instrument_path'],'uspex_bias.fits')
+    
+    hdul = fits.open(bias_file)
     divisor = hdul[0].header['DIVISOR']
     bias = hdul[0].data / divisor
     hdul.close()
