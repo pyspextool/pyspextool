@@ -261,7 +261,8 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
         minmax = get_image_range(img, 'zscale')
         fig = pl.figure(figsize=(7, 7))
-        pl.imshow(img, vmin=minmax[0], vmax=minmax[1], cmap='gray', origin='lower')
+        pl.imshow(img, vmin=minmax[0], vmax=minmax[1], cmap='gray',
+                  origin='lower')
         pl.xlabel('Columns (pixels)')
         pl.ylabel('Rows (pixels)')
 
@@ -279,7 +280,8 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
                 pl.plot(plcols[i][z], pledges[i][z], 'bo', markersize=1)
 
             pl.plot(plcols[i],
-                    np.polynomial.polynomial.polyval(plcols[i], pledgecoeffs[i]),
+                    np.polynomial.polynomial.polyval(plcols[i],
+                                                     pledgecoeffs[i]),
                     'r-', linewidth=0.3)
 
         pl.savefig(os.path.join(qafileinfo['filepath'],
