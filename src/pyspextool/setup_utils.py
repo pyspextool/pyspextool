@@ -304,3 +304,4 @@ def set_instrument(instrument_name):
     check_file(bad_pixel_mask_file)
     
     config.state['bad_pixel_mask_file'] = bad_pixel_mask_file
+
