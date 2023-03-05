@@ -6,10 +6,10 @@ from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
-def plot_image(image, orders_plotinfo=None, trace_plotinfo=None,
+def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
                qafileinfo=None):
 
-    '''
+    """
     To plot a spectral image along with the edges and order numbers
 
     Parameters
@@ -21,38 +21,67 @@ def plot_image(image, orders_plotinfo=None, trace_plotinfo=None,
         with the columns of `img.  That is, orders go left-right and 
         not up-down. 
 
-    edgecoeffs : numpy.ndarray 
-        (norders,`edgedeg`+1,2) float array giving the polynomial coefficients 
-        delineating the top and bottom of each order.  edgecoeffs[0,0,:]
-        gives the coefficients for the bottom of the order closest to the 
-        bottom of the image and edgecoeffs[0,1,:] gives the coefficients 
-        for the top of said order.  
+    mask : numpy.ndarray, optional
+        An (nrows, ncols) array where "bad" pixels are set and "good" pixels
+        are zero. If passed, bad pixels are colored red.
 
-    xranges : array_like
-        An (norders, 2) float array giving the column numbers over which to 
-        operate.  xranges[0,0] gives the starting column number for the 
-        order nearest the bottom of the image and xranges[0,1] gives 
-        the end column number for said order.
+    orders_plotinfo : dict, optional
 
-    orders : list of int
-	    (norders,) int array of the order numbers.  By Spextool convention, 
-        orders[0] is the order closest to the bottom of the array.
+        `'edgecoeffs'` : numpy.ndarray 
+            (norders,`edgedeg`+1,2) float array giving the polynomial 
+            coefficients delineating the top and bottom of each order.  
+            edgecoeffs[0,0,:] gives the coefficients for the bottom of the 
+            order closest to the bottom of the image and edgecoeffs[0,1,:] 
+            gives the coefficients for the top of said order.  
+
+        `'xranges'` : array_like
+            An (norders, 2) float array giving the column numbers over which to 
+            operate.  xranges[0,0] gives the starting column number for the 
+            order nearest the bottom of the image and xranges[0,1] gives 
+            the end column number for said order.
+
+        `'orders'` : list of int
+            (norders,) int array of the order numbers.  By Spextool convention, 
+            orders[0] is the order closest to the bottom of the array.
+
+    trace_plotinfo : dict, optional
+
+    qafileinfo : dict, optional
+        `"figsize"` : tuple
+            (2,) tuple of the figure size (inches).
+
+        `"filepath"` : str
+            The directory to write the QA figure.
+
+        `"filename"` : str
+            The name of the file, sans suffix/extension.
+
+        `"extension"` : str
+            The file extension.  Must be compatible with the savefig
+            function of matplotlib.
 
     Returns
     -------
         None
-
-    Notes
-    -----
-        Just basic plotting stuff.
     
-    '''
+    """
     
     #
     # Check parameters
     #
     
     check_parameter('plot_image', 'image', image, 'ndarray', 2)
+
+    check_parameter('plot_image', 'mask', mask, ['NoneType', 'ndarray'], 2)
+
+    check_parameter('plot_image', 'orders_plotinfo', orders_plotinfo,
+                        ['NoneType', 'dict'])
+
+    check_parameter('plot_image', 'trace_plotinfo', trace_plotinfo,
+                        ['NoneType', 'dict'])
+
+    check_parameter('plot_image', 'qafileinfo', qafileinfo,
+                        ['NoneType', 'dict'])                
 
     #
     # Just plot it up
@@ -68,14 +97,30 @@ def plot_image(image, orders_plotinfo=None, trace_plotinfo=None,
 
         figsize = (7,7)
 
+    # Set the color map
+        
+    cmap = pl.cm.gray
 
+    # Now check to see if the mask is passed.
+    
+    if mask is not None:
+    
+        cmap.set_bad((1, 0, 0, 1))
+        z = np.where(mask == 1)
+        image[z] = np.nan
 
+    # Now draw the figure
+        
     fig = pl.figure(figsize=figsize)
-    pl.imshow(image, vmin=minmax[0], vmax=minmax[1], cmap='gray',
+    pl.imshow(image, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
                   origin='lower')
     pl.xlabel('Columns (pixels)')
     pl.ylabel('Rows (pixels)')
 
+    #
+    # Overplot orders if requested
+    #
+    
     if orders_plotinfo is not None:
 
         xranges = orders_plotinfo['xranges']
@@ -99,7 +144,10 @@ def plot_image(image, orders_plotinfo=None, trace_plotinfo=None,
             pl.text(x[idx],(top[idx]+bot[idx])/2., str(orders[i]),
                         color='yellow', verticalalignment='center')
 
-
+    #
+    # Overplot traces if requested
+    #
+            
     if trace_plotinfo is not None:
 
         if 'x' in trace_plotinfo and \
@@ -119,6 +167,10 @@ def plot_image(image, orders_plotinfo=None, trace_plotinfo=None,
                         trace_plotinfo['fits'][i][1,:],color='cyan',
                         linewidth=0.5)
 
+    #
+    # Save to disk if requested or display.
+    #
+                
     if qafileinfo is not None:
 
         pl.savefig(os.path.join(qafileinfo['filepath'],
