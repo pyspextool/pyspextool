@@ -652,16 +652,9 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
 
     # Write the results
 
-    print(flat.dtype)
-    print(var.dtype)
-    print(flag.dtype)        
     img_hdu = fits.ImageHDU(idl_unrotate(flat,rotate))
     var_hdu = fits.ImageHDU(idl_unrotate(var,rotate))
     flg_hdu = fits.ImageHDU(idl_unrotate(flag, rotate))
 
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu])
     hdu.writeto(oname, overwrite=overwrite)
-
-#    fits.writeto('flat.fits', flat, overwrite=True)
-#    fits.writeto('var.fits', var, overwrite=True)
-#    fits.writeto('flag.fits', flag, overwrite=True)        
