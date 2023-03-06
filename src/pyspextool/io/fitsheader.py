@@ -331,6 +331,9 @@ def get_header_info(hdr, keywords=None):
 
         for name in list(hdr.keys()):
 
+            if name == '':
+                continue
+            
             if name == 'COMMENT':
                 docomment = 1
                 continue

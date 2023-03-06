@@ -10,7 +10,7 @@ from pyspextool.utils.arrays import trim_nan
 from pyspextool.utils.loop_progress import loop_progress
 
 def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
-                    clupdate=True):
+                    verbose=True):
 
     """
     To find the location of arc lines in cross-dispersed spectra.
@@ -212,7 +212,7 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
             pdf.savefig(fig)
             pl.close(fig)
 
-            if clupdate is not None:
+            if verbose is not None:
                 loop_progress(i, 0, nlines)
 
     if qafileinfo is not None:

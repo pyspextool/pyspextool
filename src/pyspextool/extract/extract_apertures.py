@@ -31,6 +31,23 @@ def extract_apertures(output_filenames=None, verbose=True):
     """
 
     #
+    # Check parameters.  Just do it now to not waste extracting.
+    #
+
+    check_parameter('extract_apertures', 'output_filenames',
+                    output_filenames, ['str', 'list', 'NoneType'])
+
+    check_parameter('extract_apertures', 'verbose',
+                    verbose, 'bool')
+
+
+    #
+    # Store user inputs
+    #
+
+    config.user['extract']['verbose'] = verbose
+    
+    #
     # The procedure depends on the extraction type, point or extended source
     #
 
@@ -76,13 +93,6 @@ def extract_apertures(output_filenames=None, verbose=True):
         #
         #======================= Extended Source ===========================
         #
-
-        #
-        # Check parameters.  Just do it now to not waste extracting.
-        #
-
-        check_parameter('extract_apertures', 'output_filenames',
-                        output_filenames, ['str', 'list'])
 
         #
         # Create the full path
@@ -201,12 +211,15 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
     
     # Get the wavelengh calibration info if used.
 
-    if config.state['wavecalfile'] != None:
+    if config.user['load']['wavecalfile'] != None:
 
-        wavecalinfo = {'file':config.state['wavecalfile'],
+        wavecalinfo = {'file':config.user['load']['wavecalfile'],
                        'wavecaltype':config.state['wavecaltype'],
                        'wavetype':'vacuum'}                           
 
+    else:
+
+        wavecalinfo = None
     
     # Things proceed depending on the extraction mode
 
@@ -217,7 +230,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
         #
 
         # Grab things all modes need
-        
+
         xranges = config.state['xranges'][config.state['psdoorders']]
         orders = config.state['orders'][config.state['psdoorders']]    
         apertures = config.state['apertures'][config.state['psdoorders']]
@@ -237,7 +250,8 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
             # Write ther results
             
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 config.state['flatfile'], config.state['naps'],
+                                 config.user['load']['flatfile'],
+                                 config.state['naps'],
                                  orders, hdrinfo, apertures,
                                  config.state['apradii'],
                                  config.state['plate_scale'],
@@ -276,7 +290,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
                 pos_spectra = [spectra[i] for i in z]
 
                 write_apertures_fits(pos_spectra, xranges, aimage, sky,
-                                     config.state['flatfile'],
+                                     config.user['load']['flatfile'],
                                      config.state['naps'], orders,
                                      hdrinfo, apertures,
                                      config.state['apradii'],
@@ -312,7 +326,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
                 neg_spectra = [spectra[i] for i in z]
 
                 write_apertures_fits(neg_spectra, xranges, aimage, sky,
-                                     config.state['flatfile'],
+                                     config.user['load']['flatfile'],
                                      config.state['naps'], orders,
                                      hdrinfo, apertures,
                                      config.state['apradii'],
@@ -358,7 +372,8 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
             sky = 'None'
 
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 config.state['flatfile'], config.state['naps'],
+                                 config.user['load']['flatfile'],
+                                 config.state['naps'],
                                  orders, hdrinfo, apertures,
                                  config.state['apradii'],
                                  config.state['plate_scale'],
@@ -382,7 +397,8 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
             sky = config.state['hdrinfo'][1]['FILENAME'][0]
 
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 config.state['flatfile'], config.state['naps'],
+                                 config.user['load']['flatfile'],
+                                 config.state['naps'],
                                  orders, hdrinfo, apertures,
                                  config.state['apradii'],
                                  config.state['plate_scale'],
@@ -405,4 +421,6 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
         else:
 
             print('Reduction Mode Unknown.')
+
+    print(' ')
 

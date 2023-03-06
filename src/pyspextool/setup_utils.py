@@ -2,9 +2,9 @@ import os
 
 from pyspextool.extract import config # sets initial state dictionary
 from pyspextool.io.read_instrument_file import read_instrument_file
-from pyspextool.io.check import check_parameter
-from pyspextool.io.check import check_path
-from pyspextool.io.check import check_file
+from pyspextool.io.check import check_parameter, check_path, check_file
+#from pyspextool.io.check import check_path
+#from pyspextool.io.check import check_file
 from pyspextool.utils.split_text import split_text
 try:
     from importlib.resources import files # Python 3.10+
@@ -15,16 +15,15 @@ except ImportError:
 def pyspextool_setup(instrument=config.state['instruments'][0],
                      raw_path=None, cal_path=None, proc_path=None,
                      qa_path=None, verbose=True, qaextension='.pdf'):
-
-    
-    
+        
     """
     Set the pyspextool instrument and paths
 
     Parameters
     ----------
     instrument : str, optional
-        The name of the instrument.
+        The name of the instrument.  Must be one of 
+        config.state['instruments'].
     
     raw_path : str, optional
         The path to the raw directory.
@@ -47,10 +46,6 @@ def pyspextool_setup(instrument=config.state['instruments'][0],
     Returns
     -------
     None
-
-    Examples
-    --------
-    later
 
     """
 
@@ -97,10 +92,6 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     -------
     None
 
-    Examples
-    --------
-    later
-
     """
 
     #
@@ -125,7 +116,7 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     #
 
     home_path = os.path.expanduser('~')
-    file_name = '.pyspextool_' + config.state['instrument_name'] + '.dat'
+    file_name = '.pyspextool_' + config.user['setup']['instrument'] + '.dat'
     full_path = os.path.join(home_path, file_name)
 
     # Does the file exist?
@@ -140,20 +131,20 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
         for line in f:
             paths.append(line.strip())
 
-        config.state['rawpath'] = paths[0]
-        config.state['calpath'] = paths[1]
-        config.state['procpath'] = paths[2]
-        config.state['qapath'] = paths[3]
+        config.user['setup']['rawpath'] = paths[0]
+        config.user['setup']['calpath'] = paths[1]
+        config.user['setup']['procpath'] = paths[2]
+        config.user['setup']['qapath'] = paths[3]
 
     else:
 
         # No.  Use the current working directory
         
         cwd = os.path.abspath(os.getcwd())
-        config.state['rawpath'] = cwd
-        config.state['calpath'] = cwd
-        config.state['procpath'] = cwd
-        config.state['qapath'] = cwd
+        config.user['setup']['rawpath'] = cwd
+        config.user['setup']['calpath'] = cwd
+        config.user['setup']['procpath'] = cwd
+        config.user['setup']['qapath'] = cwd
 
     #
     # Now let's modify the paths based on the user requests.
@@ -162,38 +153,38 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     if raw_path is not None:
 
         raw_path = check_path(raw_path, make_absolute=True)
-        config.state['rawpath'] = raw_path
+        config.user['setup']['rawpath'] = raw_path
 
     if cal_path is not None:
 
         cal_path = check_path(cal_path, make_absolute=True)
-        config.state['calpath'] = cal_path
+        config.user['setup']['calpath'] = cal_path
 
     if proc_path is not None:
 
         proc_path = check_path(proc_path, make_absolute=True)
-        config.state['procpath'] = proc_path
+        config.user['setup']['procpath'] = proc_path
 
     if qa_path is not None:
 
         qa_path = check_path(qa_path, make_absolute=True)
-        config.state['qapath'] = qa_path
+        config.user['setup']['qapath'] = qa_path
 
     #
     # Now write the paths to the user home directory
     #
 
     f = open(os.path.join(home_path, '.pyspextool_' + \
-                          config.state['instrument_name'] + '.dat'), 'w')
-    f.write('%s \n' % config.state['rawpath'])
-    f.write('%s \n' % config.state['calpath'])
-    f.write('%s \n' % config.state['procpath'])
-    f.write('%s \n' % config.state['qapath'])
+                          config.user['setup']['instrument'] + '.dat'), 'w')
+    f.write('%s \n' % config.user['setup']['rawpath'])
+    f.write('%s \n' % config.user['setup']['calpath'])
+    f.write('%s \n' % config.user['setup']['procpath'])
+    f.write('%s \n' % config.user['setup']['qapath'])
     f.close()
 
     # Set the qa extension filetype
 
-    config.state['qaextension'] = qaextension
+    config.user['setup']['qaextension'] = qaextension
 
     # Set the pscontinue and xscontinue variables
 
@@ -205,16 +196,15 @@ def set_paths(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
         print()
         print('Pyspextool Setup')
         print('----------------')
-        print('Instrument: ', config.state['instrument_name'])
+        print('Instrument: ', config.user['setup']['instrument'])
         print()
-        print('Rawpath: ', config.state['rawpath'])
-        print('Calpath: ', config.state['calpath'])
-        print('Procpath: ', config.state['procpath'])
-        print('Qapath: ', config.state['qapath'])
+        print('Rawpath: ', config.user['setup']['rawpath'])
+        print('Calpath: ', config.user['setup']['calpath'])
+        print('Procpath: ', config.user['setup']['procpath'])
+        print('Qapath: ', config.user['setup']['qapath'])
         print()
-        print('QA Extension:', config.state['qaextension'])
-        print('----------------')
-        print()
+        print('QA Extension:', config.user['setup']['qaextension'],'\n')
+
 
 def set_instrument(instrument_name):
 
@@ -230,10 +220,6 @@ def set_instrument(instrument_name):
     -------
     None
 
-    Examples
-    --------
-    later
-
     """
 
     if instrument_name is None:
@@ -247,7 +233,7 @@ def set_instrument(instrument_name):
     check_parameter('set_instrument', 'instrument_name', instrument_name,
                     'str')
 
-    config.state['instrument_name'] = instrument_name
+    config.user['setup']['instrument'] = instrument_name
     
     #
     # Set the package path
@@ -298,7 +284,7 @@ def set_instrument(instrument_name):
     # Get the bad pixel mask
     
     bad_pixel_mask_file = os.path.join(instrument_data_path,
-                                       config.state['instrument_name'] + \
+                                       config.user['setup']['instrument'] + \
                                        '_bdpxmk.fits')
 
     check_file(bad_pixel_mask_file)

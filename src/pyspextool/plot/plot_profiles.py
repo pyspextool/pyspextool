@@ -34,7 +34,7 @@ def plot_profiles(profiles,slith_arc, doorders, apertures=None,
     
         if len(doorders) == 1:
 
-            naps = len(apertures)
+            naps = len(apertures[0])
 
         else:
 

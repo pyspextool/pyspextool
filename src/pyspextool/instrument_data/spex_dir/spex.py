@@ -467,7 +467,7 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
 
     if input_method == 'index':
 
-        files = make_full_path(config.state['rawpath'], files,
+        files = make_full_path(config.user['setup']['rawpath'], files,
                                indexinfo={'nint': config.state['nint'],
                                           'prefix': prefix,
                                           'suffix': suffix,
@@ -476,7 +476,8 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
 
     elif input_method == 'filename':
 
-        files = make_full_path(config.state['rawpath'], files, exist=True)
+        files = make_full_path(config.user['setup']['rawpath'], files,
+                               exist=True)
 
     else:
 
@@ -486,12 +487,13 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
 
     if verbose is True:
         print(' ')
-        print('Creating the flat field...')
+        print('Make Flat Field')
+        print('---------------')
         print('Loading FITS images...')
 
     img, var, hdr, mask = read_fits(files, config.state['linearity_info'],
                                     rotate=7, keywords=keywords,
-                                    clupdate=verbose)
+                                    verbose=verbose)
 
     average_header = average_header_info(hdr)
 
@@ -535,7 +537,8 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
 
     if qafile is True:
 
-        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+        qafileinfo = {'figsize': (8.5, 11),
+                      'filepath':config.user['setup']['qapath'],
                       'filename': output_name, 'extension': '.pdf'}
     else:
         qafileinfo = None
@@ -561,7 +564,7 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
                                          modeinfo['nygrid'],
                                          var=munc ** 2, oversamp=1,
                                          ybuffer=modeinfo['ybuffer'],
-                                         clupdate=False)
+                                         verbose=False)
 
         if qafileinfo is not None:
 
@@ -579,6 +582,11 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
         nimg = med
         nvar = munc ** 2
         rms = np.full((len(modeinfo['orders'])), np.nan)
+
+    # Protext against zeros
+
+    z = np.where(nimg == 0)
+    nimg[z] = 1
 
     #
     # Write the file to disk
@@ -616,11 +624,11 @@ def make_flat(files, output_name, prefix='flat', suffix='.[ab]',
                modeinfo['ps'], modeinfo['slith_pix'], modeinfo['slith_arc'],
                slitw_pix, slitw_arc, mode, rms, resolvingpower,
                config.state['version'], history,
-               os.path.join(config.state['calpath'], output_name + '.fits'),
-               overwrite=overwrite)
+               os.path.join(config.user['setup']['calpath'],
+               output_name+'.fits'), overwrite=overwrite)
 
     if verbose is True:
-        print('Flat field '+output_name+'.fits written to disk.')
+        print('Flat field '+output_name+'.fits written to disk.\n')
 
 
 def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
@@ -673,7 +681,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
     check_parameter('make_wavecal', 'use_stored_solution',
                     use_stored_solution,'bool')
 
-    check_parameter('make_wavecal', 'clupdate', verbose, 'bool')
+    check_parameter('make_wavecal', 'verbose', verbose, 'bool')
 
     check_parameter('make_wavecal', 'qafile_shift', qafile_shift, 'bool')
 
@@ -705,7 +713,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
 
     if input_method == 'index':
 
-        files = make_full_path(config.state['rawpath'], files,
+        files = make_full_path(config.user['setup']['rawpath'], files,
                                indexinfo={'nint': config.state['nint'],
                                           'prefix': prefix,
                                           'suffix': suffix,
@@ -714,7 +722,8 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
 
     elif input_method == 'filename':
 
-        files = make_full_path(config.state['rawpath'], files, exist=True)
+        files = make_full_path(config.user['setup']['rawpath'], files,
+                               exist=True)
 
     else:
 
@@ -723,13 +732,14 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
     # Load the FITS files into memory
 
     if verbose is True:
-        print(' ')
-        print('Creating the wavecal file...')
+
+        print('Make Wavecal File')
+        print('-----------------')
         print('Loading FITS images...')
 
     img, var, hdr, mask = read_fits(files, config.state['linearity_info'],
                                     rotate=7, keywords=keywords,
-                                    clupdate=verbose)
+                                    verbose=verbose)
 
     #
     # Combine images as necessary
@@ -765,7 +775,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
 
     # Read the flat and wavecal files
 
-    flat_file = os.path.join(config.state['calpath'], flat_file)
+    flat_file = os.path.join(config.user['setup']['calpath'], flat_file)
     flatinfo = read_flat_fits(flat_file)
 
     wavecalfile = os.path.join(config.state['instrument_path'],
@@ -812,7 +822,8 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
 
     if qafile_shift is True:
 
-        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+        qafileinfo = {'figsize': (8.5, 11),
+                      'filepath':config.user['setup']['qapath'],
                       'filename': output_name, 'extension': '.pdf'}
     else:
         qafileinfo = None
@@ -857,7 +868,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
         if qafile_findlines is True:
 
             qafileinfo = {'figsize': (8.5, 11),
-                          'filepath': config.state['qapath'],
+                          'filepath': config.user['setup']['qapath'],
                           'filename': output_name, 'extension': '.pdf'}
 
         else:
@@ -867,7 +878,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
 
         lineinfo = find_lines_1dxd(spectra['spectra'], wavecalinfo['orders'],
                                    lineinfo, flatinfo['slitw_pix'],
-                                   qafileinfo=qafileinfo, clupdate=verbose)
+                                   qafileinfo=qafileinfo, verbose=verbose)
 
         #
         # Let's do the actual calibration
@@ -892,7 +903,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
         if qafile_fitlines is True:
 
             qafileinfo = {'figsize': figsize,
-                          'filepath': config.state['qapath'],
+                          'filepath': config.user['setup']['qapath'],
                           'filename': output_name, 'extension': '.pdf'}
 
         else:
@@ -903,7 +914,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
         solution = wavecal_solution_1d(wavecalinfo['orders'], lineinfo,
                                        wavecalinfo['dispdeg'], xd=xd,
                                        qafileinfo=qafileinfo,
-                                       clupdate=verbose)
+                                       verbose=verbose)
         
     else:
 
@@ -951,7 +962,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
                          solution['ngood'], solution['nbad'],
                          wavecal, spatcal, indices, flatinfo['rotation'],
                          flat_file,
-                         os.path.join(config.state['calpath'],
+                         os.path.join(config.user['setup']['calpath'],
                                         output_name + '.fits'),
                          config.state['version'],
                          stored_solution=use_stored_solution,
@@ -967,7 +978,7 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
                          solution['ngood'], solution['nbad'],
                          wavecal, spatcal, indices, flatinfo['rotation'],
                          flat_file,
-                         os.path.join(config.state['calpath'],
+                         os.path.join(config.user['setup']['calpath'],
                                         output_name + '.fits'),
                          config.state['version'],
                          xd={'orderdeg':wavecalinfo['ordrdeg'],
@@ -979,12 +990,12 @@ def make_wavecal(files, flat_file, output_name, prefix='arc', suffix='.[ab]',
         print('unknown wcaltype.')
 
     if verbose:
-        print('Wavecal '+output_name+'.fits written to disk.')
+        print('Wavecal '+output_name+'.fits written to disk.\n')
 
 
         
 def read_fits(files, linearity_info, keywords=None, pair_subtract=False,
-              rotate=0, linearity_correction=True, clupdate=False):
+              rotate=0, linearity_correction=True, verbose=False):
 
     """
     To read a SpeX FITS image file.

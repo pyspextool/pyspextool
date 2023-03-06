@@ -115,6 +115,10 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
 
     # Determine the pixel when the derivative becomes positive again
 
+    z = np.logical_and(lag > -100, lag < 100)
+    xcor = xcor[z]
+    lag = lag[z]
+    
     maxidx = np.argmax(xcor)
 
     dif = -1
@@ -122,7 +126,7 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     while dif < 0 and maxidx + npix + 1 < ndat - 1:
         dif = xcor[maxidx + npix + 1] - xcor[maxidx + npix]
         npix += 1
-
+        
     halfwin = np.around(npix * 1.5).astype('int')
 
     # Clip out the fit zone
@@ -191,7 +195,6 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
         yrange = get_spec_range([fitxcor, r['fit']], frac=0.1)
 
         axes3.margins(x=0)
-
         axes3.step(fitlag, fitxcor)
         axes3.step(fitlag, r['fit'], 'r')
         axes3.set_title('Fit of Cross Correlation')

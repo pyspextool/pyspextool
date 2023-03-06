@@ -11,7 +11,7 @@ from pyspextool.utils.loop_progress import loop_progress
 
 
 def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
-                   var=None, oversamp=1, ybuffer=0, clupdate=False):
+                   var=None, oversamp=1, ybuffer=0, verbose=False):
     """
     Normalize spectral flat field image
 
@@ -183,7 +183,7 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
         m = moments(nimg[z], robust=4.5)
         rms[i] = m['stddev']
 
-        if clupdate:
+        if verbose:
             loop_progress(i, 0, norders, message='Normalizing the flat...')
 
     return nimg, nvar, rms

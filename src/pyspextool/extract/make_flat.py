@@ -68,8 +68,8 @@ def make_flat(files, output_name, prefix='flat-', suffix='.[ab]',
     #
     
 
-    module = 'pyspextool.instrument_data.'+config.state['instrument_name']+\
-        '_dir.'+config.state['instrument_name']
+    module = 'pyspextool.instrument_data.'+config.user['setup']['instrument']+\
+        '_dir.'+config.user['setup']['instrument']
 
     instr = importlib.import_module(module)
 

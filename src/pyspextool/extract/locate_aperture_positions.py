@@ -7,8 +7,8 @@ from pyspextool.extract.trace_apertures import trace_apertures
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 
-def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
-                              qafile=False, clupdate=True):
+def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
+                              qafile=False, verbose=True):
     """
     To determine the locations of spectral extraction apertures
 
@@ -37,13 +37,13 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
         The approximate FWHM of the peak to be identified.  Only used 
         if `method` is 'auto' or 'guess'.
 
-    iplot : {False, True}, optional
+    qaplot : {False, True}, optional
         Set to True plot the results interactively.
 
     qafile : {False, True}, optional
         Set to True to write a QA plot to disk.
 
-    clupdate: {True, False}, optional
+    verbose: {True, False}, optional
         Set to True to report the operation to the command line.
 
     Returns
@@ -52,20 +52,6 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     Sets config.state['apertures'], config.state['apsigns'], and 
     config.state['naps'] and if config.state['exttype'] ='xs' then 
     also calls trace_apertures.
-
-    Notes
-    -----
-    Just does some organizing and calls find_peaks.  
-
-    Examples
-    --------
-    ---To be updated---
-    locate_aperture_positions(2, method='auto')        - point source
-    locate_aperture_positions(2, method='guess')       - point source
-    locate_aperture_positions([2,10], method='guess')  - point source
-    locate_aperture_positions([2,10], method='fixed')  - point source
-    locate_aperture_positions(2)                       - extended source
-    locate_aperture_positions([2,10])                  - extended source
     
     """
 
@@ -73,7 +59,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     # Update the command line if requested
     #
 
-    if clupdate is True:
+    if verbose is True:
         print('Locating the apertures...')
 
     #
@@ -86,15 +72,29 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     # Check parameters that don't depend on extraction type.
     #
 
+    check_parameter('define_aperture_positions', 'apertures', apertures,
+                    ['int','float','list','ndarray'])
+    
     check_parameter('define_aperture_positions', 'method', method, 'str',
                     possible_values=['auto', 'fixed', 'guess'])
 
     check_parameter('define_aperture_positions', 'fwhm', fwhm, ['int', 'float'])
 
-    check_parameter('define_aperture_positions', 'iplot', iplot, 'bool')
+    check_parameter('define_aperture_positions', 'qaplot', qaplot, 'bool')
 
     check_parameter('define_aperture_positions', 'qafile', qafile, 'bool')
 
+    #
+    # Store the user passed parameters 
+    #
+
+    config.user['locateaps']['apertures'] = apertures
+    config.user['locateaps']['method'] = method
+    config.user['locateaps']['fwhm'] = fwhm
+    config.user['locateaps']['qaplot'] = qaplot
+    config.user['locateaps']['qafile'] = qafile
+    config.user['locateaps']['verbose'] = verbose
+    
     #
     # Get useful numbers
     #
@@ -167,18 +167,16 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
         apertures = np.tile(apertures, (norders, 1))
         apsigns = np.full_like(apertures, 1, dtype=int)
 
+        
     #
     # Determine the average apsign
     #
 
-    if norders > 1:
+    average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns),axis=0)
+    apsigns = np.empty(naps, dtype=int)
 
-        average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns),
-                                                          axis=0)
-        apsigns = np.empty(naps, dtype=int)
-
-        for i in range(naps):
-            apsigns[i] = 1 if average_apsign[i] > 0 else -1
+    for i in range(naps):
+        apsigns[i] = 1 if average_apsign[i] > 0 else -1
 
     #
     # Store the results into the config variable
@@ -188,7 +186,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     config.state['apsigns'] = apsigns
     config.state['naps'] = naps
 
-    if clupdate is True:
+    if verbose is True:
 
         signs = ', '.join(list(apsigns.astype(str)))
         signs = signs.replace('-1', '-')
@@ -200,16 +198,17 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     # Plot the results
     #
 
-    if iplot is True:
+    if qaplot is True:
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'], dtype=int),
                       apertures=config.state['apertures'])
 
     if qafile is True:
-        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+        qafileinfo = {'figsize': (8.5, 11),
+                      'filepath':config.user['setup']['qapath'],
                       'filename': config.state['qafilename'] +
                                   '_aperturepositions',
-                      'extension': config.state['qaextension']}
+                      'extension': config.user['setup']['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'], dtype=int),
@@ -233,5 +232,5 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, iplot=False,
     #
 
     if config.state['exttype'] == 'xs':
-        trace_apertures(clupdate=clupdate, iplot=iplot, qafile=qafile)
+        trace_apertures(verbose=verbose, qaplot=qaplot, qafile=qafile)
 

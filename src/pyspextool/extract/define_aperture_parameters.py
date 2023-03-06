@@ -9,7 +9,7 @@ from pyspextool.plot.plot_profiles import plot_profiles
 
 def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                                bg_width=None, bg_regions=None, bg_fit_degree=1,
-                               iplot=False, qafile=False):
+                               qaplot=False, qafile=False):
 
     """
     To define the extraction parameters
@@ -38,7 +38,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     bg_fit_degree : int, default=1, optional
         The polynomial degree of the fit to the background
 
-    iplot : {False, True}, optional
+    qaplot : {False, True}, optional
         Set to plot the results interactively.
 
     qafile : {False, True}, optional
@@ -60,10 +60,23 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
     check_continue(4)
 
-    # Check commone parameters
+    # Check common parameters
     
     check_parameter('define_aperture_parameters', 'bg_fit_degree',
                     bg_fit_degree, ['int'], [1, 2])
+
+    #
+    # Store user inputs 
+    #
+
+    config.user['apparms']['apradii'] = aperture_radii
+    config.user['apparms']['psfradius'] = psf_radius
+    config.user['apparms']['bgradius'] = bg_radius
+    config.user['apparms']['bgwidth'] = bg_width
+    config.user['apparms']['bgregions'] = bg_regions
+    config.user['apparms']['bgdeg'] = bg_fit_degree
+    config.user['apparms']['qaplot'] = qaplot
+    config.user['apparms']['qafile'] = qafile
 
     # Now things proceed depending on the extraction mode
     
@@ -89,6 +102,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         check_parameter('define_aperture_parameters', 'bg_width',
                         bg_width, ['int', 'float', 'NoneType'])
 
+        
         #
         # Make sure the right sets of things are present
         #
@@ -244,7 +258,7 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         plot_aperture_radii = np.full(config.state['naps'], aperture_radii)
 
         
-    if iplot is True:
+    if qaplot is True:
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
@@ -253,9 +267,10 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
 
     if qafile is True:
 
-        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+        qafileinfo = {'figsize': (8.5, 11),
+                      'filepath': config.user['setup']['qapath'],
                       'filename': config.state['qafilename'] + '_apertureparms',
-                      'extension': config.state['qaextension']}
+                      'extension': config.user['setup']['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],

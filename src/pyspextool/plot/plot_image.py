@@ -102,17 +102,18 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
     cmap = pl.cm.gray
 
     # Now check to see if the mask is passed.
-    
+
+    pimage = np.copy(image)
     if mask is not None:
     
         cmap.set_bad((1, 0, 0, 1))
         z = np.where(mask == 1)
-        image[z] = np.nan
+        pimage[z] = np.nan
 
     # Now draw the figure
         
     fig = pl.figure(figsize=figsize)
-    pl.imshow(image, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
+    pl.imshow(pimage, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
                   origin='lower')
     pl.xlabel('Columns (pixels)')
     pl.ylabel('Rows (pixels)')

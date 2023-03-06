@@ -9,8 +9,8 @@ from pyspextool.plot.plot_image import plot_image
 
 
 def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
-                    centroid_threshold=2, fwhm=0.8, clupdate=True,
-                    iplot=True, qafile=False):
+                    centroid_threshold=2, fwhm=0.8, verbose=True,
+                    qaplot=True, qafile=False):
     """
     Command line call for tracing apertures.
 
@@ -35,10 +35,10 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     fwhm : float, optional, default 0.8
         The approximate FWHM of the peaks in arcseconds.
 
-    clupdate : {True, False}, optional
+    verbose : {True, False}, optional
         Set to True for command line updates during execution.
 
-    iplot : {True, False}, optional
+    qaplot : {True, False}, optional
         Set to True to plot the qa plot interactively.
 
     qafile : {False, True}, optional
@@ -83,11 +83,25 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
     check_parameter('trace_apertures', 'fwhm', fwhm, 'float')
 
-    check_parameter('trace_apertures', 'clupdate', clupdate, 'bool')
+    check_parameter('trace_apertures', 'verbose', verbose, 'bool')
 
-    check_parameter('trace_apertures', 'iplot', iplot, 'bool')
+    check_parameter('trace_apertures', 'qaplot', qaplot, 'bool')
 
     check_parameter('trace_apertures', 'qafile', qafile, 'bool')
+
+    #
+    # Store user inputs
+    #
+
+
+    config.user['trace']['fitdeg'] = fit_degree
+    config.user['trace']['step'] = step_size
+    config.user['trace']['sumwidth'] = summation_width
+    config.user['trace']['centresh'] = centroid_threshold
+    config.user['trace']['fwhm'] = fwhm
+    config.user['trace']['verbose'] = verbose
+    config.user['trace']['qafile'] = qafile
+    config.user['trace']['qaplot'] = qaplot
 
     #
     # Run the trace
@@ -110,11 +124,11 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                                     fit_degree=fit_degree,
                                     step_size=step_size,
                                     centroid_threshold=centroid_threshold,
-                                    fwhm=fwhm, clupdate=clupdate)
+                                    fwhm=fwhm, verbose=verbose)
 
         tracecoeffs = trace['coeffs']
 
-        if iplot is True or qafile is True:
+        if qaplot is True or qafile is True:
             norders, naps = np.shape(config.state['apertures'])
             info = trace_to_xy(config.state['ordermask'],
                                config.state['wavecal'],
@@ -143,7 +157,7 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         # Do the plotting stuff
 
-        if iplot is True or qafile is True:
+        if qaplot is True or qafile is True:
             norders, naps = np.shape(config.state['apertures'])
             info = trace_to_xy(config.state['ordermask'],
                                config.state['wavecal'],
@@ -164,13 +178,14 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     # Plot stuff up if requested
     #
 
-    if iplot is True:
+    if qaplot is True:
         plot_image(config.state['workimage'], trace_plotinfo=plotinfo)
 
     if qafile is True:
-        qafileinfo = {'figsize': (7, 7), 'filepath': config.state['qapath'],
+        qafileinfo = {'figsize': (7, 7),
+                      'filepath': config.user['setup']['qapath'],
                       'filename': config.state['qafilename'] + '_trace',
-                      'extension': config.state['qaextension']}
+                      'extension': config.user['setup']['qaextension']}
 
         plot_image(config.state['workimage'], trace_plotinfo=plotinfo,
                    qafileinfo=qafileinfo)

@@ -161,7 +161,13 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     for i in range(len(keys)):
 
-        hdr[keys[i]] = (header_info[keys[i]][0],header_info[keys[i]][1])
+        if keys[i] == 'COMMENT':
+
+            junk = 1
+
+        else:
+
+            hdr[keys[i]] = (header_info[keys[i]][0],header_info[keys[i]][1])
 
     # Add spextool keywords
                 
@@ -285,7 +291,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         if xsbginfo is not None:
 
             print('Wrote',os.path.basename(output_fullpath)+'.fits', 'and',
-                  os.path.basename(output_fullpath)+'_bg.fits', 'to disk.')                
-
+                  os.path.basename(output_fullpath)+'_bg.fits', 'to disk.')
+            
 
         

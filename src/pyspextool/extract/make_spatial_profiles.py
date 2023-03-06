@@ -8,19 +8,19 @@ from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.utils.math import mean_data_stack
 
 
-def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
+def make_spatial_profiles(qaplot=False, verbose=True, qafile=False):
+    
     """
     To create 1D "average" spatial profiles of the orders.
 
     Parameters 
     ----------
-    iplot : {False, True}, optional
+    qaplot : {False, True}, optional
         Set to plot the orders in an interactive window.
 
-    clupdate : {True, False}, optional
+    verbose : {True, False}, optional
     Set to True for command line updates during execution. 
     
-
     qafile : {False, True}, optional
         Set to plot the QA plot to disk.
 
@@ -32,13 +32,6 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
 
     Notes
     -----
-    
-    Examples
-    --------
-    ---To be updated---
-    
-    make_spatial_profiles()
-
 
     """
 
@@ -51,11 +44,23 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
     #
     # Check the parameters
     #
-    check_parameter('make_spatial_profiles', 'iplot', iplot, 'bool')
+
+    check_parameter('make_spatial_profiles', 'qaplot', qaplot, 'bool')
+    
+    check_parameter('make_spatial_profiles', 'verbose', verbose, 'bool')
 
     check_parameter('make_spatial_profiles', 'qafile', qafile, 'bool')
 
-    if clupdate is True:
+    #
+    # Saver user inputs
+    #
+
+    config.user['profiles']['qaplot'] = qaplot
+    config.user['profiles']['qafile'] = qafile
+    config.user['profiles']['verbose'] = verbose
+
+    
+    if verbose is True:
         print('Creating the spatial profiles...')
 
     #
@@ -122,14 +127,15 @@ def make_spatial_profiles(iplot=False, clupdate=True, qafile=False):
 
     config.state['profiles'] = profiles
 
-    if iplot is True:
+    if qaplot is True:
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'], dtype=int))
 
     if qafile is True:
-        qafileinfo = {'figsize': (8.5, 11), 'filepath': config.state['qapath'],
+        qafileinfo = {'figsize': (8.5, 11),
+                      'filepath':config.user['setup']['qapath'],
                       'filename': config.state['qafilename'] + '_profiles',
-                      'extension': config.state['qaextension']}
+                      'extension': config.user['setup']['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       np.ones(config.state['norders'], dtype=int),

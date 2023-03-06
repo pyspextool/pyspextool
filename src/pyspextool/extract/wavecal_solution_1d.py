@@ -7,7 +7,7 @@ from pyspextool.fit.polyfit import poly_fit_2d
 from pyspextool.utils.for_print import for_print
 
 def wavecal_solution_1d(orders, line_info, dispersion_degree,
-                        xd=None, clupdate=True, qafileinfo=None):
+                        xd=None, verbose=True, qafileinfo=None):
     """
     To perform a 2D fit to the x position and order number of wavelength
     calibration lines.

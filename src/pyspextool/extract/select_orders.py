@@ -7,8 +7,8 @@ from pyspextool.io.files import extract_filestring
 from pyspextool.plot.plot_profiles import plot_profiles
 
 
-def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
-                  iplot=False, qafile=True):
+def select_orders(include=None, exclude=None, include_all=False, verbose=True,
+                  qaplot=False, qafile=True):
     """
     To set which orders are to be traced and extracted
 
@@ -27,10 +27,10 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
     include_all : {False, True}, optional
         Set to include all orders.
 
-    clupdate : {True, False}, optional
+    verbose : {True, False}, optional
         Set to True for command line updates during execution.
 
-    iplot : {False, True}, optional
+    qaplot : {False, True}, optional
         Set to True to plot the profiles interactively.
 
     qafile : {False, True}, optional
@@ -53,19 +53,7 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
 
     """
 
-    #
-    # Update command line if requested.
-    #
-    if clupdate is True:
-        print('Updating order selection...')
 
-    #
-    # Ensure only one optional argument is passed
-    #
-
-    if include is not None and exclude is not None:
-        message = 'Cannot use both parameters `include` and `remove`.'
-        raise ValueError(message)
 
     #
     # Check parameters
@@ -79,8 +67,35 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
 
     check_parameter('select_orders', 'include_all', include_all, 'bool')
 
-    check_parameter('select_orders', 'iplot', iplot, 'bool')
+    check_parameter('select_orders', 'qaplot', qaplot, 'bool')
 
+    #
+    # Ensure only one optional argument is passed
+    #
+
+    if include is not None and exclude is not None:
+        message = 'Cannot use both parameters `include` and `remove`.'
+        raise ValueError(message)
+
+
+    #
+    # Store the user inputs
+    #
+
+    config.user['orders']['include'] = include
+    config.user['orders']['exclude'] = exclude
+    config.user['orders']['include_all'] = include_all
+    config.user['orders']['verbose'] = verbose
+    config.user['orders']['qaplot'] = qaplot
+    config.user['orders']['qafile'] = qafile
+    
+    #
+    # Update command line if requested.
+    #
+    if verbose is True:
+        print('Updating order selection...')
+
+    
     #
     # Do the checks
     #
@@ -128,7 +143,7 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
             raise ValueError(message)
 
     if include_all is True:
-        test = np.full(config.state['norders'], 1)
+        test = np.full(config.state['norders'], True)
 
     #
     # Set the correct doorders variable
@@ -144,16 +159,16 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
         config.state['psdoorders'] = test
         doorders = test
 
-    if iplot is True:
+    if qaplot is True:
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'])
 
     if qafile is True:
         qafileinfo = {'figsize': (8.5, 11),
-                      'filepath': config.state['qapath'],
+                      'filepath': config.user['setup']['qapath'],
                       'filename': config.state['qafilename'] +
                                   '_aperturepositions',
-                      'extension': config.state['qaextension']}
+                      'extension': config.user['setup']['qaextension']}
 
         plot_profiles(config.state['profiles'], config.state['slith_arc'],
                       doorders, apertures=config.state['apertures'],
@@ -164,4 +179,4 @@ def select_orders(include=None, exclude=None, include_all=False, clupdate=True,
     #
 
     if config.state['exttype'] == 'xs':
-        trace_apertures(clupdate=clupdate, iplot=iplot, qafile=qafile)
+        trace_apertures(verbose=verbose, qaplot=qaplot, qafile=qafile)

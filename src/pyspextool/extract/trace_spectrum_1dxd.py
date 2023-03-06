@@ -12,7 +12,7 @@ from pyspextool.utils.loop_progress import loop_progress
 def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
                         xranges, apertures, fit_degree=2, step_size=5,
                         summation_width=5, centroid_threshold=2, fwhm=0.8,
-                        clupdate=True):
+                        verbose=True):
     """
     To trace a spectrum.
 
@@ -69,7 +69,7 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
     fwhm : float, optional, default 0.8
         The approximate FWHM of the peaks in arcseconds.
 
-    clupdate : {True, False}, optional
+    verbose : {True, False}, optional
         Set to True for command line updates during execution.
 
     Returns
@@ -137,7 +137,7 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
 
     check_parameter('trace_spectrum_1dxd', 'fwhm', fwhm, 'float')
 
-    check_parameter('trace_spectrum_1dxd', 'clupdate', clupdate, 'bool')
+    check_parameter('trace_spectrum_1dxd', 'verbose', verbose, 'bool')
 
     #
     # Get set up
@@ -252,7 +252,7 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
             plot_y = plot_y + list(peaks_pix[:, j])
             plot_goodbad = plot_goodbad + list(fit['goodbad'])
 
-        if clupdate is True:
+        if verbose is True:
             loop_progress(i, 0, norders, message='Tracing apertures...')
     dictionary = {'coeffs': coeffs, 'x': np.array(plot_x), 'y': np.array(plot_y),
                   'goodbad': np.array(plot_goodbad, dtype=int)}
