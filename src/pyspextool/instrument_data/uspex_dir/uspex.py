@@ -748,7 +748,7 @@ def read_fits(files, lininfo, keywords=None, pair_subtract=False, rotate=0,
     bias = hdul[0].data / divisor
     hdul.close()
 
-    if pair:
+    if pair_subtract is True:
 
         #  Check to make sure the right number of files
 
@@ -774,7 +774,7 @@ def read_fits(files, lininfo, keywords=None, pair_subtract=False, rotate=0,
 
     # Load the data
 
-    if pair is True:
+    if pair_subtract is True:
 
         # pair subtraction
 
@@ -795,7 +795,7 @@ def read_fits(files, lininfo, keywords=None, pair_subtract=False, rotate=0,
             hdrinfo.append(a[2])
             hdrinfo.append(b[2])
 
-    if not pair:
+    else:
 
         for i in range(0, nimages):
             im, va, hd, bm = load_data(files[i], lininfo, bias,

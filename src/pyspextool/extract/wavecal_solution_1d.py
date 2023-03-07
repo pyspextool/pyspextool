@@ -71,7 +71,7 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree,
                 
             axes1.axhline(y=0, linestyle='dotted', color='black')
 
-            print('hi')
+#            print('hi')
             axes1.scatter(line_info['x'][zgood], residuals[zgood],
                           color='red', edgecolors='black',
                           s=8 ** 2, alpha=0.8)
