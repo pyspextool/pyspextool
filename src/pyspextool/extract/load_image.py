@@ -33,6 +33,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         files[0] is a string giving the perfix.
         files[1] is a string giving the index numbers of the files.
 
+        e.g. ['spc', '1-2']
     
     flat_name : str
         The full name of a Spextool flat file.
