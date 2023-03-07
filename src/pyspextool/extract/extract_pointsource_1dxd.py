@@ -258,6 +258,7 @@ def extract_pointsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
         # Generate the key
 
         for k in range(naps):
+
             spectrum = np.stack((spectrum_wave[nonan],
                                  spectrum_flux[k, nonan],
                                  spectrum_unc[k, nonan],

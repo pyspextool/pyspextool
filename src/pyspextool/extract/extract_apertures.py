@@ -142,7 +142,7 @@ def extract_apertures(output_filenames=None, verbose=True):
     #
     # Write the results to disk
     #
-        
+
     write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
                     output_filenames=output_filenames, verbose=verbose)
 
@@ -274,7 +274,8 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
             # Are there positive apertures?
 
             z_pos = config.state['apsigns'] == 1
-            if np.sum(z_pos) != 0:
+            pos_naps = int(np.sum(z_pos))
+            if pos_naps != 0:
 
                 # Get file information
              
@@ -291,8 +292,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
 
                 write_apertures_fits(pos_spectra, xranges, aimage, sky,
                                      config.user['load']['flatfile'],
-                                     config.state['naps'], orders,
-                                     hdrinfo, apertures,
+                                     pos_naps, orders, hdrinfo, apertures,
                                      config.state['apradii'],
                                      config.state['plate_scale'],
                                      config.state['slith_pix'],
@@ -309,8 +309,9 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
 
             # Are there negative apertures?
 
-            z_pos = config.state['apsigns'] == -1
-            if np.sum(z_pos) != 0:
+            z_neg = config.state['apsigns'] == -1
+            neg_naps = int(np.sum(z_neg))
+            if neg_naps != 0:
 
                 # Get file information
              
@@ -327,8 +328,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
 
                 write_apertures_fits(neg_spectra, xranges, aimage, sky,
                                      config.user['load']['flatfile'],
-                                     config.state['naps'], orders,
-                                     hdrinfo, apertures,
+                                     neg_naps, orders, hdrinfo, apertures,
                                      config.state['apradii'],
                                      config.state['plate_scale'],
                                      config.state['slith_pix'],
