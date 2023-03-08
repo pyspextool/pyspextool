@@ -4,109 +4,346 @@ import os
 
 from pyspextool.fit.robust_savgol import robust_savgol
 from pyspextool.plot.limits import get_spec_range
-from pyspextool.io.check import check_parameter
+from pyspextool.io.check import check_parameter, check_file
+from read_spectra_fits import read_spectra_fits
+from pyspextool.plot import limits
 
-def plot_spectra(spectra, orders, ap=None, xtitle=None, ytitle=None,
-                 ladder=True, continuous=False, intensity=True,
-                 uncertainty=False, snr=False, qafileinfo=None):
+def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
+                 aperture=0, xlabel=None, ylabel=None, title=None,
+                 colors='green', yrange_buffer=0.05, order_numbers=True,
+                 qafileinfo=None):
+
+    """
+    To plot a pyspextool FITS file.
+
+    Parameters
+    ----------
+        file : str
+            The full path to a pySpextool spectral fits files.
+
+        plot_type : {'continuous', 'ladder'}
+            Currently only continuous is allowed.
+
+        figsize : tuple of (float, float), optional
+            A (2,) tuple giving the page size.
+
+        y : {'flux', 'uncertainty', 'snr'}, optional
+            Which spectrum to plot.
+
+        aperture : int, default=0
+            The aperture to plot.  It is zero-based.
+
+        xlabel : str, optional
+            The label for the x axis.
+
+        ylabel : str, optional
+            The label for the y axis.
+
+        title : str, optional
+            The title.
+
+        colors : str or list of (str, str) or list of (str, str, str), 
+                 default='green'
+            The spectra will be plotted with alternative colors depending on 
+            how many colors are given.
+            
+        yrange_buffer : float, default=0.05
+            The fraction by which to expand the y range if desired.
+
+        order_numbers : {True, False}
+            Set to True for the order numbers to be plotted on the plot.
+
+        qafileinfo : dict, optional
+
+            `'figsize'` : tuple
+                A (2,) tuple giving the figure size.
+
+            `'filepath'` : str, optional, default=''
+
+            `'filename'` : str, optional, default=root of spectra.
+
+            `'extension'` : str, optional, default='.pdf'
+            
+    Returns
+    -------
+    None
+
+    """
 
     #
-    # check parameters
+    # Check parameters
     #
-    check_parameter('plot_spectra', 'spectra', spectra, 'list')
 
-    check_parameter('plot_spectra', 'orders', orders, ['int', 'list',
-                                                        'ndarray'])
+    check_parameter('plot_spectra', 'file', file, 'str')
 
-    check_parameter('plot_spectra', 'xtitle', xtitle, ['str', 'NoneType'])
+    check_parameter('plot_spectra', 'plot_type', plot_type, 'str',
+                    ['continuous', 'ladder'])
 
-    check_parameter('plot_spectra', 'ytitle', ytitle, ['str', 'NoneType'])
+    check_parameter('plot_spectra', 'figsize', figsize, ['NoneType','tuple'])
+    
+    check_parameter('plot_spectra', 'y', y, 'str',
+                    ['flux', 'uncertainty', 'snr'])
+    
+    check_parameter('plot_spectra', 'aperture', aperture, 'int')
 
-    check_parameter('plot_spectra', 'ladder', ladder, 'bool')
+    
+    check_parameter('plot_spectra', 'xlabel', xlabel, ['NoneType','str'])
 
-    check_parameter('plot_spectra', 'continuous', continuous, 'bool')
+    check_parameter('plot_spectra', 'ylabel', ylabel, ['NoneType','str'])
+
+    check_parameter('plot_spectra', 'title', title, ['NoneType','str'])
+
+    check_parameter('plot_spectra', 'colors', colors,
+                    ['NoneType', 'str', 'list'])
+
+    check_parameter('plot_spectra', 'yrange_buffer', yrange_buffer, 'float')
+
+    check_parameter('plot_spectra', 'order_numbers', order_numbers, 'bool')
 
     check_parameter('plot_spectra', 'qafileinfo', qafileinfo,
-                     ['NoneType', 'dict'])                            
+                    ['NoneType', 'dict'])        
 
     #
-    # Get some prep work done
+    # Check various other things
     #
+
+    # Does the file exist?
     
-    # Get the number of orders and apertures
+    check_file(file)
 
-    orders = np.asarray(orders)
-    norders = np.size(orders)
-    naps = len(spectra)//norders
+    #
+    # Read the file
+    #
 
-    # Must check naps versus aps if not None
-    
-    # Check the plot types
+    spectra, info = read_spectra_fits(file)
+    norders = info['norders']
+    napertures = info['napertures']
+    orders = info['orders']
 
-    sum = intensity+uncertainty+snr
-    if sum > 1:
+    #
+    # Get the plot ranges
+    #
 
-        message = 'Only one of `intensity`, `uncertainty`, `snr` can be set.'
-        raise ValueError(message)
+    wranges, franges, uranges, sranges = get_ranges(spectra,
+                                                    info['norders'],
+                                                    info['napertures'],
+                                                    aperture,
+                                                    fraction=yrange_buffer)
 
-    sum = continuous+ladder
-    if sum > 1:
+    xrange = [np.min(wranges), np.max(wranges)]
 
-        message = 'Only one of `ladder`, `continuous` can be set.'
-        raise ValueError(message)
+    #
+    # Get the index for the spectrum
+    #
 
-    # Get the figure size
+    if y == 'flux':
+
+        yrange = [np.min(franges), np.max(franges)]
+
+    elif y == 'uncertainty':
+
+        yrange = [np.min(uranges), np.max(uranges)]
+
+    elif y == 'snr':
+
+        yrange = [np.min(sranges), np.max(sranges)]
         
+
+    if plot_type == 'continuous':
+
+        if figsize is None:
+
+            figure_size = (11,8.5)
+
+        else:
+
+            figure_size = figsize
+        
+        #
+        # Make the plot
+        #
+
+        figure = pl.figure(figsize=figure_size)
+        ax = figure.add_axes([0.125,0.11,0.775,0.77])
+        ax.plot([np.nan],[np.nan])
+        ax.set_xlim(xrange)
+        ax.set_ylim(yrange)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)        
+
+            # Get the coordinate transform ready for order number labels
+        
+        axis_to_data = ax.transAxes + ax.transData.inverted()
+        data_to_axis = axis_to_data.inverted()
+        
+        
+        for i in range(norders):
+
+            # Get the plotting values
+            
+            xvalues = spectra[i*napertures+aperture,0,:]
+            
+            if y == 'flux':
+                
+                yvalues = spectra[i*napertures+aperture,1,:]
+                
+            elif y == 'uncertainty':
+            
+                ayvalues = spectra[i*napertures+aperture,2,:]
+                
+            elif y == 'snr':
+                
+                yvalues = spectra[i*napertures+aperture,1,:]/\
+                spectra[i*napertures+aperture,2,:]
+                
+            # Get the colors
+            
+            if isinstance(colors, list):
+                
+                ncolors = len(colors)
+
+                if ncolors == 2:
+                    
+                    color = colors[0] if i % 2 == 0 else colors[1]
+                    
+                elif ncolors == 3:
+
+                    mod = i % 3
+
+                    if mod == 0: color = colors[0] 
+
+                    if mod == 1: color = colors[1] 
+
+                    if mod == 2:  color = colors[2]
+                    
+            else:
+                    
+                color = colors
+
+            # Plot the spectrum
+                
+            ax.plot(xvalues, yvalues, color=color)
+
+            # Now label the order numbers
+            
+            if order_numbers is True:
+
+                # Get the order number position
+
+                ave_wave = np.mean(wranges[i,:])
+                xnorm = data_to_axis.transform((ave_wave,0))[0]
+
+                # Print the text
+                
+                ax.text(xnorm, 1.01+0.01*(i % 2), str(orders[i]), color=color,
+                        transform=ax.transAxes)
+
+                # Add the title
+                
+                ax.set_title(title, pad=15.0)
+
+            else:
+
+                ax.set_title(title)
+
+                
     if qafileinfo is not None:
 
-        figsize = qafileinfo['figsize']
+        keys = qafileinfo.keys()
+
+        if 'filepath' in keys:
+
+            filepath = qafileinfo['filepath']
+            
+        else:
+
+            filepath = ''
+
+        if 'filename' in keys:
+
+            filename = qafileinfo['filename']
+            
+        else:
+
+            filename = os.path.basename(filename).removesuffix('.fits')
+
+        if 'extension' in keys:
+
+            extension = qafileinfo['extension']
+
+        else:
+
+            extension = '.pdf'
+
+
+        pl.savefig(os.path.join(filepath,filename+extension))
+            
 
     else:
 
-        figsize = (8.5,11)
+        pl.show()
+
     
 
-#    pl.figure(figsize=figsize)
-#    pl.subplots_adjust(hspace=2)
+    
+def get_ranges(spectra, norders, napertures, aperture, fraction=0.05):
 
+    """
+    To determine the x and y ranges of each order
 
-    # Get aperture loop set up
+    Parameters 
+    ----------
+        spectra : nd.array
 
-    range_value = naps if ap is None else ap-1
+        norders : int
+            The number of orders.
+
+        napertures : int
+            The number of apertures.
+
+        aperture : int
+            The aperture requested.  The value is zero-based.
+
+        fraction : float, default=0.05
+            The fraction by which to expand the range if desired.
+
+    Returns
+    -------
+        tuple : (ndarray, ndarray, ndarray, ndarray)
+
+    """
+
+    wave_ranges = np.empty((norders,2))
+    flux_ranges = np.empty((norders,2))
+    unc_ranges = np.empty((norders,2))
+    snr_ranges = np.empty((norders,2))            
+    
+    for i in range(norders):
+
+        # Do the wavelengths
         
-    for i in range(range_value):
+        wave = spectra[i*napertures+aperture,0,:]
+        wave_ranges[i,:] = [np.nanmin(wave), np.nanmax(wave)]
 
+        # Do the various intensities.  Smooth with a Savitzky-Golay to avoid
+        # bad pixels.
         
+        ndat = len(wave)
+        x_values = np.arange(ndat)
 
+        flux = spectra[i*napertures+aperture,1,:]
+        sg_flux = robust_savgol(x_values, flux, 11)['fit']
 
-
-
-
-
+        flux_ranges[i,:] = get_spec_range(sg_flux,frac=fraction)
         
+        unc = spectra[i*napertures+aperture,2,:]
+        sg_unc = robust_savgol(x_values, unc, 11)['fit']
 
-    
-    # Get the plotting ranges
+        unc_ranges[i,:] = get_spec_range(sg_unc,frac=fraction)        
 
-#    plot_ranges = {}
-#    for i in range(nkeys):
+        snr = flux/unc
+        sg_snr = robust_savgol(x_values, snr, 11)['fit']        
 
-#        all = spectra
-
-    
-
-    
-    
-    
-    # Deal with the possibility that both ladder and continuous are set.
-
-    if ladder is True and continuous is True:
-
-        continuous = False
-
-    if ladder is True:
-
-        x = 1
-
+        snr_ranges[i,:] = get_spec_range(sg_snr,frac=fraction)
         
-    
+    return (wave_ranges, flux_ranges, unc_ranges, snr_ranges)
