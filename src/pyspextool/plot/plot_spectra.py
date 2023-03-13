@@ -5,7 +5,7 @@ import os
 from pyspextool.fit.robust_savgol import robust_savgol
 from pyspextool.plot.limits import get_spec_range
 from pyspextool.io.check import check_parameter, check_file
-from read_spectra_fits import read_spectra_fits
+from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.plot import limits
 
 def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
