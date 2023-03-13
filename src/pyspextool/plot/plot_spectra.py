@@ -5,13 +5,13 @@ import os
 from pyspextool.fit.robust_savgol import robust_savgol
 from pyspextool.plot.limits import get_spec_range
 from pyspextool.io.check import check_parameter, check_file
-from read_spectra_fits import read_spectra_fits
+from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.plot import limits
 
 def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
-                 aperture=0, xlabel=None, ylabel=None, title=None,
+                 aperture=0, xlabel='Wavelength', ylabel='Flux Density', title=None,
                  colors='green', yrange_buffer=0.05, order_numbers=True,
-                 qafileinfo=None):
+                 qafileinfo=None,display=True):
 
     """
     To plot a pyspextool FITS file.
@@ -27,7 +27,7 @@ def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
         figsize : tuple of (float, float), optional
             A (2,) tuple giving the page size.
 
-        y : {'flux', 'uncertainty', 'snr'}, optional
+        y : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}, optional
             Which spectrum to plot.
 
         aperture : int, default=0
@@ -138,15 +138,26 @@ def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
 
     if y == 'flux':
 
-        yrange = [np.min(franges), np.max(franges)]
+        yrange = [np.nanmin(franges), np.nanmax(franges)]
 
     elif y == 'uncertainty':
 
-        yrange = [np.min(uranges), np.max(uranges)]
+        yrange = [np.nanmin(uranges), np.nanmax(uranges)]
 
     elif y == 'snr':
 
-        yrange = [np.min(sranges), np.max(sranges)]
+        yrange = [np.nanmin(sranges), np.nanmax(sranges)]
+        
+
+    elif y == 'flux and uncertainty':
+
+        yrange = [np.nanmin(franges), np.nanmax(franges)]
+#        yrange = [np.nanmin(np.concatenate(franges,uranges).flatten()), np.nanmax(np.concatenate(franges,uranges).flatten())]
+        
+
+    else:
+
+        raise ValueError('Do not recognize y axis name {}'.format(y))
         
 
     if plot_type == 'continuous':
@@ -165,7 +176,7 @@ def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
 
         figure = pl.figure(figsize=figure_size)
         ax = figure.add_axes([0.125,0.11,0.775,0.77])
-        ax.plot([np.nan],[np.nan])
+#        ax.plot([np.nan],[np.nan])
         ax.set_xlim(xrange)
         ax.set_ylim(yrange)
         ax.set_xlabel(xlabel)
@@ -186,15 +197,24 @@ def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
             if y == 'flux':
                 
                 yvalues = spectra[i*napertures+aperture,1,:]
+                y2values = [np.nan]*len(yvalues)
                 
             elif y == 'uncertainty':
             
-                ayvalues = spectra[i*napertures+aperture,2,:]
+                yvalues = spectra[i*napertures+aperture,2,:]
+                y2values = [np.nan]*len(yvalues)
                 
             elif y == 'snr':
                 
                 yvalues = spectra[i*napertures+aperture,1,:]/\
                 spectra[i*napertures+aperture,2,:]
+                y2values = [np.nan]*len(yvalues)
+
+            elif y == 'flux and uncertainty':
+            
+                yvalues = spectra[i*napertures+aperture,1,:]
+                y2values = spectra[i*napertures+aperture,2,:]
+                
                 
             # Get the colors
             
@@ -222,7 +242,8 @@ def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
 
             # Plot the spectrum
                 
-            ax.plot(xvalues, yvalues, color=color)
+            ax.plot(xvalues, yvalues, color=color, ls='-')
+            ax.plot(xvalues, y2values, color=color, ls='--')
 
             # Now label the order numbers
             
@@ -279,10 +300,11 @@ def plot_spectra(file, plot_type='continuous', figsize=None, y='flux',
         pl.savefig(os.path.join(filepath,filename+extension))
             
 
-    else:
+    if display is True:
 
         pl.show()
 
+    return ax
     
 
     
