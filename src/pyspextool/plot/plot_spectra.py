@@ -26,7 +26,7 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
         plot_size : tuple of (float, float), optional
             A (2,) tuple giving the page size.
 
-        y : {'flux', 'uncertainty', 'snr'}, optional
+        y : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}, optional
             Which spectrum to plot.
 
         aperture : int, default=0
@@ -139,18 +139,30 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
 
     if y == 'flux':
 
-        yrange = [np.min(franges), np.max(franges)]
+        yrange = [np.nanmin(franges), np.nanmax(franges)]
         ylabel = latex_ylabel
 
     elif y == 'uncertainty':
 
-        yrange = [np.min(uranges), np.max(uranges)]
         ylabel = 'Uncertainty (' + latex_yunits + ')'
+        yrange = [np.nanmin(uranges), np.nanmax(uranges)]
 
     elif y == 'snr':
 
-        yrange = [np.min(sranges), np.max(sranges)]
         ylabel = 'Signal to Noise'
+        yrange = [np.nanmin(sranges), np.nanmax(sranges)]
+
+
+    elif y == 'flux and uncertainty':
+
+        yrange = [np.nanmin(franges), np.nanmax(franges)]
+#        yrange = [np.nanmin(np.concatenate(franges,uranges).flatten()), np.nanmax(np.concatenate(franges,uranges).flatten())]
+
+
+    else:
+
+        raise ValueError('Do not recognize y axis name {}'.format(y))
+
 
     if plot_type == 'continuous':
 
@@ -186,17 +198,26 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
             xvalues = spectra[i * napertures + aperture, 0, :]
 
             if y == 'flux':
-
-                yvalues = spectra[i * napertures + aperture, 1, :]
+                
+                yvalues = spectra[i*napertures+aperture,1,:]
+                y2values = [np.nan]*len(yvalues)
 
             elif y == 'uncertainty':
-
-                yvalues = spectra[i * napertures + aperture, 2, :]
-
+            
+                yvalues = spectra[i*napertures+aperture,2,:]
+                y2values = [np.nan]*len(yvalues)
+                
             elif y == 'snr':
+                
+                yvalues = spectra[i*napertures+aperture,1,:]/\
+                spectra[i*napertures+aperture,2,:]
+                y2values = [np.nan]*len(yvalues)
 
-                yvalues = spectra[i * napertures + aperture, 1, :] / \
-                          spectra[i * napertures + aperture, 2, :]
+            elif y == 'flux and uncertainty':
+
+                yvalues = spectra[i*napertures+aperture,1,:]
+                y2values = spectra[i*napertures+aperture,2,:]
+
 
             # Get the colors
 
@@ -223,8 +244,9 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
                 color = colors
 
             # Plot the spectrum
-
-            ax.plot(xvalues, yvalues, color=color)
+                
+            ax.plot(xvalues, yvalues, color=color, ls='-')
+            ax.plot(xvalues, y2values, color=color, ls='--')
 
             # Now label the order numbers
 
@@ -284,9 +306,12 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
         pl.show()
         pl.close()
 
+    return ax
+
+
 
 def get_ranges(spectra, norders, napertures, aperture, fraction=0.05):
-    
+
     """
     To determine the x and y ranges of each order
 
