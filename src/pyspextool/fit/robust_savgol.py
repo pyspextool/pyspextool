@@ -60,21 +60,13 @@ def robust_savgol(x, y, window_length, polyorder=2, thresh=4, eps=0.1,
     The function uses scipy.signal.savgol_filter.  All savgol_filters take
     on their default values.
 
-
-    Examples
-    --------
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program XS
-
     """
 
     # Convert to numpy arrays and do basic things
 
     goodbad = goodbad_init(y, goodbad=goodbad)
-
+    ndat = np.size(y)
+        
     # Grab the good points
 
     initgood = goodbad == 1
@@ -114,25 +106,31 @@ def robust_savgol(x, y, window_length, polyorder=2, thresh=4, eps=0.1,
             mean = np.mean(residual)
             stddev = np.std(residual)
 
-            # Check to see if the new stddev isn't much of a change from the old one
+            # Check to see if the new stddev isn't much of a change
+            # from the old one
 
             if (oldstddev - stddev) / oldstddev < eps:
                 break
 
             # Now generate a new full residual array
 
-            f = scipy.interpolate.interp1d(xx[good], smthyy)
+            f = scipy.interpolate.interp1d(xx[good], smthyy,                                                               fill_value='extrapolate')
             newyy = f(xx)
             residual = yy - newyy
 
             good = np.abs((residual - mean) / stddev) <= thresh
             good_cnt = np.sum(good)
 
+
+    newy = np.full(ndat, np.nan)
+    newy[initgood] = newyy
+
+            
     tmp = np.full(initgood_cnt, 0, dtype=int)
     tmp[good] = 1
     goodbad[initgood] = tmp
 
-    return {'fit': newyy, 'goodbad': goodbad}
+    return {'fit': newy, 'goodbad': goodbad}
 
 
 

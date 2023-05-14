@@ -1,79 +1,102 @@
 import numpy as np
 from scipy import interpolate
 
-from pyspextool.extract import config
-from pyspextool.extract.check_continue import check_continue
+from pyspextool import config as setup
+from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.utils.math import mean_data_stack
 
 
-def make_spatial_profiles(qaplot=False, verbose=True, qafile=False):
-    
+def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
+                          verbose=None):
     """
     To create 1D "average" spatial profiles of the orders.
 
     Parameters 
     ----------
-    qaplot : {False, True}, optional
-        Set to plot the orders in an interactive window.
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
 
-    verbose : {True, False}, optional
-    Set to True for command line updates during execution. 
-    
-    qafile : {False, True}, optional
-        Set to plot the QA plot to disk.
+    qa_plotsize : tuple, default=(6, 10)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
+
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.state['verbose'] in the
+        pyspextool config file.
 
     Returns 
     -------
     None
-    Fills the config.state['profiles'] variable and optionally creates a 
+    Fills the config.extract['profiles'] variable and optionally creates a 
     QA file.
-
-    Notes
-    -----
 
     """
 
     #
-    # Check the continue variables
+    # Check to make sure we can proceed.
     #
 
-    check_continue(2)
+    if extract.state['type_done'] is False:
+        message = 'Previous steps not completed.'
+        print(message)
+        return
 
     #
     # Check the parameters
     #
 
-    check_parameter('make_spatial_profiles', 'qaplot', qaplot, 'bool')
-    
-    check_parameter('make_spatial_profiles', 'verbose', verbose, 'bool')
+    check_parameter('make_spatial_profiles', 'qa_plot', qa_plot,
+                    ['NoneType', 'bool'])
 
-    check_parameter('make_spatial_profiles', 'qafile', qafile, 'bool')
+    check_parameter('make_spatial_profiles', 'verbose', verbose,
+                    ['NoneType', 'bool'])
+
+    check_parameter('make_spatial_profiles', 'qa_file', qa_file,
+                    ['NoneType', 'bool'])
 
     #
-    # Saver user inputs
+    # Check the qa and verbose variables and set to system default if need be.
     #
 
-    config.user['profiles']['qaplot'] = qaplot
-    config.user['profiles']['qafile'] = qafile
-    config.user['profiles']['verbose'] = verbose
+    if qa_file is None:
+        qa_file = setup.state['qa_file']
 
-    
-    if verbose is True:
-        print('Creating the spatial profiles...')
+    if qa_plot is None:
+        qa_plot = setup.state['qa_plot']
+
+    if verbose is None:
+        verbose = setup.state['verbose']
+
+        #
+    # Save user inputs
+    #
+
+    extract.profiles['qaplot'] = qa_plot
+    extract.profiles['qafile'] = qa_file
+    extract.profiles['verbose'] = verbose
 
     #
     # Build the profiles
     #
 
-    profiles = []
+    if verbose is True:
+        print('Creating the spatial profiles...')
 
-    for i in range(config.state['norders']):
+    profiles = []
+    for i in range(extract.state['norders']):
 
         # Unpack the data
 
-        order = config.state['rectorders'][i]
+        order = extract.state['rectorders'][i]
 
         img = order['img']
         y = order['y']
@@ -89,12 +112,12 @@ def make_spatial_profiles(qaplot=False, verbose=True, qafile=False):
 
         np.subtract(img, bgimg, out=img)
 
-        if config.state['wavecalfile'] is not None:
+        if extract.load['wavecalfile'] is not None:
 
-            # Do the interpolate of the atmosphere
+            # Do the interpolation of the atmosphere
 
-            f = interpolate.interp1d(config.state['atrans_wave'],
-                                     config.state['atrans_trans'],
+            f = interpolate.interp1d(extract.state['atrans_wave'],
+                                     extract.state['atrans_trans'],
                                      fill_value=1)
             rtrans = f(w)
 
@@ -122,25 +145,26 @@ def make_spatial_profiles(qaplot=False, verbose=True, qafile=False):
 
         # Package up
 
-        profiles.append({'order': config.state['orders'][i], 'y': y,
+        profiles.append({'order': extract.state['orders'][i], 'y': y,
                          'p': np.flip(mean)})
 
-    config.state['profiles'] = profiles
+    extract.state['profiles'] = profiles
 
-    if qaplot is True:
-        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      np.ones(config.state['norders'], dtype=int))
+    if qa_plot is True:
+        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
+                      np.ones(extract.state['norders'], dtype=int),
+                      plot_size=qa_plotsize)
 
-    if qafile is True:
+    if qa_file is True:
         qafileinfo = {'figsize': (8.5, 11),
-                      'filepath':config.user['setup']['qapath'],
-                      'filename': config.state['qafilename'] + '_profiles',
-                      'extension': config.user['setup']['qaextension']}
+                      'filepath': setup.state['qa_path'],
+                      'filename': extract.state['qafilename'] + '_profiles',
+                      'extension': setup.state['qa_extension']}
 
-        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      np.ones(config.state['norders'], dtype=int),
-                      qafileinfo=qafileinfo)
+        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
+                      np.ones(extract.state['norders'], dtype=int),
+                      file_info=qafileinfo)
 
-    # Set the continue flags
+    # Set the done variable
 
-    config.state['continue'] = 3
+    extract.state['profile_done'] = True

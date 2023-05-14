@@ -42,10 +42,6 @@ def add_entry(idict, key, direction, newkey, nvalue):
 
     {'HA': 1, 'new': (3, 4), 'PA': 2, 'MJD': 3}
 
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-
     """
 
     pos = list(idict.keys()).index(key)

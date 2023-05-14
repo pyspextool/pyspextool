@@ -1,7 +1,7 @@
 import numpy as np
 
-from pyspextool.extract import config
-from pyspextool.extract.check_continue import check_continue
+from pyspextool import config as setup
+from pyspextool.extract import config as extract
 from pyspextool.extract.trace_spectrum_1dxd import trace_spectrum_1dxd
 from pyspextool.extract.trace_to_xy import trace_to_xy
 from pyspextool.io.check import check_parameter
@@ -9,8 +9,8 @@ from pyspextool.plot.plot_image import plot_image
 
 
 def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
-                    centroid_threshold=2, fwhm=0.8, verbose=True,
-                    qaplot=True, qafile=False):
+                    centroid_threshold=2, fwhm=0.8, verbose=None,
+                    qa_plot=None, qa_file=None, qa_plotsize=(6, 6)):
     """
     Command line call for tracing apertures.
 
@@ -35,14 +35,23 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     fwhm : float, optional, default 0.8
         The approximate FWHM of the peaks in arcseconds.
 
-    verbose : {True, False}, optional
-        Set to True for command line updates during execution.
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
 
-    qaplot : {True, False}, optional
-        Set to True to plot the qa plot interactively.
+    qa_plotsize : tuple, default=(6,6)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
 
-    qafile : {False, True}, optional
-        Set to True to write the qa plot to disk.
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
+
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.state['verbose'] in the
+        pyspextool config file.
 
     Returns
     -------
@@ -63,9 +72,13 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     """
 
     #
-    # Check continue variable
+    # Check if we can proceed
     #
-    check_continue(4)
+
+    if extract.state['select_done'] is False:
+        message = 'Previous steps not completed.'
+        print(message)
+        return
 
     #
     # Check parameters
@@ -83,44 +96,59 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
     check_parameter('trace_apertures', 'fwhm', fwhm, 'float')
 
-    check_parameter('trace_apertures', 'verbose', verbose, 'bool')
+    check_parameter('trace_apertures', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qaplot', qaplot, 'bool')
+    check_parameter('trace_apertures', 'qa_plot', qa_plot, ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qafile', qafile, 'bool')
+    check_parameter('trace_apertures', 'qa_file', qa_file, ['NoneType', 'bool'])
+
+    check_parameter('trace_apertures', 'qa_plotsize', qa_plotsize, 'tuple')
 
     #
+    # Check the qa and verbose variables and set to system default if need be.
+    #
+
+    if qa_file is None:
+        qa_file = setup.state['qa_file']
+
+    if qa_plot is None:
+        qa_plot = setup.state['qa_plot']
+
+    if verbose is None:
+        verbose = setup.state['verbose']
+
+        #
     # Store user inputs
     #
 
-
-    config.user['trace']['fitdeg'] = fit_degree
-    config.user['trace']['step'] = step_size
-    config.user['trace']['sumwidth'] = summation_width
-    config.user['trace']['centresh'] = centroid_threshold
-    config.user['trace']['fwhm'] = fwhm
-    config.user['trace']['verbose'] = verbose
-    config.user['trace']['qafile'] = qafile
-    config.user['trace']['qaplot'] = qaplot
+    extract.trace['fitdeg'] = fit_degree
+    extract.trace['step'] = step_size
+    extract.trace['sumwidth'] = summation_width
+    extract.trace['centresh'] = centroid_threshold
+    extract.trace['fwhm'] = fwhm
+    extract.trace['qafile'] = qa_file
+    extract.trace['qaplot'] = qa_plot
+    extract.trace['qaplotsize'] = qa_plotsize
+    extract.trace['verbose'] = verbose
 
     #
     # Run the trace
     #
 
-    if config.state['exttype'] == 'ps':
+    if extract.state['type'] == 'ps':
 
         # Point source extraction.  Must actually trace the apertures
 
-        doorders = config.state['psdoorders']
+        doorders = extract.state['psdoorders']
 
         z = doorders == 1
-        trace = trace_spectrum_1dxd(config.state['workimage'],
-                                    config.state['ordermask'],
-                                    config.state['orders'][z],
-                                    config.state['wavecal'],
-                                    config.state['spatcal'],
-                                    config.state['xranges'][z, :],
-                                    config.state['apertures'][z, :],
+        trace = trace_spectrum_1dxd(extract.state['workimage'],
+                                    extract.state['ordermask'],
+                                    extract.state['orders'][z],
+                                    extract.state['wavecal'],
+                                    extract.state['spatcal'],
+                                    extract.state['xranges'][z, :],
+                                    extract.state['apertures'][z, :],
                                     fit_degree=fit_degree,
                                     step_size=step_size,
                                     centroid_threshold=centroid_threshold,
@@ -128,14 +156,14 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         tracecoeffs = trace['coeffs']
 
-        if qaplot is True or qafile is True:
-            norders, naps = np.shape(config.state['apertures'])
-            info = trace_to_xy(config.state['ordermask'],
-                               config.state['wavecal'],
-                               config.state['spatcal'],
-                               config.state['xranges'],
-                               config.state['orders'], doorders, naps,
-                               trace['coeffs'])
+        if qa_plot is True or qa_file is True:
+            norders, naps = np.shape(extract.state['apertures'])
+            info = trace_to_xy(extract.state['ordermask'],
+                               extract.state['wavecal'],
+                               extract.state['spatcal'],
+                               extract.state['xranges'],
+                               extract.state['orders'], doorders, naps,
+                               trace['coeffs'], verbose=verbose)
 
             plotinfo = {'x': trace['x'], 'y': trace['y'],
                         'goodbad': trace['goodbad'], 'fits': info}
@@ -146,24 +174,24 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         # Build the trace coefficients from the aperture positions
 
-        norders, naps = np.shape(config.state['apertures'])
+        norders, naps = np.shape(extract.state['apertures'])
 
-        doorders = config.state['xsdoorders']
+        doorders = extract.state['xsdoorders']
         z = doorders == 1
         ndoorders = np.sum(doorders)
 
         tracecoeffs = np.full((ndoorders * naps, 2), 0)
-        tracecoeffs[:, 0] = np.ravel(config.state['apertures'][z, :])
+        tracecoeffs[:, 0] = np.ravel(extract.state['apertures'][z, :])
 
         # Do the plotting stuff
 
-        if qaplot is True or qafile is True:
-            norders, naps = np.shape(config.state['apertures'])
-            info = trace_to_xy(config.state['ordermask'],
-                               config.state['wavecal'],
-                               config.state['spatcal'],
-                               config.state['xranges'],
-                               config.state['orders'], doorders, naps,
+        if qa_plot is True or qa_file is True:
+            norders, naps = np.shape(extract.state['apertures'])
+            info = trace_to_xy(extract.state['ordermask'],
+                               extract.state['wavecal'],
+                               extract.state['spatcal'],
+                               extract.state['xranges'],
+                               extract.state['orders'], doorders, naps,
                                tracecoeffs)
 
             plotinfo = {'fits': info}
@@ -172,26 +200,27 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     # Store the results
     #
 
-    config.state['tracecoeffs'] = tracecoeffs
+    extract.state['tracecoeffs'] = tracecoeffs
 
     #
     # Plot stuff up if requested
     #
 
-    if qaplot is True:
-        plot_image(config.state['workimage'], trace_plotinfo=plotinfo)
+    if qa_plot is True:
+        plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
+                   plot_size=qa_plotsize)
 
-    if qafile is True:
+    if qa_file is True:
         qafileinfo = {'figsize': (7, 7),
-                      'filepath': config.user['setup']['qapath'],
-                      'filename': config.state['qafilename'] + '_trace',
-                      'extension': config.user['setup']['qaextension']}
+                      'filepath': setup.state['qa_path'],
+                      'filename': extract.state['qafilename'] + '_trace',
+                      'extension': setup.state['qa_extension']}
 
-        plot_image(config.state['workimage'], trace_plotinfo=plotinfo,
-                   qafileinfo=qafileinfo)
+        plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
+                   file_info=qafileinfo)
 
     #
-    # Set the continue flag
+    # Set the done variable
     #
 
-    config.state['continue'] = 5
+    extract.state['trace_done'] = True

@@ -8,7 +8,6 @@ from pyspextool.utils.arrays import trim_nan
 from pyspextool.utils.loop_progress import loop_progress
 
 
-
 def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
                                 appos, apradii, linmax_bitmask=None,
                                 badpixel_mask=None, bginfo=None, verbose=True):
@@ -31,6 +30,10 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
         (nrows, cols) image where each pixel is set to its
         order number.  Inter-order pixels are set to zero.
 
+    orders : list of int
+        (norders,) int array of the order numbers.  By Spextool convention,
+        orders[0] is the order closest to the bottom of the array.
+
     wavecal : numpy.ndarray
         (nrows,ncols) image where each pixel is set to its wavelength.
 
@@ -41,7 +44,7 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
     appos : numpy.ndarray
         (naps,) array of aperture positions (arcseconds).
 
-    apradius : numpy.ndarray
+    apradii : numpy.ndarray
         (naps,) array of aperture radii (arcseconds).
 
     linmax_bitmask : numpy.ndarray, optional
@@ -123,20 +126,19 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
         # Start the order loop
 
     spectrum_list = []
-    background_list = []    
+    background_list = []
     for i in range(norders):
 
+        if verbose is True and i == 0:
 
-        if verbose is not None and i == 0:
-
-            message = 'Extracting '+str(naps)+' apertures in '+str(norders)+\
-              ' orders'
+            message = 'Extracting ' + str(naps) + ' apertures in ' + str(norders) + \
+                      ' orders'
 
             if bgregions is not None:
-                print(message+' (with background subtraction)...')
+                print(message + ' (with background subtraction)...')
             else:
-                print(message+' (without background subtraction)...')                
-                
+                print(message + ' (without background subtraction)...')
+
         zordr = np.where(ordermask == orders[i])
         xmin = np.min(xx[zordr])
         xmax = np.max(xx[zordr])
@@ -145,21 +147,19 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
         #
         # Create the output arrays
         #
-        
+
         spectrum_wave = np.full(nwaves, np.nan)
         spectrum_flux = np.full((naps, nwaves), np.nan)
         spectrum_unc = np.full((naps, nwaves), np.nan)
         spectrum_mask = np.zeros((naps, nwaves), dtype=int)
 
         if bgregions is not None:
-
             background_wave = np.full(nwaves, np.nan)
             background_flux = np.full((naps, nwaves), np.nan)
             background_unc = np.full((naps, nwaves), np.nan)
-            background_mask = np.zeros((naps, nwaves), dtype=int)            
+            background_mask = np.zeros((naps, nwaves), dtype=int)
 
-    
-        # Start the wavelength loop
+            # Start the wavelength loop
 
         for j in range(nwaves):
 
@@ -183,24 +183,23 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
             # Generate the aperture mask
 
-            slitmask = make_aperture_mask(slit_arc, appos[i,:], apradii,
+            slitmask = make_aperture_mask(slit_arc, appos[i, :], apradii,
                                           xsbginfo=bgregions)
 
             #
             # Do the background subtraction
             #
-            
-            if bgregions is not None:
 
+            if bgregions is not None:
                 # Fit the background
-                
+
                 z = (slitmask == -1)
-                result = poly_fit_1d(slit_arc[z], slit_img[z],bgdeg,
-                                     robust={'thresh':4, 'eps':0.1},
+                result = poly_fit_1d(slit_arc[z], slit_img[z], bgdeg,
+                                     robust={'thresh': 4, 'eps': 0.1},
                                      silent=True)
 
                 # Generate a background slit 
-                
+
                 slit_bg, slit_bg_var = poly_1d(slit_arc, result['coeffs'],
                                                covar=result['coeff_covar'])
 
@@ -208,13 +207,13 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
                 slit_img = np.subtract(slit_img, slit_bg)
                 slit_var = slit_var + slit_bg_var
-                
+
             # Do the sum extraction
 
             for k in range(naps):
 
                 # Find the apertures
-                
+
                 z = (slitmask > float(k)) & (slitmask <= float(k + 1))
 
                 # Create partial array
@@ -225,18 +224,17 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
                 #
 
                 # Spectrum first
-                
+
                 spectrum_flux[k, j] = np.sum(slit_img[z] * partial)
-                varval = np.sum(slit_var[z] * partial**2)
+                varval = np.sum(slit_var[z] * partial ** 2)
                 spectrum_unc[k, j] = np.sqrt(np.abs(varval))
 
                 # Background second
                 if bgregions is not None:
-                
                     background_flux[k, j] = np.sum(slit_bg[z] * partial)
-                    varval = np.sum(slit_bg_var[z] * partial**2)
-                    background_unc[k, j] = np.sqrt(np.abs(varval))                                                
-            # Check the bitmask for linearity
+                    varval = np.sum(slit_bg_var[z] * partial ** 2)
+                    background_unc[k, j] = np.sqrt(np.abs(varval))
+                    # Check the bitmask for linearity
 
             z = slit_lmm == 1
             if sum(z) is True:
@@ -259,20 +257,19 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
             spectrum_list.append(spectrum)
 
             if bgregions is not None:
-            
                 background = np.stack((spectrum_wave[nonan],
                                        background_flux[k, nonan],
                                        background_unc[k, nonan],
                                        background_mask[k, nonan]))
-                background_list.append(background)                        
+                background_list.append(background)
 
-        if verbose is not None:
+        if verbose is True:
             loop_progress(i, 0, norders)
 
     if bgregions is not None:
 
-        return({'spectra':spectrum_list, 'background':background_list})
+        return {'spectra': spectrum_list, 'background': background_list}
 
-    else: 
+    else:
 
-        return({'spectra':spectrum_list, 'background':None})       
+        return {'spectra': spectrum_list, 'background': None}

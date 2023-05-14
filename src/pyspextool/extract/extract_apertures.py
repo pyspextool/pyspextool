@@ -1,28 +1,39 @@
 import numpy as np
 import os
 
-from pyspextool.extract import config
-from pyspextool.extract.check_continue import check_continue
+from pyspextool import config as setup
+from pyspextool.extract import config as extract
 from pyspextool.extract.extract_pointsource_1dxd import extract_pointsource_1dxd
 from pyspextool.extract.extract_extendedsource_1dxd import extract_extendedsource_1dxd
 from pyspextool.io.check import check_parameter
 from pyspextool.io.write_apertures_fits import write_apertures_fits
+from pyspextool.plot.plot_spectra import plot_spectra
 
 
-
-def extract_apertures(output_filenames=None, verbose=True):
-
+def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
+                      verbose=None):
     """
     User function to extract spectra.
 
     Parameters
     ----------
-    output_filenames : list of str, optional
-        A (nfiles,) list of output file names sans the suffix.  Only required 
-        if the data are read in in the file read mode.
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
 
-    verbose : {True, False}, optional
-        Set to True for command line updates during execution.
+    qa_plotsize : tuple, default=(6,6)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
+
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.state['verbose'] in the
+        pyspextool config file.
 
     Returns 
     -------
@@ -31,125 +42,133 @@ def extract_apertures(output_filenames=None, verbose=True):
     """
 
     #
+    # Check if we can proceed.
+    #
+
+    if extract.state['parameters_done'] is False:
+        message = 'Previous steps not completed.'
+        print(message)
+        return
+
+    #
     # Check parameters.  Just do it now to not waste extracting.
     #
 
-    check_parameter('extract_apertures', 'output_filenames',
-                    output_filenames, ['str', 'list', 'NoneType'])
+    check_parameter('extract_apertures', 'qa_plot', qa_plot,
+                    ['NoneType', 'bool'])
+
+    check_parameter('extract_apertures', 'qa_plotsize', qa_plotsize,
+                    'tuple')
+
+    check_parameter('extract_apertures', 'qa_file', qa_file,
+                    ['NoneType', 'bool'])
 
     check_parameter('extract_apertures', 'verbose',
-                    verbose, 'bool')
+                    verbose, ['NoneType', 'bool'])
 
+    #
+    # Check the qa and verbose variables and set to system default if need be.
+    #
+
+    if qa_file is None:
+        qa_file = setup.state['qa_file']
+
+    if qa_plot is None:
+        qa_plot = setup.state['qa_plot']
+
+    if verbose is None:
+        verbose = setup.state['verbose']
 
     #
     # Store user inputs
     #
 
-    config.user['extract']['verbose'] = verbose
-    
+    extract.extract['qafile'] = qa_file
+    extract.extract['qaplot'] = qa_plot
+    extract.extract['verbose'] = verbose
+
     #
     # The procedure depends on the extraction type, point or extended source
     #
 
     xsbginfo = None
     psbginfo = None
-    
-    if config.state['exttype'] == 'ps':
+
+    if extract.state['type'] == 'ps':
 
         #
-        #========================= Point Source ============================
+        # ========================= Point Source ============================
         #
 
         # Grab which orders are being extracted
-            
-        z = config.state['psdoorders'] == 1
+
+        z = extract.state['psdoorders'] == 1
 
         # Create the background information dictionary
-        
-        if config.state['bgradius'] is not None:
 
-            psbginfo = {'radius': config.state['bgradius'],
-                        'width': config.state['bgwidth'],
-                        'degree': config.state['bgfitdeg']}
-        
-        # Create the aperture radii list
+        if extract.state['bgradius'] is not None:
+            psbginfo = {'radius': extract.state['bgradius'],
+                        'width': extract.state['bgwidth'],
+                        'degree': extract.state['bgfitdeg']}
 
-        apradii = np.full(config.state['naps'], config.state['apradii'])
-        
         # Do the extraction
-            
-        spectra = extract_pointsource_1dxd(config.state['workimage'],
-                                           config.state['varimage'],
-                                           config.state['ordermask'],
-                                           config.state['orders'][z],
-                                           config.state['wavecal'],
-                                           config.state['spatcal'],
-                                           config.state['tracecoeffs'],
-                                           config.state['apradii'],
-                                           config.state['apsigns'],                                                        bginfo=psbginfo)
+
+        spectra = extract_pointsource_1dxd(extract.state['workimage'],
+                                           extract.state['varimage'],
+                                           extract.state['ordermask'],
+                                           extract.state['orders'][z],
+                                           extract.state['wavecal'],
+                                           extract.state['spatcal'],
+                                           extract.state['tracecoeffs'],
+                                           extract.state['apradii'],
+                                           extract.state['apsigns'],
+                                           bginfo=psbginfo, verbose=verbose)
 
     else:
 
         #
-        #======================= Extended Source ===========================
+        # ======================= Extended Source ===========================
         #
 
-        #
-        # Create the full path
-        #
-        
-        # Make a list if it isn't one.
-        
-        full_filenames = output_filenames
-        if isinstance(output_filenames, str):
-
-            output_filenames = os.path.join(config.state['procpath'],
-                                            output_filenames)
-
-        else:
-            
-            output_filenames = [os.path.join(config.state['procpath'],
-                                output_filenames) for e in output_filenames]
-
-            
-        #
-        # Now do the extracton
-        #
-        
         # Grab which orders are being extracted
-            
-        z = config.state['xsdoorders'] == 1
-        
+
+        z = extract.state['xsdoorders'] == 1
+
         # Create background information dictionary
 
-        if config.state['bgregions'] is not None:
-
-            xsbginfo = {'regions': config.state['bgregions'],
-                        'degree': config.state['bgfitdeg']}
+        if extract.state['bgregions'] is not None:
+            xsbginfo = {'regions': extract.state['bgregions'],
+                        'degree': extract.state['bgfitdeg']}
 
         # Do the extraction
-        
-        spectra = extract_extendedsource_1dxd(config.state['workimage'],
-                                              config.state['varimage'],
-                                              config.state['ordermask'],
-                                              config.state['orders'][z],
-                                              config.state['wavecal'],
-                                              config.state['spatcal'],
-                                              config.state['apertures'][z],
-                                              config.state['apradii'],
-                                              bginfo=xsbginfo)
+
+        spectra = extract_extendedsource_1dxd(extract.state['workimage'],
+                                              extract.state['varimage'],
+                                              extract.state['ordermask'],
+                                              extract.state['orders'][z],
+                                              extract.state['wavecal'],
+                                              extract.state['spatcal'],
+                                              extract.state['apertures'][z],
+                                              extract.state['apradii'],
+                                              bginfo=xsbginfo, verbose=verbose)
 
     #
     # Write the results to disk
     #
 
     write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
-                    output_filenames=output_filenames, verbose=verbose)
+                    qa_file=qa_file, qa_plot=qa_plot, qa_plotsize=qa_plotsize,
+                    verbose=verbose)
 
-        
-def write_apertures(spectra, psbginfo=None, xsbginfo=None,
-                    output_filenames=None, verbose=True):
+    #
+    # Set the done variable
+    #
 
+    extract.state['extract_done'] = True
+
+
+def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
+                    qa_file=None, qa_plotsize=(10, 6), verbose=None):
     """
     To write extracted spectra to disk.
 
@@ -183,12 +202,23 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
         `"degree"` : int
             The background polynomial fit degree.
 
-    output_filenames : list of str, optional
-        A (nfiles,) list of output file names sans the suffix.  Only required 
-        if the data are loaded using the file read mode.
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
 
-    verbose : {True, False}, optional
-        Set to True for command line updates during execution.
+    qa_plotsize : tuple, default=(10,6)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
+
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.state['verbose'] in the
+        pyspextool config file.
 
     Returns 
     -------
@@ -197,230 +227,297 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None,
        Writes FITS files to disk.
 
     """
-    
+
+    #
+    # Get the plotting ready
+    #
+
+    qafileinfo = {'figsize': (11, 8.5), 'filepath': setup.state['qa_path'],
+                  'filename': extract.state['qafilename'],
+                  'extension': setup.state['qa_extension']}
+
     # Unpack the spectra dictionary
-    
-    if spectra['background'] is not None:
-        background = spectra
-
-    else:
-
-        background = None
+    #if spectra['background'] is not None:
+    #    background = spectra
+    #else:
+    #    background = None
 
     spectra = spectra['spectra']
-    
+
     # Get the wavelengh calibration info if used.
 
-    if config.user['load']['wavecalfile'] != None:
+    if extract.load['wavecalfile'] is not None:
 
-        wavecalinfo = {'file':config.user['load']['wavecalfile'],
-                       'wavecaltype':config.state['wavecaltype'],
-                       'wavetype':'vacuum'}                           
+        wavecalinfo = {'file': extract.load['wavecalfile'],
+                       'wavecaltype': extract.state['wavecaltype'],
+                       'wavetype': 'vacuum'}
 
     else:
 
         wavecalinfo = None
-    
+
     # Things proceed depending on the extraction mode
 
-    if config.state['exttype'] == 'ps':
+    if extract.state['type'] == 'ps':
 
         #
-        #========================= Point Source ============================
+        # ========================= Point Source ============================
         #
 
         # Grab things all modes need
 
-        xranges = config.state['xranges'][config.state['psdoorders']]
-        orders = config.state['orders'][config.state['psdoorders']]    
-        apertures = config.state['apertures'][config.state['psdoorders']]
-        norders = np.sum(config.state['psdoorders'])
+        xranges = extract.state['xranges'][extract.state['psdoorders']]
+        orders = extract.state['orders'][extract.state['psdoorders']]
+        apertures = extract.state['apertures'][extract.state['psdoorders']]
+        norders = np.sum(extract.state['psdoorders'])
 
         # Now go mode by mode
-        
-        if config.state['reductionmode'] == 'A':
+
+        if extract.state['reductionmode'] == 'A':
 
             # Get file information
-             
-            hdrinfo = config.state['hdrinfo'][0]
+
+            hdrinfo = extract.state['hdrinfo'][0]
             aimage = hdrinfo['FILENAME'][0]
             sky = 'None'
-            output_fullpath = config.state['output_files'][0]
+            output_fullpath = extract.state['output_files'][0]
 
             # Write ther results
-            
+
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 config.user['load']['flatfile'],
-                                 config.state['naps'],
+                                 extract.load['load']['flatfile'],
+                                 extract.state['naps'],
                                  orders, hdrinfo, apertures,
-                                 config.state['apradii'],
-                                 config.state['plate_scale'],
-                                 config.state['slith_pix'],
-                                 config.state['slith_arc'],
-                                 config.state['slitw_pix'],
-                                 config.state['slitw_arc'],
-                                 config.state['resolvingpower'],
-                                 'um', 'DN s-1', 'microns', 'flux',
-                                 config.state['version'],
+                                 extract.state['apradii'],
+                                 extract.state['plate_scale'],
+                                 extract.state['slith_pix'],
+                                 extract.state['slith_arc'],
+                                 extract.state['slitw_pix'],
+                                 extract.state['slitw_arc'],
+                                 extract.state['resolvingpower'],
+                                 'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
+                                 'Wavelength ($\mu$m)',
+                                 'Count Rate (DN s$^{-1}$)',
+                                 setup.state['version'],
                                  output_fullpath, wavecalinfo=wavecalinfo,
 #                                 background_spectra=background[z],
                                  psbginfo=psbginfo,
                                  verbose=verbose)
 
+            # Plot the spectra
 
-            
-        elif config.state['reductionmode'] == 'A-B':       
+            if qa_plot is True:
+                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
+                             plot_size=qa_plotsize)
+
+            if qa_file is True:
+                qafileinfo['filename'] = os.path.basename(output_fullpath)
+                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
+
+        elif extract.state['reductionmode'] == 'A-B':
 
             # Are there positive apertures?
 
-            z_pos = config.state['apsigns'] == 1
+            z_pos = extract.state['apsigns'] == 1
             pos_naps = int(np.sum(z_pos))
             if pos_naps != 0:
 
                 # Get file information
-             
-                hdrinfo = config.state['hdrinfo'][0]
+
+                hdrinfo = extract.state['hdrinfo'][0]
                 aimage = hdrinfo['FILENAME'][0]
-                sky = config.state['hdrinfo'][1]['FILENAME'][0]
-                output_fullpath = config.state['output_files'][0]
+                sky = extract.state['hdrinfo'][1]['FILENAME'][0]
+                output_fullpath = extract.state['output_files'][0]
 
                 # Now get the indices for the spectra array
 
-                full_apsign = np.tile(config.state['apsigns'],norders)
+                full_apsign = np.tile(extract.state['apsigns'], norders)
                 z = (np.where(full_apsign == 1))[0]
                 pos_spectra = [spectra[i] for i in z]
 
                 write_apertures_fits(pos_spectra, xranges, aimage, sky,
-                                     config.user['load']['flatfile'],
-                                     pos_naps, orders, hdrinfo, apertures,
-                                     config.state['apradii'],
-                                     config.state['plate_scale'],
-                                     config.state['slith_pix'],
-                                     config.state['slith_arc'],
-                                     config.state['slitw_pix'],
-                                     config.state['slitw_arc'],
-                                     config.state['resolvingpower'],
-                                     'um', 'DN s-1', 'microns', 'flux',
-                                     config.state['version'],
+                                     extract.load['flatfile'], pos_naps,
+                                     orders, hdrinfo, apertures,
+                                     extract.state['apradii'],
+                                     extract.state['plate_scale'],
+                                     extract.state['slith_pix'],
+                                     extract.state['slith_arc'],
+                                     extract.state['slitw_pix'],
+                                     extract.state['slitw_arc'],
+                                     extract.state['resolvingpower'],
+                                     'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
+                                     'Wavelength ($\mu$m)',
+                                     'Count Rate (DN s$^{-1}$)',
+                                     setup.state['version'],
                                      output_fullpath, wavecalinfo=wavecalinfo,
 #                                     background_spectra=background[z],
                                      psbginfo=psbginfo,
                                      verbose=verbose)
 
+                # Plot the spectra
+
+                filename = os.path.basename(output_fullpath)
+                if qa_plot is True:
+                    plot_spectra(output_fullpath + '.fits',
+                                 title=filename+'.fits',
+                                 plot_size=qa_plotsize)
+
+                if qa_file is True:
+                    qafileinfo['filename'] = filename
+                    plot_spectra(output_fullpath + '.fits',
+                                 file_info=qafileinfo)
+
             # Are there negative apertures?
 
-            z_neg = config.state['apsigns'] == -1
+            z_neg = extract.state['apsigns'] == -1
             neg_naps = int(np.sum(z_neg))
             if neg_naps != 0:
 
                 # Get file information
-             
-                hdrinfo = config.state['hdrinfo'][1]
+
+                hdrinfo = extract.state['hdrinfo'][1]
                 aimage = hdrinfo['FILENAME'][1]
-                sky = config.state['hdrinfo'][0]['FILENAME'][0]
-                output_fullpath = config.state['output_files'][1]
+                sky = extract.state['hdrinfo'][0]['FILENAME'][0]
+                output_fullpath = extract.state['output_files'][1]
 
                 # Now get the indices for the spectra array
 
-                full_apsign = np.tile(config.state['apsigns'],norders)
+                full_apsign = np.tile(extract.state['apsigns'], norders)
                 z = (np.where(full_apsign == -1))[0]
                 neg_spectra = [spectra[i] for i in z]
 
                 write_apertures_fits(neg_spectra, xranges, aimage, sky,
-                                     config.user['load']['flatfile'],
+                                     extract.load['flatfile'],
                                      neg_naps, orders, hdrinfo, apertures,
-                                     config.state['apradii'],
-                                     config.state['plate_scale'],
-                                     config.state['slith_pix'],
-                                     config.state['slith_arc'],
-                                     config.state['slitw_pix'],
-                                     config.state['slitw_arc'],
-                                     config.state['resolvingpower'],
-                                     'um', 'DN s-1', 'microns', 'flux',
-                                     config.state['version'],
+                                     extract.state['apradii'],
+                                     extract.state['plate_scale'],
+                                     extract.state['slith_pix'],
+                                     extract.state['slith_arc'],
+                                     extract.state['slitw_pix'],
+                                     extract.state['slitw_arc'],
+                                     extract.state['resolvingpower'],
+                                     'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
+                                     'Wavelength ($\mu$m)',
+                                     'Count Rate (DN s$^{-1}$)',
+                                     setup.state['version'],
                                      output_fullpath, wavecalinfo=wavecalinfo,
 #                                     background_spectra=background[z],
                                      psbginfo=psbginfo,
-                                     verbose=verbose)                
-                
-            
-        elif config.state['reductionmode'] == 'A-Sky/Dark':
+                                     verbose=verbose)
+
+                # Plot the spectra
+
+                filename = os.path.basename(output_fullpath)
+                if qa_plot is True:
+                    plot_spectra(output_fullpath + '.fits',
+                                 title=filename+'.fits',
+                                 plot_size=qa_plotsize)
+
+                if qa_file is True:
+                    qafileinfo['filename'] = filename
+                    plot_spectra(output_fullpath + '.fits',
+                                 file_info=qafileinfo)
+
+        elif extract.state['reductionmode'] == 'A-Sky/Dark':
 
             x = 1
-            
+
         else:
 
-            print('Reduction Mode Unknown.')     
-            
+            print('Reduction Mode Unknown.')
+
     else:
 
         #
-        #======================= Extended Source ===========================
+        # ======================= Extended Source ===========================
         #
 
         # Grab things all modes need
-        
-        xranges = config.state['xranges'][config.state['psdoorders']]
-        orders = config.state['orders'][config.state['psdoorders']]    
-        apertures = config.state['apertures'][config.state['psdoorders']]
-        norders = np.sum(config.state['psdoorders'])
 
-        if config.state['reductionmode'] == 'A':
+        xranges = extract.state['xranges'][extract.state['psdoorders']]
+        orders = extract.state['orders'][extract.state['psdoorders']]
+        apertures = extract.state['apertures'][extract.state['psdoorders']]
 
-            hdrinfo = config.state['hdrinfo'][0]
+        if extract.state['reductionmode'] == 'A':
+
+            hdrinfo = extract.state['hdrinfo'][0]
             aimage = hdrinfo['FILENAME'][0]
             sky = 'None'
-
+            output_fullpath = extract.state['output_files'][0]
+            
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 config.user['load']['flatfile'],
-                                 config.state['naps'],
+                                 extract.load['flatfile'],
+                                 extract.state['naps'],
                                  orders, hdrinfo, apertures,
-                                 config.state['apradii'],
-                                 config.state['plate_scale'],
-                                 config.state['slith_pix'],
-                                 config.state['slith_arc'],
-                                 config.state['slitw_pix'],
-                                 config.state['slitw_arc'],
-                                 config.state['resolvingpower'],
-                                 'um', 'DN s-1', 'microns', 'flux',
-                                 config.state['version'],
-                                 output_filenames, wavecalinfo=wavecalinfo,
+                                 extract.state['apradii'],
+                                 extract.state['plate_scale'],
+                                 extract.state['slith_pix'],
+                                 extract.state['slith_arc'],
+                                 extract.state['slitw_pix'],
+                                 extract.state['slitw_arc'],
+                                 extract.state['resolvingpower'],
+                                 'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
+                                 'Wavelength ($\mu$m)',
+                                 'Count Rate (DN s$^{-1}$)',
+                                 setup.state['version'],
+                                 output_fullpath, wavecalinfo=wavecalinfo,
 #                                 background_spectra=background[z],
                                  xsbginfo=xsbginfo,
                                  verbose=verbose)
 
-        
-        elif config.state['reductionmode'] == 'A-B':
+            # Plot the spectra
 
-            hdrinfo = config.state['hdrinfo'][0]
+            if qa_plot is True:
+                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
+                             plot_size=qa_plotsize)
+
+            if qa_file is True:
+                qafileinfo['filename'] = os.path.basename(output_fullpath)
+                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
+
+        elif extract.state['reductionmode'] == 'A-B':
+
+            hdrinfo = extract.state['hdrinfo'][0]
             aimage = hdrinfo['FILENAME'][0]
-            sky = config.state['hdrinfo'][1]['FILENAME'][0]
+            sky = extract.state['hdrinfo'][1]['FILENAME'][0]
+            output_fullpath = extract.state['output_files'][0]            
 
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 config.user['load']['flatfile'],
-                                 config.state['naps'],
+                                 extract.load['flatfile'],
+                                 extract.state['naps'],
                                  orders, hdrinfo, apertures,
-                                 config.state['apradii'],
-                                 config.state['plate_scale'],
-                                 config.state['slith_pix'],
-                                 config.state['slith_arc'],
-                                 config.state['slitw_pix'],
-                                 config.state['slitw_arc'],
-                                 config.state['resolvingpower'],
-                                 'um', 'DN s-1', 'microns', 'flux',
-                                 config.state['version'],
-                                 output_filenames, wavecalinfo=wavecalinfo,
+                                 extract.state['apradii'],
+                                 extract.state['plate_scale'],
+                                 extract.state['slith_pix'],
+                                 extract.state['slith_arc'],
+                                 extract.state['slitw_pix'],
+                                 extract.state['slitw_arc'],
+                                 extract.state['resolvingpower'],
+                                 'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
+                                 'Wavelength ($\mu$m)',
+                                 'Count Rate (DN s$^{-1}$)',
+                                 extract.state['version'],
+                                 output_fullpath, wavecalinfo=wavecalinfo,
 #                                 background_spectra=background[z],
                                  xsbginfo=xsbginfo,
                                  verbose=verbose)
 
-        elif config.state['reductionmode'] == 'A-Sky/Dark':
+            # Plot the spectra
+
+            if qa_plot is True:
+                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
+                             plot_size=qa_plotsize)
+
+            if qa_file is True:
+                qafileinfo['filename'] = os.path.basename(output_fullpath)
+                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
+
+        elif extract.state['reductionmode'] == 'A-Sky/Dark':
 
             x = 1
-            
+
         else:
 
             print('Reduction Mode Unknown.')
 
     print(' ')
-

@@ -1,7 +1,7 @@
 import numpy as np
 
-from pyspextool.extract import config
-from pyspextool.extract.check_continue import check_continue
+from pyspextool import config as setup
+from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.io.check import check_range
 from pyspextool.plot.plot_profiles import plot_profiles
@@ -9,8 +9,7 @@ from pyspextool.plot.plot_profiles import plot_profiles
 
 def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                                bg_width=None, bg_regions=None, bg_fit_degree=1,
-                               qaplot=False, qafile=False):
-
+                               qa_plot=None, qa_plotsize=(6, 10), qa_file=None):
     """
     To define the extraction parameters
 
@@ -36,56 +35,89 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         If extended source extraction, the background regions.
 
     bg_fit_degree : int, default=1, optional
-        The polynomial degree of the fit to the background
+        The polynomial degree of the fit to the background.
 
-    qaplot : {False, True}, optional
-        Set to plot the results interactively.
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
 
-    qafile : {False, True}, optional
-        Set to write the QA plot to disk.
+    qa_plotsize : tuple, default=(6,6)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
 
     Returns
     -------
     None
 
-    Updates the config.state['psfradius'], config.state['bgradius'], 
-    config.state['bgwidth'] and, config.state['bgfitdeg'] variables and 
-    optional plots the results.
+    Updates various parameters in the config file in pyspextool.extract.
 
     """
-    
+
     #
-    # Continue status
+    # Check if we can proceed
     #
 
-    check_continue(4)
+    if extract.state['trace_done'] is False:
+        message = 'Previous steps not completed.'
+        print(message)
+        return
 
+    #
     # Check common parameters
-    
+    #
+
     check_parameter('define_aperture_parameters', 'bg_fit_degree',
                     bg_fit_degree, ['int'], [1, 2])
+
+    check_parameter('define_aperture_parameters', 'qa_plot', qa_plot,
+                    ['NoneType', 'bool'])
+
+    check_parameter('define_aperture_parameters', 'qa_file', qa_file,
+                    ['NoneType', 'bool'])
+
+    check_parameter('define_aperture_parameters', 'qa_plotsize', qa_plotsize,
+                    'tuple')
+
+    #
+    # Check the qa and verbose variables and set to system default if need be.
+    #
+
+    if qa_file is None:
+        qa_file = setup.state['qa_file']
+
+    if qa_plot is None:
+        qa_plot = setup.state['qa_plot']
 
     #
     # Store user inputs 
     #
 
-    config.user['apparms']['apradii'] = aperture_radii
-    config.user['apparms']['psfradius'] = psf_radius
-    config.user['apparms']['bgradius'] = bg_radius
-    config.user['apparms']['bgwidth'] = bg_width
-    config.user['apparms']['bgregions'] = bg_regions
-    config.user['apparms']['bgdeg'] = bg_fit_degree
-    config.user['apparms']['qaplot'] = qaplot
-    config.user['apparms']['qafile'] = qafile
+    extract.parameters['apradii'] = aperture_radii
+    extract.parameters['psfradius'] = psf_radius
+    extract.parameters['bgradius'] = bg_radius
+    extract.parameters['bgwidth'] = bg_width
+    extract.parameters['bgregions'] = bg_regions
+    extract.parameters['bgdeg'] = bg_fit_degree
+    extract.parameters['qaplot'] = qa_plot
+    extract.parameters['qafile'] = qa_file
+    extract.parameters['qaplotsize'] = qa_plotsize
 
+    #
     # Now things proceed depending on the extraction mode
-    
-    if config.state['exttype'] == 'ps':
+    #
+
+    if extract.state['type'] == 'ps':
 
         #
-        #======================= Point Source ===========================
+        # ======================= Point Source ===========================
         #
-        
+
         #
         # Check parameters
         #
@@ -102,7 +134,6 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         check_parameter('define_aperture_parameters', 'bg_width',
                         bg_width, ['int', 'float', 'NoneType'])
 
-        
         #
         # Make sure the right sets of things are present
         #
@@ -141,16 +172,16 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         #
         # Now store the results
         #
-        
-        config.state['psfradius'] = psf_radius
-        config.state['bgradius'] = bg_radius
-        config.state['bgwidth'] = bg_width
-        config.state['bgfitdeg'] = bg_fit_degree        
+
+        extract.state['psfradius'] = psf_radius
+        extract.state['bgradius'] = bg_radius
+        extract.state['bgwidth'] = bg_width
+        extract.state['bgfitdeg'] = bg_fit_degree
 
         #
-        # Get the the background psbginfo list together
+        # Get the background psbginfo list together
         #
-        
+
         if bg_radius is not None:
 
             psbginfo = [bg_radius, bg_width]
@@ -160,27 +191,26 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
             psbginfo = None
 
         # Force xsbginfo to None 
-            
+
         xsbginfo = None
-                
+
         # Store radii 
 
-        config.state['apradii'] = aperture_radii
-
+        extract.state['apradii'] = aperture_radii
 
     else:
 
         #
-        #======================= Extended Source ===========================
+        # ======================= Extended Source ===========================
         #
-        
+
         #
         # Check parameters
         #
 
         check_parameter('define_aperture_parameters', 'aperture_radii',
                         aperture_radii, ['int', 'float', 'list'])
-        
+
         check_parameter('define_aperture_parameters', 'bg_regions',
                         bg_regions, ['list', 'str', 'NoneType'])
 
@@ -189,22 +219,22 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         #
 
         # Check number of apertures and radii are equal
-        
-        aperture_radii = np.array(aperture_radii,ndmin=1)
+
+        aperture_radii = np.array(aperture_radii, ndmin=1)
         nradii = np.size(aperture_radii)
 
-        if nradii != config.state['naps']:
+        if nradii != extract.state['naps']:
             message = 'Number of aperture radii must equal number apertures.'
             raise ValueError(message)
 
-        config.state['apradii'] = aperture_radii
+        extract.state['apradii'] = aperture_radii
 
         # Now deal with the background region
-        
+
         if bg_regions is not None:
 
             # String or list?
-            
+
             if isinstance(bg_regions, str) is True:
 
                 # Split on commas
@@ -212,7 +242,6 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                 groups = bg_regions.split(',')
                 xsbginfo = []
                 for regions in groups:
-
                     ranges = regions.split('-')
                     ranges = [float(i) for i in ranges]
                     xsbginfo.append(ranges)
@@ -220,60 +249,63 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
             else:
 
                 # Must be a list.  
-                
+
                 xsbginfo = bg_regions
-                
+
             # Check to make sure things are in range
-                
-            check_range(xsbginfo, [0, config.state['slith_arc']], 'gele',
+
+            check_range(xsbginfo, [0, extract.state['slith_arc']], 'gele',
                         variable_name='bg_regions')
 
-            config.state['bgregions'] = xsbginfo
+            extract.state['bgregions'] = xsbginfo
 
         else:
 
-            config.state['bgregions'] = None
+            extract.state['bgregions'] = None
 
         # Store the results
 
-        config.state['bgfitdeg'] = bg_fit_degree
-            
-        # Force the psbginfo to None
-            
-        psbginfo = None
+        extract.state['bgfitdeg'] = bg_fit_degree
 
+        # Force the psbginfo to None
+
+        psbginfo = None
 
     #
     # Now do the plotting
     #
-        
-    if config.state['exttype'] == 'xs':
 
-        doorders = config.state['xsdoorders']
+    if extract.state['type'] == 'xs':
+
+        doorders = extract.state['xsdoorders']
         plot_aperture_radii = aperture_radii
-        
+
     else:
 
-        doorders = config.state['psdoorders']
-        plot_aperture_radii = np.full(config.state['naps'], aperture_radii)
+        doorders = extract.state['psdoorders']
+        plot_aperture_radii = np.full(extract.state['naps'], aperture_radii)
 
-        
-    if qaplot is True:
-
-        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      doorders, apertures=config.state['apertures'],
+    if qa_plot is True:
+        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
+                      doorders, apertures=extract.state['apertures'],
                       aperture_radii=plot_aperture_radii, psf_radius=psf_radius,
-                      psbginfo=psbginfo, xsbginfo=xsbginfo)
+                      ps_bginfo=psbginfo, xs_bginfo=xsbginfo,
+                      plot_size=qa_plotsize)
 
-    if qafile is True:
-
+    if qa_file is True:
         qafileinfo = {'figsize': (8.5, 11),
-                      'filepath': config.user['setup']['qapath'],
-                      'filename': config.state['qafilename'] + '_apertureparms',
-                      'extension': config.user['setup']['qaextension']}
+                      'filepath': setup.state['qa_path'],
+                      'filename': extract.state['qafilename'] + '_apertureparms',
+                      'extension': setup.state['qa_extension']}
 
-        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      doorders, apertures=config.state['apertures'],
+        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
+                      doorders, apertures=extract.state['apertures'],
                       aperture_radii=plot_aperture_radii, psf_radius=psf_radius,
-                      psbginfo=psbginfo, xsbginfo=xsbginfo,
-                      qafileinfo=qafileinfo)
+                      ps_bginfo=psbginfo, xs_bginfo=xsbginfo,
+                      file_info=qafileinfo)
+
+    #
+    # Set the done variable
+    #
+
+    extract.state['parameters_done'] = True

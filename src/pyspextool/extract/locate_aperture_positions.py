@@ -1,14 +1,14 @@
 import numpy as np
 
-from pyspextool.extract import config
-from pyspextool.extract.check_continue import check_continue
+from pyspextool import config as setup
+from pyspextool.extract import config as extract
 from pyspextool.extract.find_peaks import find_peaks
-from pyspextool.extract.trace_apertures import trace_apertures
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 
-def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
-                              qafile=False, verbose=True):
+
+def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
+                              qa_file=None, qa_plotsize=(6, 10), verbose=None):
     """
     To determine the locations of spectral extraction apertures
 
@@ -37,23 +37,89 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
         The approximate FWHM of the peak to be identified.  Only used 
         if `method` is 'auto' or 'guess'.
 
-    qaplot : {False, True}, optional
-        Set to True plot the results interactively.
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
 
-    qafile : {False, True}, optional
-        Set to True to write a QA plot to disk.
+    qa_plotsize : tuple, default=(6,6)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
 
-    verbose: {True, False}, optional
-        Set to True to report the operation to the command line.
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
+
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.state['verbose'] in the
+        pyspextool config file.
 
     Returns
     -------
     None
-    Sets config.state['apertures'], config.state['apsigns'], and 
-    config.state['naps'] and if config.state['exttype'] ='xs' then 
+    Sets config.extract['apertures'], config.extract['apsigns'], and 
+    config.extract['naps'] and if config.extract['exttype'] ='xs' then 
     also calls trace_apertures.
     
     """
+
+    #
+    # Check the load_done variable
+    #
+
+    if extract.state['profile_done'] is False:
+        message = 'Previous steps not completed.'
+        print(message)
+        return
+
+    #
+    # Check parameters that don't depend on extraction type.
+    #
+
+    check_parameter('define_aperture_positions', 'apertures', apertures,
+                    ['int', 'float', 'list', 'ndarray'])
+
+    check_parameter('define_aperture_positions', 'method', method, 'str',
+                    possible_values=['auto', 'fixed', 'guess'])
+
+    check_parameter('define_aperture_positions', 'fwhm', fwhm, ['int', 'float'])
+
+    check_parameter('define_aperture_positions', 'qa_plot', qa_plot,
+                    ['NoneType', 'bool'])
+
+    check_parameter('define_aperture_positions', 'qa_file', qa_file,
+                    ['NoneType', 'bool'])
+
+    check_parameter('define_aperture_positions', 'qa_plotsize',
+                    qa_plotsize, 'tuple')
+
+    check_parameter('load_image', 'verbose', verbose, ['NoneType', 'bool'])
+
+    #
+    # Check the qa and verbose variables and set to system default if need be.
+    #
+
+    if qa_file is None:
+        qa_file = setup.state['qa_file']
+
+    if qa_plot is None:
+        qa_plot = setup.state['qa_plot']
+
+    if verbose is None:
+        verbose = setup.state['verbose']
+
+        #
+    # Store the user passed parameters 
+    #
+
+    extract.apertures['apertures'] = apertures
+    extract.apertures['method'] = method
+    extract.apertures['fwhm'] = fwhm
+    extract.apertures['qaplot'] = qa_plot
+    extract.apertures['qafile'] = qa_file
+    extract.apertures['qaplotsize'] = qa_plotsize
+    extract.apertures['verbose'] = verbose
 
     #
     # Update the command line if requested
@@ -63,49 +129,16 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
         print('Locating the apertures...')
 
     #
-    # Check continue variable
-    #
-
-    check_continue(3)
-
-    #
-    # Check parameters that don't depend on extraction type.
-    #
-
-    check_parameter('define_aperture_positions', 'apertures', apertures,
-                    ['int','float','list','ndarray'])
-    
-    check_parameter('define_aperture_positions', 'method', method, 'str',
-                    possible_values=['auto', 'fixed', 'guess'])
-
-    check_parameter('define_aperture_positions', 'fwhm', fwhm, ['int', 'float'])
-
-    check_parameter('define_aperture_positions', 'qaplot', qaplot, 'bool')
-
-    check_parameter('define_aperture_positions', 'qafile', qafile, 'bool')
-
-    #
-    # Store the user passed parameters 
-    #
-
-    config.user['locateaps']['apertures'] = apertures
-    config.user['locateaps']['method'] = method
-    config.user['locateaps']['fwhm'] = fwhm
-    config.user['locateaps']['qaplot'] = qaplot
-    config.user['locateaps']['qafile'] = qafile
-    config.user['locateaps']['verbose'] = verbose
-    
-    #
     # Get useful numbers
     #
 
-    norders = len(config.state['profiles'])
+    norders = len(extract.state['profiles'])
 
     #
     # Check the extraction type
     #
 
-    if config.state['exttype'] == 'ps':
+    if extract.state['type'] == 'ps':
 
         #
         # This is a point source extraction
@@ -120,7 +153,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
                             apertures, 'int')
 
             naps = apertures
-            apertures, apsigns = find_peaks(config.state['profiles'],
+            apertures, apsigns = find_peaks(extract.state['profiles'],
                                             {'method': 'auto', 'peaks': naps},
                                             fwhm=fwhm)
 
@@ -130,7 +163,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
 
             apertures = np.tile(apertures, (norders, 1))
 
-            apertures, apsigns = find_peaks(config.state['profiles'],
+            apertures, apsigns = find_peaks(extract.state['profiles'],
                                             {'method': 'guess',
                                              'peaks': apertures},
                                             fwhm=fwhm)
@@ -143,7 +176,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
 
             apertures = np.tile(apertures, (norders, 1))
 
-            apertures, apsigns = find_peaks(config.state['profiles'],
+            apertures, apsigns = find_peaks(extract.state['profiles'],
                                             {'method': 'fixed',
                                              'peaks': apertures},
                                             fwhm=fwhm)
@@ -167,12 +200,11 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
         apertures = np.tile(apertures, (norders, 1))
         apsigns = np.full_like(apertures, 1, dtype=int)
 
-        
     #
     # Determine the average apsign
     #
 
-    average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns),axis=0)
+    average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns), axis=0)
     apsigns = np.empty(naps, dtype=int)
 
     for i in range(naps):
@@ -182,12 +214,11 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
     # Store the results into the config variable
     #
 
-    config.state['apertures'] = apertures
-    config.state['apsigns'] = apsigns
-    config.state['naps'] = naps
+    extract.state['apertures'] = apertures
+    extract.state['apsigns'] = apsigns
+    extract.state['naps'] = naps
 
     if verbose is True:
-
         signs = ', '.join(list(apsigns.astype(str)))
         signs = signs.replace('-1', '-')
         signs = signs.replace('1', '+')
@@ -198,39 +229,33 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qaplot=False,
     # Plot the results
     #
 
-    if qaplot is True:
-        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      np.ones(config.state['norders'], dtype=int),
-                      apertures=config.state['apertures'])
+    if qa_plot is True:
+        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
+                      np.ones(extract.state['norders'], dtype=int),
+                      apertures=extract.state['apertures'],
+                      plot_size=qa_plotsize)
 
-    if qafile is True:
+    if qa_file is True:
         qafileinfo = {'figsize': (8.5, 11),
-                      'filepath':config.user['setup']['qapath'],
-                      'filename': config.state['qafilename'] +
+                      'filepath': setup.state['qa_path'],
+                      'filename': extract.state['qafilename'] +
                                   '_aperturepositions',
-                      'extension': config.user['setup']['qaextension']}
+                      'extension': setup.state['qa_extension']}
 
-        plot_profiles(config.state['profiles'], config.state['slith_arc'],
-                      np.ones(config.state['norders'], dtype=int),
-                      apertures=config.state['apertures'],
-                      qafileinfo=qafileinfo)
+        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
+                      np.ones(extract.state['norders'], dtype=int),
+                      apertures=extract.state['apertures'],
+                      file_info=qafileinfo)
 
     #
     # Set continue variable
     #
 
-    if config.state['exttype'] == 'ps':
+    extract.state['apertures_done'] = True
 
-        config.state['continue'] = 4
-
-    else:
-
-        config.state['continue'] = 4
-        
     #
     # Now run the trace if the source is extended
     #
 
-    if config.state['exttype'] == 'xs':
-        trace_apertures(verbose=verbose, qaplot=qaplot, qafile=qafile)
-
+    # if extract.state['type'] == 'xs':
+    #    trace_apertures(verbose=verbose, qaplot=qaplot, qafile=qafile)

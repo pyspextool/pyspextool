@@ -5,7 +5,7 @@ from pyspextool.utils.add_entry import add_entry
 def average_header_info(hdrs, pair=False):
 
     """
-    Averages a pySpextool headers lists
+    Averages a pySpextool header lists
 
     Parameters
     ----------
@@ -35,10 +35,6 @@ def average_header_info(hdrs, pair=False):
     --------
     Later
 
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-
     """
     # Store the first hdrinfo
 
@@ -47,7 +43,7 @@ def average_header_info(hdrs, pair=False):
 
     # Now star the averaging
 
-    # ============================ TIME and DATE ==================================
+    # ============================ TIME and DATE ==============================
 
     # Grab the values
 
@@ -133,7 +129,7 @@ def average_header_info(hdrs, pair=False):
 
     hdrinfo.pop('DATE')
 
-    # ============================== HOUR ANGLE ===================================
+    # ============================== HOUR ANGLE ===============================
 
     # Grab the values
 
@@ -166,7 +162,7 @@ def average_header_info(hdrs, pair=False):
 
     hdrinfo.pop('HA')
 
-    # ================================== MJD ======================================
+    # ================================== MJD ==================================
 
     # Grab the values
 
@@ -194,7 +190,7 @@ def average_header_info(hdrs, pair=False):
 
     hdrinfo.pop('MJD')
 
-    # ================================= AIRMASS ===================================
+    # ================================= AIRMASS ===============================
 
     # Grab the values
 
@@ -240,20 +236,23 @@ def average_header_info(hdrs, pair=False):
     return hdrinfo
 
 
-def get_header_info(hdr, keywords=None):
+def get_header_info(hdr, keywords=None, ignore_missing_keywords=False):
 
     """
-    Pulls (user requested) hdr values and comments from a FITS file
+    Pulls (user requested) keyword values and comments from a FITS file
 
 
     Parameters
     ----------
     hdr : astropy HDU.header
-         see https://docs.astropy.org/en/stable/io/fits/index.html
+        see https://docs.astropy.org/en/stable/io/fits/index.html
 
 
     keywords : list of str, optional
-         A list of keywords to pull.
+        A list of keywords to pull.
+
+    ignore_missing_keywords : {False, True}, optional
+        Set to True to ignore keywords not present in the hdr. 
 
 
     Returns
@@ -271,17 +270,6 @@ def get_header_info(hdr, keywords=None):
     -----
     The program can use the unix wildcard * for keywords with a common
     basename, e.g. COEFF_1, COEFF_2, COEFF_3 can be obtained as COEFF*.
-
-    
-    Examples
-    --------
-    later
-
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_gethdrinfo.pro
 
     """
 
@@ -307,13 +295,20 @@ def get_header_info(hdr, keywords=None):
             # We need to check to see if the request has a wild card.
 
             m = re.search('[*]', '[' + keyword + ']')
-
+            
             if m:
 
                 for eight in list(hdr.keys()):
 
-                    n = re.search(keyword[0:-1], eight)
-                    if n: hdrinfo[eight] = [hdr[eight], hdr.comments[eight]]
+                    n = re.search(keyword[0:-1], eight)                    
+                    if n:
+
+                        # Test if it exits
+
+                        test = keyword in hdr
+                        if test is True:
+                
+                            hdrinfo[eight] = [hdr[eight], hdr.comments[eight]]
 
             else:
 
@@ -325,7 +320,12 @@ def get_header_info(hdr, keywords=None):
                     dohistory = 1
                     continue
 
-                hdrinfo[keyword] = [hdr[keyword], hdr.comments[keyword]]
+                # Test if it exits
+
+                test = keyword in hdr
+                if test is True:
+                
+                    hdrinfo[keyword] = [hdr[keyword], hdr.comments[keyword]]
 
     else:
 

@@ -337,21 +337,21 @@ def read_instrument_file(filename):
     tmp = [value.strip() for value in tmp]
     output['XSPEXTOOL_KEYWORDS'] = tmp
 
-    # XCOMBSPEC KEYWORDS
+    # COMBINE KEYWORDS
 
-    keyword = 'XCOMBSPEC_KEYWORD'
+    keyword = 'COMBINE_KEYWORD'
     z = find_keyword(labels, keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
-    output['XCOMBSPEC_KEYWORDS'] = tmp
+    output['COMBINE_KEYWORDS'] = tmp
 
     # XTELLCOR KEYWORDS
 
-    keyword = 'XTELLCOR_KEYWORD'
+    keyword = 'TELLURIC_KEYWORD'
     z = find_keyword(labels, keyword)
     tmp = vals[z]
     tmp = [value.strip() for value in tmp]
-    output['XTELLCOR_KEYWORDS'] = tmp
+    output['TELLURIC_KEYWORDS'] = tmp
 
     return output
 

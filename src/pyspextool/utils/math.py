@@ -82,6 +82,8 @@ def bit_set(array, bits):
 
     return mask
 
+
+
 def combine_flag_stack(stack, nbits=8):
 
     """
@@ -175,6 +177,7 @@ def combine_flag_stack(stack, nbits=8):
         comb = comb + mask * 2 ** i
 
     return comb
+
 
 
 def find_outliers(data, thresh, leave_nans=True, silent=False):
@@ -278,6 +281,7 @@ def find_outliers(data, thresh, leave_nans=True, silent=False):
         return mask == 1
 
 
+    
 def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
     '''
@@ -307,12 +311,20 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
     Returns
     -------
-    nndarray, ndarray, ndarray
-       mean : the mean of the data stack
-       mvar : the sample variance of the stack.  That is, the result is divided 
-              by (n-1).  If `stderr` is True, and `weights` is None, then the 
-              `mvar` is the standard error which is the sample standard 
-              deviation divided by sqrt(n).  
+    tuple
+
+        tuple(0): nndarray
+            The mean of the data stack
+
+        tuple(1) : ndarray
+            The sample variance of the stack.  That is, the result is divided 
+              by (n-1).  
+            If `stderr` is True, and `weights` is None, then the 
+            `mvar` is the standard error which is the sample standard 
+            deviation divided by sqrt(n).  
+
+        tuple(2) : ndarray
+        
 
     Examples
     --------
@@ -416,10 +428,12 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
         if stderr is True:
             np.divide(mvar,ndat,out=mvar)
                 
-    return mean, mvar, goodbad
+    return (mean, mvar, goodbad)
     
-    
+
+
 def median_data_stack(data, mask=None, stderr=True):
+
     """
     Median a spectral or image stack with optional mask
 
@@ -440,11 +454,11 @@ def median_data_stack(data, mask=None, stderr=True):
 
     Returns
     --------
-    list
-        list[0] : numpy.ndarray 
+    tuple
+        tuple[0] : numpy.ndarray 
             the median of the spectral or image stack
 
-        list[1] : numpy.ndarray
+        tuple[1] : numpy.ndarray
             the uncertainty of the spectral or image stack (see Procedure)
 
     Procedure
@@ -543,11 +557,6 @@ def median_data_stack(data, mask=None, stderr=True):
        [1.11195    1.4826     1.11195   ]
        [1.4826     1.4826     2.59455   ]]
 
-    Modification History
-    --------------------
-    2022-06-01 - Written by M. Cushing, University of Toledo.
-        Based on the Spextool IDL program mc_medcomb.pro.
-
     """
 
     # Get array dimensions
@@ -594,7 +603,8 @@ def median_data_stack(data, mask=None, stderr=True):
 
         unc = mad / 1.4826  # assume gaussian distribution
 
-    return [med, unc]
+    return (med, unc)
+
 
 def moments(data, goodbad=False, robust=None, silent=True):
 
@@ -799,39 +809,30 @@ def scale_data_stack(stack, var, mask=None, index=None):
 
     Parameters
     ----------
-    stack : array_like
-        (nspec,nwave) - a stack of spectra.
+    stack : ndarray
+        An (nspec, nwave) array of spectra or an (nimgs, nrows, cols)
+        array of images.
 
-        (nimgs,nrows,cols) - a stack of images.
-
-
-    var : array_like, or None
+    var : ndarray or None
         If not None, the variances associated with the spectra or images.
 
-
-    mask : array_like, optional
-        A mask array with the same shape as `stack`.
-        0 = bad, 1=good
-
-
+    mask : ndarray, optional
+        A mask array with the same shape as `stack`.  0 = bad, 1=good.
+        
     index : int, optional
-        A mask array with the same shape as `data`.
-        0 = bad, 1=good
-
+        A mask array with the same shape as `stack`.  0 = bad, 1=good.
 
     Returns
     --------
     sstack : numpy.ndarray
-        The scaled stack.
-
+        An (nspec, nwave) or (nimgs, nrows, ncols) array of the scaled stack.
 
     svar : numpy.ndarray or None
-        The scaled variance, if `var` is not None.
-
+        An (nspec, nwave) or (nimgs, nrows, ncols) array of the scaled 
+        variance, if `var` is not None.
 
     scales : numpy.ndarray
-        The scale factors.
-
+        An (nspec,) array of scale factors.
 
     Notes
     -----
@@ -839,7 +840,6 @@ def scale_data_stack(stack, var, mask=None, index=None):
     scale factors to scale each spectrum or image to either the median
     value of the median values or the median value associated
     with a particular spectrum or image.
-
 
     Examples
     --------
@@ -916,13 +916,22 @@ def scale_data_stack(stack, var, mask=None, index=None):
             [1. 1. 1.]]]
           [1.   0.5  0.25]
 
-    Modification History
-    --------------------
-    2022-06-18 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_getspecscales.pro
 
     """
 
+    #
+    #  Check parameters
+    #
+
+    check_parameter('scale_data_stack', 'stack', stack, 'ndarray')
+
+    check_parameter('scale_data_stack', 'var', var, ['ndarray', 'NoneType'])
+
+    check_parameter('scale_data_stack', 'var', mask, ['ndarray', 'NoneType'])
+
+    check_parameter('scale_data_stack', 'index', index, ['int', 'NoneType'])            
+
+    
     # Get array dimensions
 
     ndimen = np.ndim(stack)

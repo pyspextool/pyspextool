@@ -1,11 +1,10 @@
 import numpy as np
 from astropy.io import fits
 
-from pyspextool.io.fitsheader import get_header_info
 from pyspextool.io.check import check_parameter
 
-def read_spectra_fits(file):
 
+def read_spectra_fits(file):
     """
     To read a pyspextool FITS file and keywords.
 
@@ -66,7 +65,9 @@ def read_spectra_fits(file):
 
     spectra = hdul[0].data
     header = hdul[0].header
-    
+
+    hdul.close()
+
     #
     # Check to see if it is a pySpextool  FITS file.
     #
@@ -77,36 +78,39 @@ def read_spectra_fits(file):
 
     except:
 
-        message = file+' is not a pySpextool FITS file.'
+        message = file + ' is not a pySpextool FITS file.'
         raise ValueError(message)
 
     #
     # Start pulling the keywords
     #
 
-    dictionary = {'header':header, 'instr':header['INSTR'],
-                  'obsmode':header['MODE'], 'norders':header['NORDERS']}
+    dictionary = {'header': header, 'instr': header['INSTR'],
+                  'obsmode': header['MODE'], 'norders': header['NORDERS']}
 
     val = header['ORDERS'].split(',')
     orders = np.array([int(x) for x in val])
 
-    add = {'orders':orders, 'napertures':header['NAPS'],
-           'xunits':header['XUNITS'],
-           'yunits':header['YUNITS'],
-#           'xtitle':header['XTITLE'],
-#           'ytitle':header['YTITLE'],
-           'slith_pix':header['SLTH_PIX'], 
-           'slith_arc':header['SLTH_ARC'],
-           'slitw_pix':header['SLTW_PIX'],
-           'slitw_arc':header['SLTW_ARC'],
-#            'resolvingpower':header['RP'],
-           'creationmodule':header['CREMOD'],
-            'history':header['HISTORY']}
-        
+    add = {'orders': orders,
+           'napertures': header['NAPS'],
+           'xunits': header['XUNITS'],
+           'yunits': header['YUNITS'],
+           'lxunits': header['LXUNITS'],
+           'lyunits': header['LYUNITS'],
+           'lxlabel': header['LXLABEL'],
+           'lylabel': header['LYLABEL'],
+           'slith_pix': header['SLTH_PIX'],
+           'slith_arc': header['SLTH_ARC'],
+           'slitw_pix': header['SLTW_PIX'],
+           'slitw_arc': header['SLTW_ARC'],
+           #            'resolvingpower':header['RP'],
+           'module': header['MODULE'],
+           'history': header['HISTORY']}
+
     dictionary.update(add)
 
     #
     # Return the results
     #
-    
-    return (spectra, dictionary)
+
+    return spectra, dictionary

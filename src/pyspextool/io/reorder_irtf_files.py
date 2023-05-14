@@ -1,3 +1,5 @@
+import numpy as np
+
 from pyspextool.io.check import check_parameter
 
 def reorder_irtf_files(fullpaths):
@@ -11,23 +13,28 @@ def reorder_irtf_files(fullpaths):
     fullpaths : str or list
         The fullpaths of IRTF FITS files
 
-
     Returns
     -------
-    list
-         A list fullpaths names ordered such that the beams are ababab...
+    tuple
+         tuple[0] : A list fullpaths names ordered such that the beams are 
+                    ababab...
 
-    Notes
-    -----
-
-    Examples
-    --------
-    later
-
+         tuple[1] : A npdarray index array ordered such that the beams are 
+                    ababab...
+        
     """
 
-    check_parameter('abba_to_abab', 'fullpaths', fullpaths, ['str','list'])
+    #
+    # Check parameters
+    #
+    
+    check_parameter('reorder_irtf_files', 'fullpaths', fullpaths,
+                    ['str','list'])
 
+    #
+    # Check a few things
+    #
+    
     if isinstance(fullpaths, str):
         fullpaths = [fullpaths]
     
@@ -38,20 +45,34 @@ def reorder_irtf_files(fullpaths):
         message = '`fullpaths` must contain an even number of images.'
         raise ValueError(message)
 
-    for i in range((nfiles-1)//2):
+    #
+    # Create index array
+    #
+
+    indices = np.arange(nfiles)
+
+    #
+    # Now do the loop
+    #
+    
+    for i in range(nfiles//2):
 
         # Pull the beam label from the file name
         
         position = fullpaths[i*2].rfind('.fits')
         beam = fullpaths[i*2][position-1]
 
+        
         # If it is 'b', switch the filesnames
         
         if beam == 'b':
 
-            tmp = fullpaths[i*2] 
+            tmp1 = fullpaths[i*2] 
             fullpaths[i*2] = fullpaths[i*2+1]
-            fullpaths[i*2+1] = tmp
+            fullpaths[i*2+1] = tmp1
 
-
-    return fullpaths
+            tmp2 = indices[i*2]
+            indices[i*2] = indices[i*2+1]
+            indices[i*2+1] = tmp2
+            
+    return fullpaths, indices

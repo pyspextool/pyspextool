@@ -163,7 +163,8 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
     check_parameter('make_full_path', 'files', files, ['list', 'str', 'int'])
 
-    check_parameter('make_full_path', 'indexinfo', indexinfo, 'dict')
+    check_parameter('make_full_path', 'indexinfo', indexinfo,
+                    ['NoneType','dict'])
 
     check_parameter('make_full_path', 'exist', exist, 'bool')            
 

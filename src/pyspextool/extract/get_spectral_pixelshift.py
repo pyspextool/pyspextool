@@ -9,7 +9,8 @@ import os
 
 
 def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
-                            savitzky_golay=True, qafileinfo=None):
+                            savitzky_golay=True, qafileinfo=None,
+                            qa_plot=False, qa_plotsize=(5, 8)):
     """
     To determine the pixel shift between two spectra.
 
@@ -45,6 +46,14 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
             The file extension.  Must be compatible with the savefig
             function of matplotlib.
 
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.setup['qa_plot'].  If set to True,
+        quality assurance plots will be interactively generated.
+
+    qa_plotsize : tuple, default=(5,8)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+
     Returns
     -------
     int
@@ -55,17 +64,7 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     Notes
     -----
     Uses scipy.signal.correlate for the cross correlation.
-
     The savitzky-golay parameters are window_length=5 and polydeg=2.
-
-    Examples
-    --------
-    later
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program xmc_corspec.pro.
 
     """
 
@@ -118,7 +117,7 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     z = np.logical_and(lag > -100, lag < 100)
     xcor = xcor[z]
     lag = lag[z]
-    
+
     maxidx = np.argmax(xcor)
 
     dif = -1
@@ -126,7 +125,7 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     while dif < 0 and maxidx + npix + 1 < ndat - 1:
         dif = xcor[maxidx + npix + 1] - xcor[maxidx + npix]
         npix += 1
-        
+
     halfwin = np.around(npix * 1.5).astype('int')
 
     # Clip out the fit zone
@@ -139,77 +138,74 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     r = fit_peak1d(fitlag, fitxcor, nparms=4, positive=True)
     offset = r['parms'][1]
 
+    if qa_plot is True:
+        do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
+                fitlag, fitxcor, r['fit'], offset)
+
+        pl.show()
+        pl.close()
+
     if qafileinfo is not None:
-
-        # Normalize the spectra for plotting purposes
-
-        np.divide(ysource, np.median(ysource), out=ysource)
-        np.divide(yanchor, np.median(yanchor), out=yanchor)
-
-        if 'figsize' in qafileinfo.keys():
-
-            figsize = qafileinfo['figsize']
-
-        else:
-            figsize = (8.5, 11)
-
-        # A 3 panel figure
-
-        #pl.rcParams['font.size'] = '8'
-        #pl.rcParams['lines.linewidth'] = 0.75
-
-        fig, (axes1, axes2, axes3) = pl.subplots(3, figsize=figsize,
-                                                 constrained_layout=False)
-        pl.subplots_adjust(hspace=0.5)
-
-        # Plot the two spectra
-
-        yrange = get_spec_range([yanchor, ysource], frac=0.1)
-
-        axes1.margins(x=0)
-        axes1.step(xanchor, yanchor, '#1f77b4')
-        axes1.step(xsource, ysource, 'r')
-        axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
-        axes1.set(xlabel='Column Number', ylabel='Relative Intensity')
-
-        axes1.text(0.95, 0.8, 'anchor', color='#1f77b4', ha='right',
-                   transform=axes1.transAxes)
-
-        axes1.text(0.95, 0.7, 'source', color='r', ha='right',
-                   transform=axes1.transAxes)
-
-        # Plot the entire cross correlation results
-
-        yrange = get_spec_range(xcor, frac=0.1)
-
-        axes2.margins(x=0)
-        axes2.tick_params(axis='x')
-        axes2.tick_params(axis='y')
-        axes2.set_title('Cross Correlation')
-        axes2.step(lag, xcor)
-        axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
-        axes2.set(xlabel='Lag (pixels)', ylabel='Relative Intensity')
-
-        # Plot a zoom in of the cross correlation and the fit        
-
-        yrange = get_spec_range([fitxcor, r['fit']], frac=0.1)
-
-        axes3.margins(x=0)
-        axes3.step(fitlag, fitxcor)
-        axes3.step(fitlag, r['fit'], 'r')
-        axes3.set_title('Fit of Cross Correlation')
-        axes3.set_ylim(ymin=yrange[0], ymax=yrange[1])
-
-        axes3.set(xlabel='Offset (pixels)', ylabel='Relative Intensity')
-        axes3.axvline(x=offset, linestyle='dotted', color='r')
-
-        axes3.text(0.95, 0.8, 'offset=' + "{:.1f}".format(offset) + ' pixels',
-                   ha='right', c='r', transform=axes3.transAxes)
-
-        # Save the figure
+        do_plot(xanchor, yanchor, xsource, ysource, (8.5, 11), lag, xcor,
+                fitlag, fitxcor, r['fit'], offset)
 
         pl.savefig(os.path.join(qafileinfo['filepath'],
                                 qafileinfo['filename']) + \
-                   '_shift'+qafileinfo['extension'])
+                   '_shift' + qafileinfo['extension'])
+        pl.close()
 
     return offset
+
+
+def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
+            fitlag, fitxcor, fit, offset):
+    np.divide(ysource, np.median(ysource), out=ysource)
+    np.divide(yanchor, np.median(yanchor), out=yanchor)
+
+    fig, (axes1, axes2, axes3) = pl.subplots(3, figsize=qa_plotsize,
+                                             constrained_layout=False)
+    pl.subplots_adjust(hspace=0.5)
+
+    # Plot the two spectra
+
+    yrange = get_spec_range([yanchor, ysource], frac=0.1)
+
+    axes1.margins(x=0)
+    axes1.step(xanchor, yanchor, '#1f77b4')
+    axes1.step(xsource, ysource, 'r')
+    axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
+    axes1.set(xlabel='Column Number', ylabel='Relative Intensity')
+
+    axes1.text(0.95, 0.8, 'anchor', color='#1f77b4', ha='right',
+               transform=axes1.transAxes)
+
+    axes1.text(0.95, 0.7, 'source', color='r', ha='right',
+               transform=axes1.transAxes)
+
+    # Plot the entire cross correlation results
+
+    yrange = get_spec_range(xcor, frac=0.1)
+
+    axes2.margins(x=0)
+    axes2.tick_params(axis='x')
+    axes2.tick_params(axis='y')
+    axes2.set_title('Cross Correlation')
+    axes2.step(lag, xcor)
+    axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
+    axes2.set(xlabel='Lag (pixels)', ylabel='Relative Intensity')
+
+    # Plot a zoom in of the cross correlation and the fit
+
+    yrange = get_spec_range([fitxcor, fit], frac=0.1)
+
+    axes3.margins(x=0)
+    axes3.step(fitlag, fitxcor)
+    axes3.step(fitlag, fit, 'r')
+    axes3.set_title('Fit of Cross Correlation')
+    axes3.set_ylim(ymin=yrange[0], ymax=yrange[1])
+
+    axes3.set(xlabel='Offset (pixels)', ylabel='Relative Intensity')
+    axes3.axvline(x=offset, linestyle='dotted', color='r')
+
+    axes3.text(0.95, 0.8, 'offset=' + "{:.1f}".format(offset) + ' pixels',
+               ha='right', c='r', transform=axes3.transAxes)

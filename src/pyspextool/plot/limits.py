@@ -1,6 +1,9 @@
 import numpy as np
 from astropy.visualization import PercentileInterval, ZScaleInterval, MinMaxInterval
 
+from pyspextool.fit.robust_savgol import robust_savgol
+from pyspextool.io.check import check_parameter
+
 
 def buffer_range(range, frac=0.1):
 
@@ -9,8 +12,8 @@ def buffer_range(range, frac=0.1):
 
     Typically used to make a nice y-axis plot range.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     range : tuple
         (2,) range to be expanded.
 
@@ -22,19 +25,10 @@ def buffer_range(range, frac=0.1):
     tuple
          (2,) tuple of the expanded range.
 
-    Notes
-    -----
-    None
-
     Examples
     --------
     > bufrange((1,11), frac=0.1)
       (0.0, 12.0)
-
-    Modification History
-    --------------------
-    2022-07-01 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_bufrange.pro.
 
     """
     
@@ -113,7 +107,7 @@ def get_spec_range(*args, frac=0.0):
     To return a nice y-axis plot range
 
     Parameters
-    ----------------
+    ----------
     *args : array-like
         Array(s) of y values to be plotted.
 
@@ -158,7 +152,73 @@ def get_spec_range(*args, frac=0.0):
     
     range = buffer_range((minval, maxval), frac=frac)
 
-    return range    
+    return range
 
+
+def get_stack_range(stack, savgol=False, savgol_window=11, frac=0.0):
+
+    """
+    To obtain the plotting range of a stack of data.
+
+    Parameters
+    ----------
+    stack : ndarray
+
+    sg_window : int, default=11
+
+    frac : int or float, default=0.0
+
+    Returns
+    -------
+    tuple
+
+    """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('get_stack_range', 'stack', stack, 'ndarray')
+
+    check_parameter('get_stack_range', 'savgol', savgol, 'bool')
+
+    check_parameter('get_stack_range', 'savgol_window', savgol_window, 'int')
+
+    check_parameter('get_stack_range', 'frac', frac, ['int', 'float'])    
+
+    #
+    # Determine useful things and make useful things.
+    #
 
     
+    norders, npixels = np.shape(stack)
+    x_values = np.arange(npixels)
+    duplicate = np.copy(stack)
+
+    #
+    # Smooth the spectra if requested
+    #
+    
+    if savgol is True:
+
+        for i in range(norders):
+
+            result = robust_savgol(x_values, stack[i,:], savgol_window)
+            duplicate[i,:] = result['fit']
+
+    #
+    # Find the range
+    #
+            
+    minval = np.nanmin(duplicate)
+    maxval = np.nanmax(duplicate)    
+
+    #
+    # Expand the range if asked
+    #
+    
+    rng = buffer_range((minval, maxval), frac=frac) 
+
+    return rng
+
+

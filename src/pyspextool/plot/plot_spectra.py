@@ -10,8 +10,8 @@ from pyspextool.io.read_spectra_fits import read_spectra_fits
 
 def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
                  aperture=0, xlabel=None, ylabel=None, title=None,
-                 colors='green', yrange_buffer=0.05, order_numbers=True,
-                 file_info=None):
+                 colors='green', line_width=1, yrange_buffer=0.05,
+                 order_numbers=True, file_info=None):
     """
     To plot a pyspextool FITS file.
 
@@ -46,6 +46,9 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
             The spectra will be plotted with alternative colors depending on 
             how many colors are given.
             
+        line_width : float or int, default=1
+            The line width value passed to maplotlib.
+
         yrange_buffer : float, default=0.05
             The fraction by which to expand the y range if desired.
 
@@ -94,6 +97,8 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
     check_parameter('plot_spectra', 'colors', colors,
                     ['NoneType', 'str', 'list'])
 
+    check_parameter('plot_spectra', 'line_width', line_width, ['float', 'int'])
+    
     check_parameter('plot_spectra', 'yrange_buffer', yrange_buffer, 'float')
 
     check_parameter('plot_spectra', 'order_numbers', order_numbers, 'bool')
@@ -125,11 +130,11 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
     # Get the plot ranges
     #
 
-    wranges, franges, uranges, sranges = get_ranges(spectra,
-                                                    info['norders'],
-                                                    info['napertures'],
-                                                    aperture,
-                                                    fraction=yrange_buffer)
+    wranges, franges, uranges, furanges, sranges = get_ranges(spectra,
+                                                      info['norders'],
+                                                      info['napertures'],
+                                                      aperture,
+                                                      fraction=yrange_buffer)
 
     xrange = [np.min(wranges), np.max(wranges)]
 
@@ -155,9 +160,7 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
 
     elif y == 'flux and uncertainty':
 
-        yrange = [np.nanmin(franges), np.nanmax(franges)]
-#        yrange = [np.nanmin(np.concatenate(franges,uranges).flatten()), np.nanmax(np.concatenate(franges,uranges).flatten())]
-
+        yrange = [np.nanmin(furanges), np.nanmax(furanges)]
 
     else:
 
@@ -245,8 +248,8 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
 
             # Plot the spectrum
                 
-            ax.plot(xvalues, yvalues, color=color, ls='-')
-            ax.plot(xvalues, y2values, color=color, ls='--')
+            ax.plot(xvalues, yvalues, color=color, ls='-', lw=line_width)
+            ax.plot(xvalues, y2values, color='grey', lw=line_width)
 
             # Now label the order numbers
 
@@ -264,7 +267,7 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
 
                 # Add the title
 
-                ax.set_title(title, pad=15.0)
+                ax.set_title(title, pad=20.0)
 
             else:
 
@@ -340,6 +343,7 @@ def get_ranges(spectra, norders, napertures, aperture, fraction=0.05):
     wave_ranges = np.empty((norders, 2))
     flux_ranges = np.empty((norders, 2))
     unc_ranges = np.empty((norders, 2))
+    fluxunc_ranges = np.empty((norders, 2))    
     snr_ranges = np.empty((norders, 2))
 
     for i in range(norders):
@@ -364,9 +368,14 @@ def get_ranges(spectra, norders, napertures, aperture, fraction=0.05):
 
         unc_ranges[i, :] = get_spec_range(sg_unc, frac=fraction)
 
+        fluxunc_ranges[i,0] = min(flux_ranges[i,0], unc_ranges[i,0])
+        fluxunc_ranges[i,1] = max(flux_ranges[i,1], unc_ranges[i,1])        
+        
         snr = flux / unc
         sg_snr = robust_savgol(x_values, snr, 11)['fit']
 
         snr_ranges[i, :] = get_spec_range(sg_snr, frac=fraction)
 
-    return wave_ranges, flux_ranges, unc_ranges, snr_ranges
+
+        
+    return wave_ranges, flux_ranges, unc_ranges, fluxunc_ranges, snr_ranges

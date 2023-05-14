@@ -8,7 +8,7 @@ from pyspextool.utils.loop_progress import loop_progress
 
 
 def trace_to_xy(order_mask, wavecal, spatcal, xranges, orders, doorders,
-                naps, tracecoeffs, clupdate=True):
+                naps, tracecoeffs, verbose=None):
     """
     To convert a trace in wavelength/arcseconds to x/y in an image.
 
@@ -48,8 +48,8 @@ def trace_to_xy(order_mask, wavecal, spatcal, xranges, orders, doorders,
         A float (norders*naps, ncoeffs) array giving the polynomial
         coefficents to convert from wavelength to spatial angle in the slit.
 
-    clupdate : {True, False}, optional
-        Set to True for command line updates during execution.
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.setup['verbose']
 
     Returns
     -------
@@ -125,7 +125,7 @@ def trace_to_xy(order_mask, wavecal, spatcal, xranges, orders, doorders,
 
             trace_ang[j, :] = poly_1d(waves, tracecoeffs[l, :])
 
-            if clupdate is True:
+            if verbose is True:
                 loop_progress(l, 0, donorders * naps,
                               message='Collecting plotting data for trace...')
             l += 1

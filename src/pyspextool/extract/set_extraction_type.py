@@ -1,9 +1,9 @@
-from pyspextool.extract import config
-from pyspextool.extract.check_continue import check_continue
+from pyspextool import config as setup
+from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 
 
-def set_extraction_type(extraction_type, clupdate=True):
+def set_extraction_type(extraction_type, verbose=None):
 
     """
     Sets the extraction type
@@ -13,13 +13,13 @@ def set_extraction_type(extraction_type, clupdate=True):
     extraction_type : str
     The extraction type, 'point source' or 'extended source' (or 'ps', 'xs')
 
-    clupdate : {True, False} optional
-        Set to report the extraction type to the command line.
+    verbose : {None, True, False} optional
+        Set True/False to override setup.state['verbose'].
 
     Returns
     -------
     None
-    Sets the config.state['exttype'] variable.
+    Sets the extract.type['type'] variable.
 
     Notes
     -----
@@ -34,10 +34,14 @@ def set_extraction_type(extraction_type, clupdate=True):
     """
 
     #
-    # Check the continue variable
+    # Check the load_done variable
     #
     
-    check_continue(1)
+    if extract.state['load_done'] is False:
+
+        message = 'Previous steps not completed.'
+        print(message)
+        return
     
     #
     # Check parameter
@@ -47,6 +51,9 @@ def set_extraction_type(extraction_type, clupdate=True):
                     extraction_type, 'str',
                     possible_values=['ps', 'xs', 'point source',
                                      'extended source'])
+
+    check_parameter('set_extraction_type', 'verbose', verbose,
+                    ['NoneType', 'bool'])    
 
     # Set the extraction type
 
@@ -58,15 +65,24 @@ def set_extraction_type(extraction_type, clupdate=True):
 
         extraction_type = 'xs'        
     
-    config.state['exttype'] = extraction_type
+    extract.state['type'] = extraction_type
+    extract.type['type'] = extraction_type    
 
+    # Check verbose
+    
+    if verbose is None:
+
+        verbose = setup.state['verbose']
+
+    extract.type['verbose'] = verbose
+    
     # Update if requested
     
-    if clupdate is True:
+    if verbose is True:
 
         label = 'point source' if extraction_type == 'ps' else 'extended source'
         print('Setting extraction type to '+label+'...')
 
-    # Set the continue flags
+    # Set the done variable
 
-    config.state['continue'] = 2
+    extract.state['type_done'] = True

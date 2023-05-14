@@ -63,9 +63,8 @@ def read_line_list(file, delta_to_microns=False):
 
     check_parameter('read_line_list', 'file', file, 'str')
     check_parameter('read_line_list', 'delta_to_microns', delta_to_microns,
-                    'bool')    
+                    'bool')
 
-    
     # set up empty lists
 
     order = []
@@ -111,7 +110,6 @@ def read_line_list(file, delta_to_microns=False):
 
 
 def read_wavecal_file(file):
-
     """
     To read a pySpextool wavecal calibration file.
 
@@ -196,21 +194,21 @@ def read_wavecal_file(file):
     #
     # Check the parameters
     #
-    
+
     check_parameter('read_wavecal_file', 'file', file, 'str')
-    
+
     # Open the file
-    
+
     hdul = fits.open(file)
 
     # Store the spectrum 
 
     spectra = hdul[0].data
     if spectra.ndim == 2:
-        spectra = np.expand_dims(spectra,0)
+        spectra = np.expand_dims(spectra, 0)
 
     result = {'spectra': spectra}
-        
+
     # Clean the header and grab important keywords
 
     hdul[0].verify('silentfix')  # this was needed for to correct hdr problems
@@ -244,7 +242,7 @@ def read_wavecal_file(file):
 
     xcororder = hdul[0].header['XCORORDR']
     result.update({'xcororder': xcororder})
-    
+
     z = orders == xcororder
     xcorspec = np.squeeze(spectra[z, :, :])
     xcorspec[0, :] = np.arange(xranges[z, 0], xranges[z, 1] + 1)
@@ -261,11 +259,11 @@ def read_wavecal_file(file):
     result.update({'nbad': val})
 
     val = hdul[0].header['RMS']
-    result.update({'rms': val})    
+    result.update({'rms': val})
 
     dispdeg = hdul[0].header['DISPDEG']
     result.update({'dispdeg': dispdeg})
-    
+
     if wcaltype == '1dxd':
 
         val = hdul[0].header['HOMEORDR']
@@ -280,28 +278,28 @@ def read_wavecal_file(file):
     elif wcaltype == '1d':
 
         ncoeffs = (dispdeg + 1)
-        
+
     # Now get the pixel to wavelength coefficients
 
     p2wcoeffs = np.empty(ncoeffs)
 
     for i in range(ncoeffs):
-            key = 'P2W_C' + str(i).zfill(2)
-            p2wcoeffs[i] = hdul[0].header[key]
+        key = 'P2W_C' + str(i).zfill(2)
+        p2wcoeffs[i] = hdul[0].header[key]
 
     result.update({'coeffs': p2wcoeffs})
 
     # Get the covariance matrix
 
-    p2wcovar = np.empty((ncoeffs,ncoeffs))
+    p2wcovar = np.empty((ncoeffs, ncoeffs))
     for i in range(ncoeffs):
 
         for j in range(ncoeffs):
             key = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
-            p2wcovar[j,i] = hdul[0].header[key]
-           
+            p2wcovar[j, i] = hdul[0].header[key]
+
     result.update({'covar': p2wcovar})
-   
+
     val = hdul[0].header['WAVEFMT']
     result.update({'wavefmt': val.strip()})
 
@@ -316,8 +314,8 @@ def read_wavecal_file(file):
 def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
                      covar, dispersion_degree, rms, nlines, ngood, nbad,
                      wavecal, spatcal, indices, rotate, flatname, oname,
-                     version, xd=None, stored_solution=False, overwrite=True):
-
+                     version, xdinfo=None, stored_solution=False,
+                     overwrite=True):
     # Get basic things
 
     norders = len(orders)
@@ -333,45 +331,43 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Generate the wavelengths
 
-    if xd is None:
+    if xdinfo is None:
 
-    # This is the pure 1D case.
-        
+        # This is the pure 1D case.
+
         for i in range(norders):
             z = np.where(omask == orders[i])
             wavecal[z] = poly_1d(wavecal[z], coeffs)
 
-        ncoeffs = dispersion_degree+1
+        ncoeffs = dispersion_degree + 1
         wctype = '1D'
-        
+
     else:
 
-    # This is the 1DXD case.
-        
+        # This is the 1DXD case.
+
         for i in range(norders):
             z = np.where(omask == orders[i])
-            scale = xd['homeorder'] / orders[i]
+            scale = xdinfo['homeorder'] / orders[i]
             wavecal[z] = poly_2d(wavecal[z], omask[z], dispersion_degree,
-                                xd['orderdeg'], coeffs) * scale
+                                 xdinfo['orderdeg'], coeffs) * scale
 
-        ncoeffs = (dispersion_degree+1) * (xd['orderdeg']+1)
+        ncoeffs = (dispersion_degree + 1) * (xdinfo['orderdeg'] + 1)
 
         wctype = '1DXD'
-        
-            
+
     hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
-    hdr['ROTATION'] = (rotate, ' IDL rotate value')    
+    hdr['ROTATION'] = (rotate, ' IDL rotate value')
     hdr['NORDERS'] = (norders, ' Number of orders identified')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
     hdr['EXTTYPE'] = ('1D', ' Extraction type')
     hdr['WCTYPE'] = (wctype, ' Wavelength calibration type')
     hdr['DISPDEG'] = (dispersion_degree, ' Dispersion fit degree')
 
-    if xd is not None:
+    if xdinfo is not None:
+        hdr['ORDRDEG'] = (xdinfo['orderdeg'], ' Order fit degree')
+        hdr['HOMEORDR'] = (xdinfo['homeorder'], ' Home Order')
 
-        hdr['ORDRDEG'] = (xd['orderdeg'], ' Order fit degree')
-        hdr['HOMEORDR'] = (xd['homeorder'], ' Home Order')        
-    
     hdr['RMS'] = (rms, 'RMS of fit in Angstroms')
     hdr['NLINES'] = (nlines, ' Number of lines in the fit')
     hdr['NGOOD'] = (ngood, ' Number of good points')
@@ -380,7 +376,7 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     hdr['VERSION'] = (version, 'pySpextool version')
 
     # Write the extract ranges
-    
+
     for i in range(norders):
         name = 'OR' + str(orders[i]).zfill(3) + '_XR'
         comment = ' Extraction range for order ' + str(orders[i]).zfill(3)
@@ -389,24 +385,20 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     # Write the coefficients
 
     for i in range(ncoeffs):
-
         name = 'COEFF_' + str(i).zfill(2)
-        comment = ' c'+str(i)+' coefficient for solution'
+        comment = ' c' + str(i) + ' coefficient for solution'
         hdr[name] = (coeffs[i], comment)
 
     # Write the covariance 
 
     for i in range(ncoeffs):
 
-        for j in range(ncoeffs):        
+        for j in range(ncoeffs):
+            name = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
+            comment = str(i) + ',' + str(j) + \
+                      ' (col,row) element of the covariance'
+            hdr[name] = (covar[j, i], comment)
 
-            name = 'COV_'+str(i).zfill(2)+str(j).zfill(2)
-            comment = str(i)+','+str(j)+\
-            ' (col,row) element of the covariance'
-            hdr[name] = (covar[j,i], comment)
-
-
-        
     # Write the results
 
     wavecal_hdu = fits.ImageHDU(idl_unrotate(wavecal, rotate))
@@ -415,10 +407,9 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     list_hdu = [phdu, wavecal_hdu, spatcal_hdu]
 
     # Add the indices
-    
-    for i in range(norders):
 
-        idx_hdu = fits.ImageHDU(indices[i])        
+    for i in range(norders):
+        idx_hdu = fits.ImageHDU(indices[i])
         list_hdu.append(idx_hdu)
 
     hdu = fits.HDUList(list_hdu)
@@ -426,18 +417,16 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
 
 def read_wavecal_fits(file, rotate=True):
-
-    
     #
     # Check the parameters
     #
-    
+
     check_parameter('read_wavecal_fits', 'file', file, 'str')
 
     #
     # Read the data 
     #
-    
+
     hdul = fits.open(file)
     hdul[0].verify('silentfix')
 
@@ -446,48 +435,45 @@ def read_wavecal_fits(file, rotate=True):
     if rotate is True:
 
         rotation = hdr['ROTATION']
-        
+
     else:
 
         rotation = 0
-    
 
     wavecal = idl_rotate(hdul[1].data, rotation)
     spatcal = idl_rotate(hdul[2].data, rotation)
 
     # Grab the indices
-    
+
     indices = []
 
     for i in range(hdr['NORDERS']):
+        tmp = hdul[i + 3].data
+        x = tmp[0, 0, 1:]
+        y = tmp[0, 1:, 0]
+        xidx = tmp[0, 1:, 1:]
+        yidx = tmp[1, 1:, 1:]
 
-        tmp = hdul[i+3].data
-        x = tmp[0,0,1:]
-        y = tmp[0,1:,0]        
-        xidx = tmp[0,1:,1:]
-        yidx = tmp[1,1:,1:]
-        
-        indices.append({'x':x, 'y':y, 'xidx':xidx, 'yidx':yidx})
-    
+        indices.append({'x': x, 'y': y, 'xidx': xidx, 'yidx': yidx})
+
     hdul.close()
 
     #
     # Now create the wavecalinfo dictionary
     #
-    
+
     wavecalinfo = {'wavecal': wavecal}
-    wavecalinfo.update({'spatcal':spatcal})
-    wavecalinfo.update({'rectindices':indices})    
+    wavecalinfo.update({'spatcal': spatcal})
+    wavecalinfo.update({'rectindices': indices})
 
     # Do the header info
 
-
     wavecalinfo.update({'flatfile': hdr['FLATFILE']})
-    wavecalinfo.update({'rotation': hdr['ROTATION']})    
+    wavecalinfo.update({'rotation': hdr['ROTATION']})
     wavecalinfo.update({'norders': hdr['NORDERS']})
     wavecalinfo.update({'orders': hdr['ORDERS']})
     orders = hdr['ORDERS'].split(',')
-    orders = [int(o) for o in orders]    
+    orders = [int(o) for o in orders]
     wavecalinfo.update({'exttype': hdr['EXTTYPE']})
     wavecalinfo.update({'wctype': hdr['WCTYPE']})
     wavecalinfo.update({'dispdeg': hdr['DISPDEG']})
@@ -497,40 +483,37 @@ def read_wavecal_fits(file, rotate=True):
         wavecalinfo.update({'orderdeg': hdr['ORDRDEG']})
         wavecalinfo.update({'homeorder': hdr['HOMEORDR']})
 
-        ncoeffs = (hdr['ORDRDEG']+1)*(hdr['DISPDEG']+1)
+        ncoeffs = (hdr['ORDRDEG'] + 1) * (hdr['DISPDEG'] + 1)
 
     else:
- 
-        ncoeffs = hdr['DISPDEG']+1
-        
+
+        ncoeffs = hdr['DISPDEG'] + 1
+
     wavecalinfo.update({'rms': hdr['RMS']})
     wavecalinfo.update({'nlines': hdr['NLINES']})
     wavecalinfo.update({'ngood': hdr['NGOOD']})
     wavecalinfo.update({'nbad': hdr['NGOOD']})
     wavecalinfo.update({'stored': hdr['STORED']})
-    wavecalinfo.update({'version': hdr['VERSION']})        
+    wavecalinfo.update({'version': hdr['VERSION']})
 
     # Get the xranges, coeffs, and covariance matrix
 
-    xranges = np.empty([hdr['NORDERS'], 2], dtype=int)    
+    xranges = np.empty([hdr['NORDERS'], 2], dtype=int)
     coeffs = np.empty(ncoeffs, dtype=float)
     covar = np.empty([ncoeffs, ncoeffs], dtype=float)
 
     for i in range(hdr['NORDERS']):
-
-        name = 'OR' + str(orders[i]).zfill(3) + '_XR' 
+        name = 'OR' + str(orders[i]).zfill(3) + '_XR'
         xranges[i, :] = [int(x) for x in hdr[name].split(',')]
 
     for i in range(ncoeffs):
-
         name = 'COEFF_' + str(i).zfill(2)
         coeffs[i] = hdr[name]
 
     for i in range(ncoeffs):
 
         for j in range(ncoeffs):
+            name = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
+            covar[j, i] = hdr[name]
 
-            name = 'COV_' + str(i).zfill(2)+str(j).zfill(2)
-            covar[j,i] = hdr[name]
-        
     return wavecalinfo
