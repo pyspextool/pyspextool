@@ -333,8 +333,7 @@ def set_instrument(instrument_name):
 
     check_file(bad_pixel_mask_file)
 
-    # setup.state['raw_bad_pixel_mask'] = fits.getdata(bad_pixel_mask_file)
-    # TODO: Figure out how to get this to work on github tests
+    setup.state['raw_bad_pixel_mask'] = fits.getdata(bad_pixel_mask_file)
 
     #
     # Grab the Spextool keywords
