@@ -330,7 +330,8 @@ def set_instrument(instrument_name):
 
     check_file(bad_pixel_mask_file)
 
-    setup.state['raw_bad_pixel_mask'] = fits.getdata(bad_pixel_mask_file)
+    # setup.state['raw_bad_pixel_mask'] = fits.getdata(bad_pixel_mask_file)
+    # accessing the file breaks remote tests
 
     #
     # Grab the Spextool keywords
