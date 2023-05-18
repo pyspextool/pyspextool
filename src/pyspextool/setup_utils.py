@@ -285,8 +285,11 @@ def set_instrument(instrument_name):
     instrument_data_path = os.path.join(setup.state['package_path'],
                                         'instrument_data',
                                         instrument_name + '_dir')
+    data_path = os.path.join(setup.state['package_path'],
+                                        'data')
 
     check_path(instrument_data_path)
+    check_path(data_path)
 
     setup.state['instrument_path'] = instrument_data_path
 
@@ -337,9 +340,8 @@ def set_instrument(instrument_name):
     # Grab the Spextool keywords
     #
 
-    path = os.path.join(setup.state['package_path'], '../../data' ,
-                        'pyspextool_keywords.dat')
+    keywords_path = os.path.join(data_path, 'pyspextool_keywords.dat')
 
-    keywords = np.loadtxt(path, comments='#', dtype='str').tolist()
+    keywords = np.loadtxt(keywords_path, comments='#', dtype='str').tolist()
 
     setup.state['pyspextool_keywords'] = keywords
