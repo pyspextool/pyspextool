@@ -21,7 +21,7 @@ from pyspextool.plot.plot_spectra import plot_spectra
 def combine_spectra(files, output_name, input_path=None, output_path=None,
                     scale_spectra=True, scale_order=None, scale_range=None,
                     scale_range_fraction=0.7, correct_spectral_shape=False,
-                    statistic='Robust Weighted Mean', robust_sigma=8,
+                    statistic='robust weighted mean', robust_sigma=8,
                     qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
                     line_width=0.5, verbose=None, overwrite=True):
 
