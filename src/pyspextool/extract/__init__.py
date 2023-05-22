@@ -9,3 +9,4 @@ from .trace_apertures import trace_apertures
 from .define_aperture_parameters import define_aperture_parameters
 from .extract_apertures import extract_apertures
 from .do_all_steps import do_all_steps
+from .combine_images import combine_images
