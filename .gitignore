@@ -22,6 +22,7 @@ develop-eggs
 # Other
 .cache
 .tox
+.idea/
 
 # Mac OSX
 .DS_Store
