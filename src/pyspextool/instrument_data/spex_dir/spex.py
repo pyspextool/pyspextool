@@ -12,6 +12,7 @@ from pyspextool.io.fitsheader import average_header_info
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
+from pyspextool.utils.loop_progress import loop_progress
 
 
 def correct_linearity(image, itime, slowcnts, ndr, coefficients):
@@ -489,6 +490,9 @@ def read_fits(files, linearity_info, keywords=None, pair_subtract=False,
 
         for i in range(0, nimages):
 
+            if verbose is True:
+                loop_progress(i, 0, nimages, message='Loading images...')
+                
             a = load_data(files[i*2], linearity_info, keywords=keywords,
                           linearity_coefficients=linearity_coeffs)
 
@@ -509,6 +513,9 @@ def read_fits(files, linearity_info, keywords=None, pair_subtract=False,
 
         for i in range(0, nimages):
 
+            if verbose is True:
+                loop_progress(i, 0, nimages, message='Loading images...')
+            
             a = load_data(files[i], linearity_info, keywords=keywords,
                           linearity_coefficients=linearity_coeffs)
 
