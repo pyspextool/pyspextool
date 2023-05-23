@@ -322,9 +322,9 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     write_flat(nimg, nvar, flag, average_header, modeinfo['rotation'],
                modeinfo['orders'], edgecoeffs, modeinfo['xranges'],
-               modeinfo['ps'], modeinfo['slith_pix'], modeinfo['slith_arc'],
-               slitw_pix, slitw_arc, mode, rms, resolvingpower,
-               setup.state['version'], history,
+               modeinfo['ybuffer'], modeinfo['ps'], modeinfo['slith_pix'],
+               modeinfo['slith_arc'], slitw_pix, slitw_arc, mode, rms,
+               resolvingpower, setup.state['version'], history,
                os.path.join(setup.state['cal_path'],
                             output_name + '.fits'), overwrite=overwrite)
 

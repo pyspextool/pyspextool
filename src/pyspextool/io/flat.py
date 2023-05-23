@@ -60,6 +60,9 @@ def read_flat_fits(flatfile):
         ``"ps"``
             float -> The plate scale (arcseconds per pixel).
 
+        ``"ybuffer"``
+            int -> The buffer (pixels) used to avoid the edges of the slit.
+
         ``"slith_pix"``
             float -> The slit height (pixels).
 
@@ -163,6 +166,7 @@ def read_flat_fits(flatfile):
     flatinfo.update({'edgedeg': edgedeg})
 
     flatinfo.update({'ps': hdr['PLTSCALE']})
+    flatinfo.update({'ybuffer': hdr['YBUFFER']})    
     flatinfo.update({'slith_arc': hdr['SLTH_ARC']})
     flatinfo.update({'slith_pix': hdr['SLTH_PIX']})
     flatinfo.update({'slitw_arc': hdr['SLTW_ARC']})
@@ -435,9 +439,11 @@ def read_flatcal_file(file):
 
     return result
 
+
 def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
-               ps, slith_pix, slith_arc, slitw_pix, slitw_arc, modename, rms,
-               rp, version, history, oname, linmax=None, overwrite=True):
+               ybuffer, ps, slith_pix, slith_arc, slitw_pix, slitw_arc,
+               modename, rms, rp, version, history, oname, linmax=None,
+               overwrite=True):
     """
     To write a Spextool flat FITS file to disk.
 
@@ -492,6 +498,9 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
         order nearest the bottom of the image and xranges[0,1] gives the
         end column number for said order.
 
+    ybuffer : int
+        The buffer (pixels) used to avoid the edges of the slit.
+
     ps : float
         The plate scale (arcseconds per pixel).
 
@@ -537,18 +546,9 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
     None
         Writes a FITS file to PROCPATH.
 
-    Notes
-    -----
-    None
-
     Examples
     --------
     Later
-
-    Modification History
-    --------------------
-    2022-06-29 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program writeflat.pro.
 
     """
 
@@ -580,8 +580,9 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
         hdr['FILENAME'] = (os.path.basename(oname), ' Filename')
         hdr['MODE'] = (modename, ' Instrument Mode')
         hdr['NORDERS'] = (norders, ' Number of orders identified')
-        hdr['ORDERS'] = (','.join(str(o) for o in orders), 'Orders identified')
-        hdr['PLTSCALE'] = (ps, 'Plate scale (arcseconds per pixel)')
+        hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders identified')
+        hdr['PLTSCALE'] = (ps, ' Plate scale (arcseconds per pixel)')
+        hdr['YBUFFER'] = (ybuffer, ' y buffer (pixels)')
         hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit length (pixels)')
         hdr['SLTH_ARC'] = (slith_arc, ' Slit length (arcseconds)')
         hdr['SLTW_PIX'] = (slitw_pix, ' Slit width (pixels)')
