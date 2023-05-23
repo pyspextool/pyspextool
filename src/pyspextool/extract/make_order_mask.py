@@ -1,6 +1,6 @@
 import numpy as np
 
-def make_order_mask(ncols, nrows, edgecoeffs, xranges, orders):
+def make_order_mask(ncols, nrows, edgecoeffs, xranges, orders, ybuffer=0):
 
     """
     To create an order mask.
@@ -33,6 +33,11 @@ def make_order_mask(ncols, nrows, edgecoeffs, xranges, orders):
         The order numbers.  orders[0] is the order number of the 
         order nearest the bottom of the image after rotation. 
 
+    ybuffer : int, default=0
+        The number of native pixels from the top and bottom of the slit to
+        avoid during the operation.  Useful to account for the fact that
+        the drop-off in intensity at the edge of the slit is not a
+        heaviside function but rather occurs over a few pixels. 
 
 
     Returns
@@ -84,7 +89,7 @@ def make_order_mask(ncols, nrows, edgecoeffs, xranges, orders):
 
         for j in range(stop - start + 1):
 
-            order_mask[np.floor(botedge[j]).astype('int'):
-                    np.ceil(topedge[j]).astype('int'), x[j]] = orders[i]
+            order_mask[np.floor(botedge[j]+ybuffer).astype('int'):
+                    np.ceil(topedge[j]-ybuffer).astype('int'), x[j]] = orders[i]
 
     return order_mask
