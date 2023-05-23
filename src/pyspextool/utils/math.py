@@ -423,6 +423,7 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
         data[z] = 0.0
         ndat = np.sum(goodbad, axis=0)
+        test = np.where(goodbad == 0.0)
         mean = np.sum(data, axis=0)/ndat
         mvar = (np.sum(data**2,axis=0)-ndat*mean**2)/(ndat-1)
         if stderr is True:
