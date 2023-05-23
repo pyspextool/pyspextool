@@ -84,6 +84,7 @@ parameters = {'apradii':1, 'psfradius':1, 'bgradius':1, 'bgwidth':1,
 
 extract = {'verbose':True, 'qaplot':False, 'qafile':False, 'qaplotsize':(10,6)}
 
-combine = {'beam_mode':1, 'scale_orders':False, 'background_subtraction':False, 
-           'flat_field_name':None,'overwrite':True, 'verbose':True,
+combine = {'linearity_correction':True, 'beam_mode':1, 'scale_orders':False,
+           'background_subtraction':False, 'flat_field_name':None,
+           'flat_field':False, 'overwrite':True, 'verbose':True,
            'qaplot':False, 'qafile':False, 'qaplotsize':(10,6)}
