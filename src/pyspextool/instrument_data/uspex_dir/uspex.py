@@ -11,7 +11,7 @@ from pyspextool.io.fitsheader import average_header_info
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.split_text import split_text
-
+from pyspextool.utils.loop_progress import loop_progress
 
 def correct_amps(img):
 
@@ -106,14 +106,6 @@ def read_fits(files, lininfo, keywords=None, pair_subtract=False, rotate=0,
         keyword and the value is a list consiting of the FITS value and FITS 
         comment.
 
-    Example
-    --------
-    ?
-
-    Modification History
-    --------------------
-    2022-05-25 - Written by M. Cushing, University of Toledo.
-                 Based on the Spextool mc_readuspexfits.pro IDL program.
     """
     # Get setup information
 
@@ -178,6 +170,10 @@ def read_fits(files, lininfo, keywords=None, pair_subtract=False, rotate=0,
         # pair subtraction
 
         for i in range(0, nimages):
+
+            if verbose is True:
+                loop_progress(i, 0, nimages, message='Loading images...')
+
             a = load_data(files[i * 2], lininfo, bias, keywords=keywords,
                           ampcor=ampcor, lccoeffs=lc_coeffs)
 
@@ -197,6 +193,9 @@ def read_fits(files, lininfo, keywords=None, pair_subtract=False, rotate=0,
     else:
 
         for i in range(0, nimages):
+
+            if verbose is True:
+                loop_progress(i, 0, nimages, message='Loading images...')            
             im, va, hd, bm = load_data(files[i], lininfo, bias,
                                        keywords=keywords, ampcor=ampcor,
                                        lccoeffs=lc_coeffs)

@@ -175,9 +175,6 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     # Load the FITS files into memory
 
-    if verbose is True:
-        print('Loading FITS images...')
-
     img, var, hdr, mask = instr.read_fits(files,
                                           setup.state['linearity_info'],
                                           rotate=modeinfo['rotation'],
