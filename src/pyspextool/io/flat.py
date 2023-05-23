@@ -61,7 +61,11 @@ def read_flat_fits(flatfile):
             float -> The plate scale (arcseconds per pixel).
 
         ``"ybuffer"``
-            int -> The buffer (pixels) used to avoid the edges of the slit.
+            int -> The number of native pixels from the top and bottom of the 
+                   slit to avoid during the operation.  Useful to account for 
+                   the fact that the drop-off in intensity at the edge of the 
+                   slit is not a heaviside function but rather occurs over a 
+                   few pixels.
 
         ``"slith_pix"``
             float -> The slit height (pixels).
@@ -499,7 +503,10 @@ def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
         end column number for said order.
 
     ybuffer : int
-        The buffer (pixels) used to avoid the edges of the slit.
+        The number of native pixels from the top and bottom of the slit to
+        avoid during the operation.  Useful to account for the fact that
+        the drop-off in intensity at the edge of the slit is not a
+        heaviside function but rather occurs over a few pixels.
 
     ps : float
         The plate scale (arcseconds per pixel).
