@@ -173,7 +173,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     # Add spextool keywords
 
     hdr['MODULE'] = ('extract', ' Creation module')
-    hdr['VERSION'] = (version, ' Spextool version')
+    hdr['VERSION'] = (version, ' pySpextool version')
     hdr['AIMAGE'] = (aimage, ' A image')
     hdr['SKYORDRK'] = (sky, ' Sky or dark image')
     hdr['FLAT'] = (flat, ' Flat field image')
