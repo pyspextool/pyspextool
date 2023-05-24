@@ -5,6 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pyspextool"
 version = "0.0.1"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
 dependencies = [
     "astropy",
     "scipy",
@@ -18,4 +23,4 @@ dependencies = [
 include-package-data = true
 
 [tool.setuptools.package-data]
-"*" = ["*.dat","*.fits"] # includes the data files in instrument_data/
+"*" = ["*.dat","*.fits"] # includes the data files in instrument_data/ and data/
