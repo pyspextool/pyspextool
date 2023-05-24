@@ -330,8 +330,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
             # First we have to get the possible file names
 
-            fullpath = glob.glob(os.path.join(setup.state['package_path'], '..',
-                                              '..', 'data', 'atran*.fits'))
+            fullpath = glob.glob(os.path.join(setup.state['package_path'],
+                                              'data', 'atran*.fits'))
             # Then strip the paths off
 
             basenames = [os.path.basename(x) for x in fullpath]
@@ -398,13 +398,14 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         if directory == 'raw':
             img, var, hdr, mask = instr.read_fits(input_files,
                                                   setup.state['linearity_info'],
-                                                  rotate=extract.state['rotation'],
-                                                  keywords=setup.state['extract_keywords'],
-                                                  linearity_correction=linearity_correction,
+                                            rotate=extract.state['rotation'],
+                                    keywords=setup.state['extract_keywords'],
+                                    linearity_correction=linearity_correction,
                                                   verbose=verbose)
 
         else:
-            print('Do later')
+
+            x = 1
 
     elif reduction_mode == 'A-B':
 
@@ -412,8 +413,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                                               setup.state['linearity_info'],
                                               pair_subtract=True,
                                               rotate=extract.state['rotation'],
-                                              keywords=setup.state['extract_keywords'],
-                                              linearity_correction=linearity_correction,
+                                    keywords=setup.state['extract_keywords'],
+                                    linearity_correction=linearity_correction,
                                               verbose=verbose)
     else:
 
