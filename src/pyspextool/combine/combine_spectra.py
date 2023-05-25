@@ -60,10 +60,10 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     scale_range : str or None
         A str giving the wavelength range, e.g. '1.1-1.15'.  If None, defaults
-        to the entral `scale_range_fraction` of `scale_order`.
+        to the central `scale_range_fraction` of `scale_order`.
 
     scale_range_fraction : float, default=0.7
-        An float giving the central fraction of the wavelength range to be 
+        A float giving the central fraction of the wavelength range to be 
         used for scaling.  
 
     correct_spectral_shape : {False, True}

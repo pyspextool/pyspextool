@@ -11,7 +11,7 @@ from pyspextool.io.read_spectra_fits import read_spectra_fits
 def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
                  aperture=0, xlabel=None, ylabel=None, title=None,
                  colors='green', line_width=1, yrange_buffer=0.05,
-                 order_numbers=True, file_info=None):
+                 order_numbers=True, file_info=None, display=True):
     """
     To plot a pyspextool FITS file.
 
@@ -52,7 +52,7 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
         yrange_buffer : float, default=0.05
             The fraction by which to expand the y range if desired.
 
-        order_numbers : {True, False}
+        order_numbers : bool, default=True
             Set to True for the order numbers to be plotted on the plot.
 
         file_info : dict, optional
@@ -65,6 +65,9 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
             `'filename'` : str, optional, default=root of spectra.
 
             `'extension'` : str, optional, default='.pdf'
+
+        display : bool, default=True
+            Set to True to display figure with call.
             
     Returns
     -------
@@ -199,22 +202,20 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
             # Get the plotting values
 
             xvalues = spectra[i * napertures + aperture, 0, :]
+            y2values = [np.nan]*len(xvalues)
 
             if y == 'flux':
                 
                 yvalues = spectra[i*napertures+aperture,1,:]
-                y2values = [np.nan]*len(yvalues)
 
             elif y == 'uncertainty':
             
                 yvalues = spectra[i*napertures+aperture,2,:]
-                y2values = [np.nan]*len(yvalues)
                 
             elif y == 'snr':
                 
                 yvalues = spectra[i*napertures+aperture,1,:]/\
                 spectra[i*napertures+aperture,2,:]
-                y2values = [np.nan]*len(yvalues)
 
             elif y == 'flux and uncertainty':
 
@@ -302,13 +303,10 @@ def plot_spectra(file, plot_type='continuous', plot_size=(10, 6), y='flux',
             extension = '.pdf'
 
         pl.savefig(os.path.join(filepath, filename + extension))
-        pl.close()
 
-    else:
+    if display==True: pl.show()
 
-        pl.show()
-        pl.close()
-
+    pl.close()
     return ax
 
 
