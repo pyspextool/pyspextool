@@ -1,6 +1,6 @@
 # Test sample files for spex/SXD mode 
 
-Data from 2003 Jul 7 program TBD (PI Rayner)
+Data from 2003 Jul 7 program 2003A098 (PI Rayner)
 
 ## original 2D frames
 
