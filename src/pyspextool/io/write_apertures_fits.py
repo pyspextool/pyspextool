@@ -302,9 +302,9 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     if verbose is True:
 
         if xsbginfo is None:
-            print('Wrote', os.path.basename(output_fullpath) + '.fits',
+            print('Wrote', os.path.basename(output_fullpath),
                   'to disk.')
 
         if xsbginfo is not None:
-            print('Wrote', os.path.basename(output_fullpath) + '.fits', 'and',
-                  os.path.basename(output_fullpath) + '_bg.fits', 'to disk.')
+            print('Wrote', os.path.basename(output_fullpath), 'and',
+                  os.path.basename(output_fullpath), 'to disk.')

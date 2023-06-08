@@ -60,10 +60,10 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     scale_range : str or None
         A str giving the wavelength range, e.g. '1.1-1.15'.  If None, defaults
-        to the value `scale_range_fraction`.
+        to the central `scale_range_fraction` of `scale_order`.
 
     scale_range_fraction : float, default=0.7
-        An float giving the central fraction of the wavelength range to be 
+        A float giving the central fraction of the wavelength range to be
         used for scaling.  
 
     correct_spectral_shape : {False, True}
@@ -71,9 +71,8 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     statistic : {'robust weighted mean', 'robust mean', 'weighted mean', 
                  'mean', 'median'}
-
         For any of the means, the uncertainty is the standard error on the 
-        mean, e.g. s/np.sqrt(n), where s is the sample standard deviation and 
+        mean, e.g. s/np.sqrt(n), where s is the sample standard deviation and
         n is the number of data points.
 
         For the median, the uncertainty is given by 1.482*MAD/np.sqrt(n) where
@@ -82,8 +81,8 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         1.482*median(|x_i-x_med|).
 
     robust_sigma : float or int, default=8
-        The sigma threshold of a robust statistic.   Values are identified as 
-        outliers if 
+        The sigma threshold of a robust statistic.   Values are identified as
+        outliers if
 
         |x_i - x_med|/MAD > robust_sigma,
 
@@ -119,7 +118,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     Returns
     -------
     None
-        Writes a pyspextool FITS file to disk.  
+        Writes a pyspextool FITS file to disk.
 
     """
 
@@ -192,7 +191,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     if output_path is None:
 
         output_path = setup.state['proc_path']        
-        
+
     check_path(input_path)
     check_path(output_path)    
         
@@ -460,14 +459,14 @@ def load_allorders():
             # Single file means combining all apertures
             
             combine.state['combine_apertures'] = True
-            combine.state['combine_type'] = 'twoaperture'            
+            combine.state['combine_type'] = 'twoaperture'
 
         else:
 
             # Multiple file means combining on aperture by aperture basis
             
             combine.state['combine_apertures'] = False
-            combine.state['combine_type'] = 'standard'                        
+            combine.state['combine_type'] = 'standard'
         
 
     elif combine.state['module'] == 'telluric':
@@ -512,7 +511,7 @@ def load_allorders():
 
     intensities = np.full(shape, np.nan)
     uncertainties = np.full(shape, np.nan)
-    bitmasks = np.full(shape, 0)    
+    bitmasks = np.full(shape, 0)
         
     #
     # Now start the loop over each file
@@ -552,15 +551,15 @@ def load_allorders():
                     intensities[k,j,i,:] = spectra[idx,1,:]
                     uncertainties[k,j,i,:] = spectra[idx,2,:]
                     bitmasks[k,j,i,:] = spectra[idx,3,:]
-                
+
                 else:
 
-                    idx = j*combine.state['napertures']+k                    
+                    idx = j*combine.state['napertures']+k
                     wavelengths[0,j,:] = spectra[idx,0,:]
                     intensities[0,j,k,:] = spectra[idx,1,:]
                     uncertainties[0,j,k,:] = spectra[idx,2,:]
-                    bitmasks[0,j,k,:] = spectra[idx,3,:]                    
-                                    
+                    bitmasks[0,j,k,:] = spectra[idx,3,:]
+
     # Load into memory
                     
     combine.state['headers'] = headers
@@ -595,8 +594,8 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
     # Copy for ease of use
     #
 
-    wavelength = combine.state['wavelengths'] 
-    intensity = combine.state['intensities'] 
+    wavelength = combine.state['wavelengths']
+    intensity = combine.state['intensities']
     uncertainty = combine.state['uncertainties']
     bitmask = combine.state['bitmasks']
     
@@ -809,7 +808,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
             np.multiply(combine.state['uncertainties'][i,j,:,:],
                         np.sqrt(scale_array),
-                        out=combine.state['uncertainties'][i,j,:,:])            
+                        out=combine.state['uncertainties'][i,j,:,:])
 
     combine.state['scales'] = scales
     
@@ -851,7 +850,7 @@ def write_file():
             array[idx,1,:]  = combine.state['intensity'][j,i]
             array[idx,2,:]  = combine.state['uncertainty'][j,i]
             array[idx,3,:]  = combine.state['bitmask'][j,i]
-            
+
     #
     # Average the headers together
     #
@@ -878,7 +877,7 @@ def write_file():
         avehdr = combine.state['headers'][0]
         avehdr['TOTITIME'] = [2*avehdr['TOTITIME'][0],
                               ' Total integration time (sec)']
-        
+
     elif combine.state['combine_type'] == 'telluric':        
 
         napertures_combined = 0
@@ -890,7 +889,7 @@ def write_file():
     # remove it from the avehdr
 
     avehdr.pop('HISTORY')
-        
+
     #
     # Add things to the average header
     #
@@ -898,7 +897,7 @@ def write_file():
     avehdr['MODULE'][0] = 'combine'
 
     avehdr['FILENAME'][0] = combine.load['output_name']+'.fits'
-        
+
 
     avehdr['NAPS'][0] = combine.state['final_napertures']
 
