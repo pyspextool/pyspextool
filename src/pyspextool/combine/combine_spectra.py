@@ -60,7 +60,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     scale_range : str or None
         A str giving the wavelength range, e.g. '1.1-1.15'.  If None, defaults
-        to the entral `scale_range_fraction` of `scale_order`.
+        to the value `scale_range_fraction`.
 
     scale_range_fraction : float, default=0.7
         An float giving the central fraction of the wavelength range to be 
@@ -71,18 +71,19 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     statistic : {'robust weighted mean', 'robust mean', 'weighted mean', 
                  'mean', 'median'}
+
         For any of the means, the uncertainty is the standard error on the 
-        mean, e.g. s/np.sqrt(n) where s is the sample standard deviation and 
+        mean, e.g. s/np.sqrt(n), where s is the sample standard deviation and 
         n is the number of data points.
 
         For the median, the uncertainty is given by 1.482*MAD/np.sqrt(n) where
-        MAD is the median absolute deviation and is given by,
+        MAD is the median absolute deviation given by,
 
         1.482*median(|x_i-x_med|).
 
     robust_sigma : float or int, default=8
-        The sigma threshold of a robust statistic is requested.   Values are 
-        identified as outliers if 
+        The sigma threshold of a robust statistic.   Values are identified as 
+        outliers if 
 
         |x_i - x_med|/MAD > robust_sigma,
 
@@ -118,7 +119,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     Returns
     -------
     None
-        Writes 
+        Writes a pyspextool FITS file to disk.  
 
     """
 
@@ -192,7 +193,6 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
         output_path = setup.state['proc_path']        
         
-
     check_path(input_path)
     check_path(output_path)    
         
@@ -273,7 +273,6 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
                       'extension': setup.state['qa_extension']}
 
         plot_allorders(file_info=qafileinfo, suffix='_raw', title='raw')
-
             
     #
     # Scale the spectra
@@ -315,7 +314,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         print('Combining spectra...')
         
     combine_allorders()
-        
+
     #
     # Write the results to disk
     #
@@ -346,9 +345,9 @@ def combine_allorders():
     # Create output arrays
     #
     
-    intensity = np.full_like(combine.state['wavelength'], np.nan)
-    uncertainty = np.full_like(combine.state['wavelength'], np.nan)
-    bitmask = np.full_like(combine.state['wavelength'], 0)
+    intensity = np.full_like(combine.state['wavelengths'], np.nan)
+    uncertainty = np.full_like(combine.state['wavelengths'], np.nan)
+    bitmask = np.full_like(combine.state['wavelengths'], 0)
 
     #
     #  Loop over apertures and orders
@@ -361,8 +360,8 @@ def combine_allorders():
 
         for j in range(combine.state['norders']):
 
-            data = combine.state['intensity'][i,j,:,:]
-            var = combine.state['uncertainty'][i,j,:,:]**2
+            data = combine.state['intensities'][i,j,:,:]
+            var = combine.state['uncertainties'][i,j,:,:]**2
 
             
             # First do the data
@@ -398,7 +397,7 @@ def combine_allorders():
             
             # Now do the mask
             
-            array = combine.state['bitmask'][i,j,:,:]
+            array = combine.state['bitmasks'][i,j,:,:]
             mask = math.combine_flag_stack(array)
         
             # Store the results
@@ -449,7 +448,8 @@ def load_allorders():
     #
 
     # Start with the module that created the data
-    
+
+
     if combine.state['module'] == 'extract':
 
         # Now check whether we are combining apertures.
@@ -460,14 +460,14 @@ def load_allorders():
             # Single file means combining all apertures
             
             combine.state['combine_apertures'] = True
-            combine.state['combine_type'] = 'extract_allaps'            
+            combine.state['combine_type'] = 'twoaperture'            
 
         else:
 
             # Multiple file means combining on aperture by aperture basis
             
             combine.state['combine_apertures'] = False
-            combine.state['combine_type'] = 'extract'                        
+            combine.state['combine_type'] = 'standard'                        
         
 
     elif combine.state['module'] == 'telluric':
@@ -477,8 +477,9 @@ def load_allorders():
                 
     else:
 
-        print('Unknown module for combining.')
-        return
+        message = 'Unknown module.'
+        raise ValueError(message)
+
 
     #
     #  Compute various values and build the various arrays and lists.
@@ -498,67 +499,75 @@ def load_allorders():
         combine.state['scales'] = np.full(shape,1)
 
     #
-    # Create putput arrays, wavelength first, then the others
+    # Create output arrays, wavelength first, then the others
     #
 
     shape = (combine.state['final_napertures'], combine.state['norders'],
              combine.state['npixels'])
              
-    wavelength = np.full(shape, np.nan)
+    wavelengths = np.full(shape, np.nan)
 
     shape = (combine.state['final_napertures'], combine.state['norders'],
              combine.state['nspectra'], combine.state['npixels'])
 
-    intensity = np.full(shape, np.nan)
-    uncertainty = np.full(shape, np.nan)
-    bitmask = np.full(shape, 0)    
+    intensities = np.full(shape, np.nan)
+    uncertainties = np.full(shape, np.nan)
+    bitmasks = np.full(shape, 0)    
         
     #
     # Now start the loop over each file
     #
 
-    hdr = []
+    headers = []
     
     keywords  = setup.state['pyspextool_keywords']+\
                 setup.state['extract_keywords'] + ['HISTORY']
-    
+
     for i in range(combine.state['nfiles']):
 
         for j in range(combine.state['norders']):
 
-            if combine.state['combine_apertures'] is False:
+            for k in range(combine.state['napertures']):
 
-                for k in range(combine.state['napertures']):
+                # read the file
 
-                    # read the file
+                hdul = fits.open(combine.state['input_files'][i])
+                hdul[0].verify('silentfix')
+                # this was needed to correct hdr problems
+                spectra = hdul[0].data
+                header = hdul[0].header
+                hdul.close()
 
-                    hdul = fits.open(combine.state['input_files'][i])
-                    hdul[0].verify('silentfix')
-                    # this was needed to correct hdr problems
-                    spectra = hdul[0].data
-                    header = hdul[0].header
-                    hdul.close()
+                # Grab header keywords and store
 
-                    # Grab header keywords and store
+                info = get_header_info(header,keywords=keywords)
+                headers.append(info)
 
-                    info = get_header_info(header,keywords=keywords)
-                    hdr.append(info)
+                # store the data
 
-                    # store the data
-                    
-                    wavelength[k,j,:] = spectra[j,0,:]
-                    intensity[k,j,i,:] = spectra[j,1,:]
-                    uncertainty[k,j,i,:] = spectra[j,2,:]
-                    bitmask[k,j,i,:] = spectra[j,3,:]
+                if combine.state['combine_apertures'] is False:
 
+                    idx = j*combine.state['napertures']+k
+                    wavelengths[k,j,:] = spectra[idx,0,:]
+                    intensities[k,j,i,:] = spectra[idx,1,:]
+                    uncertainties[k,j,i,:] = spectra[idx,2,:]
+                    bitmasks[k,j,i,:] = spectra[idx,3,:]
+                
+                else:
+
+                    idx = j*combine.state['napertures']+k                    
+                    wavelengths[0,j,:] = spectra[idx,0,:]
+                    intensities[0,j,k,:] = spectra[idx,1,:]
+                    uncertainties[0,j,k,:] = spectra[idx,2,:]
+                    bitmasks[0,j,k,:] = spectra[idx,3,:]                    
+                                    
     # Load into memory
                     
-    combine.state['header'] = hdr
-    combine.state['wavelength'] = wavelength
-    combine.state['intensity'] = intensity
-    combine.state['uncertainty'] = uncertainty
-    combine.state['bitmask'] = bitmask
-
+    combine.state['headers'] = headers
+    combine.state['wavelengths'] = wavelengths
+    combine.state['intensities'] = intensities
+    combine.state['uncertainties'] = uncertainties
+    combine.state['bitmasks'] = bitmasks
 
     
 def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
@@ -586,10 +595,10 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
     # Copy for ease of use
     #
 
-    wavelength = combine.state['wavelength'] 
-    intensity = combine.state['intensity'] 
-    uncertainty = combine.state['uncertainty']
-    bitmask = combine.state['bitmask']
+    wavelength = combine.state['wavelengths'] 
+    intensity = combine.state['intensities'] 
+    uncertainty = combine.state['uncertainties']
+    bitmask = combine.state['bitmasks']
     
     #
     # Get the ranges
@@ -736,7 +745,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
         # Grab the zeroth aperture wavelength array.
         
-        wave = np.squeeze(combine.state['wavelength'][0, z_order, :])
+        wave = np.squeeze(combine.state['wavelengths'][0, z_order, :])
 
         min_wave = np.nanmin(wave)
         max_wave = np.nanmax(wave)        
@@ -773,8 +782,8 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
         # Determine which pixels we are using for the scaling
 
-        wave = np.squeeze(combine.state['wavelength'][i, z_order, :])
-        intensity = np.squeeze(combine.state['intensity'][i,z_order,:,:])
+        wave = np.squeeze(combine.state['wavelengths'][i, z_order, :])
+        intensity = np.squeeze(combine.state['intensities'][i,z_order,:,:])
 
         z_wave = np.where((wave > combine.state['scale_range'][0]) &
                           (wave < combine.state['scale_range'][1]))
@@ -795,12 +804,12 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         
         for j in range(combine.state['norders']):
 
-            np.multiply(combine.state['intensity'][i,j,:,:], scale_array,
-                        out=combine.state['intensity'][i,j,:,:])
+            np.multiply(combine.state['intensities'][i,j,:,:], scale_array,
+                        out=combine.state['intensities'][i,j,:,:])
 
-            np.multiply(combine.state['uncertainty'][i,j,:,:],
+            np.multiply(combine.state['uncertainties'][i,j,:,:],
                         np.sqrt(scale_array),
-                        out=combine.state['uncertainty'][i,j,:,:])            
+                        out=combine.state['uncertainties'][i,j,:,:])            
 
     combine.state['scales'] = scales
     
@@ -838,20 +847,41 @@ def write_file():
         for j in range(combine.state['final_napertures']):        
 
             idx = i+combine.state['final_napertures']*j
-            array[idx,0,:]  = combine.state['wavelength'][j,i]
+            array[idx,0,:]  = combine.state['wavelengths'][j,i]
             array[idx,1,:]  = combine.state['intensity'][j,i]
             array[idx,2,:]  = combine.state['uncertainty'][j,i]
             array[idx,3,:]  = combine.state['bitmask'][j,i]
-
+            
     #
     # Average the headers together
     #
 
-    avehdr = average_header_info(combine.state['header'])
+#    avehdr = average_header_info(combine.state['headers'])
 
+#    avehdr['MODULE'][0] = 'combine'
+#    avehdr['FILENAME'][0] = combine.load['output_name']+'.fits'
 
-    avehdr['MODULE'][0] = 'combine'
-    avehdr['FILENAME'][0] = combine.load['output_name']+'.fits'
+    
+    #
+    # Determine useful things depending on combination mode
+    #
+    
+    
+    if combine.state['combine_type'] == 'standard':
+
+        napertures_combined = 0
+        avehdr = average_header_info(combine.state['headers'])
+
+    elif combine.state['combine_type'] == 'twoaperture':
+
+        napertures_combined = 2
+        avehdr = combine.state['headers'][0]
+        avehdr['TOTITIME'] = [2*avehdr['TOTITIME'][0],
+                              ' Total integration time (sec)']
+        
+    elif combine.state['combine_type'] == 'telluric':        
+
+        napertures_combined = 0
 
     # Store the history
 
@@ -860,29 +890,16 @@ def write_file():
     # remove it from the avehdr
 
     avehdr.pop('HISTORY')
-    
-    #
-    # Determine useful things depending on combination mode
-    #
-    
-    
-    if combine.state['combine_type'] == 'extract':
-
-        napertures_combined = 0
-
-    elif combine.state['combine_type'] == 'extract_allaps':
-
-        napertures_combined = 2
         
-    elif combine.state['combine_type'] == 'telluric':        
-
-        napertures_combined = 0
-
     #
     # Add things to the average header
     #
 
+    avehdr['MODULE'][0] = 'combine'
+
+    avehdr['FILENAME'][0] = combine.load['output_name']+'.fits'
         
+
     avehdr['NAPS'][0] = combine.state['final_napertures']
 
     avehdr['NFLCOMB'] = [combine.state['nfiles'],
@@ -928,7 +945,7 @@ def write_file():
                         
     # Deal with the general history
 
-    history = 'The spectra in the files '+', '.join(files)+\
+    history = 'The spectra in the file(s) '+', '.join(files)+\
               ' were combined using a '+combine.load['statistic']
 
     if combine.load['statistic'][0:6] == 'robust':
@@ -954,11 +971,11 @@ def write_file():
               str(combine.state['scale_order'])+' and are: '+\
               ', '.join(scales)+'.  '
         
-    # Now split
+    # Now split, add the old history, and add to the hdr
 
     history = split_text(history, length=65)            
 
-    history = old_history + history
+    history = old_history + [' '] + history
 
     for hist in history:
 
