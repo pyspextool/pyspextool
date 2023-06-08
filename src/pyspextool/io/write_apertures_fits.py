@@ -147,7 +147,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
             background_array[l, :, 0:npixels[l]] = slice
             l += 1
 
-            #
+    #
     # Now write the file(s) to disk
     #
 
@@ -156,7 +156,20 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
 
-    # Add the original file header keywords
+    hdr['MODULE'] = ('extract', ' Creation module')
+
+    # Add the original file header keywords.  Cut out any history first
+    # if need be.
+
+    is_history_present = 'HISTORY' in header_info
+
+    if is_history_present is True:
+
+        old_history = header_info['HISTORY']
+
+        # remove it from the header_info dictionary
+
+        header_info.pop('HISTORY')
 
     keys = list(header_info.keys())
 
@@ -258,6 +271,12 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     history = split_text(history, length=65)
 
+    if is_history_present is True:
+
+        # Join the two histories
+
+        history = old_history + [' '] + history
+    
     for hist in history:
         hdr['HISTORY'] = hist
 
@@ -276,7 +295,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         fits.writeto(output_fullpath + '_bg.fits', background_array, hdr,
                      overwrite=overwrite)
 
-        #
+    #
     # Update the user
     #
 

@@ -110,6 +110,7 @@ def read_line_list(file, delta_to_microns=False):
 
 
 def read_wavecal_file(file):
+
     """
     To read a pySpextool wavecal calibration file.
 

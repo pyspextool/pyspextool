@@ -99,7 +99,6 @@ def extract_filestring(string, method):
         raise ValueError(message)
 
 
-
 def make_full_path(dir, files, indexinfo=None, exist=False):
     
     """
