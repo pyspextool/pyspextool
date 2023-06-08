@@ -8,7 +8,8 @@ from pyspextool.plot.limits import get_image_range
 
 
 def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
-               locateorders_plotinfo=None, file_info=None, plot_size=(5, 5)):
+               locateorders_plotinfo=None, file_info=None, plot_size=(9, 9),
+               plot_number=None):
     """
     To plot a spectral image along with the edges and order numbers
 
@@ -22,11 +23,10 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
         not up-down. 
 
     mask : numpy.ndarray, optional
-        An (nrows, ncols) array where "bad" pixels are set and "good" pixels
-        are zero. If passed, bad pixels are colored red.
+        An (nrows, ncols) array where "bad" pixels are set to unity and 
+        "good" pixels are zero. If passed, bad pixels are colored red.
 
-    orders_plotinfo : dict, optional
-
+    orders_plotinfo : dict, default=None
         `'edgecoeffs'` : numpy.ndarray 
             (norders,`edgedeg`+1,2) float array giving the polynomial 
             coefficients delineating the top and bottom of each order.  
@@ -44,33 +44,56 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
             (norders,) int array of the order numbers.  By Spextool convention, 
             orders[0] is the order closest to the bottom of the array.
 
-    trace_plotinfo : dict, optional
-        Later
+    trace_plotinfo : dict, default=None
+        
 
     locateorders_plotinfo : dict, optional
-        Later
+        `'guess_positions'`: list
+            An (norders,) list where each element is a two-element list 
+            giving the (x,y) position of the guess position
+
+        `'x'` : list
+            An (2*norders,) list where each element is the x positions of 
+            either the top or the bottom of an order.
+
+        `'y'` : list
+            An (2*norders,) list where each element is the x positions of 
+            either the top or the bottom of an order.
+
+        `'goodbad'` : list
+            An (2*norders,) list where each element is the x positions of 
+            either the top or the bottom of an order.
+
+        `'coefficients'` : list
+            An (2*norders,) list where each element is (ncoeffs,) ndarray of 
+            the polynomial coefficients of the top or bottom of an order.  
 
     file_info : dict, optional
-        `"figsize"` : tuple
+        `'figsize'` : tuple
             (2,) tuple of the figure size (inches).
 
-        `"filepath"` : str
+        `'filepath'` : str
             The directory to write the QA figure.
 
-        `"filename"` : str
+        `'filename'` : str
             The name of the file, sans suffix/extension.
 
-        `"extension"` : str
+        `'extension'` : str
             The file extension.  Must be compatible with the savefig
             function of matplotlib.
 
-    plot_size : tuple, default=(5,5)
+    plot_size : tuple, default=(9, 9)
         A (2,) tuple giving the figure size.
+
+    plot_number : int, default=None
+        The plot number to pass to matplotlib
 
     Returns
     -------
-        None
-    
+        int or None
+        If int, it is the plot number that can be passed back using 
+        `plot_number` to update a plot.
+
     """
 
     #
@@ -94,18 +117,35 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
 
     check_parameter('plot_image', 'plot_size', plot_size, ['NoneType', 'tuple'])
 
+    check_parameter('plot_image', 'plot_number', plot_number,
+                    ['NoneType', 'int'])    
+
+    #
+    # Make the plot
+    #
+
+    
     if file_info is None:
 
-        doplot(image, plot_size, mask=mask,
-               locateorders_plotinfo=locateorders_plotinfo,
-               orders_plotinfo=orders_plotinfo, trace_plotinfo=trace_plotinfo)
+        # This is to the screen
+        
+        pl.ion()
+        plot_number = doplot(image, plot_size, plot_number, mask=mask,
+                             locateorders_plotinfo=locateorders_plotinfo,
+                             orders_plotinfo=orders_plotinfo,
+                             trace_plotinfo=trace_plotinfo)
 
         pl.show()
-        pl.close()
+        pl.pause(1)
+
+        return plot_number
 
     else:
 
-        doplot(image, file_info['figsize'], mask=mask,
+        # This is to a file
+
+        pl.ioff()
+        doplot(image, file_info['figsize'], plot_number, mask=mask,
                locateorders_plotinfo=locateorders_plotinfo,
                orders_plotinfo=orders_plotinfo,
                trace_plotinfo=trace_plotinfo)
@@ -113,12 +153,18 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
         pl.savefig(os.path.join(file_info['filepath'], file_info['filename'] + \
                                 file_info['extension']))
         pl.close()
+        return None
+        
 
-
-def doplot(image, figsize, mask=None, locateorders_plotinfo=None,
+    
+def doplot(image, figsize, plot_number, mask=None, locateorders_plotinfo=None,
            orders_plotinfo=None, trace_plotinfo=None):
+
     """
-    To plot the image independent of the device
+    To plot the image "independent of the device"
+
+    image : ndarray
+        
 
     """
 
@@ -138,7 +184,8 @@ def doplot(image, figsize, mask=None, locateorders_plotinfo=None,
 
     # Now draw the figure
 
-    fig = pl.figure(figsize=figsize)
+    fig = pl.figure(num=plot_number, figsize=figsize)
+    pl.clf()
     pl.imshow(pimage, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
               origin='lower')
     pl.xlabel('Columns (pixels)')
@@ -179,7 +226,8 @@ def doplot(image, figsize, mask=None, locateorders_plotinfo=None,
         if 'x' in trace_plotinfo and \
                 'y' in trace_plotinfo and \
                 'goodbad' in trace_plotinfo:
-            pl.plot(trace_plotinfo['x'], trace_plotinfo['y'], 'go', markersize=2)
+            pl.plot(trace_plotinfo['x'], trace_plotinfo['y'], 'go',
+                    markersize=2)
             bad = trace_plotinfo['goodbad'] == 0
             pl.plot(trace_plotinfo['x'][bad], trace_plotinfo['y'][bad], 'bo',
                     markersize=2)
@@ -197,11 +245,11 @@ def doplot(image, figsize, mask=None, locateorders_plotinfo=None,
 
     if locateorders_plotinfo is not None:
 
-        guess = locateorders_plotinfo['guesspos']
+        guess = locateorders_plotinfo['guess_positions']
         x = locateorders_plotinfo['x']
         y = locateorders_plotinfo['y']
         goodbad = locateorders_plotinfo['goodbad']
-        coeffs = locateorders_plotinfo['coeffs']
+        coeffs = locateorders_plotinfo['edgecoeffs']
 
         for i in range(len(guess)):
             pl.plot(guess[i][0], guess[i][1], 'go')
@@ -214,3 +262,10 @@ def doplot(image, figsize, mask=None, locateorders_plotinfo=None,
 
             pl.plot(x[i], np.polynomial.polynomial.polyval(x[i], coeffs[i]),
                     'r-', linewidth=0.3)
+
+    #
+    # Get plot number
+    #
+
+    plot_number = pl.gcf().number
+    return plot_number
