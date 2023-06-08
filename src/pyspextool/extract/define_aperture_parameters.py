@@ -286,12 +286,16 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         plot_aperture_radii = np.full(extract.state['naps'], aperture_radii)
 
     if qa_plot is True:
-        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
-                      doorders, apertures=extract.state['apertures'],
-                      aperture_radii=plot_aperture_radii, psf_radius=psf_radius,
-                      ps_bginfo=psbginfo, xs_bginfo=xsbginfo,
-                      plot_size=qa_plotsize)
-
+        
+        number = plot_profiles(extract.state['profiles'],
+                               extract.state['slith_arc'],
+                               doorders, apertures=extract.state['apertures'],
+                               aperture_radii=plot_aperture_radii,
+                               psf_radius=psf_radius, ps_bginfo=psbginfo,
+                               xs_bginfo=xsbginfo, plot_size=qa_plotsize,
+                               plot_number=extract.state['profiles_plotnum'])
+        extract.state['profiles_plotnum'] = number
+        
     if qa_file is True:
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],

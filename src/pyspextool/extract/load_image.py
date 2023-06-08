@@ -8,6 +8,7 @@ from pyspextool.extract.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.extract.rectify_order import rectify_order
 from pyspextool.io.check import *
 from pyspextool.io.files import *
+from pyspextool.io.fitsheader import get_header_info
 from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.wavecal import read_wavecal_fits
@@ -16,9 +17,9 @@ from pyspextool.utils.arrays import idl_rotate
 from pyspextool.fit.polyfit import poly_1d
 
 
-def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
-               directory='raw', suffix=None, flat_field=True,
-               linearity_correction=True, verbose=None,
+def load_image(files, flat_name, wavecal_name, *output_files,
+               reduction_mode='A-B', directory='raw', suffix=None,
+               flat_field=True, linearity_correction=True, verbose=None,
                do_all_steps=False, qa_plot=None, qa_file=None,
                qa_plotsize=(6, 6)):
     """
@@ -40,8 +41,12 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     flat_name : str
         The full name of a Spextool flat file.
 
-    wavecal_name : str, optional
+    wavecal_name : str or NoneType, optional
         The full name of a Spextool wavecal file.
+
+    output_files : str or list of str, optional
+        A str or list of str of output files names.  Only required if `files` 
+        gives file names intead of a prefix and index numbers.
 
     reduction_mode : {'A-B', 'A', 'A-Sky/Dark'}, optional
         The image reduction mode.
@@ -97,9 +102,11 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     check_parameter('load_image', 'flat_name', flat_name, 'str')
 
-    if len(wavecal_name) != 0:
-        check_parameter('load_image', 'wavecal_name', wavecal_name[0], 'str')
+    check_parameter('load_image', 'wavecal_name', wavecal_name,
+                    ['NoneType','str'])
 
+    if len(output_files) != 0:
+        check_parameter('load_image', 'output_files', output_files[0], 'str')                
     check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
                     possible_values=['A', 'A-B', 'A-Sky/Dark'])
 
@@ -143,7 +150,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     extract.load['dolinearity'] = linearity_correction
     extract.load['qaplotsize'] = qa_plotsize
     extract.load['flatfile'] = flat_name
-    extract.load['wavecalfile'] = wavecal_name[0]
+    extract.load['wavecalfile'] = wavecal_name
     extract.load['qaplot'] = qa_plot
     extract.load['qafile'] = qa_file
     extract.load['verbose'] = verbose
@@ -179,8 +186,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     if len(wavecal_name) != 0:
 
         dowavecal = True
-        full_wavecal_name = os.path.join(setup.state['cal_path'],
-                                         wavecal_name[0])
+        full_wavecal_name = os.path.join(setup.state['cal_path'], wavecal_name)
         check_file(full_wavecal_name)
 
     else:
@@ -199,7 +205,8 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         extract.state['filereadmode'] = 'filename'
         files = files.replace(" ", "").split(',')
         input_files = make_full_path(path, files, exist=True)
-        output_files = None
+        output_files = make_full_path(setup.state['proc_path'],
+                                      [output_files[0]])
 
     else:
 
@@ -348,9 +355,9 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
             # Load that file
 
             array = fits.getdata(np.array(fullpath)[z][0])
-            extract.state['atrans_wave'] = array[0, :]
-            extract.state['atrans_trans'] = array[1, :]
-
+            extract.state['atmosphere'] = {'wavelength':array[0, :],
+                                           'transmission':array[1, :]}
+            
         else:
 
             wavecal, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
@@ -358,9 +365,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                                                      flatinfo['edgecoeffs'],
                                                      flatinfo['xranges'],
                                                      flatinfo['slith_arc'])
-
-            extract.state['atrans_wave'] = np.nan
-            extract.state['atrans_trans'] = np.nan
+            extract.state['atmosphere'] = None
 
         extract.state['wavecal'] = wavecal
         extract.state['spatcal'] = spatcal
@@ -390,13 +395,13 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
         else:
 
             message = 'Loading ' + file_names + \
-                      ' and not correcting for non-linearity...'
+              ' and not correcting for non-linearity...'
             print(message)
 
     if reduction_mode == 'A':
 
         if directory == 'raw':
-            img, var, hdr, mask = instr.read_fits(input_files,
+            img, var, hdrinfo, mask = instr.read_fits(input_files,
                                                   setup.state['linearity_info'],
                                             rotate=extract.state['rotation'],
                                     keywords=setup.state['extract_keywords'],
@@ -405,11 +410,23 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         else:
 
-            x = 1
+            # Read the data 
+
+            hdul = fits.open(input_files[0])
+            hdul[0].verify('silentfix')
+
+            hdr = hdul[0].header
+
+            hdrinfo = [get_header_info(hdr)]
+           
+            img = idl_rotate(hdul[1].data, extract.state['rotation'])
+            var = idl_rotate(hdul[2].data, extract.state['rotation'])
+        
+            hdul.close()
 
     elif reduction_mode == 'A-B':
 
-        img, var, hdr, mask = instr.read_fits(input_files,
+        img, var, hdrinfo, mask = instr.read_fits(input_files,
                                               setup.state['linearity_info'],
                                               pair_subtract=True,
                                               rotate=extract.state['rotation'],
@@ -419,7 +436,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
     else:
 
         print('do later.')
-
+        
     #
     # Flat field the data
     #
@@ -441,7 +458,7 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
     extract.state['workimage'] = img
     extract.state['varimage'] = var
-    extract.state['hdrinfo'] = hdr
+    extract.state['hdrinfo'] = hdrinfo
 
     #
     # Rotate the bad pixel mask
@@ -466,15 +483,15 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
 
         w = extract.state['wavecal'][bot, np.fix(indices[i]['x']).astype(int)]
 
-        order.update({'w': w})
-        order.update({'y': indices[i]['y']})
+        order.update({'wavelength': w})
+        order.update({'angle': indices[i]['y']})
 
         rectorders.append(order)
 
     # Store the results
 
     extract.state['rectorders'] = rectorders
-
+    
     #
     # Do the plotting
     #
@@ -484,8 +501,11 @@ def load_image(files, flat_name, *wavecal_name, reduction_mode='A-B',
                       'orders': extract.state['orders']}
 
     if qa_plot is True:
-        plot_image(extract.state['workimage'], orders_plotinfo=order_plotinfo,
-                   plot_size=qa_plotsize)
+        number = plot_image(extract.state['workimage'],
+                            orders_plotinfo=order_plotinfo,
+                            plot_size=qa_plotsize,
+                            plot_number=extract.state['image_plotnum'])
+        extract.state['image_plotnum'] = number
 
     if qa_file is True:
         qafileinfo = {'figsize': (7, 7),

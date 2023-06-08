@@ -198,9 +198,12 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
         doorders = test
 
     if qa_plot is True:
-        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
-                      doorders, apertures=extract.state['apertures'],
-                      plot_size=qa_plotsize)
+        number = plot_profiles(extract.state['profiles'],
+                               extract.state['slith_arc'],
+                               doorders, apertures=extract.state['apertures'],
+                               plot_number=extract.state['profiles_plotnum'],
+                               plot_size=qa_plotsize)
+        extract.state['profiles_plotnum'] = number
 
     if qa_file is True:
         qafileinfo = {'figsize': (8.5, 11),

@@ -5,7 +5,7 @@ from pyspextool import config as setup
 from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
-from pyspextool.utils.math import mean_data_stack
+from pyspextool.extract.profiles import make_1d_profile
 
 
 def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
@@ -76,7 +76,7 @@ def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
     if verbose is None:
         verbose = setup.state['verbose']
 
-        #
+    #
     # Save user inputs
     #
 
@@ -94,67 +94,31 @@ def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
     profiles = []
     for i in range(extract.state['norders']):
 
-        # Unpack the data
+        atmos = extract.state['atmosphere']
+        
+        # Create the profile
+        
+        y, mean = make_1d_profile(extract.state['rectorders'][i],
+                                  atmospheric_transmission=atmos)
 
-        order = extract.state['rectorders'][i]
+        profiles.append({'order': extract.state['orders'][i], 'angle': y,
+                         'profile': np.flip(mean)})
 
-        img = order['img']
-        y = order['y']
-        w = order['w']
-
-        nrows = len(y)
-
-        # Subtract the background
-
-        medbg = np.median(img, axis=0)
-
-        bgimg = np.tile(medbg, (nrows, 1))
-
-        np.subtract(img, bgimg, out=img)
-
-        if extract.load['wavecalfile'] is not None:
-
-            # Do the interpolation of the atmosphere
-
-            f = interpolate.interp1d(extract.state['atrans_wave'],
-                                     extract.state['atrans_trans'],
-                                     fill_value=1)
-            rtrans = f(w)
-
-            # Clip low points and create weight array
-
-            rtrans = np.where(rtrans <= 0.1, rtrans, 0.1)
-
-            weights = np.tile((1 / rtrans) ** 2, (nrows, 1))
-
-            # Combine them together.  Must rotate first to work with
-            # mean_data_stack
-
-            mean, mvar, mask = mean_data_stack(np.rot90(img, 3),
-                                               weights=np.rot90(weights, 3),
-                                               robust=5)
-
-        else:
-
-            mean, mvar, mask = mean_data_stack(np.rot90(img, 3),
-                                               robust=5)
-
-            # Normalize by the total absolute flux
-
-        mean = mean / np.sum(np.abs(mean))
-
-        # Package up
-
-        profiles.append({'order': extract.state['orders'][i], 'y': y,
-                         'p': np.flip(mean)})
-
+    # Store the results
+        
     extract.state['profiles'] = profiles
 
+    # Do the QA plotting
+    
     if qa_plot is True:
-        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
-                      np.ones(extract.state['norders'], dtype=int),
-                      plot_size=qa_plotsize)
-
+        number = plot_profiles(extract.state['profiles'],
+                               extract.state['slith_arc'],
+                               np.ones(extract.state['norders'], dtype=int),
+                               plot_size=qa_plotsize,
+                               plot_number=extract.state['profiles_plotnum'])
+        extract.state['profiles_plotnum'] = number
+        
+        
     if qa_file is True:
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],

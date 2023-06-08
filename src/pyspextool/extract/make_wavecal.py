@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 from pyspextool import config as setup
+from pyspextool.extract import config as extract
 
 from pyspextool.io.check import check_parameter
 from pyspextool.io.flat import read_flat_fits
@@ -17,6 +18,7 @@ from pyspextool.extract.simulate_wavecal_1dxd import simulate_wavecal_1dxd
 from pyspextool.extract.extract_extendedsource_1dxd import extract_extendedsource_1dxd
 from pyspextool.extract.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.extract.get_spectral_pixelshift import get_spectral_pixelshift
+from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.math import scale_data_stack
 from pyspextool.utils.math import median_data_stack
 
@@ -25,7 +27,9 @@ from pyspextool.io.wavecal import write_wavecal_1d
 
 def make_wavecal(files, flat_file, output_name, extension='.fits*',
                  use_stored_solution=False, verbose=None, qa_file=None,
-                 qa_plot=None, qa_plotsize=(8, 10), overwrite=True):
+                 qa_plot=None, qa_image_plotsize=(9, 9),
+                 qa_shift_plotsize=(8,10), qa_residual_plotsize=(10,8),
+                 overwrite=True):
     """
     To create a spextool wavecal file.
 
@@ -102,8 +106,8 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     check_parameter('make_wavecal', 'qa_plot', qa_plot, ['NoneType', 'bool'])
 
-    check_parameter('make_wavecal', 'qa_plotsize', qa_plotsize,
-                    ['NoneType', 'tuple'])
+#    check_parameter('make_wavecal', 'qa_plotsize', qa_plotsize,
+#                    ['NoneType', 'tuple'])
 
     #
     # Check the qa variables and set to system default if need be.
@@ -215,6 +219,33 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         med = simgs
 
     #
+    # Do the QA plot
+    #
+
+    if qa_plot is True:
+
+        orders_plotinfo = {'edgecoeffs': flatinfo['edgecoeffs'],
+                           'xranges': flatinfo['xranges'],
+                           'orders': flatinfo['orders']}
+        
+        plot_image(med, orders_plotinfo=orders_plotinfo,
+                   plot_size=qa_image_plotsize,
+                   plot_number=extract.state['image_plotnum'])
+
+    if qa_file is True:
+
+        orders_plotinfo = {'edgecoeffs': flatinfo['edgecoeffs'],
+                           'xranges': flatinfo['xranges'],
+                           'orders': flatinfo['orders']}
+        
+        qa_fileinfo = {'figsize': (6,6),
+                       'filepath': setup.state['qa_path'],
+                       'filename': output_name + '_arc',
+                       'extension': setup.state['qa_extension']}
+
+        plot_image(med, orders_plotinfo=orders_plotinfo, file_info=qa_fileinfo)
+
+    #
     # Let's do the extraction of the "arc" spectra
     #
 
@@ -264,8 +295,9 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         qafileinfo = None
 
     offset = get_spectral_pixelshift(xanchor, fanchor, xsource, fsource,
-                                     qafileinfo=qafileinfo, qa_plot=qa_plot,
-                                     qa_plotsize=qa_plotsize)
+                                     qafileinfo=qafileinfo,
+                                     qa_plot=qa_plot,
+                                     qa_plotsize=qa_shift_plotsize)
 
     #
     # Are we using the stored solution?
@@ -310,12 +342,13 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         else:
             qafileinfo = None
 
-            # Find the lines
+        # Find the lines
 
         lineinfo = find_lines_1dxd(spectra['spectra'], wavecalinfo['orders'],
                                    lineinfo, flatinfo['slitw_pix'],
-                                   qafileinfo=qafileinfo, verbose=verbose)
-
+                                   qafileinfo=qafileinfo,
+                                   verbose=verbose)
+    
         #
         # Let's do the actual calibration
         #
@@ -351,9 +384,10 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
                                        wavecalinfo['dispdeg'], xdinfo=xdinfo,
                                        qa_fileinfo=qafileinfo,
                                        qa_plot=qa_plot,
-                                       qa_plotsize=qa_plotsize,
+                                       qa_plotsize=qa_residual_plotsize,
                                        verbose=verbose)
-
+        return
+    
     else:
 
         if verbose:

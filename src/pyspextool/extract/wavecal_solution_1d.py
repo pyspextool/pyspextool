@@ -132,25 +132,27 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
         # Now do the qa plot
 
         residuals = (scaled_wavelengths - fit['zfit']) * 1e4
-        
+
         if qa_plot is True:
 
-            do_1dxdplot(qa_fileinfo['figsize'], residuals, line_info['order'],
+            pl.ion()
+            do_1dxdplot(qa_plotsize, residuals, line_info['order'],
                         line_info['x'], orders, fit['goodbad'], fit['rms'],
                         dispersion_degree, xdinfo['orderdeg'])
             pl.show()
+            pl.pause(1)
 
         if qa_fileinfo is not None:
 
             do_1dxdplot(qa_fileinfo['figsize'], residuals, line_info['order'],
                         line_info['x'], orders, fit['goodbad'], fit['rms'],
                         dispersion_degree, xdinfo['orderdeg'])
-            
+          
             pl.savefig(os.path.join(qa_fileinfo['filepath'],
                                     qa_fileinfo['filename'] +
                                     '_residuals'+qa_fileinfo['extension']))
             pl.close()
-            
+                            
     #
     # Now get the results together and return the results
     #
@@ -175,9 +177,14 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
 def do_1dxdplot(figsize, residuals, residual_orders, residual_columns, orders,
                 goodbad, rms, dispersion_degree, order_degree):
 
+
+    fig = pl.figure(figsize=figsize)
+
+    axes1 = fig.add_subplot(211)
+    axes2 = fig.add_subplot(212)        
     
-    fig, (axes1, axes2) = pl.subplots(2, figsize=figsize,
-                                      constrained_layout=False)
+#    fig, (axes1, axes2) = pl.subplots(2, figsize=figsize,
+#                                      constrained_layout=False)
 
     # Get the colormap set up
             

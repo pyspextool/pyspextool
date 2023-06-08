@@ -2,6 +2,7 @@ import importlib
 import os
 import numpy as np
 from pyspextool import config as setup
+from pyspextool.extract import config as extract
 
 from pyspextool.extract.locate_orders import locate_orders
 from pyspextool.extract.normalize_flat import normalize_flat
@@ -18,7 +19,7 @@ from pyspextool.utils.split_text import split_text
 
 
 def make_flat(files, output_name, extension='.fits*', normalize=True,
-              overwrite=True, qa_plot=None, qa_plotsize=(6, 6),
+              overwrite=True, qa_plot=None, qa_plotsize=(8,8),
               qa_file=None, verbose=None):
     """
     To create a (normalized) pyspextool flat field file.
@@ -66,7 +67,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     Returns
     -------
      None
-        Writes a FITS file to disk.
+        Writes a FITS file and QA plots to disk.
 
     """
 
@@ -161,9 +162,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Get the mode name from the first file in order to get the array
     # rotation value.
 
-    img, var, hdr, mask = instr.read_fits(files,
-                                          setup.state['linearity_info'],
-                                          keywords=setup.state['extract_keywords'],
+    img, var, hdr, mask = instr.read_fits(files, setup.state['linearity_info'],
                                           verbose=False)
 
     mode = hdr[0]['MODE'][0]
@@ -178,7 +177,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     img, var, hdr, mask = instr.read_fits(files,
                                           setup.state['linearity_info'],
                                           rotate=modeinfo['rotation'],
-                                          keywords=setup.state['extract_keywords'],
+                                    keywords=setup.state['extract_keywords'],
                                           verbose=verbose)
 
     average_header = average_header_info(hdr)
@@ -209,9 +208,11 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Locate the orders
     #
 
+    # Get set up for QA plotting
+
     if qa_file is True:
 
-        qa_fileinfo = {'figsize': (8.5, 11),
+        qa_fileinfo = {'figsize': (6,6),
                        'filepath': setup.state['qa_path'],
                        'filename': output_name + '_locateorders',
                        'extension': setup.state['qa_extension']}
@@ -219,24 +220,21 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     else:
 
         qa_fileinfo = None
-
+        
+    
     if verbose is True:
         print('Locating the orders...')
 
-    edgecoeffs, plotinfo = locate_orders(med, modeinfo['guesspos'],
-                                         modeinfo['xranges'],
-                                         modeinfo['step'],
-                                         modeinfo['slith_range'],
-                                         modeinfo['edgedeg'],
-                                         modeinfo['ybuffer'],
-                                         modeinfo['flatfrac'],
-                                         modeinfo['comwidth'],
-                                         qa_plot=qa_plot,
-                                         qa_plotsize=qa_plotsize,
-                                         qa_fileinfo=qa_fileinfo)
+        edgecoeffs = locate_orders(med, modeinfo['guesspos'],
+                                   modeinfo['xranges'], modeinfo['step'],
+                                   modeinfo['slith_range'],
+                                   modeinfo['edgedeg'], modeinfo['ybuffer'],
+                                   modeinfo['flatfrac'], modeinfo['comwidth'],
+                                   qa_plot=qa_plot, qa_fileinfo=qa_fileinfo,
+                                   qa_plotsize=qa_plotsize)
 
     #
-    # Normalize the spectrum if requested
+    # Normalize the flat if requested
     #
 
     if normalize is True:
@@ -279,7 +277,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
                            'xranges': modeinfo['xranges'],
                            'orders': modeinfo['orders']}
 
-        qa_fileinfo = {'figsize': (8.5, 11),
+        qa_fileinfo = {'figsize': (6,6),
                        'filepath': setup.state['qa_path'],
                        'filename': output_name + '_normalized',
                        'extension': setup.state['qa_extension']}

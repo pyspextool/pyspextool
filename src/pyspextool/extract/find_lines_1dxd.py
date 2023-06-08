@@ -4,7 +4,9 @@ import matplotlib.pyplot as pl
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy import interpolate
 
+
 from pyspextool.fit.fit_peak1d import fit_peak1d
+from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_spec_range
 from pyspextool.utils.arrays import trim_nan
 from pyspextool.utils.loop_progress import loop_progress
@@ -25,45 +27,90 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
     spectra:  dict
         An (norder,) dictionary where each key has the form ORNNN_AP01
         where NNN is the order number.  The value of each entry is a
-        (4, nwave) numpy.ndarray where:
+        (4, nwave) ndarray where:
         wavelength = (0,:)
         intensity = (1,:)
         uncertainty = (2,:)
         flags = (3,:)
 
-    orders : array_like
+    orders : ndarray
         An (norders,) array of int giving the order numbers.  By convention,
         orders[0] is the order closest to the bottom of the array.
 
     line_info : dict
+        `'orders'` : ndarray
+            An (nlines,) array of the order number of each line.
+
+        `'wavelength'` : ndarray
+            An (nlines,) array of the wavelength of each line.
+
+        `'id'` : ndarray of str
+            An (nlines,) array of the id of each line.
+
+        `'delta_wavelength_left'` : ndarray 
+            An (nlines,) array of the delta lambda (in Angstroms) for the left
+            edge of the fit window.
+
+        `'delta_wavelength_right'` : ndarray 
+            An (nlines,) array of the delta lambda (in Angstroms) for the right
+            edge of the fit window.
+            
+        `'fit_type'` : {'G', 'L', 'C'}
+            Gaussian or Lorentzian or Centroid
+
+        `'num_parms'` : int
+            The number of parameters for the fit.  See fit_peak1d.
+
+        `'range_min_xguess` : ndarray
+            An (nlines,) array of the x value associated with 
+            `'wavelength'` - `'delta_wavelength_left'`/1e4
+
+        `'xguess` : ndarray
+            An (nlines,) array of the x value associated with `'wavelength'`
+
+        `'range_max_xguess` : ndarray
+            An (nlines,) array of the x value associated with 
+            `'wavelength'` + `'delta_wavelength_left'`/1e4
 
     pix_thresh: int
         The threshold (in pixels) beyond which an identification is deemed 
-        bad.  That is, the fit is deemed bad if 
-        (abs(fit[1]-guess) > pix_thresh.
+        bad.  That is, the fit is deemed bad if (abs(fit[1]-guess) > pix_thresh.
 
 
     Returns
     -------
-    list
-         A list of integers giving the individual file numbers
+        dict
 
+        Adds four additional keys to the line_info dictionary.
 
-    Notes
-    -----
+        `'x'` : ndarray of float
+            An (nlines,) array of the x position of each line.
 
+        `'fwhm'` : ndarray of float
+            An (nlines,) array of the fwhm of each line.
 
-    Examples
-    --------
+        `'intensity'` : ndarray float
+            An (nlines,) array of the maximum value of each line.
 
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program XS
+        `'goodbad'` : ndarray of int 
+            An (nlines,) goodbad array for the lines.
 
     """
 
+    #
+    # Check parameters
+    #
+    
+    check_parameter('find_lines_1dxd', 'spectra', spectra, 'list')
 
+    check_parameter('find_lines_1dxd', 'orders', orders, 'ndarray')
+
+    check_parameter('find_lines_1dxd', 'line_info', line_info, 'dict')
+
+    check_parameter('find_lines_1dxd', 'pix_thresh', pix_thresh,
+                    ['float','int'])    
+
+        
     # Get basic information
     
     norders = len(orders)
@@ -80,6 +127,7 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
 
     if qafileinfo is not None:
 
+        pl.ioff()
         pl.rcParams['font.size'] = '12'
         pl.rcParams['lines.linewidth'] = 0.75
 
@@ -87,8 +135,10 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
                                     qafileinfo['filename'] + \
                                     '_findlines') + \
                                     qafileinfo['extension'])
+    #                            
     # Loop over each line
-
+    #
+    
     for i in range(nlines):
 
         # Find the order associated with the line
@@ -127,10 +177,7 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
 
         if type != 'centroid':
 
-
             offset = np.min(y[zline]) if line_info['num_parms'][i] == 3 else 0
-
-
 
             try:
 
@@ -174,7 +221,7 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
            line_goodbad[i] = 1
 
         if qafileinfo:
-
+                                    
             fig, (axes1, axes2) = pl.subplots(2, figsize=qafileinfo['figsize'],
                                                   constrained_layout=False)
 
@@ -217,7 +264,7 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
 
     if qafileinfo is not None:
         pdf.close()
-
+           
     # Add the results
 
     line_info['x'] = line_xpos

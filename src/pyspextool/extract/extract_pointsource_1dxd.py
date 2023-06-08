@@ -128,8 +128,8 @@ def extract_pointsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
         if verbose is True and i == 0:
 
-            message = 'Extracting ' + str(naps) + ' apertures in ' + str(norders) + \
-                      ' orders'
+            message = 'Extracting ' + str(naps) + ' apertures in ' +\
+                      str(norders)+' orders'
 
             if psbginfo is not None:
                 print(message + ' (with background subtraction)...')

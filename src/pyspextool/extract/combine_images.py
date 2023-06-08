@@ -17,6 +17,7 @@ from pyspextool.utils import math
 from pyspextool.utils.arrays import idl_unrotate
 from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
+from pyspextool.plot.plot_image import plot_image
 
 
 def combine_images(files, output_name, extension='.fits*',
@@ -286,14 +287,6 @@ def combine_images(files, output_name, extension='.fits*',
 
     pair = True if beam_mode == 'A-B' else False
 
-    data, var, hdr, mask = instr.read_fits(files,
-                                           setup.state['linearity_info'],
-                                           pair_subtract=pair,
-                                           linearity_correction=linearity_correction,
-                                           keywords=setup.state['extract_keywords'],
-                                           rotate=rotation,
-                                           verbose=verbose)
-
     if pair is True:
 
         nimages = int(len(files) / 2)
@@ -301,6 +294,16 @@ def combine_images(files, output_name, extension='.fits*',
     else:
 
         nimages = int(len(files))
+
+    # Read the data in
+    
+    data, var, hdr, mask = instr.read_fits(files,
+                                           setup.state['linearity_info'],
+                                           pair_subtract=pair,
+                                    linearity_correction=linearity_correction,
+                                    keywords=setup.state['extract_keywords'],
+                                           rotate=rotation,
+                                           verbose=verbose)
 
     #
     # Scale orders
@@ -329,8 +332,10 @@ def combine_images(files, output_name, extension='.fits*',
                 loop_progress(i, 0, nimages,
                               message='Subtracting background...')
 
-            result = background.median_1dxd(data[i, :, :], flatinfo['edgecoeffs'],
-                                            flatinfo['xranges'], var=var[i, :, :],
+            result = background.median_1dxd(data[i, :, :],
+                                            flatinfo['edgecoeffs'],
+                                            flatinfo['xranges'],
+                                            var=var[i, :, :],
                                             ybuffer=flatinfo['ybuffer'])
             data[i, :, :] = result[0]
             var[i, :, :] = result[1]
@@ -344,9 +349,8 @@ def combine_images(files, output_name, extension='.fits*',
 
     if statistic == 'robust weighted mean':
 
-        print(np.shape(data))
-        result = math.mean_data_stack(data, robust=robust_sigma, weights=1 / var,
-                                      stderr=True)
+        result = math.mean_data_stack(data, robust=robust_sigma,
+                                      weights=1 / var, stderr=True)
     elif statistic == 'robust mean':
 
         result = math.mean_data_stack(data, robust=robust_sigma, stderr=True)
@@ -392,11 +396,12 @@ def combine_images(files, output_name, extension='.fits*',
     #
 
     if unrotate is True:
+        
         mean = idl_unrotate(mean, rotation)
         var = idl_unrotate(var, rotation)
         mask = idl_unrotate(mask, rotation)
 
-        #
+    #
     # Write the results to disk
     #
 
@@ -408,42 +413,44 @@ def combine_images(files, output_name, extension='.fits*',
 
     # Store the history
 
-    try:
+    is_history_present = 'HISTORY' in avehdr
+
+    if is_history_present is True:
 
         old_history = avehdr['HISTORY']
 
-        # remove it from the avehdr
+        # remove it from the header_info dictionary
 
         avehdr.pop('HISTORY')
-
-    except:
-
-        old_history = ''
-
+    
     # Add useful things to header
 
     avehdr['MODULE'] = ['extract', ' Creation module']
 
     avehdr['VERSION'] = [setup.state['version'], ' pySpextool version']
 
-    avehdr['COMBSTAT'] = [statistic, ' Combination statistic']
+    avehdr['IC_STAT'] = [statistic, ' Image combine: combination statistic']
 
-    avehdr['RBTHRESH'] = [robust_sigma, ' Robust threshold (if used)']
+    avehdr['IC_THRSH'] = [robust_sigma,
+                          ' Image combine:  robust threshold (if used)']
 
-    avehdr['LINCOR'] = [linearity_correction, ' Linearity corrected?']
+    avehdr['IC_LNCOR'] = [linearity_correction,
+                         ' Image combine: linearity corrected?']
 
-    avehdr['LINCRMAX'] = [setup.state['linearity_info']['max'],
-                          ' Linearity correction maximum (DN)']
+    avehdr['IC_LNMAX'] = [setup.state['linearity_info']['max'],
+                          ' Image combine: linearity correction max (DN)']
 
-    avehdr['ORDSCLED'] = [scale_orders, ' Orders scaled?']
+    avehdr['IC_SCLED'] = [scale_orders, ' Image combine: orders scaled?']
 
-    avehdr['BGSUBED'] = [background_subtraction, ' Background subtraction?']
+    avehdr['IC_BGSUB'] = [background_subtraction,
+                          ' Imagine combine: background subtraction?']
 
-    avehdr['FLATED'] = [flat_field, ' Flat fielded?']
+    avehdr['IC_FLATD'] = [flat_field, ' Imagine combine: flat fielded?']
 
-    avehdr['NIMAGES'] = [len(files), ' Number of images combined']
+    avehdr['IC_NIMGS'] = [len(files),
+                          ' Image combine: number of images combined']
 
-    avehdr['BEAMMODE'] = [beam_mode, ' Beam mode']
+    avehdr['IC_BEAM'] = [beam_mode, ' Imagine combine: beam mode']
 
     avehdr['FILENAME'] = [output_name + '.fits', ' Filename']
 
@@ -478,7 +485,9 @@ def combine_images(files, output_name, extension='.fits*',
     if flat_field is True:
         history = history + '  The image was flat fielded.'
 
-    history = old_history + history
+    if is_history_present is True:
+        
+        history = old_history + history
 
     #
     # Write the file to disk

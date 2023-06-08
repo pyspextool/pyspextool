@@ -3,15 +3,15 @@ import matplotlib.pyplot as pl
 
 from scipy import ndimage
 from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_image import plot_image
 
-np.set_printoptions(threshold=np.inf)
 
 
 def locate_orders(img, guess_positions, search_ranges, step_size,
-                  slit_height_range, poly_degree, pixel_buffer,
+                  slit_height_range, poly_degree, ybuffer,
                   intensity_fraction, com_width, qa_plot=None,
-                  qa_fileinfo=None, qa_plotsize=(5, 5)):
+                  qa_plotsize=(8, 8), qa_fileinfo=None):
     """
     Locates orders in a (cross-dispersed) spectral image
 
@@ -47,7 +47,7 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
     poly_degree : int
         Polynomial fit degree for the edges of the orders
 
-    pixel_buffer : int
+    ybuffer : int
         Number of pixels to buffer from the top and bottom of `img`
         during the search
 
@@ -58,29 +58,24 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
     com_width : int
         The window in units of pixels used to compute the center-of-mass (COM).
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be interactively generated.
+    qa_plotsize : tuple, default=(8, 8)
+        A (2,) tuple giving the plot size.
 
-    qa_plotsize : tuple, default=(6,6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+    qa_fileinfo : dict, optional
 
-    qa_fileinfo : dict
-        `"figsize"` : tuple
+        `'figsize'` : tuple
             (2,) tuple of the figure size (inches).
 
-        `"filepath"` : str
+        `'filepath'` : str
             The directory to write the QA figure.
 
-        `"filename"` : str
+        `'filename'` : str
             The name of the file, sans suffix/extension.
 
-        `"extension"` : str
+        `'extension'` : str
             The file extension.  Must be compatible with the savefig
             function of matplotlib.
-    
+
     Returns
     -------
     edgecoeffs : numpy.ndarray
@@ -91,8 +86,28 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
         the top of said order.
 
     plotinfo : dict
-        Later
+        `'guess_positions'`: list
+            An (norders,) list where each element is a two-element list 
+            giving the (x,y) position of the guess position
 
+        `'x'` : list
+            An (2*norders,) list where each element is the x positions of 
+            either the top or the bottom of an order.
+
+        `'y'` : list
+            An (2*norders,) list where each element is the x positions of 
+            either the top or the bottom of an order.
+
+        `'goodbad'` : list
+            An (2*norders,) list where each element is the x positions of 
+            either the top or the bottom of an order.
+
+        `'coefficients'` : list
+            An (2*norders,) list where each element is (ncoeffs,) ndarray of 
+            the polynomial coefficients of the top or bottom of an order.  
+
+    plotnum : int or None
+        The plot number if qa_plot is True.
 
     Notes
     -----
@@ -107,12 +122,34 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
         results are fit with a robust least-squares polynomial of degree
         `deg`.
 
-    Examples
-    --------
-    later?
-
     """
 
+    #
+    # Check parameters
+    #
+    
+    check_parameter('locate_orders', 'img', img, 'ndarray', 2)
+
+    check_parameter('locate_orders', 'guess_positions', guess_positions,
+                    'ndarray', 2)
+
+    check_parameter('locate_orders', 'search_ranges', search_ranges,
+                    'ndarray', 2)
+
+    check_parameter('locate_orders', 'step_size', step_size, 'int')
+
+    check_parameter('locate_orders', 'slit_height_range', slit_height_range,
+                    'list')
+
+    check_parameter('locate_orders', 'poly_degree', poly_degree, 'int')
+
+    check_parameter('locate_orders', 'ybuffer', ybuffer, 'int')
+
+    check_parameter('locate_orders', 'intensity_fraction',
+                    intensity_fraction, 'float')
+
+    check_parameter('locate_orders', 'com_width', com_width, 'int')    
+    
     debug = False
 
     # Get set up to collect plotting info 
@@ -170,8 +207,9 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
         # Fill the first few points in the cens array with the guess position
 
-        gpidx = np.ndarray.item(np.where(np.absolute(fcols - guess_positions[i, 0]) ==
-                                         np.absolute(fcols - guess_positions[i, 0]).min())[0])
+        delta = fcols - guess_positions[i, 0]
+        gpidx = np.ndarray.item(np.where(np.absolute(delta) ==
+                                         np.absolute(delta).min())[0])
 
         cens[(gpidx - poly_degree):(gpidx + poly_degree)] = \
             guess_positions[i, 1]
@@ -196,8 +234,7 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
             # Clip it to avoid the edges
 
-            yguess = int(np.clip(yguess, pixel_buffer,
-                                 (nrows - pixel_buffer - 1)))
+            yguess = int(np.clip(yguess, ybuffer, (nrows - ybuffer - 1)))
             iguess = imgcol[yguess]
 
             bot, top = find_top_bot(fcols[j], rownum, imgcol, sobcol, yguess,
@@ -235,7 +272,7 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
             # Clip it to avoid the edges
 
-            yguess = int(np.clip(yguess, pixel_buffer, (nrows - pixel_buffer - 1)))
+            yguess = int(np.clip(yguess, ybuffer, (nrows - ybuffer - 1)))
             iguess = imgcol[yguess]
 
             bot, top = find_top_bot(fcols[j], rownum, imgcol, sobcol, yguess,
@@ -273,17 +310,20 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
         edgecoeffs[i, :, :] = tmp
 
-    # Make the qaplot
+    # Make the plotinfo dictionary
 
-    plotinfo = {'guesspos': plguesspos, 'x': plcols, 'y': pledges,
-                'goodbad': plgoodbad, 'coeffs': pledgecoeffs}
+    plotinfo = {'guess_positions': plguesspos, 'x': plcols, 'y': pledges,
+                'goodbad': plgoodbad, 'edgecoeffs': pledgecoeffs}
 
     if qa_plot is True:
-        plot_image(img, locateorders_plotinfo=plotinfo, plot_size=qa_plotsize)
-    if qa_fileinfo is not None:
-        plot_image(img, locateorders_plotinfo=plotinfo, file_info=qa_fileinfo)
+        
+        plot_image(img, plot_size=qa_plotsize, locateorders_plotinfo=plotinfo)
 
-    return edgecoeffs, plotinfo
+    if qa_fileinfo is not None:
+
+        plot_image(img, file_info=qa_fileinfo, locateorders_plotinfo=plotinfo)
+                
+    return edgecoeffs
 
 
 def find_top_bot(fcol, rownum, imgcol, sobcol, yguess, imgguess, frac, halfwin,

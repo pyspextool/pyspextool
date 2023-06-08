@@ -34,19 +34,7 @@ def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
 
     Returns
     -------
-    spatmap, rimg : numpy.ndarray of float, numpy.ndarray of float
-    
-        spatmap - each pixel is set to its angular position on the sky
-
-        rimg - the resampled order
-
-    Notes
-    -----
-    Later
-
-    Examples
-    --------
-    later?
+    dict
 
     """
 
@@ -54,7 +42,9 @@ def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
     # Check the parameters
     #
     check_parameter('rectify_order1d','img', img, 'ndarray', 2)
+    
     check_parameter('rectify_order1d','xidx', xidx, 'ndarray', 2)
+
     check_parameter('rectify_order1d','yidx', yidx, 'ndarray', 2)
     
     # Get basic info and create basic things
@@ -63,7 +53,6 @@ def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
 
     points = (np.arange(nrows), np.arange(ncols))
 
-    
     # Do the resampling
     
     f = interpolate.RegularGridInterpolator(points, img)
@@ -80,7 +69,7 @@ def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
         
     # Pack things up
 
-    order = {'img':img}
+    order = {'image':img}
 
     if var is not None:
 
@@ -89,7 +78,7 @@ def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
         f = interpolate.RegularGridInterpolator(points, var)
         var = f((yidx, xidx))
 
-        order.update({'var':var})
+        order.update({'variance':var})
 
     if bpmask is not None:
 
@@ -109,73 +98,4 @@ def rectify_order(img, xidx, yidx, var=None, bpmask=None, bsmask=None,
 
         order.update({'bsmask':bsmask})        
 
-    return order
-    
-
-#    startcol = xranges[0]
-#    stopcol = xranges[1]
-#
-#    order_ncols = stopcol-startcol+1
-#    cols = np.arange(order_ncols, dtype=int)+startcol
-#    rows = np.arange(nrows, dtype=int)
-#
-#    # Get the bottom and top of the slit 
-#
-#    botedge = np.polynomial.polynomial.polyval(cols, edgecoeffs[0, :])
-#    topedge = np.polynomial.polynomial.polyval(cols, edgecoeffs[1, :])
-#
-#    # Get the conversion between pixels and arcseconds
-#
-#    dif = topedge-botedge
-#    arctopix = dif/slith_arc
-#    
-#    # Create a uniform grid of arcsecond values for the new order
-#
-#    mindif = np.floor(min(dif))
-#
-#    nrslit = round(oversamp*mindif)  # number of pixels in resampled slit
-#    
-#    rslit_arc = np.arange(nrslit)*slith_arc/(nrslit-1)
-#
-#    # Set the pixels ybuffer from the ends to the values at ybuffer from the edge
-#
-#    if ybuffer > 0:
-#    
-#        ybuffer = round(ybuffer*oversamp)
-#    
-#        rslit_arc[0:ybuffer-1] = rslit_arc[ybuffer-1]
-#        rslit_arc[(nrslit-ybuffer):nrslit] = rslit_arc[nrslit-ybuffer]
-#        
-#    # Now do the interpolation one column at a time
-#
-#    # NOTE: this is not the fast way, but I don't see an IDL equivalent of
-#    # interpolate in python.  Looking through SOFIA's repo they seem to have
-#    # written a bunch of their own, so it may not be possible with standard
-#    # scipy packages.
-#
-#    order = np.empty((nrslit, order_ncols))
-#    
-#    for i in range(0, order_ncols):
-#
-#        # Get the bottom and top of the slit positions at cols[i].   Use floor and
-#        # ceil to ensure the interpolation has no extrapolation.
-#        
-#        slitbot_pix = np.floor(botedge[i]).astype(int)
-#        slittop_pix = np.ceil(topedge[i]).astype(int)
-#
-#        # Yank out the row values and convert to arcseconds
-#        
-#        slit_pix = rows[slitbot_pix:(slittop_pix+1)]-botedge[i]
-#        slit_arc = slit_pix/arctopix[i]
-#
-#        # Do the interpolation and store
-#        
-#        f = interpolate.interp1d(slit_arc, img[slitbot_pix:slittop_pix+1,
-#                                 i+startcol])
-#        order[:, i] = f(rslit_arc)
-#
-#    # Create the spatial map using rslit_arc
-#
-#    spatmap = np.rot90(np.tile(rslit_arc, (order_ncols, 1)), k=3)
-#        
-#    return spatmap, order
+    return order    

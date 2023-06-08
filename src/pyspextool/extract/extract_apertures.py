@@ -285,7 +285,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
             # Write ther results
 
             write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['load']['flatfile'],
+                                 extract.load['flatfile'],
                                  extract.state['naps'],
                                  orders, hdrinfo, apertures,
                                  extract.state['apradii'],
@@ -306,11 +306,18 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
 
             # Plot the spectra
 
+            filename = os.path.basename(output_fullpath)            
             if qa_plot is True:
-                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_plotsize)
+                
+                number = plot_spectra(output_fullpath + '.fits',
+                                      title=filename+'.fits',                                                         plot_size=qa_plotsize,
+                            plot_number=extract.state['spectra_a_plotnum'])
 
+                extract.state['spectra_a_plotnum'] = number
+
+                
             if qa_file is True:
+
                 qafileinfo['filename'] = os.path.basename(output_fullpath)
                 plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
 
@@ -358,10 +365,15 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
 
                 filename = os.path.basename(output_fullpath)
                 if qa_plot is True:
-                    plot_spectra(output_fullpath + '.fits',
-                                 title=filename+'.fits',
-                                 plot_size=qa_plotsize)
 
+                    number = plot_spectra(output_fullpath + '.fits',
+                                 title=filename+'.fits',
+                                 plot_size=qa_plotsize,
+                                 plot_number=extract.state['spectra_a_plotnum'])
+
+                    extract.state['spectra_a_plotnum'] = number
+
+                    
                 if qa_file is True:
                     qafileinfo['filename'] = filename
                     plot_spectra(output_fullpath + '.fits',
@@ -409,10 +421,12 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
 
                 filename = os.path.basename(output_fullpath)
                 if qa_plot is True:
-                    plot_spectra(output_fullpath + '.fits',
-                                 title=filename+'.fits',
-                                 plot_size=qa_plotsize)
-
+                    number = plot_spectra(output_fullpath + '.fits',
+                                          title=filename+'.fits',
+                                          plot_size=qa_plotsize,
+                                plot_number=extract.state['spectra_b_plotnum'])
+                    extract.state['spectra_b_plotnum'] = number
+                    
                 if qa_file is True:
                     qafileinfo['filename'] = filename
                     plot_spectra(output_fullpath + '.fits',

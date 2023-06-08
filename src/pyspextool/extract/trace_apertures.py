@@ -207,9 +207,13 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     #
 
     if qa_plot is True:
-        plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
-                   plot_size=qa_plotsize)
 
+        number = plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
+                   plot_number=extract.state['image_plotnum'],
+                   plot_size=qa_plotsize)
+        extract.state['image_plotnum'] = number
+
+        
     if qa_file is True:
         qafileinfo = {'figsize': (7, 7),
                       'filepath': setup.state['qa_path'],

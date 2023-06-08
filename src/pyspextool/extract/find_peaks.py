@@ -83,8 +83,8 @@ def find_peaks(profiles, method_info, fwhm=0.8):
 
         for i in range(norders):
 
-            x = profiles[i]['y']
-            y = profiles[i]['p']
+            x = profiles[i]['angle']
+            y = profiles[i]['profile']
 
             # Trim NaNs
 

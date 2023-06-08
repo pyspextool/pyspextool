@@ -10,7 +10,8 @@ import os
 
 def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
                             savitzky_golay=True, qafileinfo=None,
-                            qa_plot=False, qa_plotsize=(5, 8)):
+                            qa_plot=False,
+                            qa_plotsize=(5, 8)):
     """
     To determine the pixel shift between two spectra.
 
@@ -138,14 +139,22 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     r = fit_peak1d(fitlag, fitxcor, nparms=4, positive=True)
     offset = r['parms'][1]
 
+    #
+    # Do the QA plotting
+    #
+    
     if qa_plot is True:
+
+        pl.ion()
         do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
                 fitlag, fitxcor, r['fit'], offset)
 
         pl.show()
-        pl.close()
+        pl.pause(1)
 
     if qafileinfo is not None:
+
+        pl.ioff()
         do_plot(xanchor, yanchor, xsource, ysource, (8.5, 11), lag, xcor,
                 fitlag, fitxcor, r['fit'], offset)
 
@@ -159,15 +168,30 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
 
 def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
             fitlag, fitxcor, fit, offset):
+
+    """
+    
+
+    """
+
+    #
+    # Normalize each spectrum 
+
+    
     np.divide(ysource, np.median(ysource), out=ysource)
     np.divide(yanchor, np.median(yanchor), out=yanchor)
 
-    fig, (axes1, axes2, axes3) = pl.subplots(3, figsize=qa_plotsize,
-                                             constrained_layout=False)
-    pl.subplots_adjust(hspace=0.5)
+    #
+    # Make the figure
+    #
+    
+    fig = pl.figure(figsize=qa_plotsize)
+    fig.subplots_adjust(hspace=0.5)
 
-    # Plot the two spectra
-
+    # Create the spectral plot
+    
+    axes1 = fig.add_subplot(311)
+    
     yrange = get_spec_range([yanchor, ysource], frac=0.1)
 
     axes1.margins(x=0)
@@ -182,7 +206,10 @@ def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
     axes1.text(0.95, 0.7, 'source', color='r', ha='right',
                transform=axes1.transAxes)
 
+
     # Plot the entire cross correlation results
+
+    axes2 = fig.add_subplot(312)    
 
     yrange = get_spec_range(xcor, frac=0.1)
 
@@ -195,6 +222,8 @@ def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
     axes2.set(xlabel='Lag (pixels)', ylabel='Relative Intensity')
 
     # Plot a zoom in of the cross correlation and the fit
+
+    axes3 = fig.add_subplot(313)    
 
     yrange = get_spec_range([fitxcor, fit], frac=0.1)
 
@@ -209,3 +238,5 @@ def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
 
     axes3.text(0.95, 0.8, 'offset=' + "{:.1f}".format(offset) + ' pixels',
                ha='right', c='r', transform=axes3.transAxes)
+
+

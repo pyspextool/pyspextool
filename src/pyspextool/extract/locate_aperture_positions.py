@@ -233,6 +233,7 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
         plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
                       np.ones(extract.state['norders'], dtype=int),
                       apertures=extract.state['apertures'],
+                      plot_number=extract.state['profiles_plotnum'],
                       plot_size=qa_plotsize)
 
     if qa_file is True:
