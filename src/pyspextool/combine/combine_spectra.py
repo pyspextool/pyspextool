@@ -58,9 +58,9 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         The order number to compute the scale factors.  If None, defaults
         to middle-most order.
 
-    scale_range : str or None
-        A str giving the wavelength range, e.g. '1.1-1.15'.  If None, defaults
-        to the central `scale_range_fraction` of `scale_order`.
+    scale_range : list or None
+        A (2,) list giving the wavelength range, e.g. [1.1,1.15].  If None, 
+        defaults to the central `scale_range_fraction` of `scale_order`.
 
     scale_range_fraction : float, default=0.7
         A float giving the central fraction of the wavelength range to be
@@ -142,7 +142,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
                     ['NoneType', 'int'])
 
     check_parameter('combine_spectra', 'scale_range', scale_range,
-                    ['NoneType', 'str'])
+                    ['NoneType', 'list'])
 
     check_parameter('combine_spectra', 'scale_range_fraction',
                     scale_range_fraction, 'float')                                            
@@ -760,9 +760,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
         # Let the user choose, but make sure it falls in range.
 
-        scale_range = [float(val) for val in scale_range.split('-')]
-
-        combine.state['scale_range'] = scale_range
+        combine.state['scale_range'] = combine.load['scale_range']
         
     #                    
     # Determine which order we are using to determine the scale factors
@@ -999,7 +997,7 @@ def write_file():
 
     if combine.load['qa_plot'] is True:
 
-        plot_spectra(full_path, y='flux and uncertainty',
+        plot_spectra(full_path, ytype='flux and uncertainty',
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path))
 
@@ -1011,7 +1009,7 @@ def write_file():
                       'filename': combine.load['output_name'],
                       'extension': setup.state['qa_extension']}
 
-        plot_spectra(full_path, y='flux and uncertainty',
+        plot_spectra(full_path, ytype='flux and uncertainty',
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path), file_info=qafileinfo)            
         if combine.load['verbose'] is True:
