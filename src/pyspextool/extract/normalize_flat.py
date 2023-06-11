@@ -116,8 +116,8 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
                 
         # Fiterpolate the results after median smoothing to minimize bad pixels
 
-        model = fiterpolate(medfilt2d(order['img'], kernel_size=(5, 5)), nxgrid,
-                            nygrid)
+        model = fiterpolate(medfilt2d(order['image'], kernel_size=(5, 5)),
+                            nxgrid, nygrid)
 
         # Now normalize the raw data using the fiterpolated model
 
