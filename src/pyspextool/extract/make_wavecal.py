@@ -1,6 +1,7 @@
 import importlib
 import os
 import numpy as np
+import time
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -303,6 +304,30 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     # Are we using the stored solution?
     #
 
+    # Let's check to see what the wavecal file says
+
+    
+    z = wavecalinfo['slits'] == flatinfo['slitw_arc'] 
+
+    use_stored_solution_wavecal = bool(wavecalinfo['usestored'][0])
+
+#    print(wavecalinfo['slits'])
+#    print(flatinfo['slitw_arc'])
+#    print(z)
+
+    use_stored_solution_wavecal = bool(wavecalinfo['usestored'][z])
+
+#    print(use_stored_solution_wavecal)
+#    print(use_stored_solution)
+
+
+    
+    use_stored_solution = use_stored_solution_wavecal or use_stored_solution
+
+#    print(use_stored_solution)
+    
+#    return
+    
     if use_stored_solution is False:
 
         #
@@ -386,7 +411,6 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
                                        qa_plot=qa_plot,
                                        qa_plotsize=qa_residual_plotsize,
                                        verbose=verbose)
-        return
     
     else:
 

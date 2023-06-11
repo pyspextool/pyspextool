@@ -124,7 +124,7 @@ def read_wavecal_file(file):
     Returns
     -------
     dict
-        `"spectra"` : numpy.ndarray
+        `"spectra"` : ndarray
             (4,nwave) flat array where:
 
             spectra[0,:] = wave
@@ -135,7 +135,7 @@ def read_wavecal_file(file):
         `"norders"` : int
             The number of orders
 
-        `"orders"` : numpy.ndarray of int
+        `"orders"` : ndarray of int
             (norders,) int array of the order numbers.  By Spextool convention,
             orders[0] is the order closest to the bottom of the array.
 
@@ -224,6 +224,14 @@ def read_wavecal_file(file):
     wcaltype = hdul[0].header['WCALTYPE']
     result.update({'wcaltype': wcaltype.strip()})
 
+    slits = hdul[0].header['SLITS'].split(',')
+    slits = np.array([float(x) for x in slits])
+    result.update({'slits': slits})
+    
+    usestored = hdul[0].header['USESTORE'].split(',')
+    usestored = np.array([eval(x) for x in usestored])
+    result.update({'usestored': usestored})
+    
     linelist = hdul[0].header['LINELIST']
     result.update({'linelist': linelist.strip()})
 
@@ -418,6 +426,13 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
 
 def read_wavecal_fits(file, rotate=True):
+
+    """
+    Reads a pyspextool wavecal FITS file.
+
+
+    """
+
     #
     # Check the parameters
     #
