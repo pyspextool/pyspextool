@@ -101,12 +101,15 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
             
         if qa_plot is True:
 
+            pl.ion()
             do_1dplot(qa_plotsize, residuals, line_info['x'], fit['goodbad'],
                       fit['rms'], dispersion_degree)
             pl.show()
+            pl.pause(1)
         
         if qa_fileinfo is not None:
 
+            pl.ioff()
             do_1dplot(qa_fileinfo['figsize'], residuals, line_info['x'],
                       fit['goodbad'], fit['rms'], dispersion_degree)
             pl.savefig(os.path.join(qa_fileinfo['filepath'],
@@ -144,6 +147,7 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
 
         if qa_fileinfo is not None:
 
+            pl.ioff()
             do_1dxdplot(qa_fileinfo['figsize'], residuals, line_info['order'],
                         line_info['x'], orders, fit['goodbad'], fit['rms'],
                         dispersion_degree, xdinfo['orderdeg'])
