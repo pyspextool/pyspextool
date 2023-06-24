@@ -275,7 +275,7 @@ def plot_aperture(spectra, aperture, ytype, colors, line_width, latex_xlabel,
         
     else:
 
-        raise ValueError('Do not recognize y axis name {}'.format(y))
+        raise ValueError('Do not recognize y axis name {}'.format(ytype))
 
     #
     # Make the plot
@@ -372,13 +372,15 @@ def plot_aperture(spectra, aperture, ytype, colors, line_width, latex_xlabel,
 
                 ax.set_title(title+' - Aperture '+str(aperture+1), pad=20.0)
 
-            else:
+            # else:
 
-                ax.set_title(' - Aperture '+str(aperture+1), pad=20.0)                
+            #     ax.set_title('Aperture '+str(aperture+1), pad=20.0)                
 
         else:
 
-            ax.set_title(' - Aperture '+str(aperture+1))
+            if title is not None:
+
+                ax.set_title('Aperture '+str(aperture+1))
 
     #
     # Get plot number
