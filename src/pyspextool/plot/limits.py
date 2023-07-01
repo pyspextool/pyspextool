@@ -67,17 +67,13 @@ def get_image_range(arr, info):
     --------
     later
 
-    Modification History
-    --------------------
-    2022-06-07 - Written by M. Cushing, University of Toledo.
-
     """
     
     if isinstance(info, float) is True:
 
         # This is if the users requests a fraction
 
-        interval = PercentileInterval(info)
+        interval = PercentileInterval(info, n_samples=int(np.size(arr)/500))
         range = interval.get_limits(arr)
         return range
 

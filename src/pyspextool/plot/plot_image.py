@@ -171,7 +171,10 @@ def doplot(image, figsize, plot_number, mask=None, locateorders_plotinfo=None,
     # Set the color map
 
     minmax = get_image_range(image, 'zscale')
+    if minmax[0] > minmax[1]:
 
+        minmax = (np.min(image), np.max(image))
+        
     cmap = pl.cm.gray
 
     # Now check to see if the mask is passed.
