@@ -94,7 +94,7 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
                     ['NoneType', 'dict'])
 
     # Does the file exist?
-
+    
     check_file(file)
 
     #
@@ -438,7 +438,7 @@ def get_ranges(spectra, ytype, fraction=0.05):
 
             array1 = spectra[i, 1, :]
             sg_array1 = robust_savgol(x_values, array1, 11)['fit']
-
+            
             array2 = spectra[i, 2, :]
             sg_array2 = robust_savgol(x_values, array2, 11)['fit']            
                     

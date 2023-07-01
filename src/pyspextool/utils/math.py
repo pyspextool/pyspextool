@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from scipy.stats import describe
 
 from pyspextool.io.check import check_parameter
@@ -47,10 +48,6 @@ def bit_set(array, bits):
 
     [0, 1, 0]
 
-    Modification History
-    --------------------
-    2022-03-09 - Written by M. Cushing, University of Toledo.
-                 Based on the Spextool IDL mc_bitset.pro program.
     """
 
     #  Define empty mask
@@ -134,11 +131,6 @@ def combine_flag_stack(stack, nbits=8):
     [[1 2 0]
      [3 0 4]
      [0 0 0]]
-
-    Modification History
-    --------------------
-    2022-03-09 - Written by M. Cushing, University of Toledo.
-    Based on the mc_combflagstack.pro IDL program.
 
     """
 
@@ -240,24 +232,46 @@ def find_outliers(data, thresh, leave_nans=True, silent=False):
     #
 
     check_parameter('find_outliers', 'data', data, 'ndarray')
-    check_parameter('find_outliers', 'thresh', thresh, ['int', 'float'])
-    check_parameter('find_outliers', 'silent', silent, 'bool')        
-    
-    #
-    # Do the search
-    #
 
+    check_parameter('find_outliers', 'thresh', thresh, ['int', 'float'])
+
+    check_parameter('find_outliers', 'silent', silent, 'bool')        
+
+    #
+    # Deal with NaNs
+    #
+    
     # Create a mask to avoid NaNs
 
     mask = np.full_like(data, 1, dtype=int)
     mask[np.isnan(data)] = 2
 
+    # Check to see whether there are at least two data points that aren't NaN
+
+    z = mask != 2
+    if np.sum(z) < 2:
+
+        if silent is False:
+            print('Fewer than 2 not-NaN points found.')
+
+        
+        if leave_nans is True:
+
+            return mask != 0
+
+        else:
+        
+            return mask == 1
+        
+    #
+    # Do the search
+    #
+    
     # Compute the median and median absolute deviation
     
-    z = mask != 2
     med = np.median(data[z])
     mad = np.median( np.abs(data[z]-med))
-
+    
     # If the MAD is zero, just return the non NaN data
     
     if mad == 0.0:
@@ -307,7 +321,7 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
     stderr : {True, False}, optional
         If True, and `weights` is None, then the output `mvar` will be the 
-        standard error.
+        standard error**2.
 
     Returns
     -------
@@ -364,16 +378,16 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
         # Create a blank mask where all pixels are good
         
         goodbad = np.full_like(data, 1,dtype=int)
-
+        
     else:
 
         # Convert any pixel identified as a NaN to a bad pixel 
         
         z = goodbad == 2
         goodbad[z] = 0
-                
-    # Check for NaNs just to make sure.
-
+    
+    # Check for NaNs in the data and weights just to make sure.
+        
     z = np.isnan(data)
     goodbad[z] = 0
 
@@ -382,7 +396,9 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
         z = np.isnan(weights)
         goodbad[z] = 0
 
-    # Do it robustly if requested
+    #
+    # Identify outliers if requested
+    #
 
     if robust is not None:
 
@@ -390,8 +406,8 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
             for i in range(shape[1]):
                         
-                submask = find_outliers(data[:,i], robust, leave_nans=True,
-                                        silent=False)
+                submask = find_outliers(data[:,i], robust, leave_nans=False,
+                                        silent=True)
                 goodbad[~submask,i] = 0                
 
         else:  #  This is an image stack
@@ -401,34 +417,58 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
                 for j in range(shape[2]):
                         
                     submask = find_outliers(data[:,i,j], robust,
-                                            leave_nans=True,
-                                            silent=False)
+                                            leave_nans=False, silent=True)
                     goodbad[~submask,i,j] = 0            
 
-    #    
-    # Now do the combining
     #
-
-    # Combine based on whether it is weighted or not
+    # Now set bad pixels and/or NaN pixels to zero.
+    #
     
     z = goodbad == 0
+    data[z] = 0.0
 
     if weights is not None:
 
         weights[z] = 0.0
-        mvar = 1/np.sum(weights,axis=0)
-        mean = np.sum(np.multiply(data, weights),axis=0)*mvar
+                        
+    #    
+    # Now do the combining
+    #
+
+    if weights is not None:
+
+        sum_weights = np.nansum(weights, axis=0)
+        z_allnan = sum_weights == 0
+        sum_weights[z_allnan] = np.nan
+
+        mvar = 1/sum_weights
+        mean = np.nansum(np.multiply(data, weights),axis=0)*mvar
         
     else:
 
-        data[z] = 0.0
-        ndat = np.sum(goodbad, axis=0)
-        test = np.where(goodbad == 0.0)
+        ndat = np.nansum(goodbad, axis=0)
+
+        # Find the pixels that were all NaNs
+        
+        z_allnan = ndat == 0
+        
+        # set those column in ndat to two to avoid a division error
+
+        ndat[z_allnan] = 2
+
+        # Do the calculation
+        
         mean = np.sum(data, axis=0)/ndat
         mvar = (np.sum(data**2,axis=0)-ndat*mean**2)/(ndat-1)
+
         if stderr is True:
             np.divide(mvar,ndat,out=mvar)
-                
+
+        # Set the all-NaN columns to NaN
+
+        mean[z_allnan] = np.nan
+        mvar[z_allnan] = np.nan
+            
     return (mean, mvar, goodbad)
     
 
@@ -589,11 +629,14 @@ def median_data_stack(data, mask=None, stderr=True):
         print('Unknown data shape.')
         return
 
-    # Compute the median and median absolute deviation
-
-    med = np.nanmedian(data, axis=0)
-
-    mad = np.nanmedian(np.abs(data - np.tile(med, tileshape)), axis=0)
+    # Compute the median and median absolute deviation.  We know there can be
+    # all-NaN columns, so shut down the warning of all-NaN slices pre-emptively.
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+    
+        med = np.nanmedian(data, axis=0)
+        mad = np.nanmedian(np.abs(data - np.tile(med, tileshape)), axis=0)
 
     if stderr is not None:
 
@@ -787,10 +830,6 @@ def round(x):
     > import numpy as np
     > round(np.array([-3.5,-2.5,2.5,3.5]))
       [-4. -3.  3.  4.]
-
-    Modification History
-    --------------------
-    2022-06-19 - Written by M. Cushing, University of Toledo.
 
     """
     

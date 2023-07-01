@@ -318,10 +318,6 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Write the results to disk
     #
 
-    if verbose is True:
-
-        print('Writing spectra to disk...')
-    
     write_file()
 
 
@@ -353,6 +349,7 @@ def combine_allorders():
     #
 
     sigma = combine.load['robust_sigma']
+    statistic = combine.load['statistic'].replace(" ", "")
     
     for i in range(combine.state['final_napertures']):
 
@@ -365,23 +362,24 @@ def combine_allorders():
             
             # First do the data
 
-            if combine.load['statistic'] == 'robust weighted mean':
+            if statistic == 'robustweightedmean':
 
                 result = math.mean_data_stack(data, robust=sigma,
-                                              weights=1/var, stderr=True)                                    
-            elif combine.load['statistic'] == 'robust mean':
+                                              weights=1/var, stderr=True)
+                
+            elif statistic == 'robustmean':
 
-                result = math.mean_data_stack(data, robust=sigma, stderr=True)                
-        
-            elif combine.load['statistic'] == 'weighted mean':
-
+                result = math.mean_data_stack(data, robust=sigma, stderr=True)
+            
+            elif statistic == 'weightedmean':
+                
                 result = math.mean_data_stack(data,weights=1/var, stderr=True)
         
-            elif combine.load['statistic'] == 'mean':
+            elif statistic == 'mean':
 
                 result = math.mean_data_stack(data,stderr=True)
                 
-            elif combine.load['statistic'] == 'median':                        
+            elif statistic == 'median':                        
                 
                 result = math.median_data_stack(data,stderr=True)
                 
@@ -393,7 +391,7 @@ def combine_allorders():
 
             mean = result[0]
             unc = result[1]
-            
+
             # Now do the mask
             
             array = combine.state['bitmasks'][i,j,:,:]
@@ -988,7 +986,7 @@ def write_file():
     fits.writeto(full_path, array, hdr, overwrite=combine.load['overwrite'])
 
     if combine.load['verbose'] is True:
-        print('Wrote', os.path.basename(full_path) + '.fits to disk.')    
+        print('Wrote', os.path.basename(full_path) + ' to disk.')    
 
             
     #
