@@ -1,0 +1,67 @@
+html 
+ { 
+ overflow: auto; 
+ border: none; 
+ }
+BODY
+ {
+ color:#000000;
+ background-color:#ffffff;
+ font-family:arial;
+ }
+a { 
+  text-decoration:none; 
+}
+a:link {color:#660033; }
+a:visited {color:#660033; }
+a:hover { color:#ff0066; }
+h1 {font-size:24pt; color:#330066; }
+h2 {font-size:16pt; color:#330066; text-decoration:italics; }
+h3 {font-size:12pt; color:#330066; text-decoration:italics; }
+
+img { border: 1px solid black; }
+
+table, th, td {
+  border: 0px solid black;
+  border-collapse: collapse;
+  background-color:#eeeeee
+}
+th, td {
+  padding: 15px;
+}
+
+.collapsible {
+  background-color: #eee;
+  color: #444;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+}
+
+.active, .collapsible:hover {
+  background-color: #ccc;
+}
+
+.content {
+  padding: 0 18px;
+  display: none;
+  overflow: hidden;
+  background-color: #f1f1f1;
+}
+
+.collapsible:after {
+  content: '\02795'; /* Unicode character for "plus" sign (+) */
+  font-size: 13px;
+  color: white;
+  float: right;
+  margin-left: 5px;
+}
+
+.active:after {
+  content: "\2796"; /* Unicode character for "minus" sign (-) */
+}
+

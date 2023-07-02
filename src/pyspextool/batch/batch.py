@@ -80,6 +80,14 @@ SCI_PARAMETERS_OPTIONAL = {
 	'BACKGROUND_WIDTH': 4,
 	'SCALE_RANGE': [1.0,1.5],
 }
+QA_PLOT_TYPE = '.pdf'
+DIR = os.path.dirname(os.path.abspath(__file__))
+QA_CSS = os.path.join(DIR,'qa.css')
+QA_INDEX_TEMPLATE_FILE = os.path.join(DIR,'qa_template.txt')
+QA_SOURCE_TEMPLATE_FILE = os.path.join(DIR,'qa_source_template.txt')
+LOG_TEMPLATE_FILE = os.path.join(DIR,'log_template.txt')
+QA_HTML_OUTPUT_NAME = 'index.html'
+MKWC_ARCHIVE_URL = 'http://mkwc.ifa.hawaii.edu/forecast/mko/archive/index.cgi'
 
 def tablestyle(val):
 	'''
@@ -416,7 +424,7 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 	Reduces dataset based on instructions in driver file
 	'''
 # set up instrument
-	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CAL_FOLDER'], proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],verbose=verbose)
+	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CAL_FOLDER'], proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=QA_PLOT_TYPE,verbose=verbose)
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
@@ -431,7 +439,7 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 		fnum = [int(os.path.basename(f).replace(parameters['FLAT_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 		fstr = '{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
 # NOTE: qa_file force to False due to ploting error in plot_image
-		ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=qa_plot,qa_file=False,verbose=verbose)
+		ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=qa_plot,qa_file=True,verbose=verbose)
 
 # wavecal
 		indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
@@ -547,7 +555,7 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 			ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
 				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=False,qa_file=False,verbose=verbose)
 		else:
-			ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
+			ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
 				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=qa_plot,qa_file=qa_file,verbose=verbose)
 
 # FLUX CALIBRATE - NOT CURRENTLY IMPLEMENTED
@@ -560,6 +568,166 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 			if verbose==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split(' ')[0]))
 
 	return
+
+
+# QA page maker
+def makeQApage(driver_input,log_input,log_html_name='log.html',nimages=4,image_width=400,verbose=ERROR_CHECKING):
+	'''
+	Generates an html file for the qa folder to review reductions
+	'''
+# if necessary read in driver
+	if isinstance(driver_input,str)==True:
+		if os.path.exists(driver_input)==False: raise ValueError('Cannot find driver file {}'.format(driver_input))
+		try: driver = read_driver(driver_input)
+		except: raise ValueError('Unable to read in driver file {}'.format(driver_input))
+	elif isinstance(driver_input,dict)==True:
+		driver = copy.deepcopy(driver_input)
+	else: raise ValueError('Do not recognize format of driver input {}'.format(driver_input))
+
+# if necessary read in log
+	if isinstance(log_input,str)==True:
+		if os.path.exists(log_input)==False: raise ValueError('Cannot find log file {}'.format(log_input))
+		if log_input.split('.')[-1] != 'csv': raise ValueError('Log file must end in csv, you passed {}'.format(log_input))
+		obslog = pd.read_csv(log_input)
+	elif isinstance(log_input,pd.DataFrame)==True: 
+		obslog = copy.deepcopy(log_input)
+	else: raise ValueError('Do not recognize format of observing log input {}'.format(log_input))
+
+# read in templates and split index
+	with open(QA_INDEX_TEMPLATE_FILE,'r') as f: index_txt = f.read()
+	index_top,index_bottom = index_txt.split('[SOURCES]')
+	with open(QA_SOURCE_TEMPLATE_FILE,'r') as f: source_txt = f.read()
+
+# extract key parameters
+	page_parameters = {}
+	for x in ['INSTRUMENT','CAL_SETS','QA_FOLDER','PROC_FOLDER']:
+		page_parameters[x] = driver[x]
+
+# replace relevant parameters in top of index
+	index_top = index_top.replace('[CSS]',QA_CSS)
+	index_top = index_top.replace('[LOG_HTML]',log_html_name)
+# NEED TO UPDATE WEATHER LINK
+	index_top = index_top.replace('[WEATHER_HTML]',MKWC_ARCHIVE_URL)
+	for x in ['UT_DATE','PROGRAM','OBSERVER']:
+		index_top = index_top.replace('['+x+']',obslog[x].iloc[0])
+	imodes = list(set(list(obslog['MODE'])))
+	imodes.sort()
+	s = imodes[0]
+	if len(imodes)>1: [s.append(', {}'.format(x)) for x in imodes[1:]]
+	index_top = index_top.replace('[INSTRUMENT_MODES]',s)
+
+	output = index_top
+
+# now cycle through each of the science sets
+	scikeys = list(filter(lambda x: x[:4]=='SCI0',list(driver.keys())))
+	scikeys.sort()
+	for sci in scikeys:
+# fill in source info		
+		sci_param = driver[sci]
+		sci_txt = copy.deepcopy(source_txt)
+		for x in ['TARGET_NAME','TARGET_TYPE','TARGET_FILES','STD_NAME','STD_FILES','FLAT_FILE','WAVECAL_FILE','SCIENCE_FILE_PREFIX','SPECTRAL_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
+			sci_txt = sci_txt.replace('['+x+']',sci_param[x])
+		sci_log = obslog[obslog['SOURCE_NAME']==sci_param['TARGET_NAME']]
+		if len(sci_log)>0:
+			for x in ['RA','DEC','AIRMASS','MODE','SLIT']:
+				sci_txt = sci_txt.replace('['+x+']',str(sci_log[x].iloc[0]))
+			designation = 'J'+sci_log['RA'].iloc[0].replace(':','').replace(' ','').replace('.','')
+			if int(sci_log['DEC'].iloc[0][:2]+'1')>0: designation+='%2B'
+			designation+=sci_log['DEC'].iloc[0].replace(':','').replace(' ','').replace('.','')
+			sci_txt = sci_txt.replace('[DESIGNATION]',designation)
+			sci_txt = sci_txt.replace('[UT_START]',sci_log['UT_TIME'].iloc[0])
+			sci_txt = sci_txt.replace('[UT_END]',sci_log['UT_TIME'].iloc[-1])
+#			sci_log['TINT'] = [sci_log.loc['INTEGRATION',i]*sci_log.loc['COADDS',i] for i in range(len(sci_log))]
+			sci_txt = sci_txt.replace('[INTEGRATION]','{:.1f}'.format(np.nansum(sci_log['INTEGRATION'])))
+# final calibrated files
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE))
+		if len(imfile)>0: sci_txt = sci_txt.replace('[CALIBRATED_FILE]',os.path.basename(imfile[0]))
+# combined files
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_raw{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE))
+#		print(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_raw{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE),imfile)
+		if len(imfile)>0: sci_txt = sci_txt.replace('[TARGET_COMBINED_RAW_FILE]',os.path.basename(imfile[0]))
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_scaled{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE))
+		if len(imfile)>0: sci_txt = sci_txt.replace('[TARGET_COMBINED_SCALED_FILE]',os.path.basename(imfile[0]))
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_raw{}'.format(sci_param['STD_FILES'],QA_PLOT_TYPE))
+		if len(imfile)>0: sci_txt = sci_txt.replace('[STD_COMBINED_RAW_FILE]',os.path.basename(imfile[0]))
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_scaled{}'.format(sci_param['STD_FILES'],QA_PLOT_TYPE))
+		if len(imfile)>0: sci_txt = sci_txt.replace('[STD_COMBINED_SCALED_FILE]',os.path.basename(imfile[0]))
+# individual files
+		fnums = extract_filestring(sci_param['TARGET_FILES'],'index')
+		loopstr = '<table>\n <tr>\n'
+		cnt=0
+		for i in fnums:
+			if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
+			imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'spectra*{:.0f}{}'.format(i,QA_PLOT_TYPE)))
+			if len(imfile)>0: 
+				imfile.sort()
+				loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=300>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
+				cnt+=1
+		loopstr+=' </tr>\n</table>'
+		sci_txt = sci_txt.replace('[TARGET_SPECTRA_FILES]',loopstr)
+
+		fnums = extract_filestring(sci_param['STD_FILES'],'index')
+		loopstr = '<table>\n <tr>\n'
+		cnt=0
+		for i in fnums:
+			if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
+			imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'spectra*{:.0f}{}'.format(i,QA_PLOT_TYPE)))
+			if len(imfile)>0: 
+				imfile.sort()
+				loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=300>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
+				cnt+=1
+		loopstr+=' </tr>\n</table>'
+		sci_txt = sci_txt.replace('[STD_SPECTRA_FILES]',loopstr)
+
+# traces and apertures - TO BE DONE
+		sci_txt = sci_txt.replace('[TRACE_APERTURE_FILES]','')
+
+		output+=sci_txt
+
+# insert calibrations
+	cal_sets = driver['CAL_SETS'].split(',')
+
+# flats
+	loopstr = '<table>\n <tr>\n'
+	cnt=0
+	for cs in cal_sets:
+		if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,QA_PLOT_TYPE)))
+		if len(imfile)>0: 
+			imfile.sort()
+			loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=300>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
+			cnt+=1
+	loopstr+=' </tr>\n</table>\n\n'
+	index_bottom = index_bottom.replace('[FLATS]',loopstr)
+
+# flats
+	# loopstr = ''
+	# for cs in cal_sets:
+	# 	imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,QA_PLOT_TYPE)))
+	# 	if len(imfile)>0: 
+	# 		imfile.sort()
+	# 		loopstr+='<table><tr><td align="center">\n <embed src="{}" width=300 height=300>\n <br>{}\n</td></tr></table>'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
+	# index_bottom = index_bottom.replace('[FLATS]',loopstr)
+
+# wavecals
+	loopstr = '<table>\n <tr>\n'
+	cnt=0
+	for cs in cal_sets:
+		if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'wavecal{}_shift.pdf'.format(cs)))
+		if len(imfile)>0: 
+			imfile.sort()
+			loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=400>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
+			cnt+=1
+	loopstr+=' </tr>\n</table>\n'
+	index_bottom = index_bottom.replace('[WAVECALS]',loopstr)
+
+# WRITE OUT HTML FILE
+	output+=index_bottom
+	with open(os.path.join(page_parameters['QA_FOLDER'],QA_HTML_OUTPUT_NAME),'w') as f:
+		f.write(output)
+	return
+
 
 # external function call
 if __name__ == '__main__':
