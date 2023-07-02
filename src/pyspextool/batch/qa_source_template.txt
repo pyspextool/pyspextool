@@ -1,0 +1,92 @@
+<!-- SOURCE TEMPLATE -->
+
+<button type="button" class="collapsible">[TARGET_NAME] [MODE]</button>
+<div class="content">
+
+<!-- CALIBRATED SPECTRUM -->
+
+<h2>Reduced Spectrum and Source Information</h2>
+
+<table>
+ <tr>
+  <td align="center">
+   <embed src="[CALIBRATED_FILE]" width=400 height=300>
+   <br>Reduced spectrum
+  </td>
+  <td align="left">
+   <ul>
+    <li>Source Name: [TARGET_NAME] ([TARGET_TYPE])
+    <li>Coordinate: [RA] [DEC] 
+	[<a href="https://aladin.cds.unistra.fr/AladinLite/?target=[DESIGNATION]&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]
+	[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=[DESIGNATION]&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]
+    <li>Standard: [STD_NAME]
+    <li>Files: target [TARGET_FILES], standard [STD_FILES]
+    <li>Airmass: [AIRMASS]
+    <li>UT time: [UT_START] to [UT_END]
+    <li>Total Integration: [INTEGRATION] sec
+    <li>Mode: [MODE]
+    <li>Slit: [SLIT]
+   </ul>
+  </td>
+ </tr>
+</table>
+
+
+<!-- INDIVIDUAL SOURCE SPECTRA -->
+
+<button type="button" class="collapsible">Individual Source Spectra</button>
+<div class="content">
+
+<table>
+ <tr>
+  <td align="center">
+   <embed src="[TARGET_COMBINED_RAW_FILE]" width=400 height=300>
+   <br>Combined raw spectrum
+  </td>
+  <td align="center">
+   <embed src="[TARGET_COMBINED_SCALED_FILE]" width=400 height=300>
+   <br>Combined scaled spectrum
+  </td>
+ </tr>
+</table>
+
+[TARGET_SPECTRA_FILES]
+
+</div>
+
+
+<!-- INDIVIDUAL TELLURIC SPECTRA -->
+
+<button type="button" class="collapsible">Telluric Spectra</button>
+<div class="content">
+
+<table>
+ <tr>
+  <td align="center">
+   <embed src="[STD_COMBINED_RAW_FILE]" width=400 height=300>
+   <br>Combined raw spectrum
+  </td>
+  <td align="center">
+   <embed src="[STD_COMBINED_SCALED_FILE]" width=400 height=300>
+   <br>Combined scaled spectrum
+  </td>
+ </tr>
+</table>
+
+[STD_SPECTRA_FILES]
+
+</div>
+
+
+<!-- TRACES & APERTURE PARAMETERS -->
+
+<button type="button" class="collapsible">Traces and Apertures</button>
+<div class="content">
+
+[TRACE_APERTURE_FILES]
+
+</div>
+
+</div>
+
+

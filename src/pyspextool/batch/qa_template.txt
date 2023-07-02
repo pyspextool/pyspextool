@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="webpage for reviewing archival spectral reductions.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>pyspextool QA review for [UT_DATE]</title>
+  <link rel="stylesheet" type="text/css" href="[CSS]">
+
+<!--  
+  <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.css" />
+-->
+
+  <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
+
+</head>
+
+<body>
+<h1 id="top">pyspextool QA review for [UT_DATE]</h1>
+
+<h2 id="info">Observing information</h2>
+
+<ul>
+ <li>UT Date: [UT_DATE]
+ <li>Program: [PROGRAM]
+ <li>Observer(s): [OBSERVER]
+ <li>Instrument mode(s): [INSTRUMENT_MODES]
+ <li><a href="[LOG_HTML]" target="_blank">Observing Log</a>
+ <li><a href="[WEATHER_HTML]" target="_blank">Mauna Kea Weather Record</a>
+</ul>
+
+<h2 id="info">Sources</h2>
+
+<!-- repeat per source -->
+
+[SOURCES]
+
+<!-- CALIBRATIONS -->
+
+
+<h2>Calibrations</h2>
+
+
+
+<button type="button" class="collapsible">Flats</button>
+<div class="content">
+
+[FLATS]
+
+</div>
+
+<button type="button" class="collapsible">Wavelength Calibration</button>
+<div class="content">
+
+[WAVECALS]
+
+</div>
+
+
+<script>
+var coll = document.getElementsByClassName("collapsible");
+var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.display === "block") {
+      content.style.display = "none";
+    } else {
+      content.style.display = "block";
+    }
+  });
+}
+</script>
+
+</body>
+</html>
