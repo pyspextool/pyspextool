@@ -1011,4 +1011,5 @@ def write_file():
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path), file_info=qafileinfo)            
         if combine.load['verbose'] is True:
-            print('Wrote', combine.load['output_name']+'.pdf to disk.')    
+            print('Wrote', combine.load['output_name']+\
+                  setup.state['qa_extension']+' to disk.')    

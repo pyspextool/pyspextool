@@ -164,7 +164,12 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
 
             figsize = (10,6)
 
-        pdf = PdfPages(os.path.join(filepath,filename+extension))
+
+        if extension == '.pdf':
+
+            # Create a multipage pdf file
+            
+            pdf = PdfPages(os.path.join(filepath,filename+extension))
 
         #
         # Loop over each aperture
@@ -172,8 +177,16 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
 
         for i in range(napertures):
 
+            if napertures != 1:
+
+                label = 'aperture_'+str(i+1).zfill(2)
+
+            else:
+
+                label = ''
+
             # Only plot a single aperture if requested.
-        
+            
             if aperture is not None:
 
                 if i != aperture-1:
@@ -187,16 +200,25 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
             sub_spectra = spectra[aperture_index, :, :]
 
             fig = plot_aperture(sub_spectra, i, ytype, colors, line_width,
-                                latex_xlabel, latex_ylabel, latex_yunits,
-                                yrange_buffer, figsize, plot_numbers[i],
-                                orders=orders, title=title)
-            pdf.savefig(fig)
-            pl.close(fig)            
+                                    latex_xlabel, latex_ylabel, latex_yunits,
+                                    yrange_buffer, figsize, plot_numbers[i],
+                                    orders=orders, title=title)
+
+            if extension == '.pdf':
+
+                pdf.savefig(fig)
+                pl.close(fig)            
+
+            else:
                 
-        pdf.close()
-
+                pl.savefig(os.path.join(filepath,filename+label+extension))
+                pl.close()    
+                    
+        if extension == '.pdf':
+                    
+            pdf.close()
+            
     else:
-
         
         #
         # Loop over each aperture

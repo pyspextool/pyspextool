@@ -315,7 +315,6 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
 
                 extract.state['spectra_a_plotnum'] = number
 
-                
             if qa_file is True:
 
                 qafileinfo['filename'] = os.path.basename(output_fullpath)
@@ -375,6 +374,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
 
                     
                 if qa_file is True:
+
                     qafileinfo['filename'] = filename
                     plot_spectra(output_fullpath + '.fits',
                                  file_info=qafileinfo)
@@ -421,6 +421,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
 
                 filename = os.path.basename(output_fullpath)
                 if qa_plot is True:
+
                     number = plot_spectra(output_fullpath + '.fits',
                                           title=filename+'.fits',
                                           plot_size=qa_plotsize,
@@ -428,6 +429,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
                     extract.state['spectra_b_plotnum'] = number
                     
                 if qa_file is True:
+
                     qafileinfo['filename'] = filename
                     plot_spectra(output_fullpath + '.fits',
                                  file_info=qafileinfo)
