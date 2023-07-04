@@ -6,8 +6,8 @@
   <meta name="description" content="webpage for reviewing archival spectral reductions.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>pyspextool QA review for [UT_DATE]</title>
-  <link rel="stylesheet" type="text/css" href="[CSS]">
+  <title>pyspextool QA review for [INSTRUMENT] on [UT_DATE]</title>
+  <link rel="stylesheet" type="text/css" href="[CSS_FILE]">
 
 <!--  
   <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.css" />
@@ -18,7 +18,7 @@
 </head>
 
 <body>
-<h1 id="top">pyspextool QA review for [UT_DATE]</h1>
+<h1 id="top">pyspextool QA review for [INSTRUMENT] on [UT_DATE]</h1>
 
 <h2 id="info">Observing information</h2>
 
@@ -27,6 +27,8 @@
  <li>Program: [PROGRAM]
  <li>Observer(s): [OBSERVER]
  <li>Instrument mode(s): [INSTRUMENT_MODES]
+ <li>Data directory: <a href="[DATA_FOLDER]" target="_blank">[DATA_FOLDER]</a>
+ <li>Processsed files directory: <a href="[PROC_FOLDER]" target="_blank">[PROC_FOLDER]</a>
  <li><a href="[LOG_HTML]" target="_blank">Observing Log</a>
  <li><a href="[WEATHER_HTML]" target="_blank">Mauna Kea Weather Record</a>
 </ul>

@@ -4,11 +4,11 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
 
 <head>
-	<title>[TITLE]</title>
+<title>[INSTRUMENT] Log for [UT_DATE]</title>
 </head>
 
 <body>
-	<h1>[TITLE]</h1>
+<h1>[INSTRUMENT] Log for [UT_DATE]</h1>
 
 [TABLE]
 
