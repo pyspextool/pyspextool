@@ -9,7 +9,7 @@ from pyspextool.plot.limits import get_image_range
 
 def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
                locateorders_plotinfo=None, file_info=None, plot_size=(9, 9),
-               plot_number=None):
+               block=False, plot_number=None):
     """
     To plot a spectral image along with the edges and order numbers
 
@@ -85,6 +85,9 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
     plot_size : tuple, default=(9, 9)
         A (2,) tuple giving the figure size.
 
+    block : {False, True}, optional
+        Set to make the plot block access to the command line, e.g. pl.ioff().
+
     plot_number : int, default=None
         The plot number to pass to matplotlib
 
@@ -129,7 +132,14 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
 
         # This is to the screen
         
-        pl.ion()
+        if block is True:
+
+            pl.ioff()
+
+        else:
+
+            pl.ion()
+
         plot_number = doplot(image, plot_size, plot_number, mask=mask,
                              locateorders_plotinfo=locateorders_plotinfo,
                              orders_plotinfo=orders_plotinfo,
