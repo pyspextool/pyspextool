@@ -5,6 +5,7 @@ import numpy as np
 from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter, check_path, check_file
+from pyspextool.plot.plot_image import plot_image
 
 try:
     from importlib.resources import files  # Python 3.10+

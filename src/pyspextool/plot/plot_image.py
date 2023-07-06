@@ -121,7 +121,9 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
     check_parameter('plot_image', 'plot_size', plot_size, ['NoneType', 'tuple'])
 
     check_parameter('plot_image', 'plot_number', plot_number,
-                    ['NoneType', 'int'])    
+                    ['NoneType', 'int'])
+
+    check_parameter('plot_image', 'block', block, 'bool')        
 
     #
     # Make the plot

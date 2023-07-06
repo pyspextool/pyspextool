@@ -102,7 +102,7 @@ def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
                                   atmospheric_transmission=atmos)
 
         profiles.append({'order': extract.state['orders'][i], 'angle': y,
-                         'profile': np.flip(mean)})
+                         'profile': mean})
 
     # Store the results
         

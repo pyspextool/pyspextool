@@ -11,7 +11,10 @@ from pyspextool.plot.plot_spectra import plot_spectra
 
 
 def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
+                      fix_bad_pixels=True, use_mean_profile=False,
+                      bad_pixel_thresh=extract.state['bad_pixel_thresh'],
                       verbose=None):
+    
     """
     User function to extract spectra.
 
@@ -34,6 +37,12 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     verbose : {None, True, False}, optional
         Set to True/False to override config.state['verbose'] in the
         pyspextool config file.
+
+    fix_bad_pixels : {True, False}, optional
+        Set to True to fix bad pixels using the 2D model profiles.  
+
+    use_mean_profile : {False, True}, optional
+        Set to True to use the mean profile at all wavelengths.  
 
     Returns 
     -------
@@ -63,6 +72,12 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     check_parameter('extract_apertures', 'qa_file', qa_file,
                     ['NoneType', 'bool'])
 
+    check_parameter('extract_apertures', 'fix_bad_pixels',
+                    fix_bad_pixels, 'bool')
+
+    check_parameter('extract_apertures', 'use_mean_profile',
+                    use_mean_profile, 'bool')        
+    
     check_parameter('extract_apertures', 'verbose',
                     verbose, ['NoneType', 'bool'])
 
@@ -86,6 +101,8 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     extract.extract['qafile'] = qa_file
     extract.extract['qaplot'] = qa_plot
     extract.extract['verbose'] = verbose
+    extract.extract['fix_bad_pixels'] = fix_bad_pixels
+    extract.extract['use_mean_profile'] = use_mean_profile
 
     #
     # The procedure depends on the extraction type, point or extended source
@@ -94,6 +111,9 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     xsbginfo = None
     psbginfo = None
 
+    optimal_extraction = True if extract.state['psfradius'] is not None else \
+      False
+        
     if extract.state['type'] == 'ps':
 
         #
@@ -102,17 +122,69 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
 
         # Grab which orders are being extracted
 
-        z = extract.state['psdoorders'] == 1
+        z = (extract.state['psdoorders'] == 1)
 
-        # Create the background information dictionary
+        #
+        # Now build the various information dictionaries
+        #
 
+        # Background first
+        
         if extract.state['bgradius'] is not None:
+
             psbginfo = {'radius': extract.state['bgradius'],
                         'width': extract.state['bgwidth'],
                         'degree': extract.state['bgfitdeg']}
 
-        # Do the extraction
+        else:
 
+            psbginfo = None
+
+        # Now bad pixels
+        
+        if fix_bad_pixels is True:
+
+            badpixelinfo = {'images':np.asarray(extract.state['rectorders'])[z],
+                            'usemeanprofile':use_mean_profile,
+                            'mask':extract.state['bad_pixel_mask'],
+                            'thresh':bad_pixel_thresh}
+
+            # Add the atmospheric transmission if a wavecal file was used.
+                
+            if extract.load['wavecalfile'] is not None:
+
+                badpixelinfo['atmosphere'] = extract.state['atmosphere']
+
+        else:
+
+            badpixelinfo = None
+
+        # Now optimal extraction
+            
+        if optimal_extraction is True:
+
+            # Set badpixelinfo to None since it isn't redundant
+            
+            badpixelinfo = None
+
+            optimalinfo = {'images':np.asarray(extract.state['rectorders'])[z],
+                           'psfradius':extract.parameters['psfradius'],
+                           'usemeanprofile':use_mean_profile,
+                           'mask':extract.state['bad_pixel_mask'],
+                           'thresh':bad_pixel_thresh}
+
+            # Add the atmospheric transmission if a wavecal file was used.
+                
+            if extract.load['wavecalfile'] is not None:
+
+                optimalinfo['atmosphere'] = extract.state['atmosphere']
+                    
+        else:
+
+            optimalinfo = None
+        
+        # Do the extraction
+        
         spectra = extract_pointsource_1dxd(extract.state['workimage'],
                                            extract.state['varimage'],
                                            extract.state['ordermask'],
@@ -122,7 +194,10 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
                                            extract.state['tracecoeffs'],
                                            extract.state['apradii'],
                                            extract.state['apsigns'],
-                                           bginfo=psbginfo, verbose=verbose)
+                                           badpixel_info=badpixelinfo,
+                                           optimal_info=optimalinfo,
+                                           background_info=psbginfo,
+                                           verbose=verbose)
 
     else:
 
@@ -157,6 +232,7 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     #
 
     write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
+                    optimal_info=optimalinfo, badpixel_info=badpixelinfo,
                     qa_file=qa_file, qa_plot=qa_plot, qa_plotsize=qa_plotsize,
                     verbose=verbose)
 
@@ -167,22 +243,17 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     extract.state['extract_done'] = True
 
 
-def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
-                    qa_file=None, qa_plotsize=(10, 6), verbose=None):
+def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
+                    badpixel_info=None, qa_plot=None, qa_file=None,
+                    qa_plotsize=(10, 6), verbose=None):
+
     """
     To write extracted spectra to disk.
 
     Parameters
     ----------
-    spectra : dict
-        The dictionary returned from any of the extract_ functions.
-        
-        `"spectra"` : list
-            (norders*naps,) list of spectral planes of the extracted target.
-
-        `"background"` : list
-            (norders*naps,) list of spectral planes of the background of the 
-            target.
+    spectra : list
+        An (norders*naps,) list of spectral planes of the extracted target.
 
     psbginfo : dict, optional
         `"radius"` : float
@@ -235,14 +306,6 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
     qafileinfo = {'figsize': (11, 8.5), 'filepath': setup.state['qa_path'],
                   'filename': extract.state['qafilename'],
                   'extension': setup.state['qa_extension']}
-
-    # Unpack the spectra dictionary
-    #if spectra['background'] is not None:
-    #    background = spectra
-    #else:
-    #    background = None
-
-    spectra = spectra['spectra']
 
     # Get the wavelengh calibration info if used.
 
@@ -299,9 +362,11 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
                                  'Wavelength ($\mu$m)',
                                  'Count Rate (DN s$^{-1}$)',
                                  setup.state['version'],
-                                 output_fullpath, wavecalinfo=wavecalinfo,
-#                                 background_spectra=background[z],
+                                 output_fullpath,
+                                 wavecalinfo=wavecalinfo,
                                  psbginfo=psbginfo,
+                                 optimal_info=optimal_info,
+                                 badpixel_info=badpixel_info,             
                                  verbose=verbose)
 
             # Plot the spectra
@@ -355,9 +420,11 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
                                      'Wavelength ($\mu$m)',
                                      'Count Rate (DN s$^{-1}$)',
                                      setup.state['version'],
-                                     output_fullpath, wavecalinfo=wavecalinfo,
-#                                     background_spectra=background[z],
+                                     output_fullpath,
+                                     wavecalinfo=wavecalinfo,
                                      psbginfo=psbginfo,
+                                     optimal_info=optimal_info,
+                                     badpixel_info=badpixel_info,
                                      verbose=verbose)
 
                 # Plot the spectra
@@ -412,8 +479,8 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, qa_plot=None,
                                      'Wavelength ($\mu$m)',
                                      'Count Rate (DN s$^{-1}$)',
                                      setup.state['version'],
-                                     output_fullpath, wavecalinfo=wavecalinfo,
-#                                     background_spectra=background[z],
+                                     output_fullpath,
+                                     wavecalinfo=wavecalinfo,
                                      psbginfo=psbginfo,
                                      verbose=verbose)
 

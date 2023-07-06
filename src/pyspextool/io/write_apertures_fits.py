@@ -12,10 +12,10 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
                          slitw_arc, resolving_power, xunits, yunits,
                          latex_xunits, latex_yunits, latex_xlabel,
                          latex_ylabel, version, output_fullpath,
-                         background_spectra=None, wavecalinfo=None,
-                         psinfo=None, psbginfo=None, xsinfo=None,
-                         xsbginfo=None, lincormax=None, overwrite=True,
-                         verbose=True):
+                         wavecalinfo=None, psbginfo=None, xsbginfo=None,
+                         optimal_info=None, badpixel_info=None,
+                         lincormax=None, overwrite=True, verbose=True):
+
     """
     To write a spextool spectral FITS file to disk
 
@@ -84,15 +84,17 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     check_parameter('write_apertures_fits', 'output_fullpath',
                     output_fullpath, 'str')
 
-    check_parameter('write_apertures_fits', 'psinfo', psinfo, 'NoneType')
-
     check_parameter('write_apertures_fits', 'psbginfo', psbginfo,
                     ['NoneType', 'dict'])
 
-    check_parameter('write_apertures_fits', 'xsinfo', xsinfo, 'NoneType')
-
     check_parameter('write_apertures_fits', 'xsbginfo', xsbginfo,
                     ['NoneType', 'dict'])
+
+    check_parameter('write_apertures_fits', 'optimal_info', optimal_info,
+                    ['NoneType', 'dict'])
+
+    check_parameter('write_apertures_fits', 'badpixel_info', badpixel_info,
+                    ['NoneType', 'dict'])    
 
     check_parameter('write_apertures_fits', 'wavecalinfo', wavecalinfo,
                     ['dict', 'NoneType'])
@@ -128,7 +130,6 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     # Now create arrays into which the slices will be placed
 
     array = np.full((norders * naps, 4, max_npixels), np.nan)
-    background_array = np.full((norders * naps, 4, max_npixels), np.nan)
 
     # Now fill in the arrays
 
@@ -136,16 +137,6 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     for slice in spectra:
         array[l, :, 0:npixels[l]] = slice
         l += 1
-
-    # Was the background spectra passed?
-
-    if background_spectra is not None:
-
-        l = 0
-        for slice in background_spectra:
-            shape = np.shape(slice)
-            background_array[l, :, 0:npixels[l]] = slice
-            l += 1
 
     #
     # Now write the file(s) to disk
@@ -197,6 +188,13 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
                          ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (wavecalinfo['wavetype'], ' Wavelength type')
 
+    else:
+
+        hdr['WAVECAL'] = (None, ' Wavecal file')
+        hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
+        hdr['WAVETYPE'] = (None, ' Wavelength type')
+        
+
     hdr['NORDERS'] = (norders, ' Number of orders')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders')
     hdr['NAPS'] = (naps, ' Number of apertures')
@@ -216,6 +214,33 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         val = ','.join([str(round(elem, 2)) for elem in aperture_positions[i]])
         hdr[name] = (val, comment)
 
+    if optimal_info is not None:
+
+        hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')
+        hdr['THRESH'] = (optimal_info['thresh'], ' Bad pixel sigma threshold')
+        hdr['OPTEXT'] = (True, ' Optimal extraction?')
+        hdr['SUMEXT'] = (False, 'Sum extraction?')
+        hdr['PSFRAD'] = (optimal_info['psfradius'], ' PSF radius (arcseconds)')
+
+                
+    else:
+
+        hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')        
+        hdr['THRESH'] = (None, ' Bad pixel sigma threshold')
+        hdr['OPTEXT'] = (False, ' Optimal extraction?')
+        hdr['SUMEXT'] = (True, ' Sum extraction?') 
+        hdr['PSFRAD'] = (None, ' PSF radius (arcseconds)')
+
+
+    if badpixel_info is not None:
+
+        hdr['BDPXFIX'] = (True, ' Bad pixels fixed?')        
+        hdr['THRESH'] = (badpixel_info['thresh'], ' Bad pixel sigma threshold')
+                
+    else:
+
+        hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')        
+                
     # Add the aperture radii
 
     if isinstance(aperture_radii, np.ndarray):
@@ -285,15 +310,6 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     hdr['FILENAME'] = (os.path.basename(output_fullpath) + '.fits', 'File name')
 
     fits.writeto(output_fullpath + '.fits', array, hdr, overwrite=overwrite)
-
-    if background_spectra is not None:
-        # Set the file name for the background spectra file and write
-
-        hdr['FILENAME'] = (os.path.basename(output_fullpath) + '_bg.fits',
-                           'File name')
-
-        fits.writeto(output_fullpath + '_bg.fits', background_array, hdr,
-                     overwrite=overwrite)
 
     #
     # Update the user

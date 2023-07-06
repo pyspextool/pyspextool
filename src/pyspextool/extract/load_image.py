@@ -467,6 +467,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     extract.state['bad_pixel_mask'] = \
         idl_rotate(setup.state['raw_bad_pixel_mask'],
                    extract.state['rotation'])
+
     #
     # Rectify the orders
     #
