@@ -12,53 +12,57 @@ from pyspextool.io.read_spectra_fits import read_spectra_fits
 def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
                  title=None, colors='green', line_width=0.5,
                  yrange_buffer=0.05, order_numbers=True, file_info=None,
-                 plot_number=None):
+                 plot_number=None, block=False, flag_linearity=False,
+                 flag_optimal=False, flag_replace=False, flag_fix=False):
 
     """
     To plot a pyspextool FITS file.
 
     Parameters
     ----------
-        file : str
-            The full path to a pySpextool spectral fits files.
+    file : str
+        The full path to a pySpextool spectral fits files.
 
-        plot_size : tuple of (float, float), optional
-            A (2,) tuple giving the page size.
+    plot_size : tuple of (float, float), optional
+        A (2,) tuple giving the page size.
 
-        ytype : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}
-            Which spectrum to plot.
+    ytype : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}
+        Which spectrum to plot.
 
-        aperture : int or NoneType, default=None
-            The aperture to plot.  It is one-indexed.  if None, all apertures
-            are plotted.
+    aperture : int or NoneType, default=None
+        The aperture to plot.  It is one-indexed.  if None, all apertures
+        are plotted.
 
-        title : str, optional
-            The title.
+    title : str, optional
+        The title.
 
-        colors : str or list of (str, str) or list of (str, str, str), 
-                 default='green'
-            The spectra will be plotted with alternative colors depending on 
-            how many colors are given.
-            
-        line_width : float or int, default=1
-            The line width value passed to maplotlib.
+    colors : str or list of (str, str) or list of (str, str, str), 
+             default='green'
+        The spectra will be plotted with alternative colors depending on 
+        how many colors are given.
+        
+    line_width : float or int, default=1
+        The line width value passed to maplotlib.
 
-        yrange_buffer : float, default=0.05
-            The fraction by which to expand the y range if desired.
+    yrange_buffer : float, default=0.05
+        The fraction by which to expand the y range if desired.
 
-        order_numbers : {True, False}
-            Set to True for the order numbers to be plotted on the plot.
+    order_numbers : {True, False}
+        Set to True for the order numbers to be plotted on the plot.
 
-        file_info : dict, optional
+    file_info : dict, optional
 
-            `'figsize'` : tuple
-                A (2,) tuple giving the figure size.
+        `'figsize'` : tuple
+            A (2,) tuple giving the figure size.
 
-            `'filepath'` : str, optional, default=''
+        `'filepath'` : str, optional, default=''
 
-            `'filename'` : str, optional, default=root of spectra.
+        `'filename'` : str, optional, default=root of spectra.
 
-            `'extension'` : str, optional, default='.pdf'
+        `'extension'` : str, optional, default='.pdf'
+
+    block : {False, True}, optional
+        Set to make the plot block access to the command line, e.g. pl.ioff().
             
     Returns
     -------
@@ -92,6 +96,8 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
 
     check_parameter('plot_spectra', 'file_info', file_info,
                     ['NoneType', 'dict'])
+
+    check_parameter('plot_spectra', 'block', block, 'bool')            
 
     # Does the file exist?
     
@@ -240,7 +246,16 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
             
             sub_spectra = spectra[aperture_index, :, :]
 
-            pl.ion()
+            # This is to the screen
+        
+            if block is True:
+
+                pl.ioff()
+
+            else:
+
+                pl.ion()
+
             number = plot_aperture(sub_spectra, i, ytype, colors, line_width,
                                    latex_xlabel, latex_ylabel, latex_yunits,
                                    yrange_buffer, plot_size, plot_numbers[i],
