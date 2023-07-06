@@ -2,9 +2,12 @@
 
 Data from 2015 June 3 program 2015A078 (PI Rayner)
 
-## original 2D frames
+data: original 2D frames
+cals: processed calibration files
+proc: output spectra
+qa: quality assurance plots
 
-file prefix "spc-"
+files: prefix "spc-"
 
 - 1-8:	HD 100906 (target)
 - 11-18:	HD 101369 (telluric)
