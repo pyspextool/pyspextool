@@ -26,6 +26,7 @@ import glob
 import pandas as pd
 import numpy as np
 import shutil
+import sys
 import yaml
 
 import pyspextool as ps
@@ -89,8 +90,9 @@ BATCH_PARAMETERS = {
 	'STITCHED_FILE_PREFIX': 'stitched',
 	'PROGRAM': '',
 	'OBSERVER': '',
-	'QA_FILE': False,
-	'QA_PLOT': True,
+	'QA_FILE': True,
+	'QA_PLOT': False, 
+	'PLOT_TYPE': '.pdf', 
 }
 
 # these are required parameters for target-calibration sequences
@@ -109,14 +111,14 @@ OBSERVATION_PARAMETERS_REQUIRED = {
 
 # these are optional parameters for target-calibration sequences
 OBSERVATION_PARAMETERS_OPTIONAL = {
-	'USE_STORED_SOLUTION': False,
+#	'USE_STORED_SOLUTION': False,
 	'ORDERS': '3-9',
-	'TARGET_TYPE': 'ps',
+#	'TARGET_TYPE': 'ps',
 	'REDUCTION_MODE': 'A-B',
 	'NPOSITIONS': 2,
 	'APERTURE_POSITIONS': [3.7,11.2],
 	'APERTURE_METHOD': 'auto',
-	'PSF_APERTURE': 1.5,
+	'APERTURE': 1.5,
 	'PSF_RADIUS': 1.5,
 	'BACKGROUND_RADIUS': 2.5,
 	'BACKGROUND_WIDTH': 4,
@@ -472,6 +474,11 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 #				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
 
 		parameters['{}{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
+
+# some specific parameters that need format conversation
+	for k in ['QA_FILE','QA_PLOT']:
+		if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
+
 
 # report out parameters
 	if verbose==True:
@@ -903,7 +910,7 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 # list of modes
 	imodes = list(set(imodes))
 	s=''
-	if len(imodes)>0
+	if len(imodes)>0:
 		imodes.sort()
 		s = str(imodes[0])
 		if len(imodes)>1: 
@@ -1040,8 +1047,12 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	pandas
 	read_driver()
 	'''
+# check parameters
+	if 'VERBOSE' not in list(parameters.keys()): parameters['VERBOSE']=verbose
+	parameters['VERBOSE'] = (parameters['VERBOSE'] or verbose)
 # set up instrument
-	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['cals_folder'], proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=qa_parameters['PLOT_TYPE'],verbose=verbose)
+	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CALS_FOLDER'], \
+		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],verbose=parameters['VERBOSE'])
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
@@ -1056,7 +1067,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 		fnum = [int(os.path.basename(f).replace(parameters['FLAT_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 		fstr = '{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
 # NOTE: qa_file force to False due to ploting error in plot_image
-		ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=qa_plot,qa_file=True,verbose=verbose)
+		ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=parameters['QA_PLOT'],qa_file=parameters['QA_FILE'],verbose=parameters['VERBOSE'])
 
 # wavecal
 		indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
@@ -1073,80 +1084,84 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 		hdu[0].verify('silentfix')
 		header = hdu[0].header
 		hdu.close()
-		use_stored_solution = False
-		if 'lowres' in header['GRAT'].lower(): use_stored_solution = True
+#		use_stored_solution = False
+#		if 'lowres' in header['GRAT'].lower(): use_stored_solution = True
 		ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs),\
-			qa_plot=qa_plot,qa_file=qa_file,use_stored_solution=use_stored_solution,verbose=verbose)
+			qa_plot=parameters['QA_PLOT'],qa_file=parameters['QA_FILE'],verbose=parameters['VERBOSE'])
 
 # extract all sources and standards
+	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
 	scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 	if len(scikeys)==0: 
-		if verbose==True: print('No science files to reduce')
+		if parameters['VERBOSE']==True: print('No science files to reduce')
 		return
 	for k in scikeys:
 		spar = parameters[k]
+		for kk in bkeys:
+			if kk not in list(spar.keys()): spar[kk] = parameters[kk]
+
 
 # SCIENCE TARGET
 # reduce the first pair of targets
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
-		ps.extract.load_image([spar['SCIENCE_FILE_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
+		ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
 			spar['FLAT_FILE'], spar['WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
-			flat_field=True, linearity_correction=True,qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
 		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split(' ')[-1])
 
 # make spatial profiles
-		ps.extract.make_spatial_profiles(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # select orders to extract (set above)
-		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # trace apertures
-		ps.extract.trace_apertures(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.trace_apertures(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-		ps.extract.define_aperture_parameters(spar['PS_APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=qa_plot, qa_file=qa_file)
+		ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
+						bg_width=spar['BACKGROUND_WIDTH'],qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],)
 
 # extract away
-		ps.extract.extract_apertures(verbose=verbose)
+		ps.extract.extract_apertures(verbose=spar['VERBOSE'])
 
 # conduct extraction of all remaining files
 		fnum = extract_filestring(spar['TARGET_FILES'],'index')[2:]
 		if len(fnum)>0:
-			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=verbose)
+			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
 
 # FLUX STANDARD
 # now reduce the first pair of standards
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
 		ps.extract.load_image([spar['SCIENCE_FILE_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
 			spar['FLAT_FILE'], spar['WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
-			flat_field=True, linearity_correction=True,qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
 		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split(' ')[-1])
 
 # make spatial profiles
-		ps.extract.make_spatial_profiles(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=parameters['VERBOSE'])
 
 # select orders to extract (set above)
-		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # trace apertures
-		ps.extract.trace_apertures(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.trace_apertures(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-		ps.extract.define_aperture_parameters(spar['PS_APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=qa_plot, qa_file=qa_file)
+		ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
+						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'])
 
 # extract away
 		ps.extract.extract_apertures(verbose=verbose)
@@ -1154,7 +1169,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 # conduct extraction of all remaining files
 		fnum = extract_filestring(spar['STD_FILES'],'index')[2:]
 		if len(fnum)>0:
-			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=verbose)
+			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
 
 
 # COMBINE SPECTRAL FILES
@@ -1162,27 +1177,28 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 # ALSO: currently not plotting SXD spectra due to an error in combined file code
 		if spar['MODE']=='SXD':
 			ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=False,qa_file=False,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 		else:
 			ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=qa_plot,qa_file=qa_file,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 
 # telluric star
 		if spar['MODE']=='SXD':
 			ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=False,qa_file=False,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 		else:
 			ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=qa_plot,qa_file=qa_file,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 
 # FLUX CALIBRATE - NOT CURRENTLY IMPLEMENTED
 # depends on fixed or moving source which method we use
 		if (spar['TARGET_TYPE'].split(' ')[0]).strip()=='fixed':
-			if verbose==True: print('fixed target; doing standard telluric correction and flux calibration')
+			if spar['VERBOSE']==True: print('fixed target; doing standard telluric correction and flux calibration')
 		elif (spar['TARGET_TYPE'].split(' ')[0]).strip()=='moving':
-			if verbose==True: print('moving target; doing reflectance telluric correction and flux calibration')
+			if spar['VERBOSE']==True: print('moving target; doing reflectance telluric correction and flux calibration')
 		else:
-			if verbose==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split(' ')[0]))
+			if spar['VERBOSE']==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split(' ')[0]))
+
 
 	return
 
