@@ -2,17 +2,14 @@
 
 Data from 2003 Jul 7 program 2003A098 (PI Rayner)
 
-## original 2D frames
+data: original 2D frames
+cals: processed calibration files
+proc: output spectra
+qa: quality assurance plots
 
-file prefix "spc"
-
-- 626-635:	HD 160365 (target)
-- 636-645:	HD 165029 (telluric)
+filesL prefix "spc"
+- 626-635: HD 160365 (target)
+- 636-645: HD 165029 (telluric)
 - 646-650:	flat
 - 651-653:	arc
 
-## extracted 1D files
-
-file prefix = "spectra"
-
-- 626-629:	HD 160365 (target)

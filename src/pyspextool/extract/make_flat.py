@@ -225,7 +225,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     if verbose is True:
         print('Locating the orders...')
 
-        edgecoeffs = locate_orders(med, modeinfo['guesspos'],
+    edgecoeffs = locate_orders(med, modeinfo['guesspos'],
                                    modeinfo['xranges'], modeinfo['step'],
                                    modeinfo['slith_range'],
                                    modeinfo['edgedeg'], modeinfo['ybuffer'],
