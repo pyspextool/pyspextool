@@ -102,11 +102,13 @@ OBSERVATION_PARAMETERS_REQUIRED = {
 	'TARGET_NAME': 'target',
 	'TARGET_PREFIX': 'spc',
 	'TARGET_FILES': '1-2',
-	'FLAT_FILE': 'flat.fits',
-	'WAVECAL_FILE': 'wavecal.fits',
+	'TARGET_FLAT_FILE': 'flat.fits',
+	'TARGET_WAVECAL_FILE': 'wavecal.fits',
 	'STD_NAME': 'standard',
 	'STD_PREFIX': 'spc',
-	'STD_FILES': '1-2'
+	'STD_FILES': '1-2',
+	'STD_FLAT_FILE': 'flat.fits',
+	'STD_WAVECAL_FILE': 'wavecal.fits',
 	}
 
 # these are optional parameters for target-calibration sequences
@@ -133,7 +135,7 @@ QA_PARAMETERS = {
 	'SINGLE_PLOT_TEMPLATE_FILE': os.path.join(DIR,'qa_singleplot_template.txt'),
 	'CSS_FILE' : os.path.join(DIR,'qa.css'),
 	'PLOT_TYPE': '.pdf',
-	'NIMAGES': 4,
+	'NIMAGES': 3,
 	'IMAGE_WIDTH': 300,
 	'MKWC_ARCHIVE_URL': 'http://mkwc.ifa.hawaii.edu/forecast/mko/archive/index.cgi',
 	'HTML_TABLE_HEAD': '<table width=100%>\n <tr>\n',
@@ -473,7 +475,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 				spar['ORDERS'] = spar['ORDERS'][:-1]+'8'
 #				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
 
-		parameters['{}{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
+		parameters['{}-{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
 
 # some specific parameters that need format conversation
 	for k in ['QA_FILE','QA_PLOT']:
@@ -634,19 +636,20 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
-# cals
-	f.write('\n# Lamp calibrations\n')
-	for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
-		f.write('{} = {}\n'.format(x,driver_param[x]))
+# cals - determine here but print below
+	# f.write('\n# Lamp calibrations\n')
+	# for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
+	# 	f.write('{} = {}\n'.format(x,driver_param[x]))
 	cal_sets=''
 	dpcal = dpc[dpc['TARGET_TYPE']=='calibration']
 	fnum = np.array(dpcal['FILE NUMBER'])
 	calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
 	calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
 	for i in range(len(calf1)): cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
-	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
+#	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
 
-# observations
+# observations - need to work on re-ordering this
+# ALSO NEED AN IGNORE TARGET NAME OPTION
 	dps = dpc[dpc['TARGET_TYPE']=='target']
 	names = list(set(list(dps['TARGET_NAME'])))
 	names = [str(x) for x in names]
@@ -662,54 +665,71 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	f.write('\n# Science observations')
 	f.write('\n#\tMode\tTarget Type\tTarget Name\tPrefix\tFiles\tFlat Filename\tWavecal Filename\tStd Name\tStd Prefix\tStd Files\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
 	for n in names:
-		dpsrc = dpc[dpc['TARGET_NAME']==n]
-		line='{}\t{}\t{} ps\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(dpsrc['MODE'].iloc[0]),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
-		fnum = np.array(dpsrc['FILE NUMBER'])
-		line+='\t{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
+		dps = dpc[dpc['TARGET_NAME']==n]
+		src_coord = SkyCoord(dps['RA'].iloc[0]+' '+dps['DEC'].iloc[0],unit=(u.hourangle, u.deg))
+		srcmodes = list(set(list(dps['MODE'])))
+		srcmodes.sort()
+		for m in srcmodes:
+			dpsrc = dps[dps['MODE']==m]
+			line='{}\t{}\t{} ps\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
+			fnum = np.array(dpsrc['FILE NUMBER'])
+			line+='\t{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
 
 # assign calibrations
-		dpcals = dpcal[dpcal['MODE']==dpsrc['MODE'].iloc[0]]
-		if len(dpcals)==0: 
-			if verbose==True: print('Warning: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
-			i=0
-		else:
-			i = np.argmin(np.abs(calf1-np.median(dpsrc['FILE NUMBER'])))
-		line+='\tflat{}.fits\twavecal{}.fits'.format(cal_sets.split(',')[i],cal_sets.split(',')[i])
+			dpcals = dpcal[dpcal['MODE']==m]
+			if len(dpcals)==0: 
+				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
+				ical=0
+			else:
+				ical = np.argmin(np.abs(calf1-np.median(dpsrc['FILE NUMBER'])))
+			line+='\tflat{}.fits\twavecal{}.fits'.format(cal_sets.split(',')[ical],cal_sets.split(',')[ical])
 
-# assign flux cals
-		dpflux = dpc[dpc['TARGET_TYPE']=='standard']
-		dpflux = dpflux[dpflux['MODE']==dpsrc['MODE'].iloc[0]]
-		ftxt = '\t{}\tUNKNOWN\t0-0'.format(str(driver_param['SCIENCE_FILE_PREFIX']))
-		if len(dpflux)==0: 
-			if verbose==True: print('Warning: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
-			line+=ftxt
-		else:
-			dpflux['DIFF1'] = [np.abs(x-np.nanmedian(dpsrc['AIRMASS'])) for x in dpflux['AIRMASS']]
-			dpflux['DIFF2'] = [np.abs(x-np.nanmedian(dpsrc['MJD'])) for x in dpflux['MJD']]
-			dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']
-			fref = dpflux['FILE NUMBER'].iloc[np.argmin(dpflux['DIFF'])]
-			tname = str(dpflux['TARGET_NAME'].iloc[np.argmin(dpflux['DIFF'])])
-			dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
-			fnum = np.array(dpfluxs['FILE NUMBER'])
-			if len(fnum)<2: 
-				if verbose==True: print('Fewer than 2 flux calibrator files for source {}'.format(tname))
+# assign flux cals based on closest in airmass (0.2), time (2 hr) and position (10")
+			dpflux = dpc[dpc['TARGET_TYPE']=='standard']
+			dpflux = dpflux[dpflux['MODE']==dpsrc['MODE'].iloc[0]]
+			ftxt = '\t{}\tUNKNOWN\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[i],cal_sets.split(',')[i])
+			if len(dpflux)==0: 
+				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
 				line+=ftxt
-			else:				
-				if len(fnum)==2: 
-					line+='\t{}\t{}\t{:.0f}-{:.0f}'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1])
-				else:
-					telf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-					telf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-					if len(telf1)==0: line+=ftxt
-					elif len(telf1)==1: line+='\t{}\t{}\t{:.0f}-{:.0f}'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),telf1[0],telf2[0])
+			else:
+				dpflux['DIFF1'] = [np.abs(x-np.nanmedian(dpsrc['AIRMASS']))/0.2 for x in dpflux['AIRMASS']]
+				dpflux['DIFF2'] = [np.abs(x-np.nanmedian(dpsrc['MJD']))*12. for x in dpflux['MJD']]
+				dpflux['DIFF3'] = [src_coord.separation(SkyCoord(dpflux['RA'].iloc[i]+' '+dpflux['DEC'].iloc[i],unit=(u.hourangle, u.deg))).to(u.arcsecond).value/10. for i in range(len(dpflux))]
+				dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']+dpflux['DIFF3']
+				fref = dpflux['FILE NUMBER'].iloc[np.argmin(dpflux['DIFF'])]
+				tname = str(dpflux['TARGET_NAME'].iloc[np.argmin(dpflux['DIFF'])])
+				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
+				fnum = np.array(dpfluxs['FILE NUMBER'])
+				if len(fnum)<2: 
+					if verbose==True: print('Fewer than 2 flux calibrator files for source {}'.format(tname))
+					line+=ftxt
+				else:				
+					if len(dpcals)==0: 
+						if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
+						ical=0
 					else:
-						i = np.argmin(np.abs(fref-telf1))
-						line+='\t{}\t{}\t{:.0f}-{:.0f}'.format(tname,str(dpfluxs['PREFIX'].iloc[i]),telf1[i],telf2[i])
+						ical = np.argmin(np.abs(calf1-np.median(dpfluxs['FILE NUMBER'])))
+					if len(fnum)==2: 
+						line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+					else:
+						telf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+						telf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+						if len(telf1)==0: line+=ftxt
+						elif len(telf1)==1: line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),telf1[0],telf2[0],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+						else:
+							i = np.argmin(np.abs(fref-telf1))
+							line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[i]),telf1[i],telf2[i],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+			f.write(line+'\n')
+
+# print out cal sets
+	f.write('\n# Lamp calibrations\n')
+	for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
+		f.write('{} = {}\n'.format(x,driver_param[x]))
+	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
 
 # all other options
 		# if len(extraction_options)>0:
 		# 	for k in list(extraction_options.keys()): line+='\t{}={}'.format(k,extraction_options[k])
-		f.write(line+'\n')
 	f.close()
 
 # report out location
@@ -851,11 +871,13 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 			stxt = stxt.replace('[INTEGRATION]','{:.1f}'.format(np.nansum(sci_log['INTEGRATION'])))
 
 # final calibrated file
+# FOR NOW JUST PUTTING UP COMBINED FILE
 		ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
-		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],driver['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],qa_parameters['PLOT_TYPE']))
+#		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],driver['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],qa_parameters['PLOT_TYPE']))
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['TARGET_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 		if len(imfile)>0: 
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-		ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+#		ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 		stxt = stxt.replace('[CALIBRATED_FILE]',ptxt)
 
 # insert other target and calibrator files
@@ -863,10 +885,10 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 
 # combined files
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0: 
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
@@ -1105,7 +1127,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 # reduce the first pair of targets
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
 		ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
-			spar['FLAT_FILE'], spar['WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
+			spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
 			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
@@ -1134,13 +1156,13 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 # conduct extraction of all remaining files
 		fnum = extract_filestring(spar['TARGET_FILES'],'index')[2:]
 		if len(fnum)>0:
-			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
+			ps.extract.do_all_steps([spar['TARGET_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
 
 # FLUX STANDARD
 # now reduce the first pair of standards
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
-		ps.extract.load_image([spar['SCIENCE_FILE_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
-			spar['FLAT_FILE'], spar['WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
+		ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
+			spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
 			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
@@ -1169,7 +1191,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 # conduct extraction of all remaining files
 		fnum = extract_filestring(spar['STD_FILES'],'index')[2:]
 		if len(fnum)>0:
-			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
+			ps.extract.do_all_steps([spar['STD_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
 
 
 # COMBINE SPECTRAL FILES

@@ -66,7 +66,8 @@ def ten(val):
 
     if typ == 'str':
 
-        hms = (val.split(':'))
+        val0 = val.replace('++','+')
+        hms = (val0.split(':'))
 
         decimal = abs(float(hms[0])) + float(hms[1]) / 60. + float(hms[2]) / 3600.
 

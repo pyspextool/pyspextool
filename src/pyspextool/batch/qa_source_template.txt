@@ -1,11 +1,15 @@
 <!-- SOURCE TEMPLATE -->
 
+<!--
 <button type="button" class="collapsible">[TARGET_NAME] [MODE]</button>
 <div class="content">
+-->
+
+<h3>[TARGET_NAME] ([MODE] mode)</h3>
 
 <!-- CALIBRATED SPECTRUM -->
 
-<h3>Reduced Spectrum and Source Information</h3>
+<h4>Reduced Spectrum and Source Information</h4>
 
 <table>
  <tr>
@@ -34,11 +38,11 @@
 <button type="button" class="collapsible">Target Spectra</button>
 <div class="content">
 
-<h3>Combined Spectra</h3>
+<h4>Combined Spectra</h4>
 
 [TARGET_COMBINED_FILES]
 
-<h3>Individual Spectra</h3>
+<h4>Individual Spectra</h4>
 
 [TARGET_SPECTRA_FILES]
 
@@ -50,12 +54,12 @@
 <button type="button" class="collapsible">Calibrator Spectra</button>
 <div class="content">
 
-<h3>Combined Spectra</h3>
+<h4>Combined Spectra</h4>
 
 [STD_COMBINED_FILES]
 
 
-<h3>Individual Spectra</h3>
+<h4>Individual Spectra</h4>
 
 [STD_SPECTRA_FILES]
 
@@ -67,16 +71,18 @@
 <button type="button" class="collapsible">Traces and Apertures</button>
 <div class="content">
 
-<h3>Targets</h3>
+<h4>Targets</h4>
 
 [TARGET_TRACE_APERTURE_FILES]
 
-<h3>Calibrators</h3>
+<h4>Calibrators</h4>
 
 [STD_TRACE_APERTURE_FILES]
 
 </div>
 
+<!--
 </div>
-
+-->
+<hr>
 

@@ -1,12 +1,11 @@
 # pyspextool batch driver function
 # usage methods
 #
-# >> python batch_driver.py [data folder] [cal folder] [proc folder] [qa folder]
 # >> python batch_driver.py [base folder] 
-# >> python batch_driver.py --reduce-only [driver file]
+# >> python batch_driver.py [data folder] [cal folder] [proc folder] [qa folder]
 # >> python batch_driver.py --reduce-only [base folder]
-# >> python batch_driver.py --qa-only [driver file] [log file]
 # >> python batch_driver.py --qa-only [base folder]
+#
 
 import argparse
 import os
@@ -18,7 +17,7 @@ CALS_FOLDER = 'cals/'
 PROC_FOLDER = 'proc/'
 QA_FOLDER = 'qa/'
 
-class CommandLine():
+class runBatch():
 	def __init__(self):
 		parser = argparse.ArgumentParser(description='Runs the batch mode for pyspextool')
 		parser.add_argument('inputs', nargs='*',
@@ -45,6 +44,7 @@ class CommandLine():
 			required=False, help='set to return verbose feedback')
 
 		args = vars(parser.parse_args())
+#		print(args)
 		folders = args['inputs']
 		driver_file = args['d']
 		log_file_prefix = args['l']
@@ -113,13 +113,13 @@ class CommandLine():
 # generate driver file and put in qa folder
 		if args['reduce_only']==False and args['qa_only']==False:
 			if driver_file=='': driver_file = 'driver.txt'
-			driver_file = os.path.join(folders[3],driver_file)
+			driver_file = os.path.join(folders[2],driver_file)
 			dp = process_folder(folders[0])
 			if os.path.exists(driver_file) and args['overwrite']==False:
 				print('\nWARNING: driver file {} already exists; use --overwrite to overwrite'.format(driver_file))
 			else:
 				if args['verbose']==True: print('\nGenerating driver file and writing to {}'.format(driver_file))
-				write_driver(dp,driver_file,data_folder=folders[0],cal_folder=folders[1],proc_folder=folders[2],qa_folder=folders[3])
+				write_driver(dp,driver_file,data_folder=folders[0],verbose=args['verbose'],check=True,create_folders=True)
 			if args['driver_only']==True: 
 				print('\n\nDriver file {} created'.format(driver_file))
 				print('Review this file before reducing\n\n')
@@ -136,7 +136,7 @@ class CommandLine():
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 			par = read_driver(driver_file)
 			if args['verbose']==True: print('\n\nReducing spectra')
-			batch_reduce(par,qa_file=args['qaplot-off'],qa_plot=False,verbose=args['verbose'])
+			batch_reduce(par,verbose=args['verbose'])
 			if args['reduce_only']==True: 
 				print('\n\nReduction completed')
 				print('Processed files are in proc folder\n\n')
@@ -148,13 +148,14 @@ class CommandLine():
 			if driver_file=='': driver_file = folders[0]
 			if os.path.isdir(driver_file)==True:
 				if len(folders)<4: raise ValueError('Could not determine driver file from inputs')
-				driver_file = folders[3]+'driver.txt'
+				driver_file = folders[2]+'driver.txt'
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 
-			if log_file_prefix=='': log_file_prefix = folders[1].split('.')[0]
-			if os.path.isdir(log_file_prefix)==True:
-				if len(folders)<4: raise ValueError('Could not determine log file from inputs')
-				log_file_prefix = folders[3]+'log'
+			if log_file_prefix=='': log_file_prefix = 'log'
+			# if os.path.isdir(log_file_prefix)==True:
+			# 	if len(folders)<4: raise ValueError('Could not determine log file from inputs')
+			# 	log_file_prefix = folders[3]+'log'
+			if os.path.exists(log_file_prefix+'.csv')==False: log_file_prefix = folders[3]+'log'
 			if os.path.exists(log_file_prefix+'.csv')==False: raise ValueError('Cannot find log file {}'.format(log_file_prefix+'.csv')) 
 
 			makeQApage(driver_file,log_file_prefix+'.csv',verbose=args['verbose'])
@@ -164,4 +165,4 @@ class CommandLine():
 		return
 
 if __name__ == '__main__':
-	app = CommandLine()
+	app = runBatch()

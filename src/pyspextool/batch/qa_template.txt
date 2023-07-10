@@ -53,6 +53,8 @@
 
 </div>
 
+<hr>
+
 <button type="button" class="collapsible">Wavelength Calibration</button>
 <div class="content">
 
