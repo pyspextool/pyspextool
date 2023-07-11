@@ -1,0 +1,4 @@
+   <td align="center">
+    <embed src="[IMAGE]" width=[IMAGE_WIDTH] height=[IMAGE_WIDTH]></a>
+    <br><a href="[IMAGE]" target="_blank">[IMAGE]</a>
+  </td>

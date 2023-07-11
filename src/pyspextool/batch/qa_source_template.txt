@@ -1,24 +1,25 @@
 <!-- SOURCE TEMPLATE -->
 
+<!--
 <button type="button" class="collapsible">[TARGET_NAME] [MODE]</button>
 <div class="content">
+-->
+
+<h3>[TARGET_NAME] ([MODE] mode)</h3>
 
 <!-- CALIBRATED SPECTRUM -->
 
-<h2>Reduced Spectrum and Source Information</h2>
+<h4>Reduced Spectrum and Source Information</h4>
 
 <table>
  <tr>
-  <td align="center">
-   <embed src="[CALIBRATED_FILE]" width=400 height=300>
-   <br>Reduced spectrum
-  </td>
+[CALIBRATED_FILE]
   <td align="left">
    <ul>
     <li>Source Name: [TARGET_NAME] ([TARGET_TYPE])
-    <li>Coordinate: [RA] [DEC] 
-	[<a href="https://aladin.cds.unistra.fr/AladinLite/?target=[DESIGNATION]&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]
-	[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=[DESIGNATION]&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]
+    <li>Coordinate: [COORDINATE] 
+	[<a href="https://aladin.cds.unistra.fr/AladinLite/?target=[DESIGNATION_URL]&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]
+	[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=[DESIGNATION_URL]&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]
     <li>Standard: [STD_NAME]
     <li>Files: target [TARGET_FILES], standard [STD_FILES]
     <li>Airmass: [AIRMASS]
@@ -34,21 +35,14 @@
 
 <!-- INDIVIDUAL SOURCE SPECTRA -->
 
-<button type="button" class="collapsible">Individual Source Spectra</button>
+<button type="button" class="collapsible">Target Spectra</button>
 <div class="content">
 
-<table>
- <tr>
-  <td align="center">
-   <embed src="[TARGET_COMBINED_RAW_FILE]" width=400 height=300>
-   <br>Combined raw spectrum
-  </td>
-  <td align="center">
-   <embed src="[TARGET_COMBINED_SCALED_FILE]" width=400 height=300>
-   <br>Combined scaled spectrum
-  </td>
- </tr>
-</table>
+<h4>Combined Spectra</h4>
+
+[TARGET_COMBINED_FILES]
+
+<h4>Individual Spectra</h4>
 
 [TARGET_SPECTRA_FILES]
 
@@ -57,21 +51,15 @@
 
 <!-- INDIVIDUAL TELLURIC SPECTRA -->
 
-<button type="button" class="collapsible">Telluric Spectra</button>
+<button type="button" class="collapsible">Calibrator Spectra</button>
 <div class="content">
 
-<table>
- <tr>
-  <td align="center">
-   <embed src="[STD_COMBINED_RAW_FILE]" width=400 height=300>
-   <br>Combined raw spectrum
-  </td>
-  <td align="center">
-   <embed src="[STD_COMBINED_SCALED_FILE]" width=400 height=300>
-   <br>Combined scaled spectrum
-  </td>
- </tr>
-</table>
+<h4>Combined Spectra</h4>
+
+[STD_COMBINED_FILES]
+
+
+<h4>Individual Spectra</h4>
 
 [STD_SPECTRA_FILES]
 
@@ -83,10 +71,18 @@
 <button type="button" class="collapsible">Traces and Apertures</button>
 <div class="content">
 
-[TRACE_APERTURE_FILES]
+<h4>Targets</h4>
+
+[TARGET_TRACE_APERTURE_FILES]
+
+<h4>Calibrators</h4>
+
+[STD_TRACE_APERTURE_FILES]
 
 </div>
 
+<!--
 </div>
-
+-->
+<hr>
 

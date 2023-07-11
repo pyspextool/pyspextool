@@ -6,27 +6,50 @@
 # - run through reduction steps based on batch driving file
 #  -- subprocesses: read driver --> do all calibrations --> extract all spectra 
 #		--> combine spectral groups --> telluric correction --> stitch (SXD/LXD)
+#
+# REMAINING TASKS
+# - generate final source lists (fixed vs moving) with simbad/2mass information
+# - test individual extraction options
+# - xtellcor integration
+# - stitching integration
+# - finish docstrings
+# - integrate testing scripts
+# - TESTING
 
+from astropy.io import fits
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
+import astropy.units as u
 import copy
 import os
 import glob
 import pandas as pd
 import numpy as np
-from astropy.io import fits
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
-import astropy.units as u
+import shutil
+import sys
+import yaml
 
 import pyspextool as ps
 from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 
-# this is the data to extract from header, with options for header keywords depending on epoch
+ERROR_CHECKING = True
+DIR = os.path.dirname(os.path.abspath(__file__))
+
+MOVING_MAXSEP = 15 # max separation for fixed target in arcsec
+MOVING_MAXRATE = 10 # max moving rate for fixed target in arcsec/hr
+INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
+ARC_NAME = 'arc lamp'
+FLAT_NAME = 'flat lamp'
+OBSERVATION_SET_KEYWORD = 'OBS_SET'
+DRIVER_DEFAULT_FILENAME = 'driver.txt'
+
+# this is the data to extract from header, with options for header keywords depending on when file was written
 HEADER_DATA={
 	'UT_DATE': ['DATE_OBS'],
 	'UT_TIME': ['TIME_OBS'],
 #	'MJD': ['MJD_OBS'],
-	'SOURCE_NAME': ['OBJECT','TCS_OBJ'],
+	'TARGET_NAME': ['OBJECT','TCS_OBJ'],
 	'RA': ['RA','TCS_RA'],
 	'DEC': ['DEC','TCS_DEC'],
 	'HA': ['HA','TCS_HA'],
@@ -40,71 +63,132 @@ HEADER_DATA={
 	'PARALLACTIC': ['TCS_PA'],
 	'PROGRAM': ['PROG_ID'],
 	'OBSERVER': ['OBSERVER'],
-	'TYPE': ['DATATYPE'],
+	'TARGET_TYPE': ['DATATYPE'],
 }
-ERROR_CHECKING = True
-MOVING_MAXSEP = 15 # max separation for fixed target in arcsec
-MOVING_MAXRATE = 10 # max moving rate for fixed target in arcsec/hr
-LOG_COLUMNS = ['FILE','BEAM','SOURCE_NAME','UT_DATE','UT_TIME','RA','DEC','TYPE','FIXED-MOVING','AIRMASS','INTEGRATION','COADDS','SLIT','MODE','PROGRAM','OBSERVER']
-LOG_TEMPLATE_HTML = r'<!DOCTYPE html><html lang="en"><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css"><head><title>[TITLE]</title></head><body><h1>[TITLE]</h1>[TABLE]</body></html>'
-INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
-ARC_SRCNAME = 'arc lamp'
-FLAT_SRCNAME = 'flat lamp'
+
+# these are default parameters for generating the log
+LOG_PARAMETERS = {
+	'FILENAME': 'log.csv',
+	'HTML_TEMPLATE_FILE' : os.path.join(DIR,'log_template.txt'),
+	'BASE_HTML': r'<!DOCTYPE html>\n<html lang="en">\n\n<head>\n<title>SpeX Log</title>\n</head>\n\n<body>\n<h1>SpeX Log</h1>\n\n[TABLE]\n\n</body>\n</html>',	
+	'COLUMNS' : ['FILE','BEAM','TARGET_NAME','TARGET_TYPE','FIXED-MOVING','RA','DEC','UT_DATE','UT_TIME','MJD','AIRMASS','INTEGRATION','COADDS','INSTRUMENT','SLIT','MODE','PROGRAM','OBSERVER'],
+}
+
+# these are default batch reduction parameters
 BATCH_PARAMETERS = {
-	'INSTRUMENT': '',
-	'DATA_FOLDER': './',
-	'CAL_FOLDER': './',
-	'PROC_FOLDER': './',
+	'INSTRUMENT': 'spex',
+	'DATA_FOLDER': '',
+	'CALS_FOLDER': '',
+	'PROC_FOLDER': '',
 	'QA_FOLDER': '',
-	'ARC_FILE_PREFIX': 'arc',
 	'FLAT_FILE_PREFIX': 'flat',
-	'CAL_SETS': '',
-}
-SCI_PARAMETERS_REQUIRED = ['MODE','TARGET_TYPE','TARGET_NAME','TARGET_FILES','FLAT_FILE','WAVECAL_FILE','STD_NAME','STD_FILES']
-SCI_PARAMETERS_OPTIONAL = {
+	'ARC_FILE_PREFIX': 'arc',
 	'SCIENCE_FILE_PREFIX': 'spc',
-	'SPECTRAL_FILE_PREFIX': 'spec',
+	'SPECTRA_FILE_PREFIX': 'spectra',
 	'COMBINED_FILE_PREFIX': 'combspec',
 	'CALIBRATED_FILE_PREFIX': 'calspec',
-	'STITCHED_FILE_PREFIX': 'xd1d',	
-	'USE_STORED_SOLUTION': False,
+	'STITCHED_FILE_PREFIX': 'stitched',
+	'PROGRAM': '',
+	'OBSERVER': '',
+	'QA_FILE': True,
+	'QA_PLOT': False, 
+	'PLOT_TYPE': '.pdf', 
+}
+
+# these are required parameters for target-calibration sequences
+OBSERVATION_PARAMETERS_REQUIRED = {
+	'MODE': 'SXD',
+	'TARGET_TYPE': 'fixed ps',
+	'TARGET_NAME': 'target',
+	'TARGET_PREFIX': 'spc',
+	'TARGET_FILES': '1-2',
+	'TARGET_FLAT_FILE': 'flat.fits',
+	'TARGET_WAVECAL_FILE': 'wavecal.fits',
+	'STD_NAME': 'standard',
+	'STD_PREFIX': 'spc',
+	'STD_FILES': '1-2',
+	'STD_FLAT_FILE': 'flat.fits',
+	'STD_WAVECAL_FILE': 'wavecal.fits',
+	}
+
+# these are optional parameters for target-calibration sequences
+OBSERVATION_PARAMETERS_OPTIONAL = {
+#	'USE_STORED_SOLUTION': False,
 	'ORDERS': '3-9',
-	'SOURCE_TYPE': 'ps',
+#	'TARGET_TYPE': 'ps',
 	'REDUCTION_MODE': 'A-B',
 	'NPOSITIONS': 2,
 	'APERTURE_POSITIONS': [3.7,11.2],
 	'APERTURE_METHOD': 'auto',
-	'PS_APERTURE': 1.5,
+	'APERTURE': 1.5,
 	'PSF_RADIUS': 1.5,
 	'BACKGROUND_RADIUS': 2.5,
 	'BACKGROUND_WIDTH': 4,
 	'SCALE_RANGE': [1.0,1.5],
 }
-QA_PLOT_TYPE = '.pdf'
-DIR = os.path.dirname(os.path.abspath(__file__))
-QA_CSS = os.path.join(DIR,'qa.css')
-QA_INDEX_TEMPLATE_FILE = os.path.join(DIR,'qa_template.txt')
-QA_SOURCE_TEMPLATE_FILE = os.path.join(DIR,'qa_source_template.txt')
-LOG_TEMPLATE_FILE = os.path.join(DIR,'log_template.txt')
-QA_HTML_OUTPUT_NAME = 'index.html'
-MKWC_ARCHIVE_URL = 'http://mkwc.ifa.hawaii.edu/forecast/mko/archive/index.cgi'
 
-def tablestyle(val):
-	'''
-	Plotting style for pandas dataframe for html display
-	'''
-	color='white'
-	if type(val)==str:
-		if 'LowRes' in val: color='blue'
-		if 'SXD' in val: color='green'
-		if 'LXD' in val: color='red'
-	return 'background-color: {}'.format(color)
+# these are default parameters for QA page creation
+QA_PARAMETERS = {
+	'FILENAME': 'index.html',
+	'TEMPLATE_FILE': os.path.join(DIR,'qa_template.txt'),
+	'SOURCE_TEMPLATE_FILE': os.path.join(DIR,'qa_source_template.txt'),
+	'SINGLE_PLOT_TEMPLATE_FILE': os.path.join(DIR,'qa_singleplot_template.txt'),
+	'CSS_FILE' : os.path.join(DIR,'qa.css'),
+	'PLOT_TYPE': '.pdf',
+	'NIMAGES': 3,
+	'IMAGE_WIDTH': 300,
+	'MKWC_ARCHIVE_URL': 'http://mkwc.ifa.hawaii.edu/forecast/mko/archive/index.cgi',
+	'HTML_TABLE_HEAD': '<table width=100%>\n <tr>\n',
+	'HTML_TABLE_TAIL': ' </tr>\n</table>\n',
+}
 
+
+
+###############################
+####### PROCESS FOLDERS #######
+###############################
 
 def process_folder(folder,verbose=False):
 	'''
-	Function reads in fits files from a data folder and organizes into 
-	pandas dataframe
+	Purpose
+	-------
+	Reads in fits files from a data folder and organizes into pandas dataframe 
+	with select keywords from headers defined in HEADER_DATA
+
+	Parameters
+	----------
+	folder : str
+		full path to the data folder containing the fits files
+
+	verbose : bool, default=False
+		Set to True to return verbose output
+
+	Outputs
+	-------
+	pandas DataFrame containing the main header elements of the fits data files
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/adam/data/spex/20200101/data/'
+	>>> dp = batch.process_folder(dpath)
+	>>> print(dp[:4])
+
+		               FILE     UT_DATE          UT_TIME TARGET_NAME           RA  \
+		0    spc0001.a.fits  2003-05-21  05:46:06.300712   1104+1959  11:04:01.12   
+		1    spc0002.b.fits  2003-05-21  05:48:25.591305   1104+1959  11:04:01.08   
+		2    spc0003.b.fits  2003-05-21  05:50:42.924982   1104+1959  11:04:01.06   
+		3    spc0004.a.fits  2003-05-21  05:53:02.194063   1104+1959  11:04:01.08   
+
+	Dependencies
+	------------
+	astropy.coordinates
+	astropy.io
+	astropy.time
+	astropy.units
+	glob
+	os.path
+	pandas
 	'''
 # error checking folder 
 	if os.path.isdir(folder) == False: 
@@ -142,23 +226,23 @@ def process_folder(folder,verbose=False):
 		if 'SHORTXD' in dp['MODE'].iloc[i].upper(): dp['MODE'].iloc[i] = 'SXD'
 		if 'lowres' in dp['MODE'].iloc[i].lower(): dp['MODE'].iloc[i] = 'Prism'		
 		if 'arc' in dp['FILE'].iloc[i]: 
-			dp['SOURCE_NAME'].iloc[i] = ARC_SRCNAME
-			dp['TYPE'].iloc[i] = 'calibration'
+			dp['TARGET_NAME'].iloc[i] = ARC_NAME
+			dp['TARGET_TYPE'].iloc[i] = 'calibration'
 		if 'flat' in dp['FILE'].iloc[i]: 
-			dp['SOURCE_NAME'].iloc[i] = FLAT_SRCNAME
-			dp['TYPE'].iloc[i] = 'calibration'
+			dp['TARGET_NAME'].iloc[i] = FLAT_NAME
+			dp['TARGET_TYPE'].iloc[i] = 'calibration'
 # set standards based on integration time
 # this is not a great way to do this!
-		if dp['TYPE'].iloc[i]=='': 
-			dp['TYPE'].iloc[i]='target'
-			if 'SXD' in dp['MODE'].iloc[i] and float(dp['INTEGRATION'].iloc[i])<=30.: dp['TYPE'].iloc[i]='standard'
-			if 'Prism' in dp['MODE'].iloc[i] and float(dp['INTEGRATION'].iloc[i])<=10.: dp['TYPE'].iloc[i]='standard'
+		if dp['TARGET_TYPE'].iloc[i]=='': 
+			dp['TARGET_TYPE'].iloc[i]='target'
+			if 'SXD' in dp['MODE'].iloc[i] and float(dp['INTEGRATION'].iloc[i])<=30.: dp['TARGET_TYPE'].iloc[i]='standard'
+			if 'Prism' in dp['MODE'].iloc[i] and float(dp['INTEGRATION'].iloc[i])<=10.: dp['TARGET_TYPE'].iloc[i]='standard'
 
 # if guess above was wrong, reset all standards back to targets
-	dpt = dp[dp['TYPE']=='target']
+	dpt = dp[dp['TARGET_TYPE']=='target']
 	if len(dpt)==0: 
-		dp.loc[dp['TYPE']=='standard','TYPE'] = 'target'
-	dpt = dp[dp['TYPE']=='standard']
+		dp.loc[dp['TARGET_TYPE']=='standard','TARGET_TYPE'] = 'target'
+	dpt = dp[dp['TARGET_TYPE']=='standard']
 	if len(dpt)==0: 
 		if verbose==True: print('Warning: no standards present in list; be sure to check driver file carefully')
 
@@ -174,14 +258,14 @@ def process_folder(folder,verbose=False):
 # fixed/moving - determined by range of position and motion of soruce
 # NOTE: THIS FAILS IF USER DOESN'T CHANGE NAME OF SOURCE
 	dp['FIXED-MOVING'] = ['fixed']*len(dp)
-	names = list(set(list(dp['SOURCE_NAME'])))
-	names.remove(ARC_SRCNAME)
-	names.remove(FLAT_SRCNAME)
+	names = list(set(list(dp['TARGET_NAME'])))
+	names.remove(ARC_NAME)
+	names.remove(FLAT_NAME)
 	if len(names)==0:
 		if verbose==True: print('Warning: no science files identified in {}'.format(folder))
 	else:
 		for n in names:
-			dps = dp[dp['SOURCE_NAME']==n]
+			dps = dp[dp['TARGET_NAME']==n]
 			dpsa = dps[dps['BEAM']=='A']
 			if len(dpsa)>1:	
 				pos1 = SkyCoord(dpsa['RA'].iloc[0]+' '+dpsa['DEC'].iloc[0],unit=(u.hourangle, u.deg))
@@ -191,182 +275,160 @@ def process_folder(folder,verbose=False):
 				time2 = Time(dpsa['DATETIME'].iloc[-1],format='isot', scale='utc')
 				dt = (time2-time1).to(u.hour)
 				if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
-					dp.loc[dp['SOURCE_NAME']==n,'FIXED-MOVING'] = 'moving'
-				if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['SOURCE_NAME']==n,'FIXED-MOVING']))
+					dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
+				if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
 
 	return dp
 
 
-def write_log(dp,log_file,columns=LOG_COLUMNS,html_template=LOG_TEMPLATE_HTML,verbose=ERROR_CHECKING):
+##############################
+####### LOG GENERATION #######
+##############################
+
+def tablestyle(val):
 	'''
-	Writes log file based on data Frame from process_folder
+	Plotting style for pandas dataframe for html display
+	NOT ACTUALLY SURE THIS IS DOING ANYTHING
 	'''
-# downselect columns to save out
-	try: dpout = dp[columns]
-	except: 
-		dpout=copy.deepcopy(dp)
-		if verbose==True: print('Warning: could not select subset of columns {} from data frame, saving all columns'.format(columns))
+	color='white'
+	if isinstance(val,str) == True:
+		if 'LowRes' in val: color='blue'
+		if 'SXD' in val: color='green'
+		if 'LXD' in val: color='red'
+	return 'background-color: {}'.format(color)
+
+
+def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
+	'''
+	Purpose
+	-------
+	Takes in dataFrame from process_folder and generates a log file based on 
+	select header values defined in LOG_COLUMNS parameter in LOG_PARAMETERS
+
+	Parameters
+	----------
+	dp : pandas DataFrame
+		output of process_folder
+
+	log_file : str, default=LOG_DEFAULT_FILENAME
+		full path to output log file; 
+		allowed file formats are .csv, .htm, .html, .json, .psv, .tab, .tex, .tsv, .txt, .xls, .xlsx 
+
+	options : dict, default = {}
+		options for log generation parameters that override defaults given in LOG_PARAMETERS,
+
+	verbose : bool, default=ERROR_CHECKING
+		Set to True to return verbose output
+
+	Outputs
+	-------
+	No explicit returns; log file is output as specified by file extension
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/adam/data/spex/20200101/data/'
+	>>> dp = batch.process_folder(dpath)
+	>>> batch.write_log(dp,dpath+'log.html',verbose=True)
+		
+		log written to /Users/adam/projects/spex_archive/testing/spex-prism/log.html
+		
+	Dependencies
+	------------
+	copy
+	os.path
+	pandas
+	'''
+# update default parameters with options
+	parameters = copy.deepcopy(LOG_PARAMETERS)
+	parameters.update(options)
+	if log_file != '': parameters['FILENAME'] = log_file
+
+# downselect columns to save out; by default
+	if len(parameters['COLUMNS']) > 0:
+		try: dpout = dp[parameters['COLUMNS']]
+		except: 
+			dpout = copy.deepcopy(dp)
+			if verbose==True: print('Warning: could not select subset of columns {} from data frame, saving all columns'.format(parameters['COLUMNS']))
+	else: dpout = copy.deepcopy(dp)
 
 # save depends on file name
-	ftype = log_file.split('.')[-1]
-	if ftype in ['xls','xlsx']: dpout.to_excel(log_file,index=False)	
-	elif ftype in ['csv']: dpout.to_csv(log_file,sep=',',index=False)	
-	elif ftype in ['tsv','txt']: dpout.to_csv(log_file,sep='\t',index=False)	
-	elif ftype in ['tex']: dpout.to_latex(log_file,longtable=True,index=False)	
-	elif ftype in ['htm','html']: 
+	ftype = parameters['FILENAME'].split('.')[-1]
+	if ftype in ['xls','xlsx']: dpout.to_excel(parameters['FILENAME'],index=False)	
+	elif ftype in ['csv']: dpout.to_csv(parameters['FILENAME'],sep=',',index=False)	
+	elif ftype in ['tsv','txt','tab']: dpout.to_csv(parameters['FILENAME'],sep='\t',index=False)	
+	elif ftype in ['psv']: dpout.to_csv(parameters['FILENAME'],sep='|',index=False)	
+	elif ftype in ['tex']: dpout.to_latex(parameters['FILENAME'],longtable=True,index=False)	
+	elif ftype in ['json']: dpout.to_json(parameters['FILENAME'])	
+	elif ftype in ['htm','html']:
 		dpout.style.apply(tablestyle)
-		dphtml = copy.deepcopy(html_template)
-		dphtml = dphtml.replace('[TITLE]','{} Log for {}'.format(dp['INSTRUMENT'].iloc[0],dp['UT_DATE'].iloc[0]))
+		if parameters['HTML_TEMPLATE_FILE'] != '' and os.path.exists(parameters['HTML_TEMPLATE_FILE']):
+			with open(parameters['HTML_TEMPLATE_FILE'],'r') as f: dphtml = f.read()
+		else: dphtml = copy.deepcopy(parameters['BASE_HTML'])
+		for x in ['INSTRUMENT','UT_DATE']:
+			if x in list(dp.columns): 
+				dphtml = dphtml.replace('[{}]'.format(x),dp[x].iloc[0])
 		dphtml = dphtml.replace('[TABLE]',dpout.to_html(classes='table table-striped text-center',index=False,bold_rows=True))
-		with open(log_file,'w') as f: f.write(dphtml)
-	else: raise ValueError('Could not write out to {}; unknown file format'.format(log_file))
+		with open(parameters['FILENAME'],'w') as f: f.write(dphtml)
+	else: raise ValueError('Could not write out to {}; unknown file format'.format(parameters['FILENAME']))
 
-	if verbose==True: print('log written to {}'.format(log_file))
+	if verbose==True: print('log written to {}'.format(parameters['FILENAME']))
 	return
 
 
-def write_driver(dp,driver_file,data_folder=BATCH_PARAMETERS['DATA_FOLDER'],cal_folder=BATCH_PARAMETERS['CAL_FOLDER'],\
-	proc_folder=BATCH_PARAMETERS['PROC_FOLDER'],qa_folder=BATCH_PARAMETERS['QA_FOLDER'],\
-	science_file_prefix='',arc_file_prefix='',flat_file_prefix='',\
-	combined_file_prefix=SCI_PARAMETERS_OPTIONAL['COMBINED_FILE_PREFIX'],\
-	spectral_file_prefix=SCI_PARAMETERS_OPTIONAL['SPECTRAL_FILE_PREFIX'],\
-	calibrated_file_prefix=SCI_PARAMETERS_OPTIONAL['CALIBRATED_FILE_PREFIX'],\
-	stitched_file_prefix=SCI_PARAMETERS_OPTIONAL['STITCHED_FILE_PREFIX'],\
-	default_source_type=SCI_PARAMETERS_OPTIONAL['SOURCE_TYPE'],\
-	extraction_options={},comment='',create_folders=False,verbose=ERROR_CHECKING):
-	''']
-	Writes driver file based on database of files
+#############################
+##### BATCH DRIVER FILE #####
+#############################
+
+def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	'''
-# check folders
-	if qa_folder=='': qa_folder = cal_folder
-	for x in [data_folder,cal_folder,proc_folder,qa_folder]:
-		if os.path.exists(x)==False:
-			if create_folders==True: os.mkdir(x)
-			else: raise ValueError('Folder {} does not exist; either create or set keyword create_folders to True'.format(x))
+	Purpose
+	-------
+	Reads in batch driver file into a dictionary for processing
 
-# some file name work
-	dpc = copy.deepcopy(dp)
-	dpc['PREFIX'] = [x.replace('.a.fits','').replace('.b.fits','') for x in dpc['FILE']]
-	n=4
-	if dpc['INSTRUMENT'].iloc[0]=='uspex': n=5
-	dpc['FILE NUMBER'] = [int(x[-n:]) for x in dpc['PREFIX']]
-	dpc['PREFIX'] = [x[:-n] for x in dpc['PREFIX']]
+	Parameters
+	----------
+	driver_file : str
+		full path to output file for batch driver
 
-# set up default prefixes
-	if arc_file_prefix=='':
-		dps = dpc[dpc['SOURCE_NAME']==ARC_SRCNAME]
-		arc_file_prefix = dps['PREFIX'].iloc[0]
-	if flat_file_prefix=='':
-		dps = dpc[dpc['SOURCE_NAME']==FLAT_SRCNAME]
-		flat_file_prefix = dps['PREFIX'].iloc[0]
-	if science_file_prefix=='':
-		dps = dpc[dpc['SOURCE_NAME']!=FLAT_SRCNAME]
-		dps = dps[dps['SOURCE_NAME']!=ARC_SRCNAME]
-		science_file_prefix = dps['PREFIX'].iloc[0]
+	options : dict, default = {}
+		options for batch reduction parameters that override defaults given in BATCH_PARAMETERS,
+		but are themselves overridden by what is in batch driver file
 
+	verbose : bool, default=ERROR_CHECKING
+		set to True to return verbose output
 
-# write out instructions
-	f = open(driver_file,'w')
-	f.write('# Batch reduction driver file for {} observations on {}\n'.format(dpc['INSTRUMENT'].iloc[0],dpc['UT_DATE'].iloc[0]))
-	if comment!='': f.write('# {}\n'.format(comment))
+	Outputs
+	-------
+	Returns dictionary of batch reduction parameters
 
-# folders
-	f.write('\n# File and folder information\n')
-	f.write('INSTRUMENT = {}\n'.format(dpc['INSTRUMENT'].iloc[0]))
-	f.write('DATA_FOLDER = {}\n'.format(os.path.abspath(data_folder)+'/'))
-	f.write('CAL_FOLDER = {}\n'.format(os.path.abspath(cal_folder)+'/'))
-	f.write('PROC_FOLDER = {}\n'.format(os.path.abspath(proc_folder)+'/'))
-	f.write('QA_FOLDER = {}\n'.format(os.path.abspath(qa_folder)+'/'))
-
-# file prefixes
-	f.write('SCIENCE_FILE_PREFIX = {}\n'.format(science_file_prefix))
-	f.write('SPECTRAL_FILE_PREFIX = {}\n'.format(spectral_file_prefix))
-	f.write('COMBINED_FILE_PREFIX = {}\n'.format(combined_file_prefix))
-	f.write('CALIBRATED_FILE_PREFIX = {}\n'.format(calibrated_file_prefix))
-	f.write('STITCHED_FILE_PREFIX = {}\n'.format(stitched_file_prefix))
-
-# cals
-	f.write('\n# Lamp calibrations\n')
-	f.write('ARC_FILE_PREFIX = {}\n'.format(arc_file_prefix))
-	f.write('FLAT_FILE_PREFIX = {}\n'.format(flat_file_prefix))
-	cal_sets=''
-	dpcal = dpc[dpc['TYPE']=='calibration']
-	fnum = np.array(dpcal['FILE NUMBER'])
-	calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-	calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-	for i in range(len(calf1)): cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
-	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
-
-# observations
-	dps = dpc[dpc['TYPE']=='target']
-	names = list(set(list(dps['SOURCE_NAME'])))
-	names.sort()
-
-# no names - close it up
-	if len(names)==0:
-		if verbose==True: print('Warning: no science files identified')
-		f.close()
-		return
-
-# loop over names
-	f.write('\n# Science observations')
-	f.write('\n# \tMode\tTarget Type\tTarget Name\tFiles\tFlat Filename\tWavecal Filename\tStd Name\tStd Files\tOptions (key=value)\n')
-	for n in names:
-		dpsrc = dpc[dpc['SOURCE_NAME']==n]
-		line='SCI\t{}\t{} {}\t{}'.format(dpsrc['MODE'].iloc[0],dpsrc['FIXED-MOVING'].iloc[0],default_source_type,n)
-		fnum = np.array(dpsrc['FILE NUMBER'])
-		line+='\t{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
-
-# assign calibrations
-		dpcals = dpcal[dpcal['MODE']==dpsrc['MODE'].iloc[0]]
-		if len(dpcals)==0: 
-			if verbose==True: print('Warning: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
-			i=0
-		else:
-			i = np.argmin(np.abs(calf1-np.median(dpsrc['FILE NUMBER'])))
-		line+='\tflat{}.fits\twavecal{}.fits'.format(cal_sets.split(',')[i],cal_sets.split(',')[i])
-
-# assign flux cals
-		dpflux = dpc[dpc['TYPE']=='standard']
-		dpflux = dpflux[dpflux['MODE']==dpsrc['MODE'].iloc[0]]
-		if len(dpflux)==0: 
-			if verbose==True: print('Warning: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
-			line+='\tUNKNOWN\t0-0'
-		else:
-			dpflux['DIFF1'] = [np.abs(x-np.nanmedian(dpsrc['AIRMASS'])) for x in dpflux['AIRMASS']]
-			dpflux['DIFF2'] = [np.abs(x-np.nanmedian(dpsrc['MJD'])) for x in dpflux['MJD']]
-			dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']
-			fref = dpflux['FILE NUMBER'].iloc[np.argmin(dpflux['DIFF'])]
-			tname = dpflux['SOURCE_NAME'].iloc[np.argmin(dpflux['DIFF'])]
-			dpfluxs = dpflux[dpflux['SOURCE_NAME']==tname]
-			fnum = np.array(dpfluxs['FILE NUMBER'])
-			if len(fnum)==2: line+='\t{}\t{:.0f}-{:.0f}'.format(tname,fnum[0],fnum[1])
-			elif len(fnum)<2: 
-				if verbose==True: print('Fewer than 2 flux calibrator files for source {}'.format(tname))
-				line+='\tUNKNOWN\t0-0'
-			else:
-				telf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-				telf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-				if len(telf1)==0: line+='\tUNKNOWN\t0-0'
-				elif len(telf1)==1: line+='\t{}\t{:.0f}-{:.0f}'.format(tname,telf1[0],telf2[0])
-				else:
-					i = np.argmin(np.abs(fref-telf1))
-					line+='\t{}\t{:.0f}-{:.0f}'.format(tname,telf1[i],telf2[i])
-
-# all other options
-		if len(extraction_options)>0:
-			for k in list(extraction_options.keys()): line+='\t{}={}'.format(k,extraction_options[k])
-		f.write(line+'\n')
-	f.close()
-
-	if verbose==True: print('Batch instructions written to {}, please this check over before proceeding'.format(driver_file))
-	return
-
-
-def read_driver(driver_file,default_parameters=BATCH_PARAMETERS,verbose=ERROR_CHECKING):
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> import yaml
+	>>> driver_file = '/Users/adam/projects/spex_archive/testing/150512/proc/driver.txt'
+	>>> params = batch.read_driver(driver_file)
+	>>> print(yaml.dump(params))
+		
+		ARC_FILE_PREFIX: arc-
+		CALIBRATED_FILE_PREFIX: calspec
+		CAL_FOLDER: /Users/adam/projects/spex_archive/testing/150512/cals/
+		CAL_SETS: 34-39,70-75,92-97,114-119,142-147
+		COMBINED_FILE_PREFIX: combspec
+		DATA_FOLDER: /Users/adam/projects/spex_archive/testing/150512/data/
+		...
+		
+	Dependencies
+	------------
+	copy
+	os.path
+	pandas
+	yaml
 	'''
-	Reads in driver file in dictionary for processing
-	'''
+# update default parameters with passed options
+	parameters = copy.deepcopy(BATCH_PARAMETERS)
+	parameters.update(options)
+
 # check presence of file
 	if os.path.exists(driver_file)==False:
 		raise ValueError('Cannot find batch driver file {}; check path'.format(driver_file))
@@ -379,52 +441,640 @@ def read_driver(driver_file,default_parameters=BATCH_PARAMETERS,verbose=ERROR_CH
 	lines = list(filter(lambda x: (x != '\n'), lines))
 	lines = list(filter(lambda x: (x[0] != '#'), lines))
 
-# extract of keyword = value lines and use to update default parameters
+# extract keyword = value lines outside target observations and use to update parameters
 	klines = list(filter(lambda x: ('=' in x), lines))
+	klines = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x, klines))
 	klines = [l.replace(' ','').replace('\n','') for l in klines]
-	new_parameters = dict([l.strip().split('=') for l in klines])
-	parameters = copy.deepcopy(BATCH_PARAMETERS)
-	parameters.update(new_parameters)
+	new_kpar = dict([l.strip().split('=') for l in klines])
+	parameters.update(new_kpar)
 
-# set the individual science sets
-	slines = list(filter(lambda x: (x[:4]=='SCI\t'), lines))
+# insert the individual science sets
+	slines = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x, lines))
 	for i,sline in enumerate(slines):
-		spar = copy.deepcopy(SCI_PARAMETERS_OPTIONAL)
-		pars = sline.replace('\n','').split('\t')
-		if len(pars) < len(SCI_PARAMETERS_REQUIRED):
-			if verbose==True: print('Warning: line {} contains fewer than the required parameters {}; skipping'.format(sline,SCI_REQUIRED))
+		spar = copy.deepcopy(OBSERVATION_PARAMETERS_REQUIRED)
+		spar.update(OBSERVATION_PARAMETERS_OPTIONAL)
+# update with global batch parameters			
+		for k in list(spar.keys()):
+			if k in list(parameters.keys()):
+				if parameters[k]!='': spar[k] = parameters[k]
+# update with passed required parameters			
+		rpars = sline.replace('\n','').split('\t')
+		if len(rpars) < len(list(OBSERVATION_PARAMETERS_REQUIRED.keys())):
+			if verbose==True: print('Warning: line\n{}\ncontains fewer than the required parameters\n{}; skipping'.format(sline,OBSERVATION_PARAMETERS_REQUIRED))
 		else:
-# required parameters			
-			for ii,k in enumerate(SCI_PARAMETERS_REQUIRED):
-				spar[k] = pars[ii+1]
-# fill in global parameters			
-			for k in list(spar.keys()):
-				if k in list(parameters.keys()):
-					if parameters[k]!='': spar[k] = parameters[k]
+			for ii,k in enumerate(list(OBSERVATION_PARAMETERS_REQUIRED.keys())): spar[k] = rpars[ii+1]
 # add optional parameters			
-			ksline = list(filter(lambda x: ('=' in x), sline))
-			ksline = [l.replace(' ','').replace('\n','') for l in ksline]
-			new_spar = dict([l.strip().split('=') for l in ksline])
-			spar.update(new_spar)
-# some instrument specific adaptations
-			if 'Prism' in spar['MODE']:
-				spar['ORDERS'] = '1'
+			opars = list(filter(lambda x: ('=' in x), rpars))
+			new_opar = dict([l.strip().split('=') for l in opars])
+			spar.update(new_opar)
+# some instrument specific adjustments
+# THIS MIGHT NEED TO BE MANAGED THROUGH OTHER PYSPEXTOOL FUNCTIONS
+			if 'Prism' in spar['MODE']: spar['ORDERS'] = '1'
 #				if verbose==True: print('Updated prism mode orders to 1')
 			if parameters['INSTRUMENT'] == 'spex' and 'SXD' in spar['MODE'] and spar['ORDERS'][-1]=='9':
 				spar['ORDERS'] = spar['ORDERS'][:-1]+'8'
-				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
+#				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
 
-			parameters['SCI{}'.format(str(i+1).zfill(3))] = spar
+		parameters['{}-{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
+
+# some specific parameters that need format conversation
+	for k in ['QA_FILE','QA_PLOT']:
+		if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
+
+
+# report out parameters
+	if verbose==True:
+		print('\nDriver parameters:')
+		print(yaml.dump(parameters))
 
 	return parameters
 
 
-def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
+def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
 	'''
-	Reduces dataset based on instructions in driver file
+	Purpose
+	-------
+	Writes the batch driver file based on pandas DataFrame input from process_folder and 
+	additional user-supplied options
+
+	Parameters
+	----------
+	dp : pandas DataFrame
+		output of process_folder
+
+	driver_file : str, default = 'driver.txt'
+		full path to output file for batch driver
+
+	data_folder : str, default = ''
+		full path to data folder containing raw science files
+
+	options : dict, default = {}
+		options for driver parameter that override defaults given in BATCH_PARAMETERS
+
+	create_folders: bool, default = False
+		if set to True, create proc, cals, and qa folders if they don't exist
+
+	comment: str, default = ''
+		comment string to add to head of driver file for information purposes
+
+	check : bool, default=ERROR_CHECKING
+		set to True to check contents of driver file by reading it in and returnin parameters
+
+	verbose : bool, default=ERROR_CHECKING
+		set to True to return verbose output
+
+	Outputs
+	-------
+	If check==True, returns dictionary of batch reduction parameters (output of read_driver)
+	otherwise returns nothing; in either case, writes contents to file specified by driver_file
+
+
+	Example
+	-------
+	(1) Create from process_folder output:
+
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
+	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
+	>>> dp = batch.process_folder(dpath,verbose=False)
+	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
+			
+			Created CALS_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/cals/
+			Created PROC_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/proc/
+			Created QA_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/qa/
+
+			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
+
+			Driver parameters:
+			ARC_FILE_PREFIX: arc
+			CALIBRATED_FILE_PREFIX: calspec
+			CALS_FOLDER: /Users/adam/projects/spex_archive/testing/spex-prism/cals
+			CAL_SETS: 15-20
+			...
+
+	(2) Create from previously created log file:
+	>>> from pyspextool.batch import batch
+	>>> import pandas
+	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
+	>>> log_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/logs.csv'
+	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
+	>>> dp = pandas.read_csv(log_file,sep=',')
+	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
+
+			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
+
+			Driver parameters:
+			ARC_FILE_PREFIX: arc
+			CALIBRATED_FILE_PREFIX: calspec
+			CALS_FOLDER: /Users/adam/projects/spex_archive/testing/spex-prism/cals
+			CAL_SETS: 15-20
+			...
+		
+	Dependencies
+	------------
+	copy
+	numpy
+	os.path
+	pandas
+	read_driver()
 	'''
+# manage default options
+	driver_param = copy.deepcopy(BATCH_PARAMETERS)
+	driver_param.update(options)
+	if data_folder != '': driver_param['DATA_FOLDER'] = data_folder
+
+# check folders
+	if os.path.exists(driver_param['DATA_FOLDER'])==False:
+		raise ValueError('Cannot find data folder {}: you must include this in batch driver file'.format(driver_param['DATA_FOLDER']))
+	for x in ['CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
+# if blank, create cals, proc, and qa folders parallel to data folder
+		if driver_param[x]=='': 
+			driver_param[x] = driver_param['DATA_FOLDER'].replace(os.path.split(os.path.dirname(driver_param['DATA_FOLDER']))[-1],(x.split('_')[0]).lower())
+		if os.path.exists(driver_param[x])==False:
+			if create_folders==True: 
+				os.mkdir(driver_param[x])
+				if verbose==True: print('Created {} folder {}'.format(x,driver_param[x]))
+			else: raise ValueError('Folder {} does not exist; either create or set keyword create_folders to True'.format(driver_param[x]))
+
+# get information from first line of log
+	dpc = copy.deepcopy(dp)
+	for x in ['INSTRUMENT','UT_DATE','OBSERVER','PROGRAM']:
+		driver_param[x] = dpc[x].iloc[0]
+
+# some file name work
+# THIS NEEDS TO BE UPDATED WITH INSTRUMENT SPECIFIC INFORMATION
+	dpc['PREFIX'] = [x.replace('.a.fits','').replace('.b.fits','') for x in dpc['FILE']]
+	n=4
+	if driver_param['INSTRUMENT']=='uspex': n=5
+	dpc['FILE NUMBER'] = [int(x[-n:]) for x in dpc['PREFIX']]
+	dpc['PREFIX'] = [x[:-n] for x in dpc['PREFIX']]
+
+# set up default prefixes for flats and arcs
+	dps = dpc[dpc['TARGET_NAME']==FLAT_NAME]
+	driver_param['FLAT_FILE_PREFIX'] = dps['PREFIX'].iloc[0]
+	dps = dpc[dpc['TARGET_NAME']==ARC_NAME]
+	driver_param['ARC_FILE_PREFIX'] = dps['PREFIX'].iloc[0]
+	dps = dpc[dpc['TARGET_NAME']!=FLAT_NAME]
+	dps = dps[dps['TARGET_NAME']!=ARC_NAME]
+	driver_param['SCIENCE_FILE_PREFIX'] = dps['PREFIX'].iloc[0]
+
+# write out instructions
+	try: f = open(driver_file,'w')
+	except: raise ValueError('Cannot write to {}, check file path and permissions'.format(driver_file))
+	f.write('# Batch reduction driver file for {} observations on {}\n'.format(dpc['INSTRUMENT'].iloc[0],dpc['UT_DATE'].iloc[0]))
+	if comment!='': f.write('# {}\n'.format(comment.replace('\n','\n# ')))
+
+# observational information
+	f.write('\n# Observational information\n')
+	for x in ['INSTRUMENT','UT_DATE','PROGRAM','OBSERVER']:
+		f.write('{} = {}\n'.format(x,str(driver_param[x])))
+
+# files & folders
+	f.write('\n# Folders and files\n')
+	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
+		f.write('{} = {}\n'.format(x,os.path.abspath(str(driver_param[x]))))
+	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
+		f.write('{} = {}\n'.format(x,str(driver_param[x])))
+
+# cals - determine here but print below
+	# f.write('\n# Lamp calibrations\n')
+	# for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
+	# 	f.write('{} = {}\n'.format(x,driver_param[x]))
+	cal_sets=''
+	dpcal = dpc[dpc['TARGET_TYPE']=='calibration']
+	fnum = np.array(dpcal['FILE NUMBER'])
+	calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+	calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+	for i in range(len(calf1)): cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
+#	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
+
+# observations - need to work on re-ordering this
+# ALSO NEED AN IGNORE TARGET NAME OPTION
+	dps = dpc[dpc['TARGET_TYPE']=='target']
+	names = list(set(list(dps['TARGET_NAME'])))
+	names = [str(x) for x in names]
+	names.sort()
+
+# no names - close it up
+	if len(names)==0:
+		if verbose==True: print('Warning: no science files identified; you may need to update the observational logs')
+		f.close()
+		return
+
+# loop over names
+	f.write('\n# Science observations')
+	f.write('\n#\tMode\tTarget Type\tTarget Name\tPrefix\tFiles\tFlat Filename\tWavecal Filename\tStd Name\tStd Prefix\tStd Files\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
+	for n in names:
+		dps = dpc[dpc['TARGET_NAME']==n]
+		src_coord = SkyCoord(dps['RA'].iloc[0]+' '+dps['DEC'].iloc[0],unit=(u.hourangle, u.deg))
+		srcmodes = list(set(list(dps['MODE'])))
+		srcmodes.sort()
+		for m in srcmodes:
+			dpsrc = dps[dps['MODE']==m]
+			line='{}\t{}\t{} ps\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
+			fnum = np.array(dpsrc['FILE NUMBER'])
+			line+='\t{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
+
+# assign calibrations
+			dpcals = dpcal[dpcal['MODE']==m]
+			if len(dpcals)==0: 
+				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
+				ical=0
+			else:
+				ical = np.argmin(np.abs(calf1-np.median(dpsrc['FILE NUMBER'])))
+			line+='\tflat{}.fits\twavecal{}.fits'.format(cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+
+# assign flux cals based on closest in airmass (0.2), time (2 hr) and position (10")
+			dpflux = dpc[dpc['TARGET_TYPE']=='standard']
+			dpflux = dpflux[dpflux['MODE']==dpsrc['MODE'].iloc[0]]
+			ftxt = '\t{}\tUNKNOWN\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[i],cal_sets.split(',')[i])
+			if len(dpflux)==0: 
+				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
+				line+=ftxt
+			else:
+				dpflux['DIFF1'] = [np.abs(x-np.nanmedian(dpsrc['AIRMASS']))/0.2 for x in dpflux['AIRMASS']]
+				dpflux['DIFF2'] = [np.abs(x-np.nanmedian(dpsrc['MJD']))*12. for x in dpflux['MJD']]
+				dpflux['DIFF3'] = [src_coord.separation(SkyCoord(dpflux['RA'].iloc[i]+' '+dpflux['DEC'].iloc[i],unit=(u.hourangle, u.deg))).to(u.arcsecond).value/10. for i in range(len(dpflux))]
+				dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']+dpflux['DIFF3']
+				fref = dpflux['FILE NUMBER'].iloc[np.argmin(dpflux['DIFF'])]
+				tname = str(dpflux['TARGET_NAME'].iloc[np.argmin(dpflux['DIFF'])])
+				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
+				fnum = np.array(dpfluxs['FILE NUMBER'])
+				if len(fnum)<2: 
+					if verbose==True: print('Fewer than 2 flux calibrator files for source {}'.format(tname))
+					line+=ftxt
+				else:				
+					if len(dpcals)==0: 
+						if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
+						ical=0
+					else:
+						ical = np.argmin(np.abs(calf1-np.median(dpfluxs['FILE NUMBER'])))
+					if len(fnum)==2: 
+						line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+					else:
+						telf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+						telf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+						if len(telf1)==0: line+=ftxt
+						elif len(telf1)==1: line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),telf1[0],telf2[0],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+						else:
+							i = np.argmin(np.abs(fref-telf1))
+							line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[i]),telf1[i],telf2[i],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+			f.write(line+'\n')
+
+# print out cal sets
+	f.write('\n# Lamp calibrations\n')
+	for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
+		f.write('{} = {}\n'.format(x,driver_param[x]))
+	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
+
+# all other options
+		# if len(extraction_options)>0:
+		# 	for k in list(extraction_options.keys()): line+='\t{}={}'.format(k,extraction_options[k])
+	f.close()
+
+# report out location
+	if verbose==True: 
+		print('\nBatch instructions written to {}, please this check over before proceeding'.format(driver_file))
+
+# if check=True, read back in and return parameters
+	if check==True:
+		return read_driver(driver_file,verbose=verbose)
+
+	return
+
+
+#############################
+##### QUALITY ASSURANCE #####
+#############################
+
+
+def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',options={},show_options=False,verbose=ERROR_CHECKING):
+	'''
+	Purpose
+	-------
+	Generates the quality assurance page to evaluate a night of reduced data
+
+	Parameters
+	----------
+	driver_input : str or dict
+		either the full path to the batch driver file or the dict output of read_driver()
+
+	log_input : str or pandas DataFrame
+		either the full path to the log csv file or the pandas DataFrame output of process_folder()
+
+	output_folder : str, default=''
+		by default the page is saved in QA folder; this option specifies the full path 
+		to an alternate output folder (e.g. public www folder); where the entire contents 
+		of the QA folder is copied; use carefully!
+
+	log_html_name : str, default=''
+		full path to the log html file
+
+	options : dict, default = {}
+		options for driver parameter that override defaults given in QA_PARAMETERS
+
+	verbose : bool, default=ERROR_CHECKING
+		set to True to return verbose output
+
+	Outputs
+	-------
+	No explicit output, generates an html page for QA review
+
+
+	Example
+	-------
+	TBD
+		
+	Dependencies
+	------------
+	copy
+	numpy
+	os.path
+	pandas
+	read_driver()
+	'''
+# update default parameters with options
+	qa_parameters = copy.deepcopy(QA_PARAMETERS)
+	qa_parameters.update(options)
+
+# if necessary read in driver
+	if isinstance(driver_input,str)==True:
+		if os.path.exists(driver_input)==False: raise ValueError('Cannot find driver file {}'.format(driver_input))
+		try: driver = read_driver(driver_input)
+		except: raise ValueError('Unable to read in driver file {}'.format(driver_input))
+	elif isinstance(driver_input,dict)==True:
+		driver = copy.deepcopy(driver_input)
+	else: raise ValueError('Do not recognize format of driver input {}'.format(driver_input))
+	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']: qa_parameters[x] = driver[x]
+
+# if necessary read in log
+	if isinstance(log_input,str)==True:
+		if os.path.exists(log_input)==False: raise ValueError('Cannot find log file {}'.format(log_input))
+		if log_input.split('.')[-1] != 'csv': raise ValueError('Log input must be a csv file, you passed {}'.format(log_input))
+		obslog = pd.read_csv(log_input)
+	elif isinstance(log_input,pd.DataFrame)==True: 
+		obslog = copy.deepcopy(log_input)
+	else: raise ValueError('Do not recognize format of observing log input {}'.format(log_input))
+
+# show the QA parameters if desired
+	if show_options==True: print('\nQA Parameters:\n{}\n'.format(yaml.dump(qa_parameters)))
+
+# set up pyspextool parameters
+	ps.pyspextool_setup(driver['INSTRUMENT'])
+
+# read in templates and split index
+	for x in ['TEMPLATE_FILE','SOURCE_TEMPLATE_FILE']:
+		if os.path.exists(qa_parameters[x])==False: raise ValueError('Cannot find QA html template file {}'.format(qa_parameters[x]))
+	with open(qa_parameters['TEMPLATE_FILE'],'r') as f: index_txt = f.read()
+	output_text,index_bottom = index_txt.split('[SOURCES]')
+	with open(qa_parameters['SOURCE_TEMPLATE_FILE'],'r') as f: source_txt = f.read()
+	with open(qa_parameters['SINGLE_PLOT_TEMPLATE_FILE'],'r') as f: single_txt = f.read()
+
+# replace relevant parameters in top of index
+	output_text = output_text.replace('[CSS_FILE]',qa_parameters['CSS_FILE'])
+	output_text = output_text.replace('[LOG_HTML]',log_html_name)
+# NEED TO UPDATE WEATHER LINK
+	output_text = output_text.replace('[WEATHER_HTML]',qa_parameters['MKWC_ARCHIVE_URL'])
+
+# replace parameters from driver
+#	page_parameters = {}
+	for x in list(driver.keys()):
+		output_text = output_text.replace('[{}]'.format(x),str(driver[x]))
+
+# now cycle through each of the science sets
+	scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(driver.keys())))
+	scikeys.sort()
+	imodes = []
+	for sci in scikeys:
+		stxt = copy.deepcopy(source_txt)
+		sci_param = driver[sci]
+		imodes.append(sci_param['MODE'])
+# data from the driver file		
+		for x in list(OBSERVATION_PARAMETERS_REQUIRED.keys()):
+			stxt = stxt.replace('['+x+']',str(sci_param[x]))
+# data from the observing log
+		sci_log = obslog[obslog['TARGET_NAME']==sci_param['TARGET_NAME']]
+		if len(sci_log)>0:
+			for x in ['RA','DEC','AIRMASS','SLIT']:
+				stxt = stxt.replace('['+x+']',str(sci_log[x].iloc[0]))
+# nicer coordinates
+			s = SkyCoord(sci_log['RA'].iloc[0]+' '+sci_log['DEC'].iloc[0], unit=(u.hourangle, u.deg))
+			coord = s.to_string('hmsdms',sep=':')
+			desig = 'J'+s.to_string('hmsdms',sep='',pad=True).replace('.','').replace(' ','')
+			stxt = stxt.replace('[COORDINATE]',coord)
+			stxt = stxt.replace('[DESIGNATION]',desig)
+			stxt = stxt.replace('[DESIGNATION_URL]',desig.replace('+','%2B'))
+			stxt = stxt.replace('[UT_START]',str(sci_log['UT_TIME'].iloc[0]).split('.')[0])
+			stxt = stxt.replace('[UT_END]',str(sci_log['UT_TIME'].iloc[-1]).split('.')[0])
+#			sci_log['TINT'] = [sci_log.loc['INTEGRATION',i]*sci_log.loc['COADDS',i] for i in range(len(sci_log))]
+# NOTE: THIS CURRENTLY DOESN'T TAKE INTO ACCOUNT COADDS AS THE COMMAND ABOVE HAD AN ERROR
+			stxt = stxt.replace('[INTEGRATION]','{:.1f}'.format(np.nansum(sci_log['INTEGRATION'])))
+
+# final calibrated file
+# FOR NOW JUST PUTTING UP COMBINED FILE
+		ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+#		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],driver['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],qa_parameters['PLOT_TYPE']))
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['TARGET_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+		if len(imfile)>0: 
+			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+#		ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+		stxt = stxt.replace('[CALIBRATED_FILE]',ptxt)
+
+# insert other target and calibrator files
+		for x in ['TARGET','STD']:	
+
+# combined files
+			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0:
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[{}_COMBINED_FILES]'.format(x),ptxt)
+
+# individual files
+			indexinfo = {'nint': setup.state['nint'], 'prefix': driver['SPECTRA_FILE_PREFIX'],'suffix': '', 'extension': '.pdf'}
+			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo)
+			files = list(filter(lambda x: os.path.exists(x),files))
+			files.sort()
+			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			for i,f in enumerate(files):
+				if i>0 and np.mod(i,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(f)).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[{}_SPECTRA_FILES]'.format(x),ptxt)
+
+# traces and apertures
+			fnums = extract_filestring(sci_param['{}_FILES'.format(x)],'index')
+			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			cnt = 0
+			for f in fnums:
+				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)>0: 
+					imfile.sort()
+					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+					cnt+=1
+				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)>0: 
+					imfile.sort()
+					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+					cnt+=1
+			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[{}_TRACE_APERTURE_FILES]'.format(x.split('_')[0]),ptxt)
+
+# add it into the page
+		output_text+=stxt
+
+# list of modes
+	imodes = list(set(imodes))
+	s=''
+	if len(imodes)>0:
+		imodes.sort()
+		s = str(imodes[0])
+		if len(imodes)>1: 
+			for x in imodes[1:]: s+=', {}'.format(str(x))
+	output_text = output_text.replace('[INSTRUMENT_MODES]',s)
+
+# insert calibrations
+	cal_sets = str(driver['CAL_SETS']).split(',')
+
+# flats
+	loopstr = '<table>\n <tr>\n'
+	cnt=0
+	for cs in cal_sets:
+		if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)>0: 
+			imfile.sort()
+			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.basename(imfile[0]))
+			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),qa_parameters['IMAGE_WIDTH'],os.path.basename(imfile[0]))
+			cnt+=1
+	loopstr+=' </tr>\n</table>\n\n'
+	index_bottom = index_bottom.replace('[FLATS]',loopstr)
+
+# wavecals
+# note: only PDF			
+	loopstr = '<table>\n <tr>\n'
+	cnt=0
+	for cs in cal_sets:
+		if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_shift.pdf'.format(cs)))
+		if len(imfile)>0: 
+			imfile.sort()
+			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.basename(imfile[0]))
+			cnt+=1
+	loopstr+=' </tr>\n</table>\n'
+	index_bottom = index_bottom.replace('[WAVECALS]',loopstr)
+
+# WRITE OUT HTML FILE
+	output_text+=index_bottom
+	outfile = os.path.join(qa_parameters['QA_FOLDER'],qa_parameters['FILENAME'])
+	try: 
+		with open(outfile,'w') as f: f.write(output_text)
+	except: raise ValueError('Unable to write QA page to {}; check path and permissions'.format(outfile))
+
+# copy everything to a separate output folder if specified
+# RIGHT NOW JUST COPIES ENTIRE FOLDER; COULD BE DONE MORE SURGICALLY
+	if output_folder=='': output_folder = qa_parameters['QA_FOLDER']
+	if output_folder!=qa_parameters['QA_FOLDER']:
+		if os.path.exists(output_folder)==True: 
+			try: shutil.copytree(qa_parameters['QA_FOLDER'],output_folder)
+			except: 
+				print('WARNING: could not copy contents of {} into {}; check path or permissions'.format(qa_parameters['QA_FOLDER'],output_folder))
+				output_folder = qa_parameters['QA_FOLDER']
+		else: output_folder = qa_parameters['QA_FOLDER']
+
+	if verbose==True: 
+		print('\nAcesss QA page at {}\n'.format(os.path.join(qa_parameters['QA_FOLDER'],qa_parameters['FILENAME'])))
+
+	return
+
+
+#############################
+###### BATCH REDUCTION ######
+#############################
+
+
+def batch_reduce(parameters,verbose=ERROR_CHECKING):
+	'''
+	THIS FUNCTION AND DOCSTRING NEED TO BE UPDATED
+	Purpose
+	-------
+	Primary script for conducting a batch reduction of a data folder
+
+	Parameters
+	----------
+	parameters : dict or str
+		either the dict output of read_driver() or the full path to the batch driver file
+
+	verbose : bool, default=ERROR_CHECKING
+		set to True to return verbose output
+
+	Outputs
+	-------
+	If check==True, returns dictionary of batch reduction parameters (output of read_driver)
+	otherwise returns nothing; in either case, writes contents to file specified by driver_file
+
+
+	Example
+	-------
+	(1) Create from process_folder output:
+
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
+	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
+	>>> dp = batch.process_folder(dpath,verbose=False)
+	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
+			
+			Created CALS_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/cals/
+			Created PROC_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/proc/
+			Created QA_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/qa/
+
+			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
+
+			Driver parameters:
+			ARC_FILE_PREFIX: arc
+			CALIBRATED_FILE_PREFIX: calspec
+			CALS_FOLDER: /Users/adam/projects/spex_archive/testing/spex-prism/cals
+			CAL_SETS: 15-20
+			...
+
+	(2) Create from previously created log file:
+	>>> from pyspextool.batch import batch
+	>>> import pandas
+	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
+	>>> log_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/logs.csv'
+	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
+	>>> dp = pandas.read_csv(log_file,sep=',')
+	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
+
+			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
+
+			Driver parameters:
+			ARC_FILE_PREFIX: arc
+			CALIBRATED_FILE_PREFIX: calspec
+			CALS_FOLDER: /Users/adam/projects/spex_archive/testing/spex-prism/cals
+			CAL_SETS: 15-20
+			...
+		
+	Dependencies
+	------------
+	copy
+	numpy
+	os.path
+	pandas
+	read_driver()
+	'''
+# check parameters
+	if 'VERBOSE' not in list(parameters.keys()): parameters['VERBOSE']=verbose
+	parameters['VERBOSE'] = (parameters['VERBOSE'] or verbose)
 # set up instrument
-	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CAL_FOLDER'], proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=QA_PLOT_TYPE,verbose=verbose)
+	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CALS_FOLDER'], \
+		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],verbose=parameters['VERBOSE'])
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
@@ -439,7 +1089,7 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 		fnum = [int(os.path.basename(f).replace(parameters['FLAT_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 		fstr = '{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
 # NOTE: qa_file force to False due to ploting error in plot_image
-		ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=qa_plot,qa_file=True,verbose=verbose)
+		ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=parameters['QA_PLOT'],qa_file=parameters['QA_FILE'],verbose=parameters['VERBOSE'])
 
 # wavecal
 		indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
@@ -456,80 +1106,84 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 		hdu[0].verify('silentfix')
 		header = hdu[0].header
 		hdu.close()
-		use_stored_solution = False
-		if 'lowres' in header['GRAT'].lower(): use_stored_solution = True
+#		use_stored_solution = False
+#		if 'lowres' in header['GRAT'].lower(): use_stored_solution = True
 		ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs),\
-			qa_plot=qa_plot,qa_file=qa_file,use_stored_solution=use_stored_solution,verbose=verbose)
+			qa_plot=parameters['QA_PLOT'],qa_file=parameters['QA_FILE'],verbose=parameters['VERBOSE'])
 
 # extract all sources and standards
-	scikeys = list(filter(lambda x: x[:4]=='SCI0',list(parameters.keys())))
+	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
+	scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 	if len(scikeys)==0: 
-		if verbose==True: print('No science files to reduce')
+		if parameters['VERBOSE']==True: print('No science files to reduce')
 		return
 	for k in scikeys:
 		spar = parameters[k]
+		for kk in bkeys:
+			if kk not in list(spar.keys()): spar[kk] = parameters[kk]
+
 
 # SCIENCE TARGET
 # reduce the first pair of targets
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
-		ps.extract.load_image([spar['SCIENCE_FILE_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
-			spar['FLAT_FILE'], spar['WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
-			flat_field=True, linearity_correction=True,qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
+			spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
+			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
 		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split(' ')[-1])
 
 # make spatial profiles
-		ps.extract.make_spatial_profiles(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # select orders to extract (set above)
-		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # trace apertures
-		ps.extract.trace_apertures(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.trace_apertures(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-		ps.extract.define_aperture_parameters(spar['PS_APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=qa_plot, qa_file=qa_file)
+		ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
+						bg_width=spar['BACKGROUND_WIDTH'],qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],)
 
 # extract away
-		ps.extract.extract_apertures(verbose=verbose)
+		ps.extract.extract_apertures(verbose=spar['VERBOSE'])
 
 # conduct extraction of all remaining files
 		fnum = extract_filestring(spar['TARGET_FILES'],'index')[2:]
 		if len(fnum)>0:
-			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=verbose)
+			ps.extract.do_all_steps([spar['TARGET_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
 
 # FLUX STANDARD
 # now reduce the first pair of standards
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
-		ps.extract.load_image([spar['SCIENCE_FILE_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
-			spar['FLAT_FILE'], spar['WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
-			flat_field=True, linearity_correction=True,qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
+			spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
+			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
 		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split(' ')[-1])
 
 # make spatial profiles
-		ps.extract.make_spatial_profiles(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=parameters['VERBOSE'])
 
 # select orders to extract (set above)
-		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.select_orders(include=spar['ORDERS'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # trace apertures
-		ps.extract.trace_apertures(qa_plot=qa_plot, qa_file=qa_file, verbose=verbose)
+		ps.extract.trace_apertures(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-		ps.extract.define_aperture_parameters(spar['PS_APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=qa_plot, qa_file=qa_file)
+		ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
+						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'])
 
 # extract away
 		ps.extract.extract_apertures(verbose=verbose)
@@ -537,7 +1191,7 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 # conduct extraction of all remaining files
 		fnum = extract_filestring(spar['STD_FILES'],'index')[2:]
 		if len(fnum)>0:
-			ps.extract.do_all_steps([spar['SCIENCE_FILE_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=verbose)
+			ps.extract.do_all_steps([spar['STD_PREFIX'],'{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))],verbose=spar['VERBOSE'])
 
 
 # COMBINE SPECTRAL FILES
@@ -545,194 +1199,38 @@ def batch_reduce(parameters,qa_plot=True,qa_file=True,verbose=ERROR_CHECKING):
 # ALSO: currently not plotting SXD spectra due to an error in combined file code
 		if spar['MODE']=='SXD':
 			ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=False,qa_file=False,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 		else:
 			ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=qa_plot,qa_file=qa_file,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 
 # telluric star
 		if spar['MODE']=='SXD':
 			ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=False,qa_file=False,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 		else:
 			ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
-				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=qa_plot,qa_file=qa_file,verbose=verbose)
+				scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 
 # FLUX CALIBRATE - NOT CURRENTLY IMPLEMENTED
 # depends on fixed or moving source which method we use
 		if (spar['TARGET_TYPE'].split(' ')[0]).strip()=='fixed':
-			if verbose==True: print('fixed target; doing standard telluric correction and flux calibration')
+			if spar['VERBOSE']==True: print('fixed target; doing standard telluric correction and flux calibration')
 		elif (spar['TARGET_TYPE'].split(' ')[0]).strip()=='moving':
-			if verbose==True: print('moving target; doing reflectance telluric correction and flux calibration')
+			if spar['VERBOSE']==True: print('moving target; doing reflectance telluric correction and flux calibration')
 		else:
-			if verbose==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split(' ')[0]))
+			if spar['VERBOSE']==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split(' ')[0]))
+
 
 	return
 
 
-# QA page maker
-def makeQApage(driver_input,log_input,log_html_name='log.html',nimages=4,image_width=400,verbose=ERROR_CHECKING):
-	'''
-	Generates an html file for the qa folder to review reductions
-	'''
-# if necessary read in driver
-	if isinstance(driver_input,str)==True:
-		if os.path.exists(driver_input)==False: raise ValueError('Cannot find driver file {}'.format(driver_input))
-		try: driver = read_driver(driver_input)
-		except: raise ValueError('Unable to read in driver file {}'.format(driver_input))
-	elif isinstance(driver_input,dict)==True:
-		driver = copy.deepcopy(driver_input)
-	else: raise ValueError('Do not recognize format of driver input {}'.format(driver_input))
-
-# if necessary read in log
-	if isinstance(log_input,str)==True:
-		if os.path.exists(log_input)==False: raise ValueError('Cannot find log file {}'.format(log_input))
-		if log_input.split('.')[-1] != 'csv': raise ValueError('Log file must end in csv, you passed {}'.format(log_input))
-		obslog = pd.read_csv(log_input)
-	elif isinstance(log_input,pd.DataFrame)==True: 
-		obslog = copy.deepcopy(log_input)
-	else: raise ValueError('Do not recognize format of observing log input {}'.format(log_input))
-
-# read in templates and split index
-	with open(QA_INDEX_TEMPLATE_FILE,'r') as f: index_txt = f.read()
-	index_top,index_bottom = index_txt.split('[SOURCES]')
-	with open(QA_SOURCE_TEMPLATE_FILE,'r') as f: source_txt = f.read()
-
-# extract key parameters
-	page_parameters = {}
-	for x in ['INSTRUMENT','CAL_SETS','QA_FOLDER','PROC_FOLDER']:
-		page_parameters[x] = driver[x]
-
-# replace relevant parameters in top of index
-	index_top = index_top.replace('[CSS]',QA_CSS)
-	index_top = index_top.replace('[LOG_HTML]',log_html_name)
-# NEED TO UPDATE WEATHER LINK
-	index_top = index_top.replace('[WEATHER_HTML]',MKWC_ARCHIVE_URL)
-	for x in ['UT_DATE','PROGRAM','OBSERVER']:
-		index_top = index_top.replace('['+x+']',obslog[x].iloc[0])
-	imodes = list(set(list(obslog['MODE'])))
-	imodes.sort()
-	s = imodes[0]
-	if len(imodes)>1: [s.append(', {}'.format(x)) for x in imodes[1:]]
-	index_top = index_top.replace('[INSTRUMENT_MODES]',s)
-
-	output = index_top
-
-# now cycle through each of the science sets
-	scikeys = list(filter(lambda x: x[:4]=='SCI0',list(driver.keys())))
-	scikeys.sort()
-	for sci in scikeys:
-# fill in source info		
-		sci_param = driver[sci]
-		sci_txt = copy.deepcopy(source_txt)
-		for x in ['TARGET_NAME','TARGET_TYPE','TARGET_FILES','STD_NAME','STD_FILES','FLAT_FILE','WAVECAL_FILE','SCIENCE_FILE_PREFIX','SPECTRAL_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
-			sci_txt = sci_txt.replace('['+x+']',sci_param[x])
-		sci_log = obslog[obslog['SOURCE_NAME']==sci_param['TARGET_NAME']]
-		if len(sci_log)>0:
-			for x in ['RA','DEC','AIRMASS','MODE','SLIT']:
-				sci_txt = sci_txt.replace('['+x+']',str(sci_log[x].iloc[0]))
-			designation = 'J'+sci_log['RA'].iloc[0].replace(':','').replace(' ','').replace('.','')
-			if int(sci_log['DEC'].iloc[0][:2]+'1')>0: designation+='%2B'
-			designation+=sci_log['DEC'].iloc[0].replace(':','').replace(' ','').replace('.','')
-			sci_txt = sci_txt.replace('[DESIGNATION]',designation)
-			sci_txt = sci_txt.replace('[UT_START]',sci_log['UT_TIME'].iloc[0])
-			sci_txt = sci_txt.replace('[UT_END]',sci_log['UT_TIME'].iloc[-1])
-#			sci_log['TINT'] = [sci_log.loc['INTEGRATION',i]*sci_log.loc['COADDS',i] for i in range(len(sci_log))]
-			sci_txt = sci_txt.replace('[INTEGRATION]','{:.1f}'.format(np.nansum(sci_log['INTEGRATION'])))
-# final calibrated files
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE))
-		if len(imfile)>0: sci_txt = sci_txt.replace('[CALIBRATED_FILE]',os.path.basename(imfile[0]))
-# combined files
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_raw{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE))
-#		print(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_raw{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE),imfile)
-		if len(imfile)>0: sci_txt = sci_txt.replace('[TARGET_COMBINED_RAW_FILE]',os.path.basename(imfile[0]))
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_scaled{}'.format(sci_param['TARGET_FILES'],QA_PLOT_TYPE))
-		if len(imfile)>0: sci_txt = sci_txt.replace('[TARGET_COMBINED_SCALED_FILE]',os.path.basename(imfile[0]))
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_raw{}'.format(sci_param['STD_FILES'],QA_PLOT_TYPE))
-		if len(imfile)>0: sci_txt = sci_txt.replace('[STD_COMBINED_RAW_FILE]',os.path.basename(imfile[0]))
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],sci_param['COMBINED_FILE_PREFIX'])+'{}*_scaled{}'.format(sci_param['STD_FILES'],QA_PLOT_TYPE))
-		if len(imfile)>0: sci_txt = sci_txt.replace('[STD_COMBINED_SCALED_FILE]',os.path.basename(imfile[0]))
-# individual files
-		fnums = extract_filestring(sci_param['TARGET_FILES'],'index')
-		loopstr = '<table>\n <tr>\n'
-		cnt=0
-		for i in fnums:
-			if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
-			imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'spectra*{:.0f}{}'.format(i,QA_PLOT_TYPE)))
-			if len(imfile)>0: 
-				imfile.sort()
-				loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=300>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
-				cnt+=1
-		loopstr+=' </tr>\n</table>'
-		sci_txt = sci_txt.replace('[TARGET_SPECTRA_FILES]',loopstr)
-
-		fnums = extract_filestring(sci_param['STD_FILES'],'index')
-		loopstr = '<table>\n <tr>\n'
-		cnt=0
-		for i in fnums:
-			if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
-			imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'spectra*{:.0f}{}'.format(i,QA_PLOT_TYPE)))
-			if len(imfile)>0: 
-				imfile.sort()
-				loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=300>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
-				cnt+=1
-		loopstr+=' </tr>\n</table>'
-		sci_txt = sci_txt.replace('[STD_SPECTRA_FILES]',loopstr)
-
-# traces and apertures - TO BE DONE
-		sci_txt = sci_txt.replace('[TRACE_APERTURE_FILES]','')
-
-		output+=sci_txt
-
-# insert calibrations
-	cal_sets = driver['CAL_SETS'].split(',')
-
-# flats
-	loopstr = '<table>\n <tr>\n'
-	cnt=0
-	for cs in cal_sets:
-		if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,QA_PLOT_TYPE)))
-		if len(imfile)>0: 
-			imfile.sort()
-			loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=300>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
-			cnt+=1
-	loopstr+=' </tr>\n</table>\n\n'
-	index_bottom = index_bottom.replace('[FLATS]',loopstr)
-
-# flats
-	# loopstr = ''
-	# for cs in cal_sets:
-	# 	imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,QA_PLOT_TYPE)))
-	# 	if len(imfile)>0: 
-	# 		imfile.sort()
-	# 		loopstr+='<table><tr><td align="center">\n <embed src="{}" width=300 height=300>\n <br>{}\n</td></tr></table>'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
-	# index_bottom = index_bottom.replace('[FLATS]',loopstr)
-
-# wavecals
-	loopstr = '<table>\n <tr>\n'
-	cnt=0
-	for cs in cal_sets:
-		if cnt>0 and np.mod(cnt,nimages)==0: loopstr+=' </tr>\n <tr> \n'
-		imfile = glob.glob(os.path.join(page_parameters['QA_FOLDER'],'wavecal{}_shift.pdf'.format(cs)))
-		if len(imfile)>0: 
-			imfile.sort()
-			loopstr+='  <td align="center">\n   <embed src="{}" width=300 height=400>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),os.path.basename(imfile[0]))
-			cnt+=1
-	loopstr+=' </tr>\n</table>\n'
-	index_bottom = index_bottom.replace('[WAVECALS]',loopstr)
-
-# WRITE OUT HTML FILE
-	output+=index_bottom
-	with open(os.path.join(page_parameters['QA_FOLDER'],QA_HTML_OUTPUT_NAME),'w') as f:
-		f.write(output)
-	return
 
 
 # external function call
 if __name__ == '__main__':
 	if len(sys.argv) < 4:
-		print('Call this function from the command line as python batch.py [data_folder] [cal_folder] [proc_folder]')
+		print('Call this function from the command line as python batch.py [data_folder] [cals_folder] [proc_folder]')
 	else:
 		dp = process_folder(sys.argv[1])
 		dp = process_folder(sys.argv[1])
@@ -743,7 +1241,7 @@ if __name__ == '__main__':
 		if len(sys.argv) > 5: driver_file = sys.argv[5]
 		else: driver_file = sys.argv[3]+'driver.txt'
 		print('\nWriting batch driver file to {}'.format(driver_file))
-		write_driver(dp,driver_file,data_folder=sys.argv[1],cal_folder=sys.argv[2],proc_folder=sys.argv[3])
+		write_driver(dp,driver_file,data_folder=sys.argv[1],cals_folder=sys.argv[2],proc_folder=sys.argv[3])
 		txt = input('\nCheck the driver file {} and press return when ready to proceed...\n')
 		par = read_driver(driver_file)
 		print('\nReducing spectra')
