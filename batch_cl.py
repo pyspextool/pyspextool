@@ -9,6 +9,7 @@
 
 import argparse
 import os
+import pandas
 import sys
 from pyspextool.batch.batch import process_folder,write_log,write_driver,read_driver,batch_reduce,makeQApage
 
@@ -29,7 +30,11 @@ class runBatch():
 		parser.add_argument('--log-only', action='store_true',default=False,
 			required=False, help='set to just save a log file')
 		parser.add_argument('--driver-only', action='store_true',default=False,
-			required=False, help='set to just generate driver "file"')
+			required=False, help='set to just generate driver file')
+		parser.add_argument('--rebuild-log', action='store_true',default=False,
+			required=False, help='set to rebuild the log file')
+		parser.add_argument('--rebuild-driver', action='store_true',default=False,
+			required=False, help='set to rebuild the driver file from the log')
 		parser.add_argument('--reduce-only', action='store_true',default=False,
 			required=False, help='set to just reduce (no log or driver generation)')
 		parser.add_argument('--qa-only', action='store_true',default=False,
@@ -51,13 +56,11 @@ class runBatch():
 #		print(args)
 		# raise()
 
-# just give back information on how this works
-		if len(folders)<1:
-			parser.print_help()
-			return
+# if nothing passed, assume we are using the local folder
+		if len(folders)<1: folders=[os.path.abspath('./')]
 
 # build folders 
-		if len(folders) ==1 and args['reduce_only']==False:
+		if len(folders) ==1:
 			if os.path.exists(folders[0])==False: raise ValueError('Cannot find base folder {}'.format(folders[0]))
 			elif os.path.exists(os.path.join(folders[0],DATA_FOLDER))==False: raise ValueError('Cannot find data folder under {}'.format(folders[0]))
 			else:
@@ -86,81 +89,92 @@ class runBatch():
 				folders[0] = os.path.join(folders[0],DATA_FOLDER)
 
 # check folders 
-		if args['reduce_only']==False:
-			if len(folders)<4: raise ValueError('Need to specify three folder paths for data, cals, and proc')
-			for f in folders:
-				if f!='' and os.path.exists(f)==False: raise ValueError('Cannot find folder {}'.format(f)) 
+		if len(folders)<4: raise ValueError('Need to specify three folder paths for data, cals, and proc')
+		folders = [os.path.abspath(f) for f in folders]
+		for f in folders:
+			if f!='' and os.path.exists(f)==False: raise ValueError('Cannot find folder {}'.format(f)) 
 
 # generate log csv and html files and put in qa folder
-		if args['driver_only']==False and args['reduce_only']==False and args['qa_only']==False:
-			dp = process_folder(folders[0])
-			if log_file_prefix=='': log_file_prefix = 'log'
-			log_file_prefix = os.path.join(folders[3],log_file_prefix)
-			if os.path.exists(log_file_prefix+'.csv') and args['overwrite']==False:
-				print('\nWARNING: csv log file {} already exists; use --overwrite to overwrite'.format(log_file_prefix+'.csv'))
-			else:
-				if args['verbose']==True: print('\nGenerating log and writing to {}'.format(log_file_prefix+'.csv'))
-				write_log(dp,log_file_prefix+'.csv')
-			if os.path.exists(log_file_prefix+'.html') and args['overwrite']==False:
-				print('\nWARNING: html log file {} already exists; use --overwrite to overwrite'.format(log_file_prefix+'.html'))
-			else:
-				if args['verbose']==True: print('\nGenerating log web page and writing to {}'.format(log_file_prefix+'.html'))
-				write_log(dp,log_file_prefix+'.html')
-			if args['log_only']==True: 
-				print('\n\n*** Log file completed ***\n\n')
-				return
+		if log_file_prefix=='': log_file_prefix = 'log'
+		log_file_prefix = os.path.join(folders[3],log_file_prefix)
+		if os.path.exists(log_file_prefix+'.html')==True and os.path.exists(log_file_prefix+'.csv')==True and args['overwrite']==False and args['rebuild_log']==False:
+			print('\nWARNING: html log file {} and csv log file {} already exists; use --overwrite if you want to overwrite or --rebuild-log to rebuild'.format(log_file_prefix+'.html',log_file_prefix+'.csv'))
+		else:
+			if args['driver_only']==False and args['reduce_only']==False and args['qa_only']==False:
+				dp = process_folder(folders[0])
+				for x in ['.csv','.html']:
+					if os.path.exists(log_file_prefix+x) and args['overwrite']==False and args['rebuild_log']==False:
+						print('\nWARNING: {} log file {} already exists; use --overwrite to overwrite'.format(x,log_file_prefix+x))
+					else:
+						if args['verbose']==True: print('\nWriting log to {}'.format(log_file_prefix+x))
+						write_log(dp,log_file_prefix+x)
+		if args['log_only']==True: 
+#			print('\n\nLog files {} and {} created\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
+			return
 
-# generate driver file and put in qa folder
-		if args['reduce_only']==False and args['qa_only']==False:
-			if driver_file=='': driver_file = 'driver.txt'
-			driver_file = os.path.join(folders[2],driver_file)
-			dp = process_folder(folders[0])
-			if os.path.exists(driver_file) and args['overwrite']==False:
-				print('\nWARNING: driver file {} already exists; use --overwrite to overwrite'.format(driver_file))
-			else:
+# query for next step
+#		txt = input('\n\nCheck the log file {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv'))
+
+# generate driver file and put in proc folder
+		if driver_file=='': driver_file = 'driver.txt'
+		driver_file = os.path.join(folders[2],driver_file)
+		if os.path.exists(driver_file)==True and args['overwrite']==False and args['rebuild_driver']==False:
+			print('\nWARNING: driver file {} already exists; use --overwrite to overwrite or --rebuild-driver to rebuild'.format(driver_file))
+		else:
+			if args['reduce_only']==False and args['qa_only']==False:
+				if os.path.exists(log_file_prefix+'.csv')==True:
+					dp = pandas.read_csv(log_file_prefix+'.csv')
+				else:
+					dp = process_folder(folders[0])
+					print('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
 				if args['verbose']==True: print('\nGenerating driver file and writing to {}'.format(driver_file))
-				write_driver(dp,driver_file,data_folder=folders[0],verbose=args['verbose'],check=True,create_folders=True)
-			if args['driver_only']==True: 
-				print('\n\nDriver file {} created'.format(driver_file))
-				print('Review this file before reducing\n\n')
-				return
-			txt = input('\n\nCheck the driver file {} and press return when you are ready to proceed, or type CNTL-C to abort...\n'.format(driver_file))
+#				print(driver_file,folders[0])
+				write_driver(dp,driver_file,data_folder=folders[0],verbose=args['verbose'],check=True,create_folders=True,exclude_lxd=True)
+
+		if args['driver_only']==True: 
+			print('\n\nDriver file {} created'.format(driver_file))
+			print('Review this file before reducing\n\n')
+			return
+
+# query for next step
+		txt = input('\n\nCheck the driver file {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
 
 # reduction - only need the driver file for this
 ##
 ## NOTE - SOMETHING WEIRD HERE WHERE CALIBRATION FILE CREATION BREAKS IF VERBOSE IS NOT SET
 ##
 		if args['qa_only']==False:
-			if driver_file=='': driver_file = folders[0]
-			if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
+			# if driver_file=='': driver_file = folders[0]
+			# if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 			par = read_driver(driver_file)
-			if args['verbose']==True: print('\n\nReducing spectra')
+			if args['verbose']==True: print('\n\nReducing spectra\n\n')
 			batch_reduce(par,verbose=args['verbose'])
-			if args['reduce_only']==True: 
-				print('\n\nReduction completed')
-				print('Processed files are in proc folder\n\n')
-				return
+
+		if args['reduce_only']==True: 
+			print('\n\nReduction completed!\n\n')
+			return
 
 # make qa plots
-		if args['qa_only']==True:
-			if len(folders)<2: raise ValueError('For option --qa-only, you must provide driver file and log file (csv)')
-			if driver_file=='': driver_file = folders[0]
-			if os.path.isdir(driver_file)==True:
-				if len(folders)<4: raise ValueError('Could not determine driver file from inputs')
-				driver_file = folders[2]+'driver.txt'
-			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
+#		if args['qa_only']==True:
+		# if len(folders)<2: raise ValueError('For option --qa-only, you must provide driver file and log file (csv)')
+		# if driver_file=='': driver_file = folders[0]
+		# if os.path.isdir(driver_file)==True:
+		# 	if len(folders)<4: raise ValueError('Could not determine driver file from inputs')
+		# 	driver_file = folders[2]+'driver.txt'
 
-			if log_file_prefix=='': log_file_prefix = 'log'
-			# if os.path.isdir(log_file_prefix)==True:
-			# 	if len(folders)<4: raise ValueError('Could not determine log file from inputs')
-			# 	log_file_prefix = folders[3]+'log'
-			if os.path.exists(log_file_prefix+'.csv')==False: log_file_prefix = folders[3]+'log'
-			if os.path.exists(log_file_prefix+'.csv')==False: raise ValueError('Cannot find log file {}'.format(log_file_prefix+'.csv')) 
+		# if log_file_prefix=='': log_file_prefix = 'log'
+		# # if os.path.isdir(log_file_prefix)==True:
+		# # 	if len(folders)<4: raise ValueError('Could not determine log file from inputs')
+		# # 	log_file_prefix = folders[3]+'log'
+		# if os.path.exists(log_file_prefix+'.csv')==False: log_file_prefix = folders[3]+'log'
 
-			makeQApage(driver_file,log_file_prefix+'.csv',verbose=args['verbose'])
+		if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
+		if os.path.exists(log_file_prefix+'.csv')==False: raise ValueError('Cannot find log file {}'.format(log_file_prefix+'.csv')) 
 
-			print('\n\nQA page created, please review\n\n')
+		makeQApage(driver_file,log_file_prefix+'.csv',verbose=args['verbose'])
+
+		print('\n\nQA page created, please review\n\n')
 
 		return
 

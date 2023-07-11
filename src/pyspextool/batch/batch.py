@@ -352,6 +352,25 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 			if verbose==True: print('Warning: could not select subset of columns {} from data frame, saving all columns'.format(parameters['COLUMNS']))
 	else: dpout = copy.deepcopy(dp)
 
+# fix for RA and DEC for proper formatting
+	for x in ['RA','DEC']:
+		if x in list(dpout.columns):
+			for i,y in enumerate(dpout[x]):
+				if str(y)[0] not in ['-','+']: dpout.loc[i,x]='+{}'.format(str(y))
+
+# FIX FOR PATHOLOGICAL CASE WHERE NO TARGET NAMES ARE GIVEN
+	if 'TARGET_NAME' in list(dpout.columns) and 'TARGET_TYPE' in list(dpout.columns):
+		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
+		tnames = list(set(list(dpouts['TARGET_NAME'])))
+		tnames = [str(x) for x in tnames]
+		if len(tnames)==1 and len(dpouts)>50:
+			if verbose==True: print('WARNING: only one target name {} suggesting an issue with labeling'.format(tnames[0]))
+			if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
+				for i in range(len(dpout)):
+					if tnames[0] in dpout['TARGET_NAME'].iloc[i]:
+						dpout['TARGET_NAME'].iloc[i] = ('J{}{}'.format((dpout['RA'].iloc[i])[:6],(dpout['DEC'].iloc[i])[:6])).replace('J+','J').replace(':','')
+				if verbose==True: print('Replaced target names with coordinate short names')
+
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
 	if ftype in ['xls','xlsx']: dpout.to_excel(parameters['FILENAME'],index=False)	
@@ -490,7 +509,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	return parameters
 
 
-def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
+def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,exclude_lxd=True,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -589,7 +608,9 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	for x in ['CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
 # if blank, create cals, proc, and qa folders parallel to data folder
 		if driver_param[x]=='': 
-			driver_param[x] = driver_param['DATA_FOLDER'].replace(os.path.split(os.path.dirname(driver_param['DATA_FOLDER']))[-1],(x.split('_')[0]).lower())
+#			driver_param[x] = driver_param['DATA_FOLDER'].replace(os.path.split(os.path.dirname(driver_param['DATA_FOLDER']))[-1],(x.split('_')[0]).lower())
+			driver_param[x] = os.path.join(os.path.split(driver_param['DATA_FOLDER'])[0],(x.split('_')[0]).lower())
+#			print(x,driver_param['DATA_FOLDER'],driver_param[x])
 		if os.path.exists(driver_param[x])==False:
 			if create_folders==True: 
 				os.mkdir(driver_param[x])
@@ -600,6 +621,12 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	dpc = copy.deepcopy(dp)
 	for x in ['INSTRUMENT','UT_DATE','OBSERVER','PROGRAM']:
 		driver_param[x] = dpc[x].iloc[0]
+
+# remove LXD files?
+	if exclude_lxd==True:
+		dpc['select'] = ['long' not in x.lower() for x in dpc['MODE']]
+		dpc = dpc[dpc['select']==True]
+		del dpc['select']
 
 # some file name work
 # THIS NEEDS TO BE UPDATED WITH INSTRUMENT SPECIFIC INFORMATION
@@ -648,15 +675,18 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	for i in range(len(calf1)): cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
 #	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
 
-# observations - need to work on re-ordering this
-# ALSO NEED AN IGNORE TARGET NAME OPTION
+# observations
 	dps = dpc[dpc['TARGET_TYPE']=='target']
-	names = list(set(list(dps['TARGET_NAME'])))
-	names = [str(x) for x in names]
-	names.sort()
+	tnames = list(set(list(dps['TARGET_NAME'])))
+	tnames = [str(x) for x in tnames]
+	fnums = []
+	for n in tnames:
+		dps = dpc[dpc['TARGET_NAME']==n]
+		fnums.append(int(dps['FILE NUMBER'].iloc[0]))
+	tnames = [x for _,x in sorted(zip(fnums,tnames))]
 
 # no names - close it up
-	if len(names)==0:
+	if len(tnames)==0:
 		if verbose==True: print('Warning: no science files identified; you may need to update the observational logs')
 		f.close()
 		return
@@ -664,14 +694,14 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 # loop over names
 	f.write('\n# Science observations')
 	f.write('\n#\tMode\tTarget Type\tTarget Name\tPrefix\tFiles\tFlat Filename\tWavecal Filename\tStd Name\tStd Prefix\tStd Files\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
-	for n in names:
+	for n in tnames:
 		dps = dpc[dpc['TARGET_NAME']==n]
 		src_coord = SkyCoord(dps['RA'].iloc[0]+' '+dps['DEC'].iloc[0],unit=(u.hourangle, u.deg))
 		srcmodes = list(set(list(dps['MODE'])))
 		srcmodes.sort()
 		for m in srcmodes:
 			dpsrc = dps[dps['MODE']==m]
-			line='{}\t{}\t{} ps\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
+			line='{}\t{}\t{}-ps\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
 			fnum = np.array(dpsrc['FILE NUMBER'])
 			line+='\t{:.0f}-{:.0f}'.format(np.nanmin(fnum),np.nanmax(fnum))
 
@@ -687,7 +717,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 # assign flux cals based on closest in airmass (0.2), time (2 hr) and position (10")
 			dpflux = dpc[dpc['TARGET_TYPE']=='standard']
 			dpflux = dpflux[dpflux['MODE']==dpsrc['MODE'].iloc[0]]
-			ftxt = '\t{}\tUNKNOWN\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[i],cal_sets.split(',')[i])
+			ftxt = '\t{}\tUNKNOWN\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[ical],cal_sets.split(',')[ical])
 			if len(dpflux)==0: 
 				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
 				line+=ftxt
@@ -885,6 +915,9 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 
 # combined files
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0:
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
@@ -1131,7 +1164,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
-		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split(' ')[-1])
+		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
 
 # make spatial profiles
 		ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
@@ -1166,7 +1199,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 			flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
 
 # set extraction method
-		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split(' ')[-1])
+		ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
 
 # make spatial profiles
 		ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
@@ -1214,12 +1247,12 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 
 # FLUX CALIBRATE - NOT CURRENTLY IMPLEMENTED
 # depends on fixed or moving source which method we use
-		if (spar['TARGET_TYPE'].split(' ')[0]).strip()=='fixed':
+		if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed':
 			if spar['VERBOSE']==True: print('fixed target; doing standard telluric correction and flux calibration')
-		elif (spar['TARGET_TYPE'].split(' ')[0]).strip()=='moving':
+		elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving':
 			if spar['VERBOSE']==True: print('moving target; doing reflectance telluric correction and flux calibration')
 		else:
-			if spar['VERBOSE']==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split(' ')[0]))
+			if spar['VERBOSE']==True: print('Target type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split('-')[0]))
 
 
 	return
