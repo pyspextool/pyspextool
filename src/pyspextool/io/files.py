@@ -204,6 +204,10 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
     else:
 
+        if isinstance(files, str):
+
+            files = [files]
+        
         output = [os.path.join(dir,root) for root in files]
 
         #  Now let's check to see if the file actually exists
