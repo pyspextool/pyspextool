@@ -128,7 +128,13 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
 
     else:
 
-        plot_numbers = plot_number
+        if isinstance(plot_number,int):
+
+            plot_numbers = [plot_number]
+
+        else:
+
+            plot_numbers = plot_number
 
     #
     # Deal with file or window
