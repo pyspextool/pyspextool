@@ -1,13 +1,16 @@
+import numpy as np
+from pyspextool.io.check import check_parameter
+
+
 def for_print(*args):
 
     """
-    Prints lists of data as columns to the command line.
+    Prints lists/arrays of data as columns to the command line.
 
     Input Parameters
     ----------------
     *args : lists or 1D numpy.ndarrays
         "Arrays" of values to be printed as columns together.
-
 
     Returns
     -------
@@ -26,29 +29,61 @@ def for_print(*args):
       2 5
       3 6
 
-    Modification History
-    --------------------
-    2022-06-28 - Written by M. Cushing, University of Toledo.
-    Inspired by (but less than) IDL astrolib routine forprint.pro
-
     """
 
-    # Check to make sure all inputs have the same length
-
+    #
+    # How many arguents?
+    #
+    
     nargs = len(args)
 
+    # Convert the tuple to a list so that you can modify each argument
+
+    args = list(args)
+
+    #
+    # Do some massaging of each argument
+    #
+    
+    for i in range(nargs):
+
+        # check the parameter to make sure it is a list or ndarray
+        
+        label = 'a['+str(i)+']'
+        check_parameter('for_print', label, args[i], ['list','ndarray'])
+        
+        if isinstance(args[i],np.ndarray):
+
+            # if it is an ndarray, squeeze it to ensure it has only 1 dimension
+            
+            args[i] = np.squeeze(args[i])            
+
+        else:
+
+            # otherwise, convert it to a ndarray
+            
+            args[i] = np.array(args[i])
+
+    #
+    # Check to make sure all inputs have the same length
+    #
+    
     lengths = []
     for i in range(nargs):
 
-        lengths.append(len(args[i]))
+        lengths.append(np.size(args[i]))
 
     if lengths.count(lengths[0]) != nargs:
 
         raise Exception('Inputs are not the same length.')
 
+    #
     # Now print things
+    #
     
-    for i in range(len(args[0])):
+    args = tuple(args)
+
+    for i in range(np.size(args[0])):
 
         for j in range(nargs):
 
