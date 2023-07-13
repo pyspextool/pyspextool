@@ -722,8 +722,8 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
 				line+=ftxt
 			else:
-				dpflux['DIFF1'] = [np.abs(x-np.nanmedian(dpsrc['AIRMASS']))/0.2 for x in dpflux['AIRMASS']]
-				dpflux['DIFF2'] = [np.abs(x-np.nanmedian(dpsrc['MJD']))*12. for x in dpflux['MJD']]
+				dpflux['DIFF1'] = [np.abs(float(x)-np.nanmedian(dpsrc['AIRMASS']))/0.2 for x in dpflux['AIRMASS']]
+				dpflux['DIFF2'] = [np.abs(float(x)-np.nanmedian(dpsrc['MJD']))*12. for x in dpflux['MJD']]
 				dpflux['DIFF3'] = [src_coord.separation(SkyCoord(dpflux['RA'].iloc[i]+' '+dpflux['DEC'].iloc[i],unit=(u.hourangle, u.deg))).to(u.arcsecond).value/10. for i in range(len(dpflux))]
 				dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']+dpflux['DIFF3']
 				fref = dpflux['FILE NUMBER'].iloc[np.argmin(dpflux['DIFF'])]

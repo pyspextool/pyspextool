@@ -112,7 +112,7 @@ class runBatch():
 #			print('\n\nLog files {} and {} created\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
 			return
 
-# query for next step
+# query for next step?
 #		txt = input('\n\nCheck the log file {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv'))
 
 # generate driver file and put in proc folder
