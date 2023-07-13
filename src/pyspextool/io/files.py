@@ -131,12 +131,10 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
     Returns
     --------
-    list
-        A list of strings giving the fullpath of the files
+    list or str
+        A list of strings giving the fullpath of the `files` if `files` is list
 
-    Procedure
-    ---------
-    Lots of paying attend to details and testing
+        A str giving the fullpath of `files` if `files` is a string
 
     Examples
     --------
@@ -206,9 +204,11 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
         if isinstance(files, str):
 
-            files = [files]
+            output = os.path.join(dir,files)
+
+        else:
         
-        output = [os.path.join(dir,root) for root in files]
+            output = [os.path.join(dir,root) for root in files]
 
         #  Now let's check to see if the file actually exists
 
