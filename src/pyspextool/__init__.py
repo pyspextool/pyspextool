@@ -6,6 +6,7 @@ Python.
 
 from . import extract
 from . import combine
+from . import telluric
 from .setup_utils import pyspextool_setup as pyspextool_setup
 from .setup_utils import set_parameters as set_parameters
 from .setup_utils import set_instrument as set_instrument

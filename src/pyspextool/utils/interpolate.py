@@ -127,17 +127,17 @@ def linear_interp1d(input_x, input_y, output_x, input_u=None, leave_nans=False):
     # Now create an output_y array the same size as output_x and fill with
     # result.
     
-    output_y = np.full_like(output_x, np.nan)
+    output_y = np.full_like(output_x, np.nan, dtype=np.float64)
     output_y[z_output_nonan] = result
-
+    
     #
     # Do the error propagation
     #
 
     if input_u is not None:
-        
-        result = nonan_interp1d(input_x, input_u, x, variance=True)    
 
+        result = nonan_interp1d(input_x, input_u, x, variance=True)    
+        
         output_v = np.full_like(output_x, np.nan)
         output_v[z_output_nonan] = result
 
@@ -209,7 +209,8 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
     check_parameter('linear_bitset_interp1d', 'input_x', input_x,
                     ['ndarray', 'list'])
 
-    check_parameter('linear_bitset_interp1d', 'input_y', input_y, 'ndarray')
+    check_parameter('linear_bitset_interp1d', 'input_y', input_y,
+                    ['ndarray', 'list'])
 
     check_parameter('linear_bitset_interp1d', 'output_x', output_x,
                     ['ndarray', 'list', 'int', 'float'])
@@ -217,17 +218,17 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
     check_parameter('linear_bitset_interp1d', 'nbits', nbits, 'int')
 
     #
-    #  Convert the list to numpy arrays
+    #  Convert any list inputs to numpy arrays
     #
 
     if isinstance(input_x, list) is True:
 
         input_x = np.array(input_x)
+
+    if isinstance(input_y, list) is True:
+
+        input_y = np.array(input_y)        
     
-    if isinstance(output_x, list) is True:
-
-        output_x = np.array(output_x)
-
     # Now deal with the output_x array.  First check to see if it is a scalar,
     # then deal with the list
 
@@ -243,6 +244,14 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
     if isinstance(output_x, list) is True:
 
         output_x = np.array(output_x)
+
+    #
+    # Now squeeze them all in case you get passed a 1D slice
+    #
+
+    input_x = np.squeeze(input_x)
+    input_y = np.squeeze(input_y)
+    output_x = np.squeeze(output_x)
 
     #
     #  Remove NaNs
@@ -261,7 +270,7 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
     # Create an output_y array the same size as output_x and fill with zeros.
     
     output_y = np.full_like(output_x,0)
-        
+
     for i in range(nbits):
 
         # Create a mask for each requested bit.
@@ -271,7 +280,7 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
         # Do the interpolation
         
         result = nonan_interp1d(input_x, is_set, x)
-
+    
         # Convert NaNs to zero as they are out of range.
 
         z_nan = np.isnan(result)
@@ -331,13 +340,13 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
     
     # Determine the floor and ceil of each value for later use.  have to do it
     # this way to avoid using astype()
-
+    
     floor = np.empty_like(idx, dtype=np.int16)
     np.floor(idx, out=floor, casting='unsafe')
 
     ceil = np.empty_like(idx, dtype=np.int16)
     np.ceil(idx, out=ceil, casting='unsafe')    
-
+    
     # See which points in inrange_output_x_nonan land directly on points in
     # input_x_nonan.
 
@@ -382,12 +391,12 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
             inrange_y[z_idx_differ] = term1 + term2
                 
     # Make and output array that is the same size as x.
-    
 
-    y = np.full_like(x, np.nan)
+    y = np.full_like(x, np.nan,dtype=np.float64)
         
     # Now fill the inrange values back into the entire y array
-       
-    y[z_idx_nonan] = inrange_y 
 
+
+    y[z_idx_nonan] = inrange_y 
+    
     return y 
