@@ -5,11 +5,11 @@ from pyspextool.io.check import check_parameter
 def for_print(*args):
 
     """
-    Prints lists/arrays of data as columns to the command line.
+    Prints lists/arrays of data or a dictionary as columns to the command line.
 
     Input Parameters
     ----------------
-    *args : lists or 1D numpy.ndarrays
+    *args : dict, list, ndarray
         "Arrays" of values to be printed as columns together.
 
     Returns
@@ -42,8 +42,25 @@ def for_print(*args):
     args = list(args)
 
     #
-    # Do some massaging of each argument
+    # Check whether it is a dictionary.  If so, deal with it and return
     #
+    
+    if nargs == 1 and isinstance(args[0],dict):
+
+        keys = list(args[0].keys())
+        nkeys = len(keys)
+
+        for i in range(nkeys):
+
+            print(keys[i], ':', args[0].get(keys[i]))
+
+        return
+    
+    #
+    # Not a dictionary so must me variables
+    #
+    
+    # Do some massaging of each argument
     
     for i in range(nargs):
 
