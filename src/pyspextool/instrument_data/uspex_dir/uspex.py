@@ -290,7 +290,7 @@ def load_data(file, lininfo, bias, keywords=None, ampcor=None, lccoeffs=None):
 
     # Collect header information
 
-    hdr = get_header(hdul[0].header)
+    hdr = get_header(hdul[0].header, keywords=keywords)
 
     hdul.close()
 
@@ -372,9 +372,11 @@ def get_header(hdr, keywords=None):
 
     hdrinfo['INSTR'] = ['SpeX', ' Instrument']
 
-    # now move the comment key to the end
+    # Now grab any user COMMENT
 
-    comment = hdrinfo.pop('COMMENT')
-    hdrinfo['COMMENT'] = comment
+#    print(hdr['COMMENT'])
+#    comment = str(hdr['COMMENT'])
+#    comment = comment.split('=')[1]    
+#    hdrinfo['USERCOM'] = [comment[2:-1], ' User comment']
 
     return hdrinfo

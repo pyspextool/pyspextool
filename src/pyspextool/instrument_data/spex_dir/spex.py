@@ -167,7 +167,7 @@ def get_header(header, keywords=None):
     else:
 
         hdrinfo = get_header_info(header)
-
+    
     #
     # Now create the required Spextool keywords
     #
@@ -188,6 +188,10 @@ def get_header(header, keywords=None):
 
     hdrinfo['PA'] = [header['POSANGLE'], ' Position Angle E of N (deg)']
 
+    # RA
+
+    hdrinfo['RA'] = [header['RA'].strip(), ' Right Ascension']
+    
     # Dec 
 
     val = header['DEC']
@@ -195,10 +199,6 @@ def get_header(header, keywords=None):
     if not m:
         val = '+' + val.strip()
     hdrinfo['DEC'] = [val, ' Declination']
-
-    # RA
-
-    hdrinfo['RA'] = [header['RA'].strip(), ' Right Ascension']
 
     # COADDS, ITIME
 
@@ -237,10 +237,11 @@ def get_header(header, keywords=None):
 
     hdrinfo['INSTR'] = ['SpeX', ' Instrument']
 
-    # now move the comment key to the end
+    # Now grab any user COMMENT
 
-    comment = hdrinfo.pop('COMMENT')
-    hdrinfo['COMMENT'] = comment
+    comment = str(header['COMMENT'])
+    comment = comment.split('=')[1]    
+    hdrinfo['USERCOM'] = [comment[2:-1], ' User comment']
 
     return hdrinfo
 
@@ -360,7 +361,7 @@ def load_data(file, linearity_info, keywords=None, linearity_coefficients=None):
 
     # Collect header information
 
-    hdr = get_header(hdul[0].header)
+    hdr = get_header(hdul[0].header, keywords=keywords)
 
     # Close the file
 

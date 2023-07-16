@@ -517,8 +517,7 @@ def load_allorders():
 
     headers = []
     
-    keywords  = setup.state['pyspextool_keywords']+\
-                setup.state['extract_keywords'] + ['HISTORY']
+    keywords  = setup.state['combine_keywords']
 
     for i in range(combine.state['nfiles']):
 

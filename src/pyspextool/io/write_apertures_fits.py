@@ -147,8 +147,6 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
 
-    hdr['MODULE'] = ('extract', ' Creation module')
-
     # Add the original file header keywords.  Cut out any history first
     # if need be.
 
@@ -163,7 +161,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         header_info.pop('HISTORY')
 
     keys = list(header_info.keys())
-
+    
     for i in range(len(keys)):
 
         if keys[i] == 'COMMENT':
@@ -264,16 +262,16 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         hdr['BGREGS'] = (','.join(tmplist),
                          ' Background regions (arcseconds)')
         hdr['BGDEGREE'] = (xsbginfo['degree'],
-                           'Background polynomial fit degree')
+                           ' Background polynomial fit degree')
 
-    hdr['XUNITS'] = (xunits, 'Units of the x axis')
-    hdr['YUNITS'] = (yunits, 'Units of the y axis')
+    hdr['XUNITS'] = (xunits, ' Units of the x axis')
+    hdr['YUNITS'] = (yunits, ' Units of the y axis')
 
-    hdr['LXUNITS'] = (latex_xunits, 'LateX units of the x axis')
-    hdr['LYUNITS'] = (latex_yunits, 'LateX units of the y axis')
+    hdr['LXUNITS'] = (latex_xunits, ' LateX units of the x axis')
+    hdr['LYUNITS'] = (latex_yunits, ' LateX units of the y axis')
 
-    hdr['LXLABEL'] = (latex_xlabel, 'LateX x axis label')
-    hdr['LYLABEL'] = (latex_ylabel, 'LateX Y axis label')
+    hdr['LXLABEL'] = (latex_xlabel, ' LateX x axis label')
+    hdr['LYLABEL'] = (latex_ylabel, ' LateX Y axis label')
 
     # Now add the HISTORY
 
@@ -307,7 +305,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     # Set the file name for the spectra file and write
 
-    hdr['FILENAME'] = (os.path.basename(output_fullpath) + '.fits', 'File name')
+    hdr['FILENAME'] = (os.path.basename(output_fullpath)+'.fits', ' File name')
 
     fits.writeto(output_fullpath + '.fits', array, hdr, overwrite=overwrite)
 
