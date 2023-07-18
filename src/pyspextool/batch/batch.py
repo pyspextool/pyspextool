@@ -371,6 +371,26 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 						dpout['TARGET_NAME'].iloc[i] = ('J{}{}'.format((dpout['RA'].iloc[i])[:6],(dpout['DEC'].iloc[i])[:6])).replace('J+','J').replace(':','')
 				if verbose==True: print('Replaced target names with coordinate short names')
 
+# add in SIMBAD information
+	try:
+		from astroquery.xmatch import XMatch
+	except:
+		if verbose==True: print('Warning: astroquery is not installed, cannot find SIMBAD information for sources')
+	else:
+		XMatch.TIMEOUT = 180
+		dpout['SIMBAD_SEP'] = ['']*len(dpout)
+		dpout['SIMBAD_NAME'] = ['']*len(dpout)
+		dpout['SIMBAD_TYPE'] = ['']*len(dpout)
+		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
+		tnames = list(set(list(dpouts['TARGET_NAME'])))
+		tnames = [str(x) for x in tnames]
+		for i,tnm in enumerate(tnames):
+			dpsel = dpout[dpout['TARGET_NAME']==tnm]
+			if len(dpsel)>0:
+### STOPPED HERE ####
+				pass
+### STOPPED HERE ####
+
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
 	if ftype in ['xls','xlsx']: dpout.to_excel(parameters['FILENAME'],index=False)	
@@ -693,7 +713,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 
 # loop over names
 	f.write('\n# Science observations')
-	f.write('\n#\tMode\tTarget Type\tTarget Name\tPrefix\tFiles\tFlat Filename\tWavecal Filename\tStd Name\tStd Prefix\tStd Files\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
+	f.write('\n#\tMode\tTarget Type\tTarget Name\tPrefix\tFiles\tFlat Filename\tWavecal Filename\tStd Name\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
 	for n in tnames:
 		dps = dpc[dpc['TARGET_NAME']==n]
 		src_coord = SkyCoord(dps['RA'].iloc[0]+' '+dps['DEC'].iloc[0],unit=(u.hourangle, u.deg))
