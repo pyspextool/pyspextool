@@ -1,3 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-setup()
+setup(name='pyspextool',
+     packages=find_packages())
