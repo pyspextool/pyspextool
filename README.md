@@ -17,7 +17,9 @@ are stored using [Github Large File Storage](https://docs.github.com/en/reposito
 
     **For Developers**
     * clone the repository to your local computer
+    ```
     git clone https://github.com/pyspextool/pyspextool.git
+    ```
     * navigate into the `pyspextool` directory and install with pip/setuptools
     
     ```
