@@ -17,6 +17,8 @@ from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
 
+from pyspextool.utils.for_print import for_print
+
 
 def make_flat(files, output_name, extension='.fits*', normalize=True,
               overwrite=True, qa_plot=None, qa_plotsize=(8,8),
