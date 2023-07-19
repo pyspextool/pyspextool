@@ -19,6 +19,7 @@
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
+from astropy.table import Table
 import astropy.units as u
 import copy
 import os
@@ -28,6 +29,7 @@ import numpy as np
 import shutil
 import sys
 import yaml
+pd.set_option('mode.chained_assignment',None) # suppress pandas warnings
 
 import pyspextool as ps
 from pyspextool import config as setup
@@ -142,6 +144,20 @@ QA_PARAMETERS = {
 	'HTML_TABLE_TAIL': ' </tr>\n</table>\n',
 }
 
+# columns to grab from SIMBAD
+SIMBAD_COLS = {
+	'SIMBAD_SEP': 'angDist',
+	'SIMBAD_NAME': 'main_id',
+	'SIMBAD_TYPE': 'sp_type',
+	'SIMBAD_BMAG': 'B',
+	'SIMBAD_VMAG': 'V',
+	'SIMBAD_JMAG': 'J',
+	'SIMBAD_HMAG': 'H',
+	'SIMBAD_KMAG': 'K',
+}
+
+
+
 
 
 ###############################
@@ -174,11 +190,11 @@ def process_folder(folder,verbose=False):
 	>>> dp = batch.process_folder(dpath)
 	>>> print(dp[:4])
 
-		               FILE     UT_DATE          UT_TIME TARGET_NAME           RA  \
-		0    spc0001.a.fits  2003-05-21  05:46:06.300712   1104+1959  11:04:01.12   
-		1    spc0002.b.fits  2003-05-21  05:48:25.591305   1104+1959  11:04:01.08   
-		2    spc0003.b.fits  2003-05-21  05:50:42.924982   1104+1959  11:04:01.06   
-		3    spc0004.a.fits  2003-05-21  05:53:02.194063   1104+1959  11:04:01.08   
+					   FILE	 UT_DATE		  UT_TIME TARGET_NAME		   RA  \
+		0	spc0001.a.fits  2003-05-21  05:46:06.300712   1104+1959  11:04:01.12   
+		1	spc0002.b.fits  2003-05-21  05:48:25.591305   1104+1959  11:04:01.08   
+		2	spc0003.b.fits  2003-05-21  05:50:42.924982   1104+1959  11:04:01.06   
+		3	spc0004.a.fits  2003-05-21  05:53:02.194063   1104+1959  11:04:01.08   
 
 	Dependencies
 	------------
@@ -372,24 +388,29 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 				if verbose==True: print('Replaced target names with coordinate short names')
 
 # add in SIMBAD information
+# TEMPORARY CHECK OF ASTROQUERY
 	try:
 		from astroquery.xmatch import XMatch
 	except:
 		if verbose==True: print('Warning: astroquery is not installed, cannot find SIMBAD information for sources')
 	else:
-		XMatch.TIMEOUT = 180
-		dpout['SIMBAD_SEP'] = ['']*len(dpout)
-		dpout['SIMBAD_NAME'] = ['']*len(dpout)
-		dpout['SIMBAD_TYPE'] = ['']*len(dpout)
-		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
-		tnames = list(set(list(dpouts['TARGET_NAME'])))
-		tnames = [str(x) for x in tnames]
-		for i,tnm in enumerate(tnames):
-			dpsel = dpout[dpout['TARGET_NAME']==tnm]
-			if len(dpsel)>0:
-### STOPPED HERE ####
-				pass
-### STOPPED HERE ####
+		if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
+			XMatch.TIMEOUT = 180
+			for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
+			dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
+			tnames = list(set(list(dpouts['TARGET_NAME'])))
+			tnames = [str(x) for x in tnames]
+			for i,tnm in enumerate(tnames):
+				dpsel = dpout[dpout['TARGET_NAME']==tnm]
+				if len(dpsel)>0:
+					src_coord = SkyCoord(dpsel['RA'].iloc[0]+' '+dpsel['DEC'].iloc[0],unit=(u.hourangle, u.deg))
+					t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
+					t_match = XMatch.query(t,u'simbad',30*u.arcsec,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
+					t_match.sort(['angDist'])
+					if len(t_match)>0:
+						for x in list(SIMBAD_COLS.keys()):
+							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
+
 
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
