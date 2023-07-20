@@ -12,7 +12,7 @@ are stored using [Github Large File Storage](https://docs.github.com/en/reposito
 
    **For Users**
     ```
-    pip install -e pyspextool@git+https://github.com/pyspextool/pyspextool.git
+    pip install pyspextool@git+https://github.com/pyspextool/pyspextool.git
     ```
 
     **For Developers**
