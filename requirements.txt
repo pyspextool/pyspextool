@@ -1,8 +1,1 @@
-astropy~=5.1
-numpy~=1.23.1
-scipy~=1.9.0
-matplotlib~=3.5.1
-setuptools~=61.2.0
-pandas~=2.0.3
-importlib_resources
-git-lfs
+
