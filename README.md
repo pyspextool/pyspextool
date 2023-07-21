@@ -21,6 +21,10 @@ Python code to reduce data obtained with the SpeX spectrograph.
    ```
    conda activate pyspextool
    ```
+6) Install the package
+   ```
+   pip install -e ./
+   ```
 
 <!--  This should be done by the conda environment
 1) [Install git-lfs](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) 
