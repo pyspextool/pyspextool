@@ -1,4 +1,4 @@
-name: pyspextool_3.11
+name: pyspextool
 channels:
   - http://ssb.stsci.edu/astroconda
   - conda-forge
