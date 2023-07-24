@@ -21,6 +21,7 @@ QA_FOLDER = 'qa/'
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
 DEFAULT_FOLDERS = ['data','cals','proc','qa']
+VERSION = '2023 July 24'
 
 class runBatch():
 	def __init__(self):
@@ -55,8 +56,14 @@ class runBatch():
 			required=False, help='set to automatically overwrite files')
 		parser.add_argument('--no-pause', action='store_true',default=False,
 			required=False, help='set to remove all pauses for user input')
-		parser.add_argument('--verbose', action='store_true',default=False,
-			required=False, help='set to return verbose feedback')
+		# parser.add_argument('--verbose', action='store_true',default=False,
+		# 	required=False, help='set to return verbose feedback')
+		parser.add_argument('--quiet', action='store_true',default=False,
+			required=False, help='set to return minimal feedback')
+		parser.add_argument('-v', action='store_true',default=False,
+			required=False, help='report version number of batch reduction code')
+		parser.add_argument('--version', action='store_true',default=False,
+			required=False, help='report version number of batch reduction code')
 
 		args = vars(parser.parse_args())
 #		print(args)
@@ -65,6 +72,10 @@ class runBatch():
 		log_file_prefix = args['l']
 #		print(args)
 		# raise()
+
+# give version number only
+		if args['quiet']==False: print('\npyspextool batch reduction code version {}\n'.format(VERSION))
+		if args['v']==True or args['version']==True: return
 
 # if nothing passed, assume we are using the local folder
 		if len(folders)<1: folders=[os.path.abspath('./')]
@@ -89,7 +100,7 @@ class runBatch():
 					nfold = os.path.join(bfold,nm+'/')
 					if os.path.exists(nfold)==False: 
 						os.mkdir(nfold)
-						if args['verbose']==True: print('\nCreated {} folder {}'.format(DEFAULT_FOLDERS[i],nfold))
+						if args['quiet']==False: print('\nCreated {} folder {}'.format(DEFAULT_FOLDERS[i],nfold))
 					if len(folders)>i: folders[i] = nfold
 					else: folders.append(nfold)
 
@@ -111,7 +122,7 @@ class runBatch():
 					if os.path.exists(log_file_prefix+x) and args['overwrite']==False and args['rebuild_log']==False:
 						print('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
 					else:
-						if args['verbose']==True: print('\nWriting log to {}'.format(log_file_prefix+x))
+						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
 						write_log(dp,log_file_prefix+x)
 
 # query to pause and check log
@@ -134,9 +145,9 @@ class runBatch():
 				else:
 					dp = process_folder(folders[0])
 					print('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
-				if args['verbose']==True: print('\nGenerating driver file and writing to {}'.format(driver_file))
+				if args['quiet']==False: print('\nGenerating driver file and writing to {}'.format(driver_file))
 #				print(driver_file,folders[0])
-				write_driver(dp,driver_file,data_folder=folders[0],verbose=args['verbose'],check=True,create_folders=True,exclude_lxd=True)
+				write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True,exclude_lxd=True)
 
 # query to pause and check driver
 			if args['no_pause']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
@@ -154,8 +165,8 @@ class runBatch():
 			# if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 			par = read_driver(driver_file)
-			if args['verbose']==True: print('\n\nReducing spectra\n\n')
-			batch_reduce(par,verbose=args['verbose'])
+			if args['quiet']==False: print('\n\nReducing spectra\n\n')
+			batch_reduce(par,verbose=(not args['quiet']))
 
 		if args['reduce_only']==True: 
 			print('\n\nReduction completed!\n\n')
@@ -178,7 +189,7 @@ class runBatch():
 		if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 		if os.path.exists(log_file_prefix+'.csv')==False: raise ValueError('Cannot find log file {}'.format(log_file_prefix+'.csv')) 
 
-		makeQApage(driver_file,log_file_prefix+'.csv',verbose=args['verbose'])
+		makeQApage(driver_file,log_file_prefix+'.csv',verbose=(not args['quiet']))
 
 		print('\n\nQA page created, please review\n\n')
 
