@@ -156,13 +156,16 @@ SIMBAD_COLS = {
 	'SIMBAD_KMAG': 'K',
 }
 
+# legacy download constants
+LEGACY_FOLDER = 'irtfdata.ifa.hawaii.edu'
+REDUCTION_FOLDERS = ['data','cals','proc','qa']
 
 
 
-
-###############################
-####### PROCESS FOLDERS #######
-###############################
+##################################
+######### PROCESS FOLDERS ########
+####### AND ORGANIZED DATA #######
+##################################
 
 def process_folder(folder,verbose=False):
 	'''
@@ -295,6 +298,101 @@ def process_folder(folder,verbose=False):
 				if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
 
 	return dp
+
+def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
+	'''
+	Purpose
+	-------
+	Organizes files downloaded from the IRTF Legacy database into distinct datasets
+
+	Parameters
+	----------
+	folder : str
+		full path to the folder containing the downloaded LEGACY_FOLDER, into which other folders will be organized
+
+	outfolder : str, default='dataset'
+		string indicating top-level organization folder under which data, cals, proc, and qa folders will be created 
+
+	verbose : bool, default=False
+		Set to True to return verbose output
+
+	Outputs
+	-------
+	None
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/adam/data/reductions/'
+	>>> batch.organizeLegacy(dpath)
+
+	Dependencies
+	------------
+	astropy.coordinates
+	astropy.io
+	astropy.time
+	astropy.units
+	glob
+	os.path
+	pandas
+	'''	
+
+# Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
+	base_folder = os.path.join(folder, LEGACY_FOLDER)
+	if not os.path.exists(base_folder):
+		print("Error: {} folder not found in the current directory, no action".format(LEGACY_FOLDER))
+		return
+
+# Generate a list of all unique folders containing fits files
+	fits_folders = glob.glob(os.path.join(base_folder, '**', '*.fits'), recursive=True)
+	fits_folders = [os.path.dirname(fits_file) for fits_file in fits_folders]
+	fits_folders = list(set(fits_folders))
+	fits_folders.sort()
+
+# now go through each of the folders, generate data folders, and move the data 	
+	cntr,prefix0 = 1,''
+	for i,f in enumerate(fits_folders):
+# generate file name from UT date of first fits file if not provided
+		if verbose==True: print('\nOrganizing data folder {}'.format(f))
+		if outfolder=='':
+			hdu = fits.open(glob.glob(os.path.join(f,'*.fits'))[0])
+			hd = hdu[0].header
+			hdu.close()
+			for k in HEADER_DATA['UT_DATE']:
+				if k in list(hd.keys()): prefix = hd[k].replace('/','').replace('-','')
+		else: prefix = copy.deepcopy(outfolder)
+		if prefix!=prefix0:
+			prefix0 = copy.deepcopy(prefix)
+			cntr=1
+		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
+		cntr+=1
+		if os.path.exists(output_folder)== False: 
+			os.makedirs(output_folder)
+			if verbose==True: print('Creating folder {}'.format(output_folder))
+
+# if path exists, just move and rename fits folder, otherwise move files, being careful of overwriting 
+		data_folder = os.path.join(output_folder,'data')
+		if os.path.exists(data_folder) == False: 
+			if makecopy==False: shutil.move(f, data_folder)
+			else: shutil.copytree(f,data_folder)
+			if verbose==True: print('Moved legacy data folder {} to {}'.format(f,data_folder))
+		else: 
+			if len(glob.glob(os.path.join(f,'*.fits')))==0 or overwrite==True:
+				for df in glob.glob(os.path.join(f,'*.fits')): 
+					if makecopy==False: shutil.move(df,data_folder)
+					else: shutil.copy2(df,data_folder)
+				if verbose==True: print('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
+			else: print('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
+
+# create other folders
+		for rf in REDUCTION_FOLDERS[1:]:
+			rfolder = os.path.join(output_folder,rf)
+			if os.path.exists(rfolder) == False:
+				os.makedirs(rfolder)
+				if verbose==True: print('Creating folder {}'.format(rfolder))
+
+	if verbose==True: print('Organization complete; data and reduction folders can be found in {}'.format(output_folder))
+	return
 
 
 ##############################

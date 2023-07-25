@@ -12,16 +12,14 @@ import copy
 import os
 import pandas
 import sys
-from pyspextool.batch.batch import process_folder,write_log,write_driver,read_driver,batch_reduce,makeQApage
+from pyspextool.batch import batch
 
-DATA_FOLDER = 'data/'
-CALS_FOLDER = 'cals/'
-PROC_FOLDER = 'proc/'
-QA_FOLDER = 'qa/'
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
-DEFAULT_FOLDERS = ['data','cals','proc','qa']
-VERSION = '2023 July 24'
+VERSION = '2023 July 25'
+AUTHORS = [
+	'Adam Burgasser',
+	'Jean Marroquin']
 
 class runBatch():
 	def __init__(self):
@@ -33,9 +31,9 @@ class runBatch():
 			'\n\t(3) two inputs giving the full path to the data folder and then full path to a base folder in which "cals", "proc", and "qa" folders exist or will be created; or'+\
 			'\n\t(4) three or four inputs giving the full paths to the "data", "cals", "proc", and optionally "qa" folders, in that order')
 		parser.add_argument('-l', metavar='log-file-prefix', nargs=1, default='',
-			required=False, help='set log file prefix (default is log)')
+			required=False, help='set log file prefix (default is "log")')
 		parser.add_argument('-d', metavar='driver-filename', nargs=1, default='',
-			required=False, help='set driver file prefix (default is "driver")')
+			required=False, help='set driver file name (default is "driver.txt")')
 		parser.add_argument('--log-only', action='store_true',default=False,
 			required=False, help='set to just save a log file')
 		parser.add_argument('--driver-only', action='store_true',default=False,
@@ -58,10 +56,12 @@ class runBatch():
 			required=False, help='set to remove all pauses for user input')
 		# parser.add_argument('--verbose', action='store_true',default=False,
 		# 	required=False, help='set to return verbose feedback')
+		parser.add_argument('--organize', action='store_true',default=False,
+			required=False, help='organize the legacy download data files')
+		parser.add_argument('--organize-legacy', action='store_true',default=False,
+			required=False, help='organize the legacy download data files')
 		parser.add_argument('--quiet', action='store_true',default=False,
 			required=False, help='set to return minimal feedback')
-		parser.add_argument('-v', action='store_true',default=False,
-			required=False, help='report version number of batch reduction code')
 		parser.add_argument('--version', action='store_true',default=False,
 			required=False, help='report version number of batch reduction code')
 
@@ -70,45 +70,54 @@ class runBatch():
 		folders = args['inputs']
 		driver_file = args['d']
 		log_file_prefix = args['l']
+		base_folder = ''
 #		print(args)
 		# raise()
 
-# give version number only
+# give version number (only)
 		if args['quiet']==False: print('\npyspextool batch reduction code version {}\n'.format(VERSION))
-		if args['v']==True or args['version']==True: return
+		if args['version']==True: return
 
-# if nothing passed, assume we are using the local folder
-		if len(folders)<1: folders=[os.path.abspath('./')]
+# if nothing passed, assume we are using the local folder as the base folder
+		if len(folders)<1: 
+			base_folder=os.path.abspath('./')
+			folders = [os.path.join(base_folder,batch.REDUCTION_FOLDERS[0])]
 
-# one inputs - assume to be base folder 
+# one input - assume to be base folder 
 		if len(folders) == 1:
-			if os.path.exists(folders[0])==False: raise ValueError('Cannot find base folder {}'.format(folders[0]))
-			elif os.path.exists(os.path.join(folders[0],DEFAULT_FOLDERS[0]))==False: raise ValueError('Cannot find data folder under {}'.format(folders[0]))
-			bfold = copy.deepcopy(folders[0])
-			folders[0] = os.path.join(bfold,DEFAULT_FOLDERS[0])
+			if base_folder=='': base_folder=os.path.abspath(folders[0])
+			if os.path.exists(base_folder)==False: raise ValueError('Cannot find base folder {}'.format(base_folder))
+#			elif os.path.exists(os.path.join(folders[0],batch.REDUCTION_FOLDERS[0]))==False: raise ValueError('Cannot find data folder under {}'.format(folders[0]))
+#			bfold = copy.deepcopy(folders[0])
+			folders[0] = os.path.join(base_folder,batch.REDUCTION_FOLDERS[0])
+
+# organize legacy data?
+		if args['organize']==True or args['organize_legacy']==True:
+			batch.organizeLegacy(base_folder,verbose=(not args['quiet']),overwrite=args['overwrite'],makecopy=True)
+			if args['quiet']==False: print('\n\nFinished file organization\n\n')
+			return
 
 # two inputs - assume to be data folder and base folder 
 		if len(folders) == 2:
 			if os.path.exists(folders[0])==False: raise ValueError('Cannot find data folder {}'.format(folders[0]))
 			if os.path.exists(folders[1])==False: raise ValueError('Cannot find base folder {}'.format(folders[1]))
-			bfold = copy.deepcopy(folders[1])
+			if base_folder=='': base_folder = os.path.abspath(folders[1])
+			folders = [folders[0]]
 
-# set or create cals, proc, and qa folders 
-		if len(folders) >=1:
-			for i,nm in enumerate(DEFAULT_FOLDERS):
-				if i>0:
-					nfold = os.path.join(bfold,nm+'/')
-					if os.path.exists(nfold)==False: 
-						os.mkdir(nfold)
-						if args['quiet']==False: print('\nCreated {} folder {}'.format(DEFAULT_FOLDERS[i],nfold))
-					if len(folders)>i: folders[i] = nfold
-					else: folders.append(nfold)
+# set or create data, cals, proc, and qa folders 
+		for i,nm in enumerate(batch.REDUCTION_FOLDERS):
+			nfold = os.path.join(base_folder,nm+'/')
+			if len(folders) <= i: folders.append(nfold)
+			folders[i] = os.path.abspath(folders[i])
+			if os.path.exists(folders[i])==False:
+				os.mkdir(folders[i])
+				if args['quiet']==False: print('\nCreated {} folder {}'.format(nm,folders[i]))
 
 # check folders 
 		folders = [os.path.abspath(f) for f in folders]
 		for i,f in enumerate(folders):
-			if f=='': raise ValueError('Empty path name for {} folder'.format(DEFAULT_FOLDERS[i]))
-			if os.path.exists(f)==False: raise ValueError('Cannot find {} folder {}'.format(DEFAULT_FOLDERS[i],f)) 
+			if f=='': raise ValueError('Empty path name for {} folder'.format(batch.REDUCTION_FOLDERS[i]))
+			if os.path.exists(f)==False: raise ValueError('Cannot find {} folder {}'.format(batch.REDUCTION_FOLDERS[i],f)) 
 
 # generate log csv and html files and put in qa folder
 		if log_file_prefix=='': log_file_prefix = copy.deepcopy(LOG_FILE_PREFIX_DEFAULT)
@@ -117,13 +126,13 @@ class runBatch():
 			print('\nWARNING: html log file {} and csv log file {} already exists; use --overwrite if you want to overwrite or --rebuild-log to rebuild'.format(log_file_prefix+'.html',log_file_prefix+'.csv'))
 		else:
 			if args['driver_only']==False and args['reduce_only']==False and args['qa_only']==False:
-				dp = process_folder(folders[0])
+				dp = batch.process_folder(folders[0])
 				for x in ['.csv','.html']:
 					if os.path.exists(log_file_prefix+x) and args['overwrite']==False and args['rebuild_log']==False:
 						print('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
 					else:
 						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
-						write_log(dp,log_file_prefix+x)
+						batch.write_log(dp,log_file_prefix+x)
 
 # query to pause and check log
 			if args['no_pause']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
@@ -143,11 +152,11 @@ class runBatch():
 				if os.path.exists(log_file_prefix+'.csv')==True:
 					dp = pandas.read_csv(log_file_prefix+'.csv')
 				else:
-					dp = process_folder(folders[0])
+					dp = batch.process_folder(folders[0])
 					print('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
 				if args['quiet']==False: print('\nGenerating driver file and writing to {}'.format(driver_file))
 #				print(driver_file,folders[0])
-				write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True,exclude_lxd=True)
+				batch.write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True,exclude_lxd=True)
 
 # query to pause and check driver
 			if args['no_pause']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
@@ -164,9 +173,9 @@ class runBatch():
 			# if driver_file=='': driver_file = folders[0]
 			# if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
-			par = read_driver(driver_file)
+			par = batch.read_driver(driver_file)
 			if args['quiet']==False: print('\n\nReducing spectra\n\n')
-			batch_reduce(par,verbose=(not args['quiet']))
+			batch.batch_reduce(par,verbose=(not args['quiet']))
 
 		if args['reduce_only']==True: 
 			print('\n\nReduction completed!\n\n')
@@ -189,7 +198,7 @@ class runBatch():
 		if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 		if os.path.exists(log_file_prefix+'.csv')==False: raise ValueError('Cannot find log file {}'.format(log_file_prefix+'.csv')) 
 
-		makeQApage(driver_file,log_file_prefix+'.csv',verbose=(not args['quiet']))
+		batch.makeQApage(driver_file,log_file_prefix+'.csv',verbose=(not args['quiet']))
 
 		print('\n\nQA page created, please review\n\n')
 
