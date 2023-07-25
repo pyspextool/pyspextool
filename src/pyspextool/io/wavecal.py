@@ -410,6 +410,9 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Write the results
 
+    wavecal = np.float32(wavecal)
+    spatcal = np.float32(spatcal)
+            
     wavecal_hdu = fits.ImageHDU(idl_unrotate(wavecal, rotate))
     spatcal_hdu = fits.ImageHDU(idl_unrotate(spatcal, rotate))
 
@@ -418,7 +421,7 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     # Add the indices
 
     for i in range(norders):
-        idx_hdu = fits.ImageHDU(indices[i])
+        idx_hdu = fits.ImageHDU(np.float32(indices[i]))
         list_hdu.append(idx_hdu)
 
     hdu = fits.HDUList(list_hdu)
