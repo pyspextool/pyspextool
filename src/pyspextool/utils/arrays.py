@@ -1,4 +1,5 @@
 import numpy as np
+import re
 
 
 def find_index(x, x_want, ends_to_nan=False):
@@ -470,6 +471,72 @@ def idl_unrotate(img, direction):
         raise ValueError('Unknown rotation direction.')
         
         
+def numberList(inp,sort=True):
+    '''
+    Purpose
+    -------
+    Converts between a string listing of numbers and an array of integers
+    
+    Parameters
+    ----------
+
+    inp : string or list/numpy.array
+        input as a number list ('45,50-67,69,72-90') or array of integers ([1,2,3,7,8,9])
+
+    sort : bool, default = False
+        set to True to sort the output list (string -> array)
+
+    Outputs
+    -------
+        if input is a string, returns the ist of integers specified by string
+        if input is an array of integers, returns a compressed list of the numbers
+
+    Example
+    -------
+        >>> from pyspextool.utils.arrays import numberList
+        >>> print(numberList([1,2,6,8,9,12,15]))
+            1-2,6,8-9,12,15
+        >>> print(numberList('1-4,9-12'))
+            [1, 2, 3, 4, 9, 10, 11, 12]
+
+    Dependencies
+    ------------
+    numpy
+    re
+
+    '''
+# string --> number list
+    if isinstance(inp,str):
+        numlist = []
+        tmp1 = inp.replace(' ','')
+        tmp2 = re.split('[,;]',tmp1)
+        for a in tmp2:
+            tmp4 = a.split('-')
+            if len(tmp4) > 1: numlist.extend(list(range(int(tmp4[0]),int(tmp4[1])+1)))
+            else: numlist.append(int(tmp4[0]))
+        
+        if sort==True: numlist = sorted(numlist)
+
+# number list --> string
+    elif isinstance(inp,list) or isinstance(inp,np.ndarray) or isinstance(inp,set):
+        tmp = [int(x) for x in inp]
+        tmp = np.array(sorted(list(set(tmp))))
+        diff = np.abs(tmp-np.roll(tmp,1))-1
+        w = np.where(diff > 0)[0]
+        lnum = tmp[0]
+        numlist = str(lnum)
+        if len(w)>1: 
+            for i,j in enumerate(w[1:]):
+                if tmp[j-1]>lnum: numlist+='-{},{}'.format(str(tmp[j-1]),str(tmp[j]))
+                else: numlist+=',{}'.format(str(tmp[j]))
+                lnum = tmp[j]
+        if tmp[-1]!=lnum: numlist+='-{}'.format(str(tmp[-1]))
+
+# don't recognize
+    else: raise ValueError('Could not interpret input {} which is type {}'.format(inp,type(inp)))
+
+# return output
+    return numlist
 
 
 

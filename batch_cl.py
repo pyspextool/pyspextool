@@ -16,7 +16,7 @@ from pyspextool.batch import batch
 
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
-VERSION = '2023 July 25'
+VERSION = '2023 July 26'
 AUTHORS = [
 	'Adam Burgasser',
 	'Jean Marroquin']
@@ -60,6 +60,16 @@ class runBatch():
 			required=False, help='organize the legacy download data files')
 		parser.add_argument('--organize-legacy', action='store_true',default=False,
 			required=False, help='organize the legacy download data files')
+		parser.add_argument('--no-cals', action='store_true',default=False,
+			required=False, help='set to skip calibration file creation')
+		parser.add_argument('--no-extract', action='store_true',default=False,
+			required=False, help='set to skip spectral extraction')
+		parser.add_argument('--no-combine', action='store_true',default=False,
+			required=False, help='set to skip spectral file combination')
+		parser.add_argument('--no-fluxtell', action='store_true',default=False,
+			required=False, help='set to skip flux and telluric correction')
+		parser.add_argument('--no-stitch', action='store_true',default=False,
+			required=False, help='set to skip order stitching')
 		parser.add_argument('--quiet', action='store_true',default=False,
 			required=False, help='set to return minimal feedback')
 		parser.add_argument('--version', action='store_true',default=False,
@@ -174,6 +184,14 @@ class runBatch():
 			# if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 			par = batch.read_driver(driver_file)
+
+# add in additional keywords for specific reduction steps:
+			if args['no_cals']==True: par['CALIBRATIONS']=False
+			if args['no_extract']==True: par['EXTRACT']=False
+			if args['no_combine']==True: par['COMBINE']=False
+			if args['no_fluxtell']==True: par['FLUXTELL']=False
+			if args['no_stitch']==True: par['STITCH']=False
+
 			if args['quiet']==False: print('\n\nReducing spectra\n\n')
 			batch.batch_reduce(par,verbose=(not args['quiet']))
 
