@@ -17,10 +17,8 @@
   <td align="left">
    <ul>
     <li>Source Name: [TARGET_NAME] ([TARGET_TYPE])
-    <li>Coordinate: [COORDINATE] 
-	[<a href="https://aladin.cds.unistra.fr/AladinLite/?target=[DESIGNATION_URL]&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]
-	[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=[DESIGNATION_URL]&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]
-    <li>Standard: [STD_NAME]
+    <li>Coordinate: [COORDINATE] [TARGET_ALADIN_URL] [TARGET_SIMBAD_URL]
+    <li>Standard: [STD_NAME] [STD_SIMBAD_URL]
     <li>Files: target [TARGET_FILES], standard [STD_FILES]
     <li>Airmass: [AIRMASS]
     <li>UT time: [UT_START] to [UT_END]
