@@ -383,3 +383,4 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     if verbose is True:
 
             print('Wrote', os.path.basename(output_fullpath), 'to disk.')
+            print('hello test')
