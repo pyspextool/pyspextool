@@ -27,6 +27,7 @@ import os
 import glob
 import pandas as pd
 import numpy as np
+import re
 import shutil
 import sys
 import yaml
@@ -1077,10 +1078,14 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 
 # final calibrated file (check for presence, otherwise combined file)
 		ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+# fix for distributed file list
+		tmp = re.split('[,-]',sci_param['TARGET_FILES'])
+		fsuf = '{}-{}'.format(tmp[0],tmp[-1])
+
 #		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],driver['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],qa_parameters['PLOT_TYPE']))
-		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],sci_param['TARGET_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 		if len(imfile)==0:
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['TARGET_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 		if len(imfile)>0:
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 		else: ptxt=''
@@ -1092,13 +1097,16 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 
 # combined files
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+# fix for distributed file list
+			tmp = re.split('[,-]',sci_param['{}_FILES'.format(x)])
+			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0: 
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
@@ -1190,7 +1198,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # move all the image files into image folder
 	if image_folder != '':
 		imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'*{}'.format(qa_parameters['PLOT_TYPE'])))
-		for f in imfiles: shutil.copy2(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder))
+		for f in imfiles: shutil.move(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,f))
 
 # copy entire tree to a separate output folder if specified
 # RIGHT NOW JUST COPIES ENTIRE FOLDER; COULD BE DONE MORE SURGICALLY
@@ -1421,12 +1429,16 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 
 #			if spar['MODE'] in ['SXD','ShortXD']:
 
+# fix for distributed file list
+			tmp = re.split('[,-]',spar['TARGET_FILES'])
+			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
+
 # if not present or overwrite, make the file
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES'])))==False or parameters['OVERWRITE']==True:
-				ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)))==False or parameters['OVERWRITE']==True:
+				ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf),
 					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 			else:
-				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']))
+				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 
 			
 			# else:
@@ -1435,12 +1447,17 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 
 # telluric star
 #		if spar['MODE']=='SXD':
+
+# fix for distributed file list
+			tmp = re.split('[,-]',spar['STD_FILES'])
+			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
+
 # if not present or overwrite, make the file
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES'])))==False or parameters['OVERWRITE']==True:
-				ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)))==False or parameters['OVERWRITE']==True:
+				ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf),
 					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
 			else:
-				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']))
+				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 			# else:
 			# 	ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
 			# 		scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
@@ -1463,17 +1480,23 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 
 			if spar['VERBOSE']==True: print('\n\n ** TEMPORARY: RUNNING SIMPLE FLUX CALIBRATION ** \n\n')
 
+# fix for distributed file list
+			tmp = re.split('[,-]',spar['TARGET_FILES'])
+			tsuf = '{}-{}'.format(tmp[0],tmp[-1])
+			tmp = re.split('[,-]',spar['STD_FILES'])
+			csuf = '{}-{}'.format(tmp[0],tmp[-1])
+
 # run telluric correction code
 # CURRENTLY LEAVING OF STANDARD INFORMATION - COULD BE EXTRACTED FROM LOG
 			standard_data = None
 # 			standard_data={'sptype':std_type,'bmag':std_bmag,'vmag':std_vmag}			
 # if not present or overwrite, make the file
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],spar['TARGET_FILES'])))==False or parameters['OVERWRITE']==True:
-				ps.telluric.telluric_correction('{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),spar['STD_NAME'],
-					'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),'{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],spar['TARGET_FILES']),
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)))==False or parameters['OVERWRITE']==True:
+				ps.telluric.telluric_correction('{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf),spar['STD_NAME'],
+					'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf),'{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf),
 					standard_data=standard_data,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])
 			else:
-				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['CALIBRATED_FILE_PREFIX'],spar['TARGET_FILES']))
+				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf))
 
 ## ORDER STITCHING ###
 # NOT YET IMPLEMENTED  #
