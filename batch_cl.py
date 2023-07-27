@@ -166,7 +166,7 @@ class runBatch():
 					print('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
 				if args['quiet']==False: print('\nGenerating driver file and writing to {}'.format(driver_file))
 #				print(driver_file,folders[0])
-				batch.write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True,exclude_lxd=True)
+				batch.write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True)
 
 # query to pause and check driver
 			if args['no_pause']==False and args['driver_only']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
