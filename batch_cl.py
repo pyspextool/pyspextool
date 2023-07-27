@@ -145,7 +145,7 @@ class runBatch():
 						batch.write_log(dp,log_file_prefix+x)
 
 # query to pause and check log
-			if args['no_pause']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
+			if args['no_pause']==False and args['log_only']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
 
 		if args['log_only']==True: 
 			print('\n\nLog files {} and {} created.'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
@@ -169,7 +169,7 @@ class runBatch():
 				batch.write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True,exclude_lxd=True)
 
 # query to pause and check driver
-			if args['no_pause']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
+			if args['no_pause']==False and args['driver_only']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
 
 		if args['driver_only']==True: 
 			print('\n\nDriver file {} created.'.format(driver_file))
@@ -191,6 +191,7 @@ class runBatch():
 			if args['no_combine']==True: par['COMBINE']=False
 			if args['no_fluxtell']==True: par['FLUXTELL']=False
 			if args['no_stitch']==True: par['STITCH']=False
+			if args['overwrite']==True: par['OVERWRITE']=False
 
 			if args['quiet']==False: print('\n\nReducing spectra\n\n')
 			batch.batch_reduce(par,verbose=(not args['quiet']))

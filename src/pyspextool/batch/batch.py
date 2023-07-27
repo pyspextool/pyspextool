@@ -664,7 +664,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	return parameters
 
 
-def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,exclude_lxd=True,verbose=ERROR_CHECKING):
+def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -933,7 +933,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 #############################
 
 
-def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',options={},show_options=False,verbose=ERROR_CHECKING):
+def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log_html_name='log.html',options={},show_options=False,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -991,6 +991,16 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 		driver = copy.deepcopy(driver_input)
 	else: raise ValueError('Do not recognize format of driver input {}'.format(driver_input))
 	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']: qa_parameters[x] = driver[x]
+
+# set up image folder
+	if image_folder!='':
+		image_folder+='/'
+		if os.path.exists(os.path.join(qa_parameters['QA_FOLDER'],image_folder))==False:
+			try: os.mkdir(os.path.join(qa_parameters['QA_FOLDER'],image_folder))
+			except:
+				print('WARNING: could not generate image folder {}; reverting to qa folder {}'.format(image_folder,qa_parameters['QA_FOLDER']))
+				image_folder = ''
+
 
 # if necessary read in log
 	if isinstance(log_input,str)==True:
@@ -1072,7 +1082,7 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 		if len(imfile)==0:
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['TARGET_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 		if len(imfile)>0:
-			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 		else: ptxt=''
 #		ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 		stxt = stxt.replace('[CALIBRATED_FILE]',ptxt)
@@ -1084,13 +1094,13 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],sci_param['{}_FILES'.format(x)],qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0: 
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_COMBINED_FILES]'.format(x),ptxt)
 
@@ -1102,7 +1112,7 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 			for i,f in enumerate(files):
 				if i>0 and np.mod(i,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(f)).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(f))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_SPECTRA_FILES]'.format(x),ptxt)
 
@@ -1115,13 +1125,13 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
-					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 					cnt+=1
 				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
-					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.basename(imfile[0])).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 					cnt+=1
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_TRACE_APERTURE_FILES]'.format(x.split('_')[0]),ptxt)
@@ -1150,8 +1160,8 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
 		if len(imfile)>0: 
 			imfile.sort()
-			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.basename(imfile[0]))
-			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),qa_parameters['IMAGE_WIDTH'],os.path.basename(imfile[0]))
+			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
+			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),qa_parameters['IMAGE_WIDTH'],os.path.basename(os.path.join(image_folder,os.path.basename(imfile[0]))))
 			cnt+=1
 	loopstr+=' </tr>\n</table>\n\n'
 	index_bottom = index_bottom.replace('[FLATS]',loopstr)
@@ -1165,7 +1175,7 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_shift.pdf'.format(cs)))
 		if len(imfile)>0: 
 			imfile.sort()
-			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.basename(imfile[0]),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.basename(imfile[0]))
+			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
 			cnt+=1
 	loopstr+=' </tr>\n</table>\n'
 	index_bottom = index_bottom.replace('[WAVECALS]',loopstr)
@@ -1177,10 +1187,14 @@ def makeQApage(driver_input,log_input,output_folder='',log_html_name='log.html',
 		with open(outfile,'w') as f: f.write(output_text)
 	except: raise ValueError('Unable to write QA page to {}; check path and permissions'.format(outfile))
 
-# copy everything to a separate output folder if specified
+# move all the image files into image folder
+	if image_folder != '':
+		imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'*{}'.format(qa_parameters['PLOT_TYPE'])))
+		for f in imfiles: shutil.copy2(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder))
+
+# copy entire tree to a separate output folder if specified
 # RIGHT NOW JUST COPIES ENTIRE FOLDER; COULD BE DONE MORE SURGICALLY
-	if output_folder=='': output_folder = qa_parameters['QA_FOLDER']
-	if output_folder!=qa_parameters['QA_FOLDER']:
+	if output_folder!='' and output_folder!=qa_parameters['QA_FOLDER']:
 		if os.path.exists(output_folder)==True: 
 			try: shutil.copytree(qa_parameters['QA_FOLDER'],output_folder)
 			except: 
