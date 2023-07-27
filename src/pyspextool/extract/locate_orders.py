@@ -3,6 +3,7 @@ import matplotlib.pyplot as pl
 
 from scipy import ndimage
 from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_image import plot_image
 
@@ -85,30 +86,11 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
         bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for
         the top of said order.
 
-    plotinfo : dict
-        `'guess_positions'`: list
-            An (norders,) list where each element is a two-element list 
-            giving the (x,y) position of the guess position
-
-        `'x'` : list
-            An (2*norders,) list where each element is the x positions of 
-            either the top or the bottom of an order.
-
-        `'y'` : list
-            An (2*norders,) list where each element is the x positions of 
-            either the top or the bottom of an order.
-
-        `'goodbad'` : list
-            An (2*norders,) list where each element is the x positions of 
-            either the top or the bottom of an order.
-
-        `'coefficients'` : list
-            An (2*norders,) list where each element is (ncoeffs,) ndarray of 
-            the polynomial coefficients of the top or bottom of an order.  
-
-    plotnum : int or None
-        The plot number if qa_plot is True.
-
+    xranges : numpy.ndarray
+        An (norders,2) array giving the columns where the orders fall entirely.
+        xranges[0,0] is the left column of the order nearest the bottom of the 
+        array and xranges[0,1] is the right column of the same order.
+        
     Notes
     -----
         The IDL sobel function is used to enhance the edges of the orders.
@@ -170,7 +152,8 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
     halfwin = int(com_width / 2.)
 
     edgecoeffs = np.empty((norders, 2, poly_degree + 1))
-
+    xranges = np.empty((norders,2),dtype=int)
+    
     # Sobel the image
 
     scl = np.max(img)
@@ -310,6 +293,15 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
 
         edgecoeffs[i, :, :] = tmp
 
+        #
+        # Now confirm the orders fall on the arrays within search_ranges
+        #
+
+        xs = np.arange(search_ranges[i,0],search_ranges[i,1]+1)
+        top = poly_1d(xs,edgecoeffs[i,1,:])
+        z = top <= nrows-1
+        xranges[i,:] = [np.min(xs[z]),np.max(xs[z])]
+            
     # Make the plotinfo dictionary
 
     plotinfo = {'guess_positions': plguesspos, 'x': plcols, 'y': pledges,
@@ -322,8 +314,8 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
     if qa_fileinfo is not None:
 
         plot_image(img, file_info=qa_fileinfo, locateorders_plotinfo=plotinfo)
-                
-    return edgecoeffs
+
+    return edgecoeffs, xranges
 
 
 def find_top_bot(fcol, rownum, imgcol, sobcol, yguess, imgguess, frac, halfwin,
