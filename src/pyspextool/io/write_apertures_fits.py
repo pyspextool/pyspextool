@@ -1,12 +1,53 @@
 import os
 from astropy.io import fits
 import numpy as np
-
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.split_text import split_text
 
+def write_apertures_fits(spectra: list, xranges: np.ndarray, aimage: str, sky: str, 
+                         flat: str, naps: int, 
+                         orders: list[int | list[int] | np.ndarray],
+                         header_info: dict, aperture_positions: np.ndarray, 
+                         aperture_radii: list[int | float | np.ndarray],
+                         plate_scale: float, slith_pix: float, slith_arc: float, slitw_pix: float,
+                         slitw_arc: float, resolving_power: float, xunits: str, yunits: str,
+                         latex_xunits: str, latex_yunits: str, latex_xlabel: str,
+                         latex_ylabel: str, version, output_fullpath: str,
+                         wavecalinfo: list[dict | None] = None, 
+                         psbginfo=None, xsbginfo=None,
+                         optimal_info=None, 
+                         badpixel_info: list[dict | None]=None,
+                         lincormax: None=None, overwrite: bool=True, verbose:bool=True):
+                         
 
-def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
+    check_apertures_parameters(aimage, sky, flat, naps, orders,
+                           header_info, aperture_positions, aperture_radii,
+                         plate_scale, slith_pix, slith_arc, slitw_pix,
+                         slitw_arc, resolving_power, xunits, yunits,
+                         latex_xunits, latex_yunits, latex_xlabel,
+                         latex_ylabel, version, output_fullpath,
+                         wavecalinfo=wavecalinfo, psbginfo=psbginfo, xsbginfo=xsbginfo,
+                         optimal_info=optimal_info, badpixel_info=badpixel_info,
+                         lincormax=lincormax, overwrite=overwrite, verbose=verbose)
+
+    aperature_array = create_aperture_array(spectra, naps, orders)
+
+    aperature_header = create_aperature_header(aimage, sky, flat, naps, orders,
+                                               header_info, aperture_positions, aperture_radii,
+                         plate_scale, slith_pix, slith_arc, slitw_pix,
+                         slitw_arc, xunits, yunits,
+                         latex_xunits, latex_yunits, latex_xlabel,
+                         latex_ylabel, version, output_fullpath,
+                         wavecalinfo, xsbginfo,
+                         optimal_info, badpixel_info)
+
+    write_fits(aperature_array, aperature_header, output_fullpath, xsbginfo=xsbginfo, 
+               overwrite=overwrite, verbose=verbose)
+
+    return
+
+
+def check_apertures_parameters(spectra, xranges, aimage, flat, naps, orders,
                          header_info, aperture_positions, aperture_radii,
                          plate_scale, slith_pix, slith_arc, slitw_pix,
                          slitw_arc, resolving_power, xunits, yunits,
@@ -15,23 +56,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
                          wavecalinfo=None, psbginfo=None, xsbginfo=None,
                          optimal_info=None, badpixel_info=None,
                          lincormax=None, overwrite=True, verbose=True):
-
-    """
-    To write a spextool spectral FITS file to disk
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    None.  Writes FITS files to disk.
-
-
-    """
-
-    #
-    # Check parameters
-    #
+    
     check_parameter('write_apertures_fits', 'spectra', spectra, 'list')
 
     check_parameter('write_apertures_fits', 'xranges', xranges, 'ndarray')
@@ -108,12 +133,27 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     check_parameter('write_apertures_fits', 'verbose', verbose,
                     'bool')
 
-    #    
-    # Get set up
-    #
+    return
+
+
+def create_aperture_array(spectra,  naps, orders) -> np.ndarray:
+
+    """
+    To write a spextool spectral FITS file to disk
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    None.  Writes FITS files to disk.
+
+
+    """
 
     orders = np.asarray(orders)
     norders = len(orders)
+
 
     #
     # Get the list of spectra into an array format
@@ -138,11 +178,18 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         array[l, :, 0:npixels[l]] = slice
         l += 1
 
-    #
-    # Now write the file(s) to disk
-    #
+    return array
 
-    # Create the headers
+
+def create_aperature_header(aimage, sky, flat, naps, orders,
+                         header_info, aperture_positions, aperture_radii,
+                         plate_scale, slith_pix, slith_arc, slitw_pix,
+                         slitw_arc, xunits, yunits,
+                         latex_xunits, latex_yunits, latex_xlabel,
+                         latex_ylabel, version, output_fullpath,
+                         wavecalinfo, xsbginfo,
+                         optimal_info, badpixel_info):
+
 
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
@@ -192,6 +239,8 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (None, ' Wavelength type')
         
+    orders = np.asarray(orders)
+    norders = len(orders)
 
     hdr['NORDERS'] = (norders, ' Number of orders')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders')
@@ -303,22 +352,38 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     for hist in history:
         hdr['HISTORY'] = hist
 
-    # Set the file name for the spectra file and write
+
+    # Set the file name for the spectra file
 
     hdr['FILENAME'] = (os.path.basename(output_fullpath)+'.fits', ' File name')
 
-    fits.writeto(output_fullpath + '.fits', array, hdr, overwrite=overwrite)
+    return hdr
 
-    #
-    # Update the user
-    #
 
-    if verbose is True:
+def write_fits(spectrum, hdr, output_fullpath, overwrite=False, verbose=True):
 
-        if xsbginfo is None:
-            print('Wrote', os.path.basename(output_fullpath)+'.fits',
-                  'to disk.')
+    # Put the header data in the primary HDU
+    hdu0 = fits.PrimaryHDU(header = hdr)
+    
+    # Put the spectrum in the second HDU
+    hdu1 = fits.BinTableHDU(data=spectrum)
+    hdu1.header['EXTNAME'] = 'SPECTRUM'
 
-        if xsbginfo is not None:
-            print('Wrote', os.path.basename(output_fullpath)+'.fits', 'and',
-                  os.path.basename(output_fullpath)+'.fits', 'to disk.')
+    spectrum_mef =  fits.HDUList([hdu0, hdu1])
+
+    fits_filename = output_fullpath + '.fits'
+
+    try:
+        spectrum_mef.writeto(fits_filename, overwrite=overwrite)
+        if verbose:
+            print(f'Wrote {os.path.basename(fits_filename)} to disk.')
+    except:
+        raise Exception(f'Could not write {os.path.basename(fits_filename)} to disk.')
+
+        # if xsbginfo is None:
+        #     print('Wrote', os.path.basename(output_fullpath)+'.fits',
+        #           'to disk.')
+
+        # if xsbginfo is not None:
+        #     print('Wrote', os.path.basename(output_fullpath)+'.fits', 'and',
+        #           os.path.basename(output_fullpath)+'.fits', 'to disk.')
