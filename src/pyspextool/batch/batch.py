@@ -8,8 +8,6 @@
 #		--> combine spectral groups --> telluric correction --> stitch (SXD/LXD)
 #
 # REMAINING TASKS
-# - generate final source lists (fixed vs moving) with simbad/2mass information
-# - test individual extraction options
 # - xtellcor integration
 # - stitching integration
 # - finish docstrings
@@ -866,10 +864,14 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 			dpcals = dpcal[dpcal['MODE']==m]
 			if len(dpcals)==0: 
 				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
-				ical=0
+				cs = cal_sets.split(',')[0]
 			else:
-				ical = np.argmin(np.abs(calf1-np.median(dpsrc['FILE NUMBER'])))
-			line+='\tflat{}.fits\twavecal{}.fits'.format(cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+				cnum = np.array(dpcals['FILE NUMBER'])
+				cnum1 = cnum[np.where(np.abs(cnum-np.roll(cnum,1))>1)]
+				cnum2 = cnum[np.where(np.abs(cnum-np.roll(cnum,-1))>1)]
+				ical = np.argmin(np.abs(cnum1-np.median(dpsrc['FILE NUMBER'])))
+				cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
+			line+='\tflat{}.fits\twavecal{}.fits'.format(cs,cs)
 
 # assign flux cals based on closest in airmass (0.2), time (2 hr) and position (10")
 			dpflux = dpc[dpc['TARGET_TYPE']=='standard']
@@ -892,8 +894,10 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 					line+=ftxt
 				else:				
 					if len(dpcals)>0: 
-						ical = np.argmin(np.abs(calf1-np.median(dpfluxs['FILE NUMBER'])))
-					line+='\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),numberList(fnum),cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+						ical = np.argmin(np.abs(cnum1-np.median(dpfluxs['FILE NUMBER'])))
+#						ical = np.argmin(np.abs(np.array(dpcals['FILE NUMBER'])-np.median(dpfluxs['FILE NUMBER'])))
+						cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
+					line+='\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),numberList(fnum),cs,cs)
 
 					# if len(fnum)==2: 
 					# 	line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
@@ -1198,7 +1202,9 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # move all the image files into image folder
 	if image_folder != '':
 		imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'*{}'.format(qa_parameters['PLOT_TYPE'])))
-		for f in imfiles: shutil.move(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,f))
+		for f in imfiles: 
+#			print('\n',qa_parameters['QA_FOLDER'],image_folder,f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,f))
+			shutil.move(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,os.path.basename(f)))
 
 # copy entire tree to a separate output folder if specified
 # RIGHT NOW JUST COPIES ENTIRE FOLDER; COULD BE DONE MORE SURGICALLY
