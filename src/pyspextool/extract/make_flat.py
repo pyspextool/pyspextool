@@ -227,13 +227,16 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     if verbose is True:
         print('Locating the orders...')
 
-    edgecoeffs = locate_orders(med, modeinfo['guesspos'],
-                                   modeinfo['xranges'], modeinfo['step'],
-                                   modeinfo['slith_range'],
-                                   modeinfo['edgedeg'], modeinfo['ybuffer'],
-                                   modeinfo['flatfrac'], modeinfo['comwidth'],
-                                   qa_plot=qa_plot, qa_fileinfo=qa_fileinfo,
-                                   qa_plotsize=qa_plotsize)
+    edgecoeffs, xranges = locate_orders(med, modeinfo['guesspos'],
+                                        modeinfo['xranges'], modeinfo['step'],
+                                        modeinfo['slith_range'],
+                                        modeinfo['edgedeg'],
+                                        modeinfo['ybuffer'],
+                                        modeinfo['flatfrac'],
+                                        modeinfo['comwidth'],
+                                        qa_plot=qa_plot,
+                                        qa_fileinfo=qa_fileinfo,
+                                        qa_plotsize=qa_plotsize)
 
     #
     # Normalize the flat if requested
@@ -244,7 +247,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
         if verbose is True:
             print('Normalizing the median image...')
 
-        nimg, nvar, rms = normalize_flat(med, edgecoeffs, modeinfo['xranges'],
+        nimg, nvar, rms = normalize_flat(med, edgecoeffs, xranges,
                                          modeinfo['slith_arc'],
                                          modeinfo['nxgrid'],
                                          modeinfo['nygrid'],
@@ -268,7 +271,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     if qa_plot is True:
 
         orders_plotinfo = {'edgecoeffs': edgecoeffs,
-                           'xranges': modeinfo['xranges'],
+                           'xranges': xranges,
                            'orders': modeinfo['orders']}
         
         plot_image(nimg, orders_plotinfo=orders_plotinfo, plot_size=qa_plotsize)
@@ -276,7 +279,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     if qa_file is True:
 
         orders_plotinfo = {'edgecoeffs': edgecoeffs,
-                           'xranges': modeinfo['xranges'],
+                           'xranges': xranges,
                            'orders': modeinfo['orders']}
 
         qa_fileinfo = {'figsize': (6,6),
@@ -318,7 +321,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     resolvingpower = modeinfo['rpppix'] / slitw_pix
 
     write_flat(nimg, nvar, flag, average_header, modeinfo['rotation'],
-               modeinfo['orders'], edgecoeffs, modeinfo['xranges'],
+               modeinfo['orders'], edgecoeffs, xranges,
                modeinfo['ybuffer'], modeinfo['ps'], modeinfo['slith_pix'],
                modeinfo['slith_arc'], slitw_pix, slitw_arc, mode, rms,
                resolvingpower, setup.state['version'], history,
