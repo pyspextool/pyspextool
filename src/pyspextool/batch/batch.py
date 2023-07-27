@@ -639,6 +639,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 # add optional parameters			
 			opars = list(filter(lambda x: ('=' in x), rpars))
 			new_opar = dict([l.strip().split('=') for l in opars])
+			for k in list(new_opar.keys()): new_opar[k.upper()] = new_opar.pop(k)
 			spar.update(new_opar)
 # some instrument specific adjustments
 # THIS MIGHT NEED TO BE MANAGED THROUGH OTHER PYSPEXTOOL FUNCTIONS
@@ -1354,6 +1355,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 
+			print(spar)
 # SCIENCE TARGET
 # reduce the first pair of targets
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
