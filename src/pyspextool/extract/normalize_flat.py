@@ -6,12 +6,14 @@ from scipy import interpolate
 from pyspextool.extract.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.extract.rectify_order import rectify_order
 from pyspextool.fit.fiterpolate import *
+from pyspextool.io.check import check_parameter
 from pyspextool.utils.math import moments
 from pyspextool.utils.loop_progress import loop_progress
 
 
 def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
                    var=None, oversamp=1, ybuffer=0, verbose=False):
+    
     """
     Normalize spectral flat field image
 
@@ -32,7 +34,7 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
         bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for
         the top of said order.
 
-    xranges : array_like of float
+    xranges : ndarray of int
         An (norders,2) array giving the column numbers over which to
         operate.  xranges[0,0] gives the starting column number for the
         order nearest the bottom of `img` and xranges[0,1] gives the end
@@ -75,15 +77,30 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
     to create a surface model and then resamples the model back onto the
     original pixels.
 
-
-    Examples
-    --------
-    later
-
     """
 
-    # Get basic info and do basic things
+    #
+    # Check parameters
+    #
 
+    check_parameter('normalize_flat','img', img, 'ndarray', 2)
+
+    check_parameter('normalize_flat','edgecoeffs', edgecoeffs, 'ndarray')
+
+    check_parameter('normalize_flat','xranges', xranges, 'ndarray')
+
+    check_parameter('normalize_flat','slith_arc', slith_arc, ['int','float'])
+
+    check_parameter('normalize_flat','nxgrid', nxgrid, 'int')
+
+    check_parameter('normalize_flat','nygrid', nygrid, 'int')
+
+    check_parameter('normalize_flat','ybuffer', ybuffer, 'int')                        
+
+    #
+    # Get basic info and do basic things
+    #
+    
     nrows, ncols = img.shape
 
     ndimen = edgecoeffs.ndim
@@ -96,8 +113,10 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
     nvar = np.full((nrows, ncols), np.nan) if var is not None else None
     rms = np.empty(norders)
 
+    #
     # Start the loop
-
+    #
+    
     for i in range(norders):
 
         #
