@@ -1,3 +1,5 @@
+import copy
+
 def split_text(text, length=68):
 
     """
@@ -33,6 +35,11 @@ def split_text(text, length=68):
     Based on Spextool IDL program mc_splittext.pro.
 
     """
+
+    if isinstance(text,list):
+        mtext = ''
+        for t in text: mtext+=t
+        text = copy.deepcopy(mtext)
 
     ntext = text
 
