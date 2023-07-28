@@ -1,4 +1,4 @@
-name: pyspextool_test
+name: pyspextool
 channels:
   - defaults
 dependencies:
