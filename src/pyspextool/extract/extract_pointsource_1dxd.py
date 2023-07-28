@@ -470,7 +470,8 @@ def extract_pointsource_1dxd(image, variance, order_mask, orders, wavecal,
                 # Check the bitmask for linearity
 
                 z_linearity = slit_lmm[z_aperture] == 1
-                if sum(z_linearity) is True:
+
+                if sum(z_linearity) > 0:
                     spectrum_mask[k, j] = 1
 
                 # Check bad pixels

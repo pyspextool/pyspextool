@@ -214,7 +214,8 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
             fig = plot_aperture(sub_spectra, i, ytype, colors, line_width,
                                     latex_xlabel, latex_ylabel, latex_yunits,
                                     yrange_buffer, figsize, plot_numbers[i],
-                                    orders=orders, title=title)
+                                    orders=orders, title=title,
+                                    flag_linearity=flag_linearity)
 
             if extension == '.pdf':
 
@@ -265,7 +266,8 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
             number = plot_aperture(sub_spectra, i, ytype, colors, line_width,
                                    latex_xlabel, latex_ylabel, latex_yunits,
                                    yrange_buffer, plot_size, plot_numbers[i],
-                                   orders=orders, title=title)
+                                   orders=orders, title=title,
+                                   flag_linearity=flag_linearity)
             pl.show()
             pl.pause(1)
             plot_numbers[i] = number
@@ -276,7 +278,7 @@ def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
         
 def plot_aperture(spectra, aperture, ytype, colors, line_width, latex_xlabel,
                   latex_ylabel, latex_yunits, yrange_buffer, figure_size,
-                  plot_number, orders=None, title=None):
+                  plot_number, orders=None, title=None, flag_linearity=False):
 
     """
     Actually does the plot independent of device.
@@ -425,6 +427,12 @@ def plot_aperture(spectra, aperture, ytype, colors, line_width, latex_xlabel,
 
                 ax.set_title('Aperture '+str(aperture+1))
 
+        if flag_linearity is True:
+
+            z  = spectra[i,3,:] == 1
+            ax.plot(xvalues[z], yvalues[z], marker='.',color='red',
+                    linestyle='')            
+                            
     #
     # Get plot number
     #
