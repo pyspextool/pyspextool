@@ -10,6 +10,7 @@ from pyspextool.utils.arrays import idl_rotate
 
 
 def read_line_list(file, delta_to_microns=False):
+    
     """
     To read a Spextool line list into memory.
 
@@ -51,10 +52,6 @@ def read_line_list(file, delta_to_microns=False):
     The wavelengths are given in microns and the delta_wavelenths are
     given in Angstroms.
 
-    Examples
-    --------
-    later
-
     """
 
     #
@@ -62,6 +59,7 @@ def read_line_list(file, delta_to_microns=False):
     #
 
     check_parameter('read_line_list', 'file', file, 'str')
+
     check_parameter('read_line_list', 'delta_to_microns', delta_to_microns,
                     'bool')
 
@@ -185,10 +183,6 @@ def read_wavecal_file(file):
 
         `"spatfmt"` : str
             The format string for spatial angles.
-
-    Examples
-    --------
-    later
 
     """
 
@@ -325,6 +319,25 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
                      wavecal, spatcal, indices, rotate, flatname, oname,
                      version, xdinfo=None, stored_solution=False,
                      overwrite=True):
+
+    """
+    To write a Spextool 1D (or 1DXD) wavecal file to disk.
+
+    Parameters
+    ----------
+    ncols : int
+        The number of columns of the array
+
+    nrows : int
+        The number of columns of the array
+    
+    orders : ndarray of int
+        An (norders,) int array of the order numbers.  By Spextool convention,
+        orders[0] is the order closest to the bottom of the array.
+
+
+
+    """
     # Get basic things
 
     norders = len(orders)

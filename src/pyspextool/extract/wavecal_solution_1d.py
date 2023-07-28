@@ -186,9 +186,6 @@ def do_1dxdplot(figsize, residuals, residual_orders, residual_columns, orders,
 
     axes1 = fig.add_subplot(211)
     axes2 = fig.add_subplot(212)        
-    
-#    fig, (axes1, axes2) = pl.subplots(2, figsize=figsize,
-#                                      constrained_layout=False)
 
     # Get the colormap set up
             

@@ -252,18 +252,18 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     # Create wavecal and spatcal images
 
-    wavecal, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
-                                             flatinfo['nrows'],
-                                             flatinfo['edgecoeffs'],
-                                             flatinfo['xranges'],
-                                             flatinfo['slith_arc'])
+    wavecal_pixels, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
+                                                    flatinfo['nrows'],
+                                                    flatinfo['edgecoeffs'],
+                                                    flatinfo['xranges'],
+                                                    flatinfo['slith_arc'])
 
     # Extract the "arc"                                
 
     appos = np.full((np.size(flatinfo['orders']), 1), flatinfo['slith_arc'] / 2)
 
     spectra = extract_extendedsource_1dxd(med, med, flatinfo['ordermask'],
-                                          flatinfo['orders'], wavecal,
+                                          flatinfo['orders'], wavecal_pixels,
                                           spatcal, appos,
                                           wavecalinfo['apradius'],
                                           linmax_bitmask=None,
@@ -304,29 +304,19 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     # Are we using the stored solution?
     #
 
-    # Let's check to see what the wavecal file says
-
+    # Let's check to see what the wavecal file says as a function of the slit
+    # width
     
     z = wavecalinfo['slits'] == flatinfo['slitw_arc'] 
 
-    use_stored_solution_wavecal = bool(wavecalinfo['usestored'][0])
-
-#    print(wavecalinfo['slits'])
-#    print(flatinfo['slitw_arc'])
-#    print(z)
-
     use_stored_solution_wavecal = bool(wavecalinfo['usestored'][z])
 
-#    print(use_stored_solution_wavecal)
-#    print(use_stored_solution)
 
-
+    # Now compare to the user request
+    
     
     use_stored_solution = use_stored_solution_wavecal or use_stored_solution
 
-#    print(use_stored_solution)
-    
-#    return
     
     if use_stored_solution is False:
 
@@ -342,10 +332,10 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         lineinfo = read_line_list(filename, delta_to_microns=True)
 
         #  Determine the guess position and search range for each
-
+    
         lineinfo = get_line_guess_position(wavecalinfo['spectra'],
                                            wavecalinfo['orders'],
-                                           flatinfo['xranges'], lineinfo)
+                                           wavecalinfo['xranges'], lineinfo)
 
         # Add the shift offset to the results
 
@@ -368,12 +358,12 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
             qafileinfo = None
 
         # Find the lines
-
+    
         lineinfo = find_lines_1dxd(spectra['spectra'], wavecalinfo['orders'],
                                    lineinfo, flatinfo['slitw_pix'],
                                    qafileinfo=qafileinfo,
                                    verbose=verbose)
-    
+
         #
         # Let's do the actual calibration
         #
@@ -411,7 +401,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
                                        qa_plot=qa_plot,
                                        qa_plotsize=qa_residual_plotsize,
                                        verbose=verbose)
-    
+
     else:
 
         if verbose:
@@ -424,6 +414,10 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
                     'ngood': wavecalinfo['ngood'],
                     'nbad': wavecalinfo['nbad']}
 
+        # Offset the pixel values to account for the shift. 
+        
+        wavecal_pixels -=offset
+            
     #
     # Creating rectification indices
     #
@@ -437,7 +431,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
         indices.append(idxs)
 
-        #
+    #
     # Write the wavecal file to disk.
     #
 
@@ -459,7 +453,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
                      solution['covar'], wavecalinfo['dispdeg'],
                      solution['rms'] * 1e4, solution['nlines'],
                      solution['ngood'], solution['nbad'],
-                     wavecal, spatcal, indices, flatinfo['rotation'],
+                     wavecal_pixels, spatcal, indices, flatinfo['rotation'],
                      flat_file, os.path.join(setup.state['cal_path'],
                                              output_name + '.fits'),
                      setup.state['version'],

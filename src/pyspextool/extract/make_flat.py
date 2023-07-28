@@ -274,7 +274,8 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
                            'xranges': xranges,
                            'orders': modeinfo['orders']}
         
-        plot_image(nimg, orders_plotinfo=orders_plotinfo, plot_size=qa_plotsize)
+        plot_image(nimg, mask=flag, orders_plotinfo=orders_plotinfo,
+                   plot_size=qa_plotsize)
             
     if qa_file is True:
 
@@ -287,7 +288,8 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
                        'filename': output_name + '_normalized',
                        'extension': setup.state['qa_extension']}
 
-        plot_image(nimg, orders_plotinfo=orders_plotinfo, file_info=qa_fileinfo)
+        plot_image(nimg, mask=flag, orders_plotinfo=orders_plotinfo,
+                   file_info=qa_fileinfo)
 
     #
     # Write the file to disk
