@@ -14,6 +14,7 @@ from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.wavecal import read_wavecal_fits
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.arrays import idl_rotate
+from pyspextool.utils.math import combine_flag_stack
 from pyspextool.fit.polyfit import poly_1d
 
 
@@ -293,6 +294,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
 
         extract.state['reductionmode'] = reduction_mode
         extract.state['flat'] = flatinfo['flat']
+        extract.state['bitmask'] = flatinfo['bitmask']        
         extract.state['ordermask'] = flatinfo['ordermask']
         extract.state['edgecoeffs'] = flatinfo['edgecoeffs']
         extract.state['edgedeg'] = flatinfo['edgedeg']
@@ -449,6 +451,10 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         np.divide(img, extract.state['flat'], out=img)
         np.divide(var, extract.state['flat'] ** 2, out=var)
 
+        # Combine the masks
+
+        mask = combine_flag_stack(np.stack((extract.state['bitmask'],mask)))
+    
     else:
 
         if verbose is True:
@@ -458,6 +464,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
 
     extract.state['workimage'] = img
     extract.state['varimage'] = var
+    extract.state['maskimage'] = mask    
     extract.state['hdrinfo'] = hdrinfo
 
     #
