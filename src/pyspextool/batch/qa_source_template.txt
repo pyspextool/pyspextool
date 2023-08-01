@@ -16,15 +16,16 @@
 [CALIBRATED_FILE]
   <td align="left">
    <ul>
-    <li>Source Name: [TARGET_NAME] ([TARGET_TYPE])
+    <li>Source Name: [TARGET_NAME] ([TARGET_TYPE]) [SBDB]
     <li>Coordinate: [COORDINATE] [TARGET_ALADIN_URL] [TARGET_SIMBAD_URL]
-    <li>Standard: [STD_NAME] [STD_SIMBAD_URL]
-    <li>Files: target [TARGET_FILES], standard [STD_FILES]
-    <li>Airmass: [AIRMASS]
+    <li>Standard: [STD_NAME] [STD_TYPE] [STD_SIMBAD_URL]
+    <li>Target Airmass: [AIRMASS]
+    <li>Standard Airmass: [STD_AIRMASS]
     <li>UT time: [UT_START] to [UT_END]
     <li>Total Integration: [INTEGRATION] sec
     <li>Mode: [MODE]
     <li>Slit: [SLIT]
+    <li>Files: Target [TARGET_FILES], Standard [STD_FILES]
    </ul>
   </td>
  </tr>

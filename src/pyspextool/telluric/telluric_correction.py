@@ -2,6 +2,7 @@ import os
 import numpy as np
 from astropy.io import fits
 from astroquery.simbad import Simbad
+from astropy.table.table import Table
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
@@ -223,10 +224,11 @@ def telluric_correction(object_file, standard, standard_file, output_name,
             Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
         table = Simbad.query_object(standard)
 
-        standard_name = table['MAIN_ID'][0]
-        standard_sptype = table['SP_TYPE'][0]
-        standard_vmag = table['FLUX_V'][0]
-        standard_bmag = table['FLUX_B'][0]         
+        if isinstance(table,Table):
+            standard_name = table['MAIN_ID'][0]
+            standard_sptype = table['SP_TYPE'][0]
+            standard_vmag = table['FLUX_V'][0]
+            standard_bmag = table['FLUX_B'][0]         
 
     else:
 
@@ -234,7 +236,13 @@ def telluric_correction(object_file, standard, standard_file, output_name,
         standard_sptype = standard_data['sptype']
         standard_vmag = standard_data['bmag']
         standard_bmag = standard_data['vmag']
-            
+
+    # error check standard information - what do we do if there is no standard data?
+    try:
+        type(standard_name)
+    except:
+        raise ValueError('Standard name "{}"" was not found in SIMBAD; provided correct name or provide the optional standard_data keyword with a dictionary containing keys "sptype", "bmag", and "vmag"'.format(standard))
+
     #
     # Let's do some checks to ensure 1) the standard has only one aperture and
     # 2) the standard has the orders required.
