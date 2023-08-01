@@ -35,11 +35,6 @@ def get_line_guess_position(spectra, orders, xranges, line_info):
     Examples
     --------
 
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program XS
-
     """
     # Get basic information
 
@@ -57,7 +52,7 @@ def get_line_guess_position(spectra, orders, xranges, line_info):
     for i in range(norders):
 
         # Find the lines for each order, if none, continue
-        
+
         z  = line_info['order'] == orders[i]
         if np.sum(z) == 0:
             continue

@@ -119,19 +119,6 @@ def read_flat_fits(flatfile):
         ``"rms"``
             list of float -> (norders,) list of RMS values for each order.
 
-    Notes
-    -----
-    None
-
-    Examples
-    --------
-    later
-
-    Modification History
-    --------------------
-    2022-06-28 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_readflat.pro.
-
     """
 
     # Read the data 
@@ -151,7 +138,7 @@ def read_flat_fits(flatfile):
 
     flatinfo = {'flat': flat}
     flatinfo.update({'var': var})
-    flatinfo.update({'bitmask': mask})
+    flatinfo.update({'bitmask': np.uint8(mask)})
 
     shape = np.shape(flat)
     flatinfo.update({'ncols': shape[1]})
