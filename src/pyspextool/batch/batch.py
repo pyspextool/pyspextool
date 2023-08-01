@@ -1355,7 +1355,6 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 
-			print(spar)
 # SCIENCE TARGET
 # reduce the first pair of targets
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
