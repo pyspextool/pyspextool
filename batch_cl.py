@@ -16,7 +16,7 @@ from pyspextool.batch import batch
 
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
-VERSION = '2023 July 26'
+VERSION = '2023 July 31'
 AUTHORS = [
 	'Adam Burgasser',
 	'Jean Marroquin']
