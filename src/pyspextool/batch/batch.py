@@ -525,6 +525,9 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
 	except: print('WARNING: Unable to match targets to SIMBAD via XMatch; check internet connection')
 
+# add on a NOTES column
+	dpout['NOTES'] = ['']*len(dpout)
+	
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
 	if ftype in ['xls','xlsx']: dpout.to_excel(parameters['FILENAME'],index=False)	
@@ -849,6 +852,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	f.write('\n#\tMode\tTarget Type\tTarget Name\tTarget Prefix\tTarget Files\tTarget Flat\tTarget Wavecal\tStd Name\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
 	for n in tnames:
 		dps = dpc[dpc['TARGET_NAME']==n]
+		dps = dps[dps['TARGET_TYPE']=='target']
 		src_coord = SkyCoord(dps['RA'].iloc[0]+' '+dps['DEC'].iloc[0],unit=(u.hourangle, u.deg))
 
 # loop over modes, dropping ignored modes
@@ -921,6 +925,13 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 # all other options
 		# if len(extraction_options)>0:
 		# 	for k in list(extraction_options.keys()): line+='\t{}={}'.format(k,extraction_options[k])
+
+# space for notes
+
+	f.write('\n# Notes\n')
+	for i in range(5): f.write('# \n')
+
+# done!
 	f.close()
 
 # report out location
