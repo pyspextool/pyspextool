@@ -1,16 +1,14 @@
 import numpy as np
-import os
-from astropy.io import fits
-
+from scipy.interpolate import interp1d
+from pyspextool.extract.make_aperture_mask import make_aperture_mask
+from pyspextool.fit.polyfit import poly_fit_1d, poly_1d
+from pyspextool.utils.arrays import make_image_indices, trim_nan
+from pyspextool.utils.loop_progress import loop_progress
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
-from pyspextool.extract.extract_pointsource_1dxd import extract_pointsource_1dxd
-from pyspextool.extract.extract_extendedsource_1dxd import extract_extendedsource_1dxd
 from pyspextool.io.check import check_parameter
-from pyspextool.io.write_apertures_fits import write_apertures_fits
-from pyspextool.plot.plot_spectra import plot_spectra
-from pyspextool.io.check import check_parameter
-from pyspextool.utils.split_text import split_text
+from pyspextool.extract.profiles import make_2d_profile
+from pyspextool.utils.math import moments
 
 
 def extract_apertures(qa_plot:bool=None, qa_plotsize:tuple=(10, 6), qa_file:bool=None,
@@ -103,13 +101,13 @@ def extract_apertures(qa_plot:bool=None, qa_plotsize:tuple=(10, 6), qa_file:bool
     optimal_extraction = True if extract.state['psfradius'] is not None else \
       False
         
-    if extract.state['type'] == 'ps':
+    if extract.state['type'] == 'ps':  # Extract point sour
         spectra = extract_pointsource(fix_bad_pixels=fix_bad_pixels, use_mean_profile=use_mean_profile,
                                       bad_pixel_thresh=bad_pixel_thresh, optimal_extraction=optimal_extraction,
                                       verbose=verbose)
       
 
-    else:
+    else:  # Extract extended source
 
         #
         # ======================= Extended Source ===========================
@@ -141,16 +139,18 @@ def extract_apertures(qa_plot:bool=None, qa_plotsize:tuple=(10, 6), qa_file:bool
     # Write the results to disk
     #
 
-    write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
-                    optimal_info=optimalinfo, badpixel_info=badpixelinfo,
-                    qa_file=qa_file, qa_plot=qa_plot, qa_plotsize=qa_plotsize,
-                    verbose=verbose)
+    # write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
+    #                 optimal_info=optimalinfo, badpixel_info=badpixelinfo,
+    #                 qa_file=qa_file, qa_plot=qa_plot, qa_plotsize=qa_plotsize,
+    #                 verbose=verbose)
 
     #
     # Set the done variable
     #
 
     extract.state['extract_done'] = True
+
+    return spectra
 
 
 def check_extract_aperture_parameters(qa_plot, qa_plotsize, qa_file, fix_bad_pixels,
@@ -275,750 +275,763 @@ def extract_pointsource(fix_bad_pixels=None, use_mean_profile=None, bad_pixel_th
     else:
 
 
-def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
-                    badpixel_info=None, qa_plot=None, qa_file=None,
-                    qa_plotsize=(10, 6), verbose=None):
-
+def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
+                                appos, apradii, linmax_bitmask=None,
+                                badpixel_mask=None, bginfo=None, verbose=True):
     """
-    To write extracted spectra to disk.
+    To extract and extended source.
 
     Parameters
     ----------
-    spectra : list
-        An (norders*naps,) list of spectral planes of the extracted target.
+    img : numpy.ndarray
+        An (nrows, ncols) image with spectral orders.  It is assumed
+        that the dispersion direction is roughly aligned with the
+        rows of `img` and the spatial axis is roughly aligned with
+        the columns of `img`.  That is, orders go left-right and not
+        up-down.
 
-    psbginfo : dict, optional
-        `"radius"` : float
-            The background start radius in arcseconds
+    var : numpy.ndarray
+        (nrows, ncols) variance image for `img`.
 
-        `"width"` : float
-            The background annulus width in arcseconds
+    ordermask : numpy.ndarray
+        (nrows, cols) image where each pixel is set to its
+        order number.  Inter-order pixels are set to zero.
 
-        `"degree"` : int
-            The background polynomial fit degree.
+    orders : list of int
+        (norders,) int array of the order numbers.  By Spextool convention,
+        orders[0] is the order closest to the bottom of the array.
 
-    xsbginfo : dict, optional
+    wavecal : numpy.ndarray
+        (nrows,ncols) image where each pixel is set to its wavelength.
 
-        `"regions"` : str
-            A comma-separated list of background regions, e.g. '1-2,14-15'.
+    spatcal : numpy.ndarray
+        (nrows, ncols) array where each pixel is set to its angular position
+        on the sky (arcseconds).
 
-        `"degree"` : int
-            The background polynomial fit degree.
+    appos : numpy.ndarray
+        (naps,) array of aperture positions (arcseconds).
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be interactively generated.
+    apradii : numpy.ndarray
+        (naps,) array of aperture radii (arcseconds).
 
-    qa_plotsize : tuple, default=(10,6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+    linmax_bitmask : numpy.ndarray, optional
+        (nrows, ncols) array where a pixel is set to unity if its value is
+        beyond the linearity maximum.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be written to disk.
+    badpixel_mask : numpy.ndarray, optional
+        (nrows, ncols) array where good pixels are set to unity and bad pixels
+        are set to zero.
 
-    verbose : {None, True, False}, optional
-        Set to True/False to override config.state['verbose'] in the
-        pyspextool config file.
+    bginfo : dict, optional
 
-    Returns 
-    -------
-    None
 
-       Writes FITS files to disk.
-
-    """
-
-    #
-    # Get the plotting ready
-    #
-
-    qafileinfo = {'figsize': (11, 8.5), 'filepath': setup.state['qa_path'],
-                  'filename': extract.state['qafilename'],
-                  'extension': setup.state['qa_extension']}
-
-    # Get the wavelengh calibration info if used.
-
-    if extract.load['wavecalfile'] is not None:
-
-        wavecalinfo = {'file': extract.load['wavecalfile'],
-                       'wavecaltype': extract.state['wavecaltype'],
-                       'wavetype': 'vacuum'}
-
-    else:
-
-        wavecalinfo = None
-
-    # Things proceed depending on the extraction mode
-
-    if extract.state['type'] == 'ps':
-
-        #
-        # ========================= Point Source ============================
-        #
-
-        # Grab things all modes need
-
-        xranges = extract.state['xranges'][extract.state['psdoorders']]
-        orders = extract.state['orders'][extract.state['psdoorders']]
-        apertures = extract.state['apertures'][extract.state['psdoorders']]
-        norders = np.sum(extract.state['psdoorders'])
-
-        # Now go mode by mode
-
-        if extract.state['reductionmode'] == 'A':
-
-            # Get file information
-
-            hdrinfo = extract.state['hdrinfo'][0]
-            aimage = hdrinfo['FILENAME'][0]
-            sky = 'None'
-            output_fullpath = extract.state['output_files'][0]
-
-            # Write ther results
-
-            write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['flatfile'],
-                                 extract.state['naps'],
-                                 orders, hdrinfo, apertures,
-                                 extract.state['apradii'],
-                                 extract.state['plate_scale'],
-                                 extract.state['slith_pix'],
-                                 extract.state['slith_arc'],
-                                 extract.state['slitw_pix'],
-                                 extract.state['slitw_arc'],
-                                 extract.state['resolvingpower'],
-                                 'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
-                                 'Wavelength ($\mu$m)',
-                                 'Count Rate (DN s$^{-1}$)',
-                                 setup.state['version'],
-                                 output_fullpath,
-                                 wavecalinfo=wavecalinfo,
-                                 psbginfo=psbginfo,
-                                 optimal_info=optimal_info,
-                                 badpixel_info=badpixel_info,             
-                                 verbose=verbose)
-
-            # Plot the spectra
-
-            filename = os.path.basename(output_fullpath)            
-            if qa_plot is True:
-                
-                number = plot_spectra(output_fullpath + '.fits',
-                                      title=filename+'.fits',                                                         plot_size=qa_plotsize,
-                                      flag_linearity=True,
-                            plot_number=extract.state['spectra_a_plotnum'])
-
-                extract.state['spectra_a_plotnum'] = number
-
-            if qa_file is True:
-
-                qafileinfo['filename'] = os.path.basename(output_fullpath)
-                plot_spectra(output_fullpath + '.fits',
-                             flat_linearity=True,
-                             file_info=qafileinfo)
-
-        elif extract.state['reductionmode'] == 'A-B':
-
-            # Are there positive apertures?
-
-            z_pos = extract.state['apsigns'] == 1
-            pos_naps = int(np.sum(z_pos))
-            if pos_naps != 0:
-
-                # Get file information
-
-                hdrinfo = extract.state['hdrinfo'][0]
-                aimage = hdrinfo['FILENAME'][0]
-                sky = extract.state['hdrinfo'][1]['FILENAME'][0]
-                output_fullpath = extract.state['output_files'][0]
-
-                # Now get the indices for the spectra array
-
-                full_apsign = np.tile(extract.state['apsigns'], norders)
-                z = (np.where(full_apsign == 1))[0]
-                pos_spectra = [spectra[i] for i in z]
-
-                write_apertures_fits(pos_spectra, xranges, aimage, sky,
-                                     extract.load['flatfile'], pos_naps,
-                                     orders, hdrinfo, apertures,
-                                     extract.state['apradii'],
-                                     extract.state['plate_scale'],
-                                     extract.state['slith_pix'],
-                                     extract.state['slith_arc'],
-                                     extract.state['slitw_pix'],
-                                     extract.state['slitw_arc'],
-                                     extract.state['resolvingpower'],
-                                     'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
-                                     'Wavelength ($\mu$m)',
-                                     'Count Rate (DN s$^{-1}$)',
-                                     setup.state['version'],
-                                     output_fullpath,
-                                     wavecalinfo=wavecalinfo,
-                                     psbginfo=psbginfo,
-                                     optimal_info=optimal_info,
-                                     badpixel_info=badpixel_info,
-                                     verbose=verbose)
-
-                # Plot the spectra
-
-                filename = os.path.basename(output_fullpath)
-                if qa_plot is True:
-
-                    number = plot_spectra(output_fullpath + '.fits',
-                                 title=filename+'.fits',
-                                 plot_size=qa_plotsize,
-                                 flag_linearity=True,
-                                 plot_number=extract.state['spectra_a_plotnum'])
-
-                    extract.state['spectra_a_plotnum'] = number
-
-                    
-                if qa_file is True:
-
-                    qafileinfo['filename'] = filename
-                    plot_spectra(output_fullpath + '.fits',
-                                 flag_linearity=True,                 
-                                 file_info=qafileinfo)
-
-            # Are there negative apertures?
-
-            z_neg = extract.state['apsigns'] == -1
-            neg_naps = int(np.sum(z_neg))
-            if neg_naps != 0:
-
-                # Get file information
-
-                hdrinfo = extract.state['hdrinfo'][1]
-                aimage = hdrinfo['FILENAME'][1]
-                sky = extract.state['hdrinfo'][0]['FILENAME'][0]
-                output_fullpath = extract.state['output_files'][1]
-
-                # Now get the indices for the spectra array
-
-                full_apsign = np.tile(extract.state['apsigns'], norders)
-                z = (np.where(full_apsign == -1))[0]
-                neg_spectra = [spectra[i] for i in z]
-
-                write_apertures_fits(neg_spectra, xranges, aimage, sky,
-                                     extract.load['flatfile'],
-                                     neg_naps, orders, hdrinfo, apertures,
-                                     extract.state['apradii'],
-                                     extract.state['plate_scale'],
-                                     extract.state['slith_pix'],
-                                     extract.state['slith_arc'],
-                                     extract.state['slitw_pix'],
-                                     extract.state['slitw_arc'],
-                                     extract.state['resolvingpower'],
-                                     'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
-                                     'Wavelength ($\mu$m)',
-                                     'Count Rate (DN s$^{-1}$)',
-                                     setup.state['version'],
-                                     output_fullpath,
-                                     wavecalinfo=wavecalinfo,
-                                     psbginfo=psbginfo,
-                                     verbose=verbose)
-
-                # Plot the spectra
-
-                filename = os.path.basename(output_fullpath)
-                if qa_plot is True:
-
-                    number = plot_spectra(output_fullpath + '.fits',
-                                          title=filename+'.fits',
-                                          flag_linearity=True,                
-                                          plot_size=qa_plotsize,
-                                plot_number=extract.state['spectra_b_plotnum'])
-                    extract.state['spectra_b_plotnum'] = number
-                    
-                if qa_file is True:
-
-                    qafileinfo['filename'] = filename
-                    plot_spectra(output_fullpath + '.fits',flag_linearity=True,
-                                 file_info=qafileinfo)
-
-        elif extract.state['reductionmode'] == 'A-Sky/Dark':
-
-            x = 1
-
-        else:
-
-            print('Reduction Mode Unknown.')
-
-    else:
-
-        #
-        # ======================= Extended Source ===========================
-        #
-
-        # Grab things all modes need
-
-        xranges = extract.state['xranges'][extract.state['psdoorders']]
-        orders = extract.state['orders'][extract.state['psdoorders']]
-        apertures = extract.state['apertures'][extract.state['psdoorders']]
-
-        if extract.state['reductionmode'] == 'A':
-
-            hdrinfo = extract.state['hdrinfo'][0]
-            aimage = hdrinfo['FILENAME'][0]
-            sky = 'None'
-            output_fullpath = extract.state['output_files'][0]
-            
-            write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['flatfile'],
-                                 extract.state['naps'],
-                                 orders, hdrinfo, apertures,
-                                 extract.state['apradii'],
-                                 extract.state['plate_scale'],
-                                 extract.state['slith_pix'],
-                                 extract.state['slith_arc'],
-                                 extract.state['slitw_pix'],
-                                 extract.state['slitw_arc'],
-                                 extract.state['resolvingpower'],
-                                 'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
-                                 'Wavelength ($\mu$m)',
-                                 'Count Rate (DN s$^{-1}$)',
-                                 setup.state['version'],
-                                 output_fullpath, wavecalinfo=wavecalinfo,
-#                                 background_spectra=background[z],
-                                 xsbginfo=xsbginfo,
-                                 verbose=verbose)
-
-            # Plot the spectra
-
-            if qa_plot is True:
-                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_plotsize)
-
-            if qa_file is True:
-                qafileinfo['filename'] = os.path.basename(output_fullpath)
-                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
-
-        elif extract.state['reductionmode'] == 'A-B':
-
-            hdrinfo = extract.state['hdrinfo'][0]
-            aimage = hdrinfo['FILENAME'][0]
-            sky = extract.state['hdrinfo'][1]['FILENAME'][0]
-            output_fullpath = extract.state['output_files'][0]            
-
-            write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['flatfile'],
-                                 extract.state['naps'],
-                                 orders, hdrinfo, apertures,
-                                 extract.state['apradii'],
-                                 extract.state['plate_scale'],
-                                 extract.state['slith_pix'],
-                                 extract.state['slith_arc'],
-                                 extract.state['slitw_pix'],
-                                 extract.state['slitw_arc'],
-                                 extract.state['resolvingpower'],
-                                 'um', 'DN s-1', '$\mu$m', 'DN s$^{-1}$',
-                                 'Wavelength ($\mu$m)',
-                                 'Count Rate (DN s$^{-1}$)',
-                                 extract.state['version'],
-                                 output_fullpath, wavecalinfo=wavecalinfo,
-#                                 background_spectra=background[z],
-                                 xsbginfo=xsbginfo,
-                                 verbose=verbose)
-
-            # Plot the spectra
-
-            if qa_plot is True:
-                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_plotsize)
-
-            if qa_file is True:
-                qafileinfo['filename'] = os.path.basename(output_fullpath)
-                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
-
-        elif extract.state['reductionmode'] == 'A-Sky/Dark':
-
-            x = 1
-
-        else:
-
-            print('Reduction Mode Unknown.')
-
-    print(' ')
-
-
-
-def write_apertures_fits(spectra: list, xranges: np.ndarray, aimage: str, sky: str, 
-                         flat: str, naps: int, 
-                         orders: list[int | list[int] | np.ndarray],
-                         header_info: dict, aperture_positions: np.ndarray, 
-                         aperture_radii: list[int | float | np.ndarray],
-                         plate_scale: float, slith_pix: float, slith_arc: float, slitw_pix: float,
-                         slitw_arc: float, resolving_power: float, xunits: str, yunits: str,
-                         latex_xunits: str, latex_yunits: str, latex_xlabel: str,
-                         latex_ylabel: str, version, output_fullpath: str,
-                         wavecalinfo: list[dict | None] = None, 
-                         psbginfo=None, xsbginfo=None,
-                         optimal_info=None, 
-                         badpixel_info: list[dict | None]=None,
-                         lincormax: None=None, overwrite: bool=True, verbose:bool=True):
-                         
-
-    check_apertures_parameters(aimage, sky, flat, naps, orders,
-                           header_info, aperture_positions, aperture_radii,
-                         plate_scale, slith_pix, slith_arc, slitw_pix,
-                         slitw_arc, resolving_power, xunits, yunits,
-                         latex_xunits, latex_yunits, latex_xlabel,
-                         latex_ylabel, version, output_fullpath,
-                         wavecalinfo=wavecalinfo, psbginfo=psbginfo, xsbginfo=xsbginfo,
-                         optimal_info=optimal_info, badpixel_info=badpixel_info,
-                         lincormax=lincormax, overwrite=overwrite, verbose=verbose)
-
-    aperature_array = create_aperture_array(spectra, naps, orders)
-
-    aperature_header = create_aperature_header(aimage, sky, flat, naps, orders,
-                                               header_info, aperture_positions, aperture_radii,
-                         plate_scale, slith_pix, slith_arc, slitw_pix,
-                         slitw_arc, xunits, yunits,
-                         latex_xunits, latex_yunits, latex_xlabel,
-                         latex_ylabel, version, output_fullpath,
-                         wavecalinfo, xsbginfo,
-                         optimal_info, badpixel_info)
-
-    write_fits(aperature_array, aperature_header, output_fullpath, xsbginfo=xsbginfo, 
-               overwrite=overwrite, verbose=verbose)
-
-    return
-
-
-def check_apertures_parameters(spectra, xranges, aimage, flat, naps, orders,
-                         header_info, aperture_positions, aperture_radii,
-                         plate_scale, slith_pix, slith_arc, slitw_pix,
-                         slitw_arc, resolving_power, xunits, yunits,
-                         latex_xunits, latex_yunits, latex_xlabel,
-                         latex_ylabel, version, output_fullpath,
-                         wavecalinfo=None, psbginfo=None, xsbginfo=None,
-                         optimal_info=None, badpixel_info=None,
-                         lincormax=None, overwrite=True, verbose=True):
-    
-    check_parameter('write_apertures_fits', 'spectra', spectra, 'list')
-
-    check_parameter('write_apertures_fits', 'xranges', xranges, 'ndarray')
-
-    check_parameter('write_apertures_fits', 'aimage', aimage, 'str')
-
-    check_parameter('write_apertures_fits', 'flat', flat, 'str')
-
-    check_parameter('write_apertures_fits', 'naps', naps, 'int')
-
-    check_parameter('write_apertures_fits', 'orders', orders,
-                    ['int', 'list', 'ndarray'])
-
-    check_parameter('write_apertures_fits', 'header_info', header_info,
-                    'dict')
-
-    check_parameter('write_apertures_fits', 'aperture_positions',
-                    aperture_positions, 'ndarray')
-
-    check_parameter('write_apertures_fits', 'aperture_radii', aperture_radii,
-                    ['int', 'float', 'ndarray'])
-
-    check_parameter('write_apertures_fits', 'plate_scale', plate_scale, 'float')
-
-    check_parameter('write_apertures_fits', 'slith_pix', slith_pix, 'float')
-
-    check_parameter('write_apertures_fits', 'slith_arc', slith_arc, 'float')
-
-    check_parameter('write_apertures_fits', 'slitw_pix', slitw_pix, 'float')
-
-    check_parameter('write_apertures_fits', 'slitw_arc', slitw_arc, 'float')
-
-    check_parameter('write_apertures_fits', 'resolving_power',
-                    resolving_power, 'float')
-
-    check_parameter('write_apertures_fits', 'xunits', xunits, 'str')
-
-    check_parameter('write_apertures_fits', 'yunits', yunits, 'str')
-
-    check_parameter('write_apertures_fits', 'latex_xunits', latex_xunits, 'str')
-
-    check_parameter('write_apertures_fits', 'latex_yunits', latex_yunits, 'str')
-
-    check_parameter('write_apertures_fits', 'latex_xlabel', latex_xlabel, 'str')
-
-    check_parameter('write_apertures_fits', 'latex_ylabel', latex_ylabel, 'str')
-
-    check_parameter('write_apertures_fits', 'version', version, 'str')
-
-    check_parameter('write_apertures_fits', 'output_fullpath',
-                    output_fullpath, 'str')
-
-    check_parameter('write_apertures_fits', 'psbginfo', psbginfo,
-                    ['NoneType', 'dict'])
-
-    check_parameter('write_apertures_fits', 'xsbginfo', xsbginfo,
-                    ['NoneType', 'dict'])
-
-    check_parameter('write_apertures_fits', 'optimal_info', optimal_info,
-                    ['NoneType', 'dict'])
-
-    check_parameter('write_apertures_fits', 'badpixel_info', badpixel_info,
-                    ['NoneType', 'dict'])    
-
-    check_parameter('write_apertures_fits', 'wavecalinfo', wavecalinfo,
-                    ['dict', 'NoneType'])
-
-    check_parameter('write_apertures_fits', 'lincormax', lincormax,
-                    'NoneType')
-
-    check_parameter('write_apertures_fits', 'overwrite', overwrite,
-                    'bool')
-
-    check_parameter('write_apertures_fits', 'verbose', verbose,
-                    'bool')
-
-    return
-
-
-def create_aperture_array(spectra,  naps, orders) -> np.ndarray:
-
-    """
-    To write a spextool spectral FITS file to disk
-
-    Parameters
-    ----------
+    verbose : {True, False}, optional
+        Set to True for command line updates during execution.
 
     Returns
     -------
-    None.  Writes FITS files to disk.
+    dict
 
+        spectrum : list
+            A (norders,) list. Each entry is a (4, nwave) numpy.ndarray where:
+            wave = (0,:)
+            intensity = (1,:)
+            uncertainty = (2,:)
+            flags = (3,:)
+
+        background : list
+            A (norders,) list. Each entry is a (4, nwave) numpy.ndarray where:
+            wave = (0,:)
+            intensity = (1,:)
+            uncertainty = (2,:)
+            flags = (3,:)
+
+
+        If bginfo is None, then background is set to None. 
 
     """
 
-    orders = np.asarray(orders)
+    # Do basic things
+
+    nrows, ncols = img.shape
+
     norders = len(orders)
 
+    # Convert to numpy arrays to deal with float/int versus list/array problem
 
-    #
-    # Get the list of spectra into an array format
-    #
+    appos = np.array(appos, dtype='float', ndmin=1)
+    apradii = np.array(apradii, dtype='float', ndmin=1)
 
-    # Determine the maximum size of each aperture array
+    naps = len(apradii)
 
-    npixels = []
-    for slice in spectra:
-        npixels.append(np.shape(slice)[1])
+    # Deal with bginfo
 
-    max_npixels = np.max(np.asarray(npixels))
+    if bginfo is not None:
 
-    # Now create arrays into which the slices will be placed
+        bgregions = bginfo['regions']
+        bgdeg = bginfo['degree']
 
-    array = np.full((norders * naps, 4, max_npixels), np.nan)
+    else:
 
-    # Now fill in the arrays
+        bgregions = None
+        bgdeg = None
 
-    l = 0
-    for slice in spectra:
-        array[l, :, 0:npixels[l]] = slice
-        l += 1
+    # Create pixel coordinate arrays
 
-    return array
+    xx, yy = make_image_indices(nrows, ncols)
+
+    #  Create linearity maximum mask
+
+    if linmax_bitmask is None:
+        linmax_bitmask = np.zeros((nrows, ncols)).astype(int)
+
+    #  Create linearity maximum mask
+
+    if badpixel_mask is None:
+        badpixel_mask = np.ones((nrows, ncols)).astype(int)
+
+        # Start the order loop
+
+    spectrum_list = []
+    background_list = []
+    for i in range(norders):
+
+        if verbose is True and i == 0:
+
+            message = 'Extracting ' + str(naps) + ' apertures in ' + str(norders) + \
+                      ' orders'
+
+            if bgregions is not None:
+                print(message + ' (with background subtraction)...')
+            else:
+                print(message + ' (without background subtraction)...')
+
+        zordr = np.where(ordermask == orders[i])
+        xmin = np.min(xx[zordr])
+        xmax = np.max(xx[zordr])
+        nwaves = xmax - xmin + 1
+
+        #
+        # Create the output arrays
+        #
+
+        spectrum_wave = np.full(nwaves, np.nan)
+        spectrum_flux = np.full((naps, nwaves), np.nan)
+        spectrum_unc = np.full((naps, nwaves), np.nan)
+        spectrum_mask = np.zeros((naps, nwaves), dtype=int)
+
+        if bgregions is not None:
+            background_wave = np.full(nwaves, np.nan)
+            background_flux = np.full((naps, nwaves), np.nan)
+            background_unc = np.full((naps, nwaves), np.nan)
+            background_mask = np.zeros((naps, nwaves), dtype=int)
+
+            # Start the wavelength loop
+
+        for j in range(nwaves):
+
+            # get the slit mask
+
+            colmask = ordermask[:, xmin + j]
+            zslit = colmask == orders[i]
+
+            # Store the wavelength
+
+            spectrum_wave[j] = wavecal[zslit, xmin + j][0]
+
+            # Carve out the slit values            
+
+            slit_pix = yy[zslit, xmin + j]
+            slit_arc = spatcal[zslit, xmin + j]
+            slit_img = img[zslit, xmin + j]
+            slit_var = var[zslit, xmin + j]
+            slit_bpm = badpixel_mask[zslit, xmin + j]
+            slit_lmm = linmax_bitmask[zslit, xmin + j]
+
+            # Generate the aperture mask
+
+            slitmask = make_aperture_mask(slit_arc, appos[i, :], apradii,
+                                          xsbginfo=bgregions)
+
+            #
+            # Do the background subtraction
+            #
+
+            if bgregions is not None:
+                # Fit the background
+
+                z = (slitmask == -1)
+                result = poly_fit_1d(slit_arc[z], slit_img[z], bgdeg,
+                                     robust={'thresh': 4, 'eps': 0.1},
+                                     silent=True)
+
+                # Generate a background slit 
+
+                slit_bg, slit_bg_var = poly_1d(slit_arc, result['coeffs'],
+                                               covar=result['coeff_covar'])
+
+                # Subtract the background and propagate
+
+                slit_img = np.subtract(slit_img, slit_bg)
+                slit_var = slit_var + slit_bg_var
+
+            # Do the sum extraction
+
+            for k in range(naps):
+
+                # Find the apertures
+
+                z = (slitmask > float(k)) & (slitmask <= float(k + 1))
+
+                # Create partial array
+                partial = slitmask[z] - float(k)
+
+                #
+                # Now do the sums
+                #
+
+                # Spectrum first
+
+                spectrum_flux[k, j] = np.sum(slit_img[z] * partial)
+                varval = np.sum(slit_var[z] * partial ** 2)
+                spectrum_unc[k, j] = np.sqrt(np.abs(varval))
+
+                # Background second
+                if bgregions is not None:
+                    background_flux[k, j] = np.sum(slit_bg[z] * partial)
+                    varval = np.sum(slit_bg_var[z] * partial ** 2)
+                    background_unc[k, j] = np.sqrt(np.abs(varval))
+                    # Check the bitmask for linearity
+
+            z = slit_lmm == 1
+            if sum(z) is True:
+                spectrum_mask[k, j] = 1
+
+        # Store the results
+
+        # Trim the NaNs if need be
+
+        nonan = trim_nan(spectrum_wave, flag=2)
+
+        # Generate the key
+
+        for k in range(naps):
+            spectrum = np.stack((spectrum_wave[nonan],
+                                 spectrum_flux[k, nonan],
+                                 spectrum_unc[k, nonan],
+                                 spectrum_mask[k, nonan]))
+
+            spectrum_list.append(spectrum)
+
+            if bgregions is not None:
+                background = np.stack((spectrum_wave[nonan],
+                                       background_flux[k, nonan],
+                                       background_unc[k, nonan],
+                                       background_mask[k, nonan]))
+                background_list.append(background)
+
+        if verbose is True:
+            loop_progress(i, 0, norders)
+
+    if bgregions is not None:
+
+        return {'spectra': spectrum_list, 'background': background_list}
+
+    else:
+
+        return {'spectra': spectrum_list, 'background': None}
 
 
-def create_aperature_header(aimage, sky, flat, naps, orders,
-                         header_info, aperture_positions, aperture_radii,
-                         plate_scale, slith_pix, slith_arc, slitw_pix,
-                         slitw_arc, xunits, yunits,
-                         latex_xunits, latex_yunits, latex_xlabel,
-                         latex_ylabel, version, output_fullpath,
-                         wavecalinfo, xsbginfo,
-                         optimal_info, badpixel_info):
-
-
-    phdu = fits.PrimaryHDU()
-    hdr = phdu.header
-
-    # Add the original file header keywords.  Cut out any history first
-    # if need be.
-
-    is_history_present = 'HISTORY' in header_info
-
-    if is_history_present is True:
-
-        old_history = header_info['HISTORY']
-
-        # remove it from the header_info dictionary
-
-        header_info.pop('HISTORY')
-
-    keys = list(header_info.keys())
+def extract_pointsource_1dxd(image, variance, order_mask, orders, wavecal,
+                             spatcal, trace_coefficients, aperture_radius,
+                             aperture_sign, linmax_bitmask=None,
+                             background_info=None, optimal_info=None,
+                             badpixel_info=None, verbose=True):
     
-    for i in range(len(keys)):
+    """
+    To extract a point source.
 
-        if keys[i] == 'COMMENT':
+    Parameters
+    ----------
+    image : numpy.ndarray
+        An (nrows, ncols) image with spectral orders.  It is assumed
+        that the dispersion direction is roughly aligned with the
+        rows of `img` and the spatial axis is roughly aligned with
+        the columns of `img`.  That is, orders go left-right and not
+        up-down.
 
-            junk = 1
+    variance : ndarray
+        (nrows, ncols) variance image for `image`.
+
+    order_mask : ndarray
+        (nrows, cols) image where each pixel is set to its order number.  
+        Inter-order pixels are set to zero.
+
+    orders : ndarray of int
+        (norders,) array of the order numbers.  By Spextool convention,
+        orders[0] is the order closest to the bottom of the array.
+
+    wavecal : ndarray
+        (nrows,ncols) image where each pixel is set to its wavelength.
+
+    spatcal : ndarray
+        (nrows, ncols) array where each pixel is set to its angular position
+        on the sky (arcseconds).
+
+    trace_coefficients : ndarray
+        An (norder*nap,) array of trace coefficients.
+
+    aperture_radius : int or float
+        The aperture radius.
+
+    aperture_sign : ndarray
+        An (naps,) array of aperture signs.  1=positive, -1=negative
+
+    linmax_bitmask : ndarray or None, optional
+        (nrows, ncols) array where a pixel is set to unity if its value is
+        beyond the linearity maximum.
+
+    background_info : dict or None, optional
+
+        '`radius`: float or int
+            The background radius value.
+
+        '`width`: float or int
+            The background width value.
+
+        '`degree`: int
+            The polynomial degree for the background fit.
+
+    optimal_info : dict or None, optional
+        '`images`' : ndarray
+            An (norders,) array of rectified order dictionaries.  Each entry has
+                '`image`': ndarray
+                    An (nangles, nwavelengths) array of an rectified order.
+
+                '`angle`': ndarray
+                    An (nangles,) array of spatial angles.
+
+                '`wavelength`': ndarray
+                    An (nangles,) array of wavelengths.
+                
+        '`psfradius`' : int or float
+            The radius for the PSF.
+
+        '`usemeanprofile`' : {False, True}    
+             Set to True to use the mean profile for all wavelengths.
+
+        '`mask`' : ndarray
+             An (nrows, ncols) array giving the location of bad pixels. 
+             1 = good
+             0 = bad
+
+        '`thresh`' : float or int
+             The sigma threshold to identify bad pixels.
+    
+    badpixel_info : dict or None, optional
+        '`images`' : ndarray
+            An (norders,) array of rectified order dictionaries.  Each entry has
+                '`image`': ndarray
+                    An (nangles, nwavelengths) array of an rectified order.
+
+                '`angle`': ndarray
+                    An (nangles,) array of spatial angles.
+
+                '`wavelength`': ndarray
+                    An (nangles,) array of wavelengths.
+
+        '`usemeanprofile`' : {False, True}    
+             Set to True to use the mean profile for all wavelengths.
+
+        '`mask`' : ndarray
+             An (nrows, ncols) array giving the location of bad pixels. 
+             1 = good
+             0 = bad
+
+        '`thresh`' : float or int
+             The sigma threshold to identify bad pixels.    
+
+    verbose : {True, False}, optional
+        Set to True for command line updates during execution.
+
+    Returns
+    -------
+    list
+        A (norders,) list. Each entry is a (4, nwave) numpy.ndarray where:
+          wave = (0,:)
+          intensity = (1,:)
+          uncertainty = (2,:)
+          flags = (3,:)
+
+    """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('extract_pointsource_1d', 'image', image, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'variance', variance, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'order_mask', order_mask,
+                    'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'orders', orders, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'wavecal', wavecal, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'spatcal', spatcal, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'trace_coefficients',
+                    trace_coefficients, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'trace_coefficients',
+                    trace_coefficients, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'aperture_radius',
+                    aperture_radius, ['float','int'])
+
+    check_parameter('extract_pointsource_1d', 'aperture_sign',
+                    aperture_sign, 'ndarray')
+
+    check_parameter('extract_pointsource_1d', 'linmax_bitmask',
+                    linmax_bitmask, ['ndarray','NoneType'])
+
+    check_parameter('extract_pointsource_1d', 'background_info',
+                    background_info, ['dict','NoneType'])
+
+    check_parameter('extract_pointsource_1d', 'optimal_info',
+                    optimal_info, ['dict','NoneType'])
+
+    check_parameter('extract_pointsource_1d', 'badpixel_info',
+                    badpixel_info, ['dict','NoneType'])
+
+    check_parameter('extract_pointsource_1d', 'verbose', verbose, 'bool')                                    
+
+    #
+    # Do basic things
+    #
+    
+    nrows, ncols = image.shape
+
+    norders = len(orders)
+
+    # Convert to numpy arrays to deal with float/int versus list/array problem
+
+    naps = len(aperture_sign)
+
+    #
+    # Deal with bginfo
+    #
+    
+    if background_info is not None:
+
+        psbginfo = (background_info['radius'], background_info['width'])
+        bgdeg = background_info['degree']
+
+    else:
+
+        psbginfo = None
+        bgdeg = None
+
+    # Create pixel coordinate arrays
+
+    xx, yy = make_image_indices(nrows, ncols)
+
+    #  Set up linearity maximum mask
+
+    if linmax_bitmask is None:
+        linmax_bitmask = np.zeros((nrows, ncols)).astype(int)
+
+    #  Set up bad pixel mask.  Use the oportunity to get the first part of the
+    #  verbose message and set the use_profile variable.  
+
+    if badpixel_info is None and optimal_info is None:
+
+        badpixel_mask = np.ones((nrows, ncols)).astype(int)
+        use_profile = False
+        text = 'Sum extracting '
+
+    else:
+
+        use_profile = True
+
+        if badpixel_info is not None:
+
+            info = badpixel_info
+            text = 'Sum extracting '
+            
+        if optimal_info is not None:
+
+            info = optimal_info            
+            text = 'Optimally extracting '
+            
+        badpixel_mask = info['mask']
+        rectified_orders = info['images']
+        atmosphere = info['atmosphere']
+        thresh = info['thresh']
+        use_mean_profile = info['usemeanprofile']
+        
+    # Start the order loop
+
+    if verbose is True:
+                
+        message = text+str(naps)+' apertures in '+str(norders)+' orders'
+
+        if psbginfo is not None:
+
+            print(message + ' (with background subtraction)...')
 
         else:
 
-            hdr[keys[i]] = (header_info[keys[i]][0], header_info[keys[i]][1])
+            print(message + ' (without background subtraction)...')
 
-    # Add spextool keywords
-
-    hdr['MODULE'] = ('extract', ' Creation module')
-    hdr['VERSION'] = (version, ' pySpextool version')
-    hdr['AIMAGE'] = (aimage, ' A image')
-    hdr['SKYORDRK'] = (sky, ' Sky or dark image')
-    hdr['FLAT'] = (flat, ' Flat field image')
-
-    if wavecalinfo is not None:
-        hdr['WAVECAL'] = (wavecalinfo['file'], ' Wavecal file')
-        hdr['WCTYPE'] = (wavecalinfo['wavecaltype'],
-                         ' Wavelength calibration type ')
-        hdr['WAVETYPE'] = (wavecalinfo['wavetype'], ' Wavelength type')
-
-    else:
-
-        hdr['WAVECAL'] = (None, ' Wavecal file')
-        hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
-        hdr['WAVETYPE'] = (None, ' Wavelength type')
         
-    orders = np.asarray(orders)
-    norders = len(orders)
-
-    hdr['NORDERS'] = (norders, ' Number of orders')
-    hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders')
-    hdr['NAPS'] = (naps, ' Number of apertures')
-
-    hdr['PLTSCALE'] = (plate_scale, ' Plate scale (arcseconds pixel-1)')
-    hdr['SLTH_ARC'] = (slith_arc, ' Nominal slit height (arcseconds)')
-    hdr['SLTW_ARC'] = (slitw_arc, ' Slit width (arcseconds)')
-    hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit height (pixels)')
-    hdr['SLTW_PIX'] = (slitw_pix, ' Slit width (pixels)')
-
-    # Add the aperture positions
+    spectrum_list = []
+    background_list = []
 
     for i in range(norders):
-        name = 'APOSO' + str(orders[i]).zfill(3)
-        comment = ' Aperture positions (arcseconds) for order ' + \
-                  str(orders[i]).zfill(3)
-        val = ','.join([str(round(elem, 2)) for elem in aperture_positions[i]])
-        hdr[name] = (val, comment)
 
-    if optimal_info is not None:
+        if use_profile is True:
+            
+            r = make_2d_profile(rectified_orders[i],
+                                trace_coefficients[i*naps:i*naps+naps],
+                                np.full(naps, aperture_radius),
+                                atmospheric_transmission=atmosphere,
+                                use_mean_profile=False)
 
-        hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')
-        hdr['THRESH'] = (optimal_info['thresh'], ' Bad pixel sigma threshold')
-        hdr['OPTEXT'] = (True, ' Optimal extraction?')
-        hdr['SUMEXT'] = (False, 'Sum extraction?')
-        hdr['PSFRAD'] = (optimal_info['psfradius'], ' PSF radius (arcseconds)')
+            profile_angle = r[0]
+            profile_map = r[1]
 
+        zordr = np.where(order_mask == orders[i])
+        xmin = np.min(xx[zordr])
+        xmax = np.max(xx[zordr])
+        nwaves = xmax - xmin + 1
+
+        #
+        # Create the output arrays
+        #
+
+        spectrum_wave = np.full(nwaves, np.nan)
+        spectrum_flux = np.full((naps, nwaves), np.nan)
+        spectrum_unc = np.full((naps, nwaves), np.nan)
+        spectrum_mask = np.zeros((naps, nwaves), dtype=int)
+
+        # Start the wavelength loop
+
+        for j in range(nwaves):
+
+            # get the slit mask
+
+            colmask = order_mask[:, xmin + j]
+            zslit = colmask == orders[i]
+
+            # Store the wavelength
+
+            spectrum_wave[j] = wavecal[zslit, xmin + j][0]
+
+            # Carve out the slit values            
+
+            slit_pix = yy[zslit, xmin + j]
+            slit_arc = spatcal[zslit, xmin + j]
+            slit_img = image[zslit, xmin + j]
+            slit_var = variance[zslit, xmin + j]
+            slit_bpm = badpixel_mask[zslit, xmin + j]
+            slit_lmm = linmax_bitmask[zslit, xmin + j]
+
+            if use_profile is True:
+
+                function = interp1d(profile_angle, profile_map[:,i],
+                                    fill_value=0.0, bounds_error=False)
+
+                slit_prof = function(slit_arc)
                 
-    else:
+            # Gernerate the slit positions using the tracecoeffs
+        
+            appos = np.empty(naps)
 
-        hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')        
-        hdr['THRESH'] = (None, ' Bad pixel sigma threshold')
-        hdr['OPTEXT'] = (False, ' Optimal extraction?')
-        hdr['SUMEXT'] = (True, ' Sum extraction?') 
-        hdr['PSFRAD'] = (None, ' PSF radius (arcseconds)')
+            for k in range(naps):
+                l = i * naps + k
+                wave = np.array(spectrum_wave[j], dtype='float', ndmin=1)
+                appos[k] = poly_1d(wave, trace_coefficients[l])
 
+            # Generate the aperture mask
 
-    if badpixel_info is not None:
+            aperture_mask = make_aperture_mask(slit_arc, appos,
+                                               np.full(naps, aperture_radius),
+                                               psbginfo=psbginfo)
 
-        hdr['BDPXFIX'] = (True, ' Bad pixels fixed?')        
-        hdr['THRESH'] = (badpixel_info['thresh'], ' Bad pixel sigma threshold')
+            # Generate the psf mask
+
+            if optimal_info is not None:
+            
+                psf_mask = make_aperture_mask(slit_arc, appos,
+                                    np.full(naps, optimal_info['psfradius']))
+            
+            #
+            # Do the background subtraction
+            #
+
+            if psbginfo is not None:
                 
-    else:
+                # Fit the background
 
-        hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')        
+                z_background = (aperture_mask == -1)
+                result = poly_fit_1d(slit_arc[z_background],
+                                     slit_img[z_background], bgdeg,
+                                     robust={'thresh': 4, 'eps': 0.1},
+                                     silent=True)
+
+                # Generate a background slit 
+
+                slit_bg, slit_bg_var = poly_1d(slit_arc, result['coeffs'],
+                                               covar=result['coeffs_covar'])
+
+                # Subtract the background and propagate the uncertainties
+
+                slit_img = np.subtract(slit_img, slit_bg)
+                slit_var = slit_var + slit_bg_var
+
+            #
+            # Scale the profile to the data
+            #
+
+            if use_profile is True:
+
+                fit_img = poly_fit_1d(slit_prof, slit_img, 1, goodbad=slit_bpm,
+                                      robust={'thresh':thresh, 'eps':0.1})
+
+            #
+            # Fix bad pixels if requested
+            #
+
+            if badpixel_info is not None:
+
+                # We fit the variances.  Is this good?
                 
-    # Add the aperture radii
+                fit_var = poly_fit_1d(np.abs(slit_prof), slit_var, 1,
+                                      goodbad=slit_bpm,
+                                      robust={'thresh':thresh, 'eps':0.1})
 
-    if isinstance(aperture_radii, np.ndarray):
+                z_badpixels = fit_img['goodbad']*slit_bpm == 0
 
-        val = ','.join([str(elem) for elem in aperture_radii])
-        hdr['APRADII'] = (val, ' Aperture radii (arcseconds)')
+                if sum(z_badpixels) >= 1:
+                    
+                    slit_img[z_badpixels] = fit_img['yfit'][z_badpixels]
+                    slit_var[z_badpixels] = fit_var['yfit'][z_badpixels]
 
-    else:
+            #
+            # Do the extractions
+            #
+                    
+            for k in range(naps):
 
-        hdr['APRADII'] = (aperture_radii, ' Aperture radii (arcseconds)')
+                if optimal_info is not None:
+                    
+                    #
+                    # Do optimal extraction
+                    #
 
-        # Add the background info
+                    # Find the indices of the PSF pixels
+                    
+                    z_psf = (psf_mask > float(k)) & (psf_mask <= float(k + 1))
 
-    if xsbginfo is not None:
+                    # Enforce positivity/negativity 
 
-        tmplist = []
-        for val in xsbginfo['regions']:
-            region = str(val[0]) + '-' + str(val[1])
-            tmplist.append(region)
+                    if aperture_sign[k] == 1:
+                
+                        slit_psf = slit_prof.clip(min=0.0)
 
-        hdr['BGREGS'] = (','.join(tmplist),
-                         ' Background regions (arcseconds)')
-        hdr['BGDEGREE'] = (xsbginfo['degree'],
-                           ' Background polynomial fit degree')
+                    else:
 
-    hdr['XUNITS'] = (xunits, ' Units of the x axis')
-    hdr['YUNITS'] = (yunits, ' Units of the y axis')
+                        slit_psf = slit_prof.clip(max=0.0)
 
-    hdr['LXUNITS'] = (latex_xunits, ' LateX units of the x axis')
-    hdr['LYUNITS'] = (latex_yunits, ' LateX units of the y axis')
+                    # Normalize the profile
+                        
+                    aperture_psf = aperture_sign[k]*\
+                                   np.abs(slit_psf/np.nansum(slit_psf[z_psf]))
 
-    hdr['LXLABEL'] = (latex_xlabel, ' LateX x axis label')
-    hdr['LYLABEL'] = (latex_ylabel, ' LateX Y axis label')
+                    # Determine the pixels to actually use
+                    
+                    z_aperture = (aperture_mask > float(k)) & \
+                                 (aperture_mask <= float(k + 1)) & \
+                                 (fit_img['goodbad'] == 1) & \
+                                 (aperture_psf != 0.0)
 
-    # Now add the HISTORY
+                    
+                    if np.sum(z_aperture) > 0:
 
-    history = 'Spextool FITS files contain an array of size ' \
-              '[nwaves,4,norders*naps]. The ith image (array[*,*,i]) ' \
-              'contains the data for a single extraction aperture within ' \
-              'an order such that, lambda=array[*,0,i], flux=array[*,1,i], ' \
-              'uncertainty=array[*,2,i],flag=array[*,3,i].  The zeroth ' \
-              'image (array[*,*,0]) contains the data for the aperture in ' \
-              'the order closest to the bottom of the detector that is ' \
-              'closest to the bottom of the slit (i.e. also closest to the ' \
-              'bottom of the detector).  Moving up the detector, the FITS ' \
-              'array is filled in with subsequent extraction apertures.  ' \
-              'If no orders have been deselected in the extraction process, ' \
-              'the contents of the ith aperture in order j can be found as ' \
-              'follows: lambda=array[*,0,{j-min(orders)}*naps + (i-1)], ' \
-              'flux=array[*,1,{j-min(orders)}*naps + (i-1)], ' \
-              'uncertainty=array[*,2,{j-min(orders)}*naps + (i-1)], ' \
-              'flag=array[*,3,{j-min(orders)}*naps + (i-1)].'
+                        # Scale the data and variances
+                        
+                        vals = slit_img[z_aperture]/aperture_psf[z_aperture]
+                        vars = slit_var[z_aperture]/aperture_psf[z_aperture]**2
 
-    history = split_text(history, length=65)
+                        # Compute the optimal estimate
+                        
+                        weights = 1/vars
+                        wmean = np.sum(weights*vals)/np.sum(weights)
+                        wvar = 1/np.sum(weights)
 
-    if is_history_present is True:
+                        spectrum_flux[k, j] = wmean
+                        spectrum_unc[k, j] = np.sqrt(wvar)
 
-        # Join the two histories
+                else:
 
-        history = old_history + [' '] + history
+                    #
+                    # Do the sum extraction
+                    #
+                        
+                    # Find the indices for the aperture pixels
+
+                    z_aperture = (aperture_mask > float(k)) & \
+                                 (aperture_mask <= float(k + 1))
+
+                    # Create partial pixel array
+
+                    partial = aperture_mask[z_aperture] - float(k)
+
+                    # Now do the sums
+
+                    spectrum_flux[k, j] = np.sum(slit_img[z_aperture]*partial)*\
+                                          aperture_sign[k]
+
+                    spectrum_var = np.sum(slit_var[z_aperture] * partial ** 2)
+                    spectrum_unc[k, j] = np.sqrt(np.abs(spectrum_var))
+
+                # Check the bitmask for linearity
+
+                z_linearity = slit_lmm[z_aperture] == 1
+
+                if sum(z_linearity) > 0:
+                    spectrum_mask[k, j] = 1
+
+                # Check bad pixels
+                
+                if badpixel_info is not None:
+
+                    if sum(z_badpixels) == 1:
+                        spectrum_mask[k,j] += 2
+
+        #
+        # Store the results
+        #
     
-    for hist in history:
-        hdr['HISTORY'] = hist
+        # Trim the NaNs if need be
 
+        nonan = trim_nan(spectrum_wave, flag=2)
 
-    # Set the file name for the spectra file
+        # Generate the key
 
-    hdr['FILENAME'] = (os.path.basename(output_fullpath)+'.fits', ' File name')
+        for k in range(naps):
 
-    return hdr
+            spectrum = np.stack((spectrum_wave[nonan],
+                                 spectrum_flux[k, nonan],
+                                 spectrum_unc[k, nonan],
+                                 spectrum_mask[k, nonan]))
 
+            spectrum_list.append(spectrum)
 
-def write_fits(spectrum, hdr, output_fullpath, overwrite=False, verbose=True):
+        if verbose is True:
+            loop_progress(i, 0, norders)
 
-    # Put the header data in the primary HDU
-    hdu0 = fits.PrimaryHDU(header = hdr)
-    
-    # Put the spectrum in the second HDU
-    hdu1 = fits.BinTableHDU(data=spectrum)
-    hdu1.header['EXTNAME'] = 'SPECTRUM'
-
-    spectrum_mef =  fits.HDUList([hdu0, hdu1])
-
-    fits_filename = output_fullpath + '.fits'
-
-    try:
-        spectrum_mef.writeto(fits_filename, overwrite=overwrite)
-        if verbose:
-            print(f'Wrote {os.path.basename(fits_filename)} to disk.')
-    except:
-        raise Exception(f'Could not write {os.path.basename(fits_filename)} to disk.')
-
-    return
+    return spectrum_list
