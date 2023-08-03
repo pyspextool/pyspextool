@@ -16,7 +16,7 @@ from pyspextool.extract.find_lines_1dxd import find_lines_1dxd
 from pyspextool.extract.wavecal_solution_1d import wavecal_solution_1d
 from pyspextool.extract.get_line_guess_position import get_line_guess_position
 from pyspextool.extract.simulate_wavecal_1dxd import simulate_wavecal_1dxd
-from pyspextool.extract.extract_extendedsource_1dxd import extract_extendedsource_1dxd
+from pyspextool.extract.extract_apertures import extract_extendedsource_1dxd
 from pyspextool.extract.make_interp_indices_1d import make_interp_indices_1d
 from pyspextool.extract.get_spectral_pixelshift import get_spectral_pixelshift
 from pyspextool.plot.plot_image import plot_image
