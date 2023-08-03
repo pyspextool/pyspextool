@@ -226,7 +226,7 @@ def processFolder(folder,verbose=False):
 	'''
 # error checking folder 
 	if os.path.isdir(folder) == False: 
-		raise ValueError('Cannot folder find {} or {}'.format(inp,folder))
+		raise ValueError('Cannot folder find {}'.format(folder))
 	if folder[-1] != '/': folder=folder+'/'
 
 # read in files, with accounting for .gz files

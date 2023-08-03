@@ -3,7 +3,7 @@ import os
 import glob
 import pandas
 
-basefold = os.path.dirname(ps.__file__)+'/../../test_data/'
+basefold = os.path.dirname(ps.__file__)+'/test_data/'
 test_instruments = ['spex-prism','spex-SXD']
 tfold = os.path.join(basefold,'spex-prism')
 
