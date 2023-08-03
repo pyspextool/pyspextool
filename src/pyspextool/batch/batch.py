@@ -182,7 +182,7 @@ REDUCTION_FOLDERS = ['data','cals','proc','qa']
 ####### AND ORGANIZED DATA #######
 ##################################
 
-def process_folder(folder,verbose=False):
+def processFolder(folder,verbose=False):
 	'''
 	Purpose
 	-------
@@ -205,7 +205,7 @@ def process_folder(folder,verbose=False):
 	-------
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/data/spex/20200101/data/'
-	>>> dp = batch.process_folder(dpath)
+	>>> dp = batch.processFolder(dpath)
 	>>> print(dp[:4])
 
 					   FILE	 UT_DATE		  UT_TIME TARGET_NAME		   RA  \
@@ -419,7 +419,7 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 ####### LOG GENERATION #######
 ##############################
 
-def tablestyle(val):
+def logTablestyle(val):
 	'''
 	Plotting style for pandas dataframe for html display
 	NOT ACTUALLY SURE THIS IS DOING ANYTHING
@@ -432,17 +432,17 @@ def tablestyle(val):
 	return 'background-color: {}'.format(color)
 
 
-def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
+def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
-	Takes in dataFrame from process_folder and generates a log file based on 
+	Takes in dataFrame from processFolder and generates a log file based on 
 	select header values defined in LOG_COLUMNS parameter in LOG_PARAMETERS
 
 	Parameters
 	----------
 	dp : pandas DataFrame
-		output of process_folder
+		output of processFolder
 
 	log_file : str, default=LOG_DEFAULT_FILENAME
 		full path to output log file; 
@@ -462,8 +462,8 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	-------
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/data/spex/20200101/data/'
-	>>> dp = batch.process_folder(dpath)
-	>>> batch.write_log(dp,dpath+'log.html',verbose=True)
+	>>> dp = batch.processFolder(dpath)
+	>>> batch.writeLog(dp,dpath+'log.html',verbose=True)
 		
 		log written to /Users/adam/projects/spex_archive/testing/spex-prism/log.html
 		
@@ -537,7 +537,7 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	elif ftype in ['tex']: dpout.to_latex(parameters['FILENAME'],longtable=True,index=False)	
 	elif ftype in ['json']: dpout.to_json(parameters['FILENAME'])	
 	elif ftype in ['htm','html']:
-		dpout.style.apply(tablestyle)
+		dpout.style.apply(logTablestyle)
 		if parameters['HTML_TEMPLATE_FILE'] != '' and os.path.exists(parameters['HTML_TEMPLATE_FILE']):
 			with open(parameters['HTML_TEMPLATE_FILE'],'r') as f: dphtml = f.read()
 		else: dphtml = copy.deepcopy(parameters['BASE_HTML'])
@@ -556,7 +556,7 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 ##### BATCH DRIVER FILE #####
 #############################
 
-def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
+def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -583,7 +583,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	>>> from pyspextool.batch import batch
 	>>> import yaml
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/150512/proc/driver.txt'
-	>>> params = batch.read_driver(driver_file)
+	>>> params = batch.readDriver(driver_file)
 	>>> print(yaml.dump(params))
 		
 		ARC_FILE_PREFIX: arc-
@@ -667,17 +667,17 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	return parameters
 
 
-def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
+def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
-	Writes the batch driver file based on pandas DataFrame input from process_folder and 
+	Writes the batch driver file based on pandas DataFrame input from processFolder and 
 	additional user-supplied options
 
 	Parameters
 	----------
 	dp : pandas DataFrame
-		output of process_folder
+		output of processFolder
 
 	driver_file : str, default = 'driver.txt'
 		full path to output file for batch driver
@@ -702,19 +702,19 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 
 	Outputs
 	-------
-	If check==True, returns dictionary of batch reduction parameters (output of read_driver)
+	If check==True, returns dictionary of batch reduction parameters (output of readDriver)
 	otherwise returns nothing; in either case, writes contents to file specified by driver_file
 
 
 	Example
 	-------
-	(1) Create from process_folder output:
+	(1) Create from processFolder output:
 
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
-	>>> dp = batch.process_folder(dpath,verbose=False)
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
+	>>> dp = batch.processFolder(dpath,verbose=False)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
 			
 			Created CALS_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/cals/
 			Created PROC_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/proc/
@@ -736,7 +736,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	>>> log_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/logs.csv'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
 	>>> dp = pandas.read_csv(log_file,sep=',')
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
 
 			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
 
@@ -753,7 +753,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	numpy
 	os.path
 	pandas
-	read_driver()
+	readDriver()
 	'''
 # manage default options
 	driver_param = copy.deepcopy(BATCH_PARAMETERS)
@@ -940,7 +940,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 
 # if check=True, read back in and return parameters
 	if check==True:
-		return read_driver(driver_file,verbose=verbose)
+		return readDriver(driver_file,verbose=verbose)
 
 	return
 
@@ -959,10 +959,10 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	Parameters
 	----------
 	driver_input : str or dict
-		either the full path to the batch driver file or the dict output of read_driver()
+		either the full path to the batch driver file or the dict output of readDriver()
 
 	log_input : str or pandas DataFrame
-		either the full path to the log csv file or the pandas DataFrame output of process_folder()
+		either the full path to the log csv file or the pandas DataFrame output of processFolder()
 
 	output_folder : str, default=''
 		by default the page is saved in QA folder; this option specifies the full path 
@@ -993,7 +993,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	numpy
 	os.path
 	pandas
-	read_driver()
+	readDriver()
 	'''
 # update default parameters with options
 	qa_parameters = copy.deepcopy(QA_PARAMETERS)
@@ -1002,7 +1002,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # if necessary read in driver
 	if isinstance(driver_input,str)==True:
 		if os.path.exists(driver_input)==False: raise ValueError('Cannot find driver file {}'.format(driver_input))
-		try: driver = read_driver(driver_input)
+		try: driver = readDriver(driver_input)
 		except: raise ValueError('Unable to read in driver file {}'.format(driver_input))
 	elif isinstance(driver_input,dict)==True:
 		driver = copy.deepcopy(driver_input)
@@ -1270,7 +1270,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 #############################
 
 
-def batch_reduce(parameters,verbose=ERROR_CHECKING):
+def batchReduce(parameters,verbose=ERROR_CHECKING):
 	'''
 	THIS FUNCTION AND DOCSTRING NEED TO BE UPDATED
 	Purpose
@@ -1280,26 +1280,26 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	Parameters
 	----------
 	parameters : dict or str
-		either the dict output of read_driver() or the full path to the batch driver file
+		either the dict output of readDriver() or the full path to the batch driver file
 
 	verbose : bool, default=ERROR_CHECKING
 		set to True to return verbose output
 
 	Outputs
 	-------
-	If check==True, returns dictionary of batch reduction parameters (output of read_driver)
+	If check==True, returns dictionary of batch reduction parameters (output of readDriver)
 	otherwise returns nothing; in either case, writes contents to file specified by driver_file
 
 
 	Example
 	-------
-	(1) Create from process_folder output:
+	(1) Create from processFolder output:
 
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
-	>>> dp = batch.process_folder(dpath,verbose=False)
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
+	>>> dp = batch.processFolder(dpath,verbose=False)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
 			
 			Created CALS_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/cals/
 			Created PROC_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/proc/
@@ -1321,7 +1321,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	>>> log_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/logs.csv'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
 	>>> dp = pandas.read_csv(log_file,sep=',')
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
 
 			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
 
@@ -1338,7 +1338,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	numpy
 	os.path
 	pandas
-	read_driver()
+	readDriver()
 	'''
 # default parameters
 	if 'VERBOSE' not in list(parameters.keys()): parameters['VERBOSE']=verbose
@@ -1567,18 +1567,18 @@ if __name__ == '__main__':
 	if len(sys.argv) < 4:
 		print('Call this function from the command line as python batch.py [data_folder] [cals_folder] [proc_folder]')
 	else:
-		dp = process_folder(sys.argv[1])
-		dp = process_folder(sys.argv[1])
+		dp = processFolder(sys.argv[1])
+		dp = processFolder(sys.argv[1])
 		if len(sys.argv) > 4: log_file = sys.argv[4]
 		else: log_file = sys.argv[3]+'log.html'
 		print('\nWriting log to {}'.format(log_file))
-		write_log(dp,log_file)
+		writeLog(dp,log_file)
 		if len(sys.argv) > 5: driver_file = sys.argv[5]
 		else: driver_file = sys.argv[3]+'driver.txt'
 		print('\nWriting batch driver file to {}'.format(driver_file))
-		write_driver(dp,driver_file,data_folder=sys.argv[1],cals_folder=sys.argv[2],proc_folder=sys.argv[3])
+		writeDriver(dp,driver_file,data_folder=sys.argv[1],cals_folder=sys.argv[2],proc_folder=sys.argv[3])
 		txt = input('\nCheck the driver file {} and press return when ready to proceed...\n')
-		par = read_driver(driver_file)
+		par = readDriver(driver_file)
 		print('\nReducing spectra')
-		batch_reduce(par)
+		batchReduce(par)
 		print('\nReduction complete: processed files are in {}'.format(sys.argv[3]))

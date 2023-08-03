@@ -16,7 +16,7 @@ from pyspextool.batch import batch
 
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
-VERSION = '2023 July 31'
+VERSION = '2023 Aug 3'
 AUTHORS = [
 	'Adam Burgasser',
 	'Jean Marroquin']
@@ -136,13 +136,13 @@ class runBatch():
 			print('\nWARNING: html log file {} and csv log file {} already exists; use --overwrite if you want to overwrite or --rebuild-log to rebuild'.format(log_file_prefix+'.html',log_file_prefix+'.csv'))
 		else:
 			if args['driver_only']==False and args['reduce_only']==False and args['qa_only']==False:
-				dp = batch.process_folder(folders[0])
+				dp = batch.processFolder(folders[0])
 				for x in ['.csv','.html']:
 					if os.path.exists(log_file_prefix+x) and args['overwrite']==False and args['rebuild_log']==False:
 						print('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
 					else:
 						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
-						batch.write_log(dp,log_file_prefix+x)
+						batch.writeLog(dp,log_file_prefix+x)
 
 # query to pause and check log
 			if args['no_pause']==False and args['log_only']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
@@ -162,11 +162,11 @@ class runBatch():
 				if os.path.exists(log_file_prefix+'.csv')==True:
 					dp = pandas.read_csv(log_file_prefix+'.csv')
 				else:
-					dp = batch.process_folder(folders[0])
+					dp = batch.processFolder(folders[0])
 					print('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
 				if args['quiet']==False: print('\nGenerating driver file and writing to {}'.format(driver_file))
 #				print(driver_file,folders[0])
-				batch.write_driver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True)
+				batch.writeDriver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True)
 
 # query to pause and check driver
 			if args['no_pause']==False and args['driver_only']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
@@ -183,7 +183,7 @@ class runBatch():
 			# if driver_file=='': driver_file = folders[0]
 			# if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
-			par = batch.read_driver(driver_file)
+			par = batch.readDriver(driver_file)
 
 # add in additional keywords for specific reduction steps:
 			if args['no_cals']==True: par['CALIBRATIONS']=False
@@ -194,7 +194,7 @@ class runBatch():
 			if args['overwrite']==True: par['OVERWRITE']=False
 
 			if args['quiet']==False: print('\n\nReducing spectra\n\n')
-			batch.batch_reduce(par,verbose=(not args['quiet']))
+			batch.batchReduce(par,verbose=(not args['quiet']))
 
 		if args['reduce_only']==True: 
 			print('\n\nReduction completed!\n\n')
