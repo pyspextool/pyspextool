@@ -90,12 +90,12 @@ class runBatch():
 
 # if nothing passed, assume we are using the local folder as the base folder
 		if len(folders)<1: 
-			base_folder=os.path.abspath('./')
-			folders = [os.path.join(base_folder,batch.REDUCTION_FOLDERS[0])]
+			base_folder='./'
+			folders = [batch.REDUCTION_FOLDERS[0]]
 
 # one input - assume to be base folder 
 		if len(folders) == 1:
-			if base_folder=='': base_folder=os.path.abspath(folders[0])
+			if base_folder=='': base_folder=folders[0]
 			if os.path.exists(base_folder)==False: raise ValueError('Cannot find base folder {}'.format(base_folder))
 #			elif os.path.exists(os.path.join(folders[0],batch.REDUCTION_FOLDERS[0]))==False: raise ValueError('Cannot find data folder under {}'.format(folders[0]))
 #			bfold = copy.deepcopy(folders[0])
@@ -111,20 +111,20 @@ class runBatch():
 		if len(folders) == 2:
 			if os.path.exists(folders[0])==False: raise ValueError('Cannot find data folder {}'.format(folders[0]))
 			if os.path.exists(folders[1])==False: raise ValueError('Cannot find base folder {}'.format(folders[1]))
-			if base_folder=='': base_folder = os.path.abspath(folders[1])
+			if base_folder=='': base_folder = copy.deepcopy(folders[1])
 			folders = [folders[0]]
 
 # set or create data, cals, proc, and qa folders 
 		for i,nm in enumerate(batch.REDUCTION_FOLDERS):
 			nfold = os.path.join(base_folder,nm+'/')
 			if len(folders) <= i: folders.append(nfold)
-			folders[i] = os.path.abspath(folders[i])
+#			folders[i] = os.path.abspath(folders[i])
 			if os.path.exists(folders[i])==False:
 				os.mkdir(folders[i])
 				if args['quiet']==False: print('\nCreated {} folder {}'.format(nm,folders[i]))
 
 # check folders 
-		folders = [os.path.abspath(f) for f in folders]
+#		folders = [os.path.abspath(f) for f in folders]
 		for i,f in enumerate(folders):
 			if f=='': raise ValueError('Empty path name for {} folder'.format(batch.REDUCTION_FOLDERS[i]))
 			if os.path.exists(f)==False: raise ValueError('Cannot find {} folder {}'.format(batch.REDUCTION_FOLDERS[i],f)) 

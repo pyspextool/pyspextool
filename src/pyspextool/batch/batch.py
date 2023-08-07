@@ -284,6 +284,10 @@ def processFolder(folder,verbose=False):
 	for igmode in IGNORE_MODES:
 		dp.loc[dp['MODE']==igmode,'TARGET_TYPE'] = 'ignore'
 
+# fix to coordinates
+	for k in ['RA','DEC']:
+		dp[k] = [x.strip() for x in dp[k]]
+		
 # generate ISO 8601 time string and sort
 # --> might need to do some work on this
 	dp['DATETIME'] = [dp['UT_DATE'].iloc[i]+'T'+dp['UT_TIME'].iloc[i] for i in range(len(dp))]
@@ -815,7 +819,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 # files & folders
 	f.write('\n# Folders and files\n')
 	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
-		f.write('{} = {}\n'.format(x,os.path.abspath(str(driver_param[x]))))
+		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
