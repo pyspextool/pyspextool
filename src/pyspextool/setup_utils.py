@@ -180,7 +180,6 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
         setup.state['raw_path'] = cwd
 
     if cal_path is not None:
-        cal_path = check_path(cal_path, make_absolute=True)
         try:
             cal_path = check_path(cal_path, make_absolute=True)
             # logging.debug(f'Set cal_path to {cal_path}')
@@ -199,7 +198,6 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
         setup.state['proc_path'] = cwd
 
     if qa_path is not None:
-        qa_path = check_path(qa_path, make_absolute=True)
         try:
             qa_path = check_path(qa_path, make_absolute=True)
             # logging.debug(f'Set qa_path to {qa_path}')
