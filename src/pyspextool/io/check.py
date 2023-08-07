@@ -42,9 +42,12 @@ def check_path(path, make_absolute=False):
 
     result = os.path.exists(path)
 
+    cwd = os.path.abspath(os.getcwd())
+    files = os.listdir()
+
     if result is False:
 
-        message = 'The path '+path+' does not exist.'
+        message = f'The path {path} does not exist. The current working directory is {cwd} and current files are {files}'
         raise ValueError(message)
 
     else:
