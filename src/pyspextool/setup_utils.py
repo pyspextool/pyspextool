@@ -140,68 +140,74 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     # Load the .pyspextool file if it exists.
     #
 
-    home_path = os.path.expanduser('~')
-    file_name = '.pyspextool_' + setup.state['instrument'] + '.dat'
-    full_path = os.path.join(home_path, file_name)
+    # Change to use the current working directory rather than HOME
+    # home_path = os.path.expanduser('~')
+    # file_name = '.pyspextool_' + setup.state['instrument'] + '.dat'
+    # full_path = os.path.join(home_path, file_name)
 
     # Does the file exist?
 
-    if os.path.isfile(full_path) is True:
+    # if os.path.isfile(full_path) is True:
 
-        # Yes.  Load the previous paths.
+    #     # Yes.  Load the previous paths.
 
-        f = open(full_path, 'r')
-        paths = []
+    #     f = open(full_path, 'r')
+    #     paths = []
 
-        for line in f:
-            paths.append(line.strip())
+    #     for line in f:
+    #         paths.append(line.strip())
 
-        setup.state['raw_path'] = paths[0]
-        setup.state['cal_path'] = paths[1]
-        setup.state['proc_path'] = paths[2]
-        setup.state['qa_path'] = paths[3]
+    #     setup.state['raw_path'] = paths[0]
+    #     setup.state['cal_path'] = paths[1]
+    #     setup.state['proc_path'] = paths[2]
+    #     setup.state['qa_path'] = paths[3]
 
-    else:
+    # else:
 
-        # No.  Use the current working directory
+    #     # No.  Use the current working directory
 
-        cwd = os.path.abspath(os.getcwd())
-        setup.state['raw_path'] = cwd
-        setup.state['cal_path'] = cwd
-        setup.state['proc_path'] = cwd
-        setup.state['qa_path'] = cwd
+    # Should only use the current working directory if the user has not defined the paths
+    cwd = os.path.abspath(os.getcwd())
 
-    #
+    # #
     # Now let's modify the paths based on the user requests.
     #
 
     if raw_path is not None:
         raw_path = check_path(raw_path, make_absolute=True)
         setup.state['raw_path'] = raw_path
+    else:
+        setup.state['raw_path'] = cwd
 
     if cal_path is not None:
         cal_path = check_path(cal_path, make_absolute=True)
         setup.state['cal_path'] = cal_path
+    else:
+        setup.state['cal_path'] = cwd
 
     if proc_path is not None:
         proc_path = check_path(proc_path, make_absolute=True)
         setup.state['proc_path'] = proc_path
+    else:
+        setup.state['proc_path'] = cwd
 
     if qa_path is not None:
         qa_path = check_path(qa_path, make_absolute=True)
         setup.state['qa_path'] = qa_path
+    else:
+        setup.state['qa_path'] = cwd
 
     #
     # Now write the paths to the user home directory
     #
 
-    f = open(os.path.join(home_path, '.pyspextool_' + \
-                          setup.state['instrument'] + '.dat'), 'w')
-    f.write('%s \n' % setup.state['raw_path'])
-    f.write('%s \n' % setup.state['cal_path'])
-    f.write('%s \n' % setup.state['proc_path'])
-    f.write('%s \n' % setup.state['qa_path'])
-    f.close()
+    # f = open(os.path.join(home_path, '.pyspextool_' + \
+    #                       setup.state['instrument'] + '.dat'), 'w')
+    # f.write('%s \n' % setup.state['raw_path'])
+    # f.write('%s \n' % setup.state['cal_path'])
+    # f.write('%s \n' % setup.state['proc_path'])
+    # f.write('%s \n' % setup.state['qa_path'])
+    # f.close()
 
     # Set the qa extension filetype
 
