@@ -19,15 +19,12 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
-    - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
-      run: git config --global --add safe.directory /github/workspace
     - uses: actions/checkout@v3
       with:
         lfs: true
-    - name: Checkout submodules
-      uses: srt32/git-actions@v0.0.3
-      with:
-        args: git submodule update --init --recursive
+        submodules: recursive
+    - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE" 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
