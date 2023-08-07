@@ -19,6 +19,8 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
+    - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
+      run: git config --global --add safe.directory /github/workspace
     - uses: actions/checkout@v3
       with:
         lfs: true
