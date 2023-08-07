@@ -181,6 +181,13 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
 
     if cal_path is not None:
         cal_path = check_path(cal_path, make_absolute=True)
+        try:
+            cal_path = check_path(cal_path, make_absolute=True)
+            # logging.debug(f'Set cal_path to {cal_path}')
+        except ValueError:
+            os.mkdir(cal_path)
+            cal_path = check_path(cal_path, make_absolute=True)
+            #logging.info(f'Created cal_path directory {cal_path}')
         setup.state['cal_path'] = cal_path
     else:
         setup.state['cal_path'] = cwd
@@ -193,6 +200,13 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
 
     if qa_path is not None:
         qa_path = check_path(qa_path, make_absolute=True)
+        try:
+            qa_path = check_path(qa_path, make_absolute=True)
+            # logging.debug(f'Set qa_path to {qa_path}')
+        except ValueError:
+            os.mkdir(qa_path)
+            qa_path = check_path(qa_path, make_absolute=True)
+            # logging.info(f'Created qa_path directory {qa_path}')   
         setup.state['qa_path'] = qa_path
     else:
         setup.state['qa_path'] = cwd
