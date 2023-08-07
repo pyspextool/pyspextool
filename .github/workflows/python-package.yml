@@ -16,13 +16,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12.0-rc.1"]
+        python-version: ["3.10", "3.11"]
 
     steps:
     - uses: actions/checkout@v3
       with:
         lfs: true
-        submodules: recursive
+        submodules: true
     - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE" 
     - name: Set up Python ${{ matrix.python-version }}
