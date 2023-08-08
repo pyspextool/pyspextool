@@ -1,7 +1,7 @@
 import os
 from astropy.io import fits
 import numpy as np
-
+import logging
 from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter, check_path, check_file
@@ -86,9 +86,6 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     QA Plot: {setup.state['qa_plot']}
     QA File: {setup.state['qa_file']}
     """
-
-    # if verbose is True:
-    #    print(msg)
 
     logging.debug(msg)
 
