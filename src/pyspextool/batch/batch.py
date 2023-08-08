@@ -182,7 +182,7 @@ REDUCTION_FOLDERS = ['data','cals','proc','qa']
 ####### AND ORGANIZED DATA #######
 ##################################
 
-def process_folder(folder,verbose=False):
+def processFolder(folder,verbose=False):
 	'''
 	Purpose
 	-------
@@ -205,7 +205,7 @@ def process_folder(folder,verbose=False):
 	-------
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/data/spex/20200101/data/'
-	>>> dp = batch.process_folder(dpath)
+	>>> dp = batch.processFolder(dpath)
 	>>> print(dp[:4])
 
 					   FILE	 UT_DATE		  UT_TIME TARGET_NAME		   RA  \
@@ -226,7 +226,7 @@ def process_folder(folder,verbose=False):
 	'''
 # error checking folder 
 	if os.path.isdir(folder) == False: 
-		raise ValueError('Cannot folder find {} or {}'.format(inp,folder))
+		raise ValueError('Cannot folder find {}'.format(folder))
 	if folder[-1] != '/': folder=folder+'/'
 
 # read in files, with accounting for .gz files
@@ -284,6 +284,10 @@ def process_folder(folder,verbose=False):
 	for igmode in IGNORE_MODES:
 		dp.loc[dp['MODE']==igmode,'TARGET_TYPE'] = 'ignore'
 
+# fix to coordinates
+	for k in ['RA','DEC']:
+		dp[k] = [x.strip() for x in dp[k]]
+		
 # generate ISO 8601 time string and sort
 # --> might need to do some work on this
 	dp['DATETIME'] = [dp['UT_DATE'].iloc[i]+'T'+dp['UT_TIME'].iloc[i] for i in range(len(dp))]
@@ -419,7 +423,7 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 ####### LOG GENERATION #######
 ##############################
 
-def tablestyle(val):
+def logTablestyle(val):
 	'''
 	Plotting style for pandas dataframe for html display
 	NOT ACTUALLY SURE THIS IS DOING ANYTHING
@@ -432,17 +436,17 @@ def tablestyle(val):
 	return 'background-color: {}'.format(color)
 
 
-def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
+def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
-	Takes in dataFrame from process_folder and generates a log file based on 
+	Takes in dataFrame from processFolder and generates a log file based on 
 	select header values defined in LOG_COLUMNS parameter in LOG_PARAMETERS
 
 	Parameters
 	----------
 	dp : pandas DataFrame
-		output of process_folder
+		output of processFolder
 
 	log_file : str, default=LOG_DEFAULT_FILENAME
 		full path to output log file; 
@@ -462,8 +466,8 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	-------
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/data/spex/20200101/data/'
-	>>> dp = batch.process_folder(dpath)
-	>>> batch.write_log(dp,dpath+'log.html',verbose=True)
+	>>> dp = batch.processFolder(dpath)
+	>>> batch.writeLog(dp,dpath+'log.html',verbose=True)
 		
 		log written to /Users/adam/projects/spex_archive/testing/spex-prism/log.html
 		
@@ -525,6 +529,9 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
 	except: print('WARNING: Unable to match targets to SIMBAD via XMatch; check internet connection')
 
+# add on a NOTES column
+	dpout['NOTES'] = ['']*len(dpout)
+	
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
 	if ftype in ['xls','xlsx']: dpout.to_excel(parameters['FILENAME'],index=False)	
@@ -534,7 +541,7 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	elif ftype in ['tex']: dpout.to_latex(parameters['FILENAME'],longtable=True,index=False)	
 	elif ftype in ['json']: dpout.to_json(parameters['FILENAME'])	
 	elif ftype in ['htm','html']:
-		dpout.style.apply(tablestyle)
+		dpout.style.apply(logTablestyle)
 		if parameters['HTML_TEMPLATE_FILE'] != '' and os.path.exists(parameters['HTML_TEMPLATE_FILE']):
 			with open(parameters['HTML_TEMPLATE_FILE'],'r') as f: dphtml = f.read()
 		else: dphtml = copy.deepcopy(parameters['BASE_HTML'])
@@ -553,7 +560,7 @@ def write_log(dp,log_file='',options={},verbose=ERROR_CHECKING):
 ##### BATCH DRIVER FILE #####
 #############################
 
-def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
+def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -580,7 +587,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	>>> from pyspextool.batch import batch
 	>>> import yaml
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/150512/proc/driver.txt'
-	>>> params = batch.read_driver(driver_file)
+	>>> params = batch.readDriver(driver_file)
 	>>> print(yaml.dump(params))
 		
 		ARC_FILE_PREFIX: arc-
@@ -639,6 +646,7 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 # add optional parameters			
 			opars = list(filter(lambda x: ('=' in x), rpars))
 			new_opar = dict([l.strip().split('=') for l in opars])
+			for k in list(new_opar.keys()): new_opar[k.upper()] = new_opar.pop(k)
 			spar.update(new_opar)
 # some instrument specific adjustments
 # THIS MIGHT NEED TO BE MANAGED THROUGH OTHER PYSPEXTOOL FUNCTIONS
@@ -663,17 +671,17 @@ def read_driver(driver_file,options={},verbose=ERROR_CHECKING):
 	return parameters
 
 
-def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
+def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_folders=False,comment='',check=ERROR_CHECKING,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
-	Writes the batch driver file based on pandas DataFrame input from process_folder and 
+	Writes the batch driver file based on pandas DataFrame input from processFolder and 
 	additional user-supplied options
 
 	Parameters
 	----------
 	dp : pandas DataFrame
-		output of process_folder
+		output of processFolder
 
 	driver_file : str, default = 'driver.txt'
 		full path to output file for batch driver
@@ -698,19 +706,19 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 
 	Outputs
 	-------
-	If check==True, returns dictionary of batch reduction parameters (output of read_driver)
+	If check==True, returns dictionary of batch reduction parameters (output of readDriver)
 	otherwise returns nothing; in either case, writes contents to file specified by driver_file
 
 
 	Example
 	-------
-	(1) Create from process_folder output:
+	(1) Create from processFolder output:
 
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
-	>>> dp = batch.process_folder(dpath,verbose=False)
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
+	>>> dp = batch.processFolder(dpath,verbose=False)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
 			
 			Created CALS_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/cals/
 			Created PROC_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/proc/
@@ -732,7 +740,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	>>> log_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/logs.csv'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
 	>>> dp = pandas.read_csv(log_file,sep=',')
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
 
 			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
 
@@ -749,7 +757,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	numpy
 	os.path
 	pandas
-	read_driver()
+	readDriver()
 	'''
 # manage default options
 	driver_param = copy.deepcopy(BATCH_PARAMETERS)
@@ -811,7 +819,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 # files & folders
 	f.write('\n# Folders and files\n')
 	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
-		f.write('{} = {}\n'.format(x,os.path.abspath(str(driver_param[x]))))
+		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
@@ -848,6 +856,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 	f.write('\n#\tMode\tTarget Type\tTarget Name\tTarget Prefix\tTarget Files\tTarget Flat\tTarget Wavecal\tStd Name\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
 	for n in tnames:
 		dps = dpc[dpc['TARGET_NAME']==n]
+		dps = dps[dps['TARGET_TYPE']=='target']
 		src_coord = SkyCoord(dps['RA'].iloc[0]+' '+dps['DEC'].iloc[0],unit=(u.hourangle, u.deg))
 
 # loop over modes, dropping ignored modes
@@ -920,6 +929,13 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 # all other options
 		# if len(extraction_options)>0:
 		# 	for k in list(extraction_options.keys()): line+='\t{}={}'.format(k,extraction_options[k])
+
+# space for notes
+
+	f.write('\n# Notes\n')
+	for i in range(5): f.write('# \n')
+
+# done!
 	f.close()
 
 # report out location
@@ -928,7 +944,7 @@ def write_driver(dp,driver_file='driver.txt',data_folder='',options={},create_fo
 
 # if check=True, read back in and return parameters
 	if check==True:
-		return read_driver(driver_file,verbose=verbose)
+		return readDriver(driver_file,verbose=verbose)
 
 	return
 
@@ -947,10 +963,10 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	Parameters
 	----------
 	driver_input : str or dict
-		either the full path to the batch driver file or the dict output of read_driver()
+		either the full path to the batch driver file or the dict output of readDriver()
 
 	log_input : str or pandas DataFrame
-		either the full path to the log csv file or the pandas DataFrame output of process_folder()
+		either the full path to the log csv file or the pandas DataFrame output of processFolder()
 
 	output_folder : str, default=''
 		by default the page is saved in QA folder; this option specifies the full path 
@@ -981,7 +997,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	numpy
 	os.path
 	pandas
-	read_driver()
+	readDriver()
 	'''
 # update default parameters with options
 	qa_parameters = copy.deepcopy(QA_PARAMETERS)
@@ -990,7 +1006,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # if necessary read in driver
 	if isinstance(driver_input,str)==True:
 		if os.path.exists(driver_input)==False: raise ValueError('Cannot find driver file {}'.format(driver_input))
-		try: driver = read_driver(driver_input)
+		try: driver = readDriver(driver_input)
 		except: raise ValueError('Unable to read in driver file {}'.format(driver_input))
 	elif isinstance(driver_input,dict)==True:
 		driver = copy.deepcopy(driver_input)
@@ -1052,7 +1068,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # data from the driver file		
 		for x in list(OBSERVATION_PARAMETERS_REQUIRED.keys()):
 			stxt = stxt.replace('['+x+']',str(sci_param[x]))
-# data from the observing log
+# target data from the observing log
 		sci_log = obslog[obslog['TARGET_NAME']==sci_param['TARGET_NAME']]
 		if len(sci_log)>0:
 			for x in ['RA','DEC','AIRMASS','SLIT']:
@@ -1061,16 +1077,19 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			s = SkyCoord(sci_log['RA'].iloc[0]+' '+sci_log['DEC'].iloc[0], unit=(u.hourangle, u.deg))
 			coord = s.to_string('hmsdms',sep=':')
 			desig = 'J'+s.to_string('hmsdms',sep='',pad=True).replace('.','').replace(' ','')
-			stxt = stxt.replace('[COORDINATE]',coord)
 			stxt = stxt.replace('[DESIGNATION]',desig)
 			if 'fixed' in sci_param['TARGET_TYPE']:
+				stxt = stxt.replace('[COORDINATE]',coord)
 				stxt = stxt.replace('[TARGET_ALADIN_URL]',\
 					'[<a href="https://aladin.cds.unistra.fr/AladinLite/?target={}&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]'.format(desig.replace('+','%2B')))
 				stxt = stxt.replace('[TARGET_SIMBAD_URL]',\
 					'[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord={}&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]'.format(desig.replace('+','%2B')))
+				stxt = stxt.replace('[SBDB]','')
 			else:
+				stxt = stxt.replace('[COORDINATE]','{} at MJD {}'.format(coord,str(sci_log['MJD'].iloc[0])))
 				stxt = stxt.replace('[TARGET_ALADIN_URL]','')
-				stxt = stxt.replace('[TARGET_SIMBAD_URL]','[<a href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr={}" target="_blank">JPL SBDB</a>]'.format(sci_param['TARGET_NAME'].replace(' ','')))
+				stxt = stxt.replace('[TARGET_SIMBAD_URL]','')
+				stxt = stxt.replace('[SBDB]','[<a href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr={}" target="_blank">JPL SBDB</a>]'.format(sci_param['TARGET_NAME'].replace(' ','')))
 			stxt = stxt.replace('[STD_SIMBAD_URL]',\
 				'[<a href="https://simbad.u-strasbg.fr/simbad/sim-id?Ident={}&NbIdent=1&Radius=2&Radius.unit=arcmin&submit=submit+id" target="_blank">SIMBAD</a>]'.format(sci_param['STD_NAME'].replace(' ','+')))
 			stxt = stxt.replace('[DESIGNATION_URL]',desig.replace('+','%2B'))
@@ -1079,6 +1098,12 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 #			sci_log['TINT'] = [sci_log.loc['INTEGRATION',i]*sci_log.loc['COADDS',i] for i in range(len(sci_log))]
 # NOTE: THIS CURRENTLY DOESN'T TAKE INTO ACCOUNT COADDS AS THE COMMAND ABOVE HAD AN ERROR
 			stxt = stxt.replace('[INTEGRATION]','{:.1f}'.format(np.nansum(sci_log['INTEGRATION'])))
+
+# std data from the observing log
+		sci_log = obslog[obslog['TARGET_NAME']==sci_param['STD_NAME']]
+		if len(sci_log)>0:
+			stxt = stxt.replace('[STD_AIRMASS]',str(sci_log['AIRMASS'].iloc[0]))
+			stxt = stxt.replace('[STD_TYPE]','({})'.format(str(sci_log['SIMBAD_TYPE'].iloc[0])))
 
 # final calibrated file (check for presence, otherwise combined file)
 		ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
@@ -1089,9 +1114,14 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 #		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],driver['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],qa_parameters['PLOT_TYPE']))
 		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 		if len(imfile)==0:
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+#			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 		if len(imfile)>0:
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			fitsfile = os.path.join(qa_parameters['PROC_FOLDER'],os.path.basename(imfile[0]).replace('.pdf','.fits'))
+			if os.path.exists(fitsfile)==True:
+				ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(fitsfile,os.path.basename(fitsfile),os.path.basename(fitsfile)))
+			else: ptxt.replace('[FITS]','')
 		else: ptxt=''
 #		ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 		stxt = stxt.replace('[CALIBRATED_FILE]',ptxt)
@@ -1105,12 +1135,18 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			tmp = re.split('[,-]',sci_param['{}_FILES'.format(x)])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0:
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0:
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0:
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0:
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0: 
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
@@ -1120,6 +1156,9 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			indexinfo = {'nint': setup.state['nint'], 'prefix': driver['SPECTRA_FILE_PREFIX'],'suffix': '', 'extension': '.pdf'}
 			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo)
 			files = list(filter(lambda x: os.path.exists(x),files))
+			if len(files)==0:
+				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo)
+				files = list(filter(lambda x: os.path.exists(x),files))
 			files.sort()
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 			for i,f in enumerate(files):
@@ -1135,12 +1174,16 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			for f in fnums:
 				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)==0: 
+					imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
 					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 					cnt+=1
 				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)==0: 
+					imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
 					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
@@ -1170,6 +1213,8 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	for cs in cal_sets:
 		if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)==0: 
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
 		if len(imfile)>0: 
 			imfile.sort()
 			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
@@ -1185,6 +1230,8 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	for cs in cal_sets:
 		if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_shift.pdf'.format(cs)))
+		if len(imfile)==0: 
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}_shift.pdf'.format(cs)))
 		if len(imfile)>0: 
 			imfile.sort()
 			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
@@ -1227,7 +1274,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 #############################
 
 
-def batch_reduce(parameters,verbose=ERROR_CHECKING):
+def batchReduce(parameters,verbose=ERROR_CHECKING):
 	'''
 	THIS FUNCTION AND DOCSTRING NEED TO BE UPDATED
 	Purpose
@@ -1237,26 +1284,26 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	Parameters
 	----------
 	parameters : dict or str
-		either the dict output of read_driver() or the full path to the batch driver file
+		either the dict output of readDriver() or the full path to the batch driver file
 
 	verbose : bool, default=ERROR_CHECKING
 		set to True to return verbose output
 
 	Outputs
 	-------
-	If check==True, returns dictionary of batch reduction parameters (output of read_driver)
+	If check==True, returns dictionary of batch reduction parameters (output of readDriver)
 	otherwise returns nothing; in either case, writes contents to file specified by driver_file
 
 
 	Example
 	-------
-	(1) Create from process_folder output:
+	(1) Create from processFolder output:
 
 	>>> from pyspextool.batch import batch
 	>>> dpath = '/Users/adam/projects/spex_archive/testing/spex-prism/data/'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
-	>>> dp = batch.process_folder(dpath,verbose=False)
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
+	>>> dp = batch.processFolder(dpath,verbose=False)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True,check=True,verbose=True)
 			
 			Created CALS_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/cals/
 			Created PROC_FOLDER folder /Users/adam/projects/spex_archive/testing/spex-prism/proc/
@@ -1278,7 +1325,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	>>> log_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/logs.csv'
 	>>> driver_file = '/Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt'
 	>>> dp = pandas.read_csv(log_file,sep=',')
-	>>> pars = batch.write_driver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
+	>>> pars = batch.writeDriver(dp,driver_file=driver_file,data_folder=dpath,create_folders=True, check=True, verbose=True)
 
 			Batch instructions written to /Users/adam/projects/spex_archive/testing/spex-prism/proc/driver.txt, please this check over before proceeding
 
@@ -1295,7 +1342,7 @@ def batch_reduce(parameters,verbose=ERROR_CHECKING):
 	numpy
 	os.path
 	pandas
-	read_driver()
+	readDriver()
 	'''
 # default parameters
 	if 'VERBOSE' not in list(parameters.keys()): parameters['VERBOSE']=verbose
@@ -1524,18 +1571,18 @@ if __name__ == '__main__':
 	if len(sys.argv) < 4:
 		print('Call this function from the command line as python batch.py [data_folder] [cals_folder] [proc_folder]')
 	else:
-		dp = process_folder(sys.argv[1])
-		dp = process_folder(sys.argv[1])
+		dp = processFolder(sys.argv[1])
+		dp = processFolder(sys.argv[1])
 		if len(sys.argv) > 4: log_file = sys.argv[4]
 		else: log_file = sys.argv[3]+'log.html'
 		print('\nWriting log to {}'.format(log_file))
-		write_log(dp,log_file)
+		writeLog(dp,log_file)
 		if len(sys.argv) > 5: driver_file = sys.argv[5]
 		else: driver_file = sys.argv[3]+'driver.txt'
 		print('\nWriting batch driver file to {}'.format(driver_file))
-		write_driver(dp,driver_file,data_folder=sys.argv[1],cals_folder=sys.argv[2],proc_folder=sys.argv[3])
+		writeDriver(dp,driver_file,data_folder=sys.argv[1],cals_folder=sys.argv[2],proc_folder=sys.argv[3])
 		txt = input('\nCheck the driver file {} and press return when ready to proceed...\n')
-		par = read_driver(driver_file)
+		par = readDriver(driver_file)
 		print('\nReducing spectra')
-		batch_reduce(par)
+		batchReduce(par)
 		print('\nReduction complete: processed files are in {}'.format(sys.argv[3]))
