@@ -47,7 +47,8 @@ def check_path(path, make_absolute=False):
 
     if result is False:
 
-        message = f'The path {path} does not exist. The current working directory is {cwd} and current files in the spex-prism folder are {files}'
+#        message = f'The path {path} does not exist. The current working directory is {cwd} and current files in the spex-prism folder are {files}'
+        message = f'The path {path} does not exist. The current working directory is {cwd}'
         raise ValueError(message)
 
     else:
