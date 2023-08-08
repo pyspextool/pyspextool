@@ -25,4 +25,4 @@ dependencies = [
 include-package-data = true
 
 [tool.setuptools.package-data]
-"*" = ["*.dat","*.fits"] # includes the data files in instrument_data/ and data/
+"*" = ["*.dat","*.fits","*.csv","*.txt","*.css"] # includes the data files in instrument_data/ and data/ and batch/
