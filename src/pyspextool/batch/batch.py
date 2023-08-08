@@ -36,6 +36,8 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
+VERSION = '2023 Aug 8'
+
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -823,6 +825,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	try: f = open(driver_file,'w')
 	except: raise ValueError('Cannot write to {}, check file path and permissions'.format(driver_file))
 	f.write('# Batch reduction driver file for {} observations on {}\n'.format(dpc['INSTRUMENT'].iloc[0],dpc['UT_DATE'].iloc[0]))
+	f.write('# Code version {}\n'.format(VERSION))
 	if comment!='': f.write('# {}\n'.format(comment.replace('\n','\n# ')))
 
 # observational information
@@ -1061,7 +1064,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	with open(qa_parameters['SINGLE_PLOT_TEMPLATE_FILE'],'r') as f: single_txt = f.read()
 
 # replace relevant parameters in top of index
-	output_text = output_text.replace('[CSS_FILE]',qa_parameters['CSS_FILE'])
+	output_text = output_text.replace('[CSS_FILE]',os.path.basename(qa_parameters['CSS_FILE']))
 	output_text = output_text.replace('[LOG_HTML]',log_html_name)
 # NEED TO UPDATE WEATHER LINK
 	output_text = output_text.replace('[WEATHER_HTML]',qa_parameters['MKWC_ARCHIVE_URL'])
@@ -1266,6 +1269,9 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		for f in imfiles: 
 #			print('\n',qa_parameters['QA_FOLDER'],image_folder,f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,f))
 			shutil.move(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,os.path.basename(f)))
+
+# add in CSS file
+	shutil.copy2(qa_parameters['CSS_FILE'],qa_parameters['QA_FOLDER'])
 
 # copy entire tree to a separate output folder if specified
 # RIGHT NOW JUST COPIES ENTIRE FOLDER; COULD BE DONE MORE SURGICALLY
