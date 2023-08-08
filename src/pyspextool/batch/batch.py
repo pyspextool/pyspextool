@@ -36,6 +36,8 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
+VERSION = '2023 Aug 8'
+
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -175,6 +177,9 @@ SIMBAD_RADIUS = 30*u.arcsecond
 LEGACY_FOLDER = 'irtfdata.ifa.hawaii.edu'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 
+# observing schedule
+OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule_compact.csv')
+
 
 
 ##################################
@@ -287,7 +292,7 @@ def processFolder(folder,verbose=False):
 # fix to coordinates
 	for k in ['RA','DEC']:
 		dp[k] = [x.strip() for x in dp[k]]
-		
+
 # generate ISO 8601 time string and sort
 # --> might need to do some work on this
 	dp['DATETIME'] = [dp['UT_DATE'].iloc[i]+'T'+dp['UT_TIME'].iloc[i] for i in range(len(dp))]
@@ -319,6 +324,17 @@ def processFolder(folder,verbose=False):
 				if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
 					dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
 				if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+
+# program and PI info (based on code by Evan Watson)
+# NOTE: in this realization we're assuming its the same program and PI for the entire folder
+# this overrules what is header
+	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE)
+	mjd = dp['MJD'].iloc[int(len(dp)/2)]
+	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
+	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
+	if len(obs_sch)>0:
+		dp['PROGRAM'] = [obs_sch['PROGRAM'].iloc[0]]*len(dp)
+		dp['OBSERVER'] = [obs_sch['PI'].iloc[0]]*len(dp)
 
 	return dp
 
@@ -809,6 +825,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	try: f = open(driver_file,'w')
 	except: raise ValueError('Cannot write to {}, check file path and permissions'.format(driver_file))
 	f.write('# Batch reduction driver file for {} observations on {}\n'.format(dpc['INSTRUMENT'].iloc[0],dpc['UT_DATE'].iloc[0]))
+	f.write('# Code version {}\n'.format(VERSION))
 	if comment!='': f.write('# {}\n'.format(comment.replace('\n','\n# ')))
 
 # observational information
@@ -1047,7 +1064,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	with open(qa_parameters['SINGLE_PLOT_TEMPLATE_FILE'],'r') as f: single_txt = f.read()
 
 # replace relevant parameters in top of index
-	output_text = output_text.replace('[CSS_FILE]',qa_parameters['CSS_FILE'])
+	output_text = output_text.replace('[CSS_FILE]',os.path.basename(qa_parameters['CSS_FILE']))
 	output_text = output_text.replace('[LOG_HTML]',log_html_name)
 # NEED TO UPDATE WEATHER LINK
 	output_text = output_text.replace('[WEATHER_HTML]',qa_parameters['MKWC_ARCHIVE_URL'])
@@ -1252,6 +1269,9 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		for f in imfiles: 
 #			print('\n',qa_parameters['QA_FOLDER'],image_folder,f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,f))
 			shutil.move(f,os.path.join(qa_parameters['QA_FOLDER'],image_folder,os.path.basename(f)))
+
+# add in CSS file
+	shutil.copy2(qa_parameters['CSS_FILE'],qa_parameters['QA_FOLDER'])
 
 # copy entire tree to a separate output folder if specified
 # RIGHT NOW JUST COPIES ENTIRE FOLDER; COULD BE DONE MORE SURGICALLY

@@ -43,11 +43,12 @@ def check_path(path, make_absolute=False):
     result = os.path.exists(path)
 
     cwd = os.path.abspath(os.getcwd())
-    files = os.listdir('tests/test_data/spex-prism')
+#    files = os.listdir('tests/test_data/spex-prism')
 
     if result is False:
 
-        message = f'The path {path} does not exist. The current working directory is {cwd} and current files in the spex-prism folder are {files}'
+#        message = f'The path {path} does not exist. The current working directory is {cwd} and current files in the spex-prism folder are {files}'
+        message = f'The path {path} does not exist. The current working directory is {cwd}'
         raise ValueError(message)
 
     else:
