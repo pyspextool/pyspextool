@@ -16,10 +16,11 @@ from pyspextool.batch import batch
 
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
-VERSION = '2023 Aug 6'
+VERSION = '2023 Aug 8'
 AUTHORS = [
 	'Adam Burgasser',
-	'Jean Marroquin']
+	'Jean Marroquin',
+	'Evan Watson']
 
 class runBatch():
 	def __init__(self):

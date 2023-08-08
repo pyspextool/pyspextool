@@ -175,6 +175,9 @@ SIMBAD_RADIUS = 30*u.arcsecond
 LEGACY_FOLDER = 'irtfdata.ifa.hawaii.edu'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 
+# observing schedule
+OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule_compact.csv')
+
 
 
 ##################################
@@ -287,7 +290,7 @@ def processFolder(folder,verbose=False):
 # fix to coordinates
 	for k in ['RA','DEC']:
 		dp[k] = [x.strip() for x in dp[k]]
-		
+
 # generate ISO 8601 time string and sort
 # --> might need to do some work on this
 	dp['DATETIME'] = [dp['UT_DATE'].iloc[i]+'T'+dp['UT_TIME'].iloc[i] for i in range(len(dp))]
@@ -319,6 +322,17 @@ def processFolder(folder,verbose=False):
 				if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
 					dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
 				if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+
+# program and PI info (based on code by Evan Watson)
+# NOTE: in this realization we're assuming its the same program and PI for the entire folder
+# this overrules what is header
+	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE)
+	mjd = dp['MJD'].iloc[int(len(dp)/2)]
+	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
+	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
+	if len(obs_sch)>0:
+		dp['PROGRAM'] = [obs_sch['PROGRAM'].iloc[0]]*len(dp)
+		dp['OBSERVER'] = [obs_sch['PI'].iloc[0]]*len(dp)
 
 	return dp
 
