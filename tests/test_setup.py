@@ -1,23 +1,17 @@
 from pyspextool.setup_utils import *
+import pytest
 
-# This should be a dictionary
-
-base_folder = 'tests/test_data/spex-prism'
-# what instrument and mode we are using
-instrument = 'spex'
-mode = 'prism'
-
-# set output pathways
-# set output pathways
-raw_path = base_folder+'/data/'
-cal_path = base_folder+'/cals/'
-proc_path = base_folder+'/proc/'
-qa_path = base_folder+'/qa/'
+spex_prism_paths = {
+    'raw_path':  'tests/test_data/spex-prism/data/',
+    'cal_path':  'tests/test_data/spex-prism/cals/',
+    'proc_path': 'tests/test_data/spex-prism/proc/',
+    'qa_path': 'tests/test_data/spex-prism/qa/',
+    }
 
 
-def test_pyspextool_setup():
-    pyspextool_setup(instrument,raw_path=raw_path, cal_path=cal_path, proc_path=proc_path, qa_path=qa_path,verbose=True)
-
+@pytest.mark.parametrize("instrument, paths", [('spex', spex_prism_paths)])
+def test_pyspextool_setup(instrument, paths):
+    pyspextool_setup(instrument, paths=paths, verbose=True)
 
 
 def test_set_instrument_state():

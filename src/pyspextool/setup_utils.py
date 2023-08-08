@@ -6,16 +6,15 @@ from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter, check_path, check_file
 from pyspextool.plot.plot_image import plot_image
-
-try:
-    from importlib.resources import files  # Python 3.10+
-except ImportError:
-    from importlib_resources import files  # Python <=3.9
+from importlib.resources import files  # Python 3.10+
 
 
-def pyspextool_setup(instrument=setup.state['instruments'][0],
-                     raw_path=None, cal_path=None, proc_path=None,
-                     qa_path=None, verbose=True, qa_extension=None,
+
+logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+
+
+def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
+                      verbose=True, qa_extension=None,
                      qa_file=None, qa_plot=None):
     """
     Set the pyspextool instrument and paths
@@ -26,20 +25,18 @@ def pyspextool_setup(instrument=setup.state['instruments'][0],
         The name of the instrument.  Must be one of 
         config.setup['instruments'].
     
-    raw_path : str, optional
-        The path to the raw directory.
-
-    cal_path : str, optional
-        The path to the calibration directory.
-
-    proc_path : str, optional
-        The path to the processed directory.
-
-    qa_path : str, optional
-        The path to the quality assurance directory.
-
-    raw_path : str, optional
-        The path to the quality assurance directory.
+    paths : dict, optional
+        A dictionary of paths.  Should contain the following keys:
+            raw_path : str, optional.
+                The path to the raw directory.
+            cal_path : str, optional
+                The path to the calibration directory.
+            proc_path : str, optional
+                The path to the processed directory.
+            qa_path : str, optional
+                The path to the quality assurance directory.
+            raw_path : str, optional
+                The path to the quality assurance directory.
 
     verbose : bool, default = True
         Set to report the setup results.
@@ -67,12 +64,36 @@ def pyspextool_setup(instrument=setup.state['instruments'][0],
     if instrument is not None:
         set_instrument(instrument)
 
-    set_parameters(raw_path=raw_path, cal_path=cal_path, proc_path=proc_path,
-                   qa_path=qa_path, verbose=verbose, qa_extension=qa_extension,
+    if verbose is True:
+        logging.getLogger().setLevel(logging.DEBUG)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+
+    state = set_parameters(paths, verbose=verbose, qa_extension=qa_extension,
                    qa_file=qa_file, qa_plot=qa_plot)
 
+    msg = f"""
+    Pyspextool Setup
+    ----------------
+    Instrument: {setup.state['instrument']}
 
-def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
+    Rawpath: {setup.state['raw_path']}
+    Calpath: {setup.state['cal_path']}
+    Procpath: {setup.state['proc_path']}
+    Qapath: {setup.state['qa_path']}
+
+    QA Extension: {setup.state['qa_extension']}
+    QA Plot: {setup.state['qa_plot']}
+    QA File: {setup.state['qa_file']}
+    """
+
+    # if verbose is True:
+    #    print(msg)
+
+    logging.debug(msg)
+
+
+def set_parameters(paths=None,
                    verbose=True, qa_extension=None, qa_plot=None, qa_file=None):
     """
     Set the pyspextool parameters
@@ -118,14 +139,14 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     # Check parameters
     #
 
-    check_parameter('set_parameters', 'raw_path', raw_path, ['str', 'NoneType'])
+    check_parameter('set_parameters', 'raw_path', paths['raw_path'], ['str', 'NoneType'])
 
-    check_parameter('set_parameters', 'cal_path', cal_path, ['str', 'NoneType'])
+    check_parameter('set_parameters', 'cal_path', paths['cal_path'], ['str', 'NoneType'])
 
-    check_parameter('set_parameters', 'proc_path', proc_path,
+    check_parameter('set_parameters', 'proc_path', paths['proc_path'],
                     ['str', 'NoneType'])
 
-    check_parameter('set_parameters', 'qa_path', qa_path, ['str', 'NoneType'])
+    check_parameter('set_parameters', 'qa_path', paths['qa_path'], ['str', 'NoneType'])
 
     check_parameter('set_parameters', 'verbose', verbose, 'bool')
 
@@ -173,39 +194,42 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     # Now let's modify the paths based on the user requests.
     #
 
-    if raw_path is not None:
-        raw_path = check_path(raw_path, make_absolute=True)
-        setup.state['raw_path'] = raw_path
+    if paths['raw_path'] is not None:
+        paths['raw_path'] = check_path(paths['raw_path'], make_absolute=True)
+        setup.state['raw_path'] = paths['raw_path']
+        logging.debug(f"Set raw_path to {paths['raw_path']}")   
     else:
         setup.state['raw_path'] = cwd
 
-    if cal_path is not None:
+    if paths['cal_path'] is not None:
         try:
-            cal_path = check_path(cal_path, make_absolute=True)
-            # logging.debug(f'Set cal_path to {cal_path}')
+            paths['cal_path'] = check_path(paths['cal_path'], make_absolute=True)
+            logging.debug(f"Set cal_path to {paths['cal_path']}")
         except ValueError:
-            os.mkdir(cal_path)
-            cal_path = check_path(cal_path, make_absolute=True)
-            #logging.info(f'Created cal_path directory {cal_path}')
-        setup.state['cal_path'] = cal_path
+            os.mkdir(paths['cal_path'])
+            paths['cal_path'] = check_path(paths['cal_path'], make_absolute=True)
+            logging.info(f"Created cal_path directory {paths['cal_path']}")
+
+        setup.state['cal_path'] = paths['cal_path']
     else:
         setup.state['cal_path'] = cwd
 
-    if proc_path is not None:
-        proc_path = check_path(proc_path, make_absolute=True)
-        setup.state['proc_path'] = proc_path
+    if paths['proc_path'] is not None:
+        paths['proc_path'] = check_path(paths['proc_path'], make_absolute=True)
+        setup.state['proc_path'] = paths['proc_path']
     else:
         setup.state['proc_path'] = cwd
 
-    if qa_path is not None:
+    if paths['qa_path'] is not None:
         try:
-            qa_path = check_path(qa_path, make_absolute=True)
-            # logging.debug(f'Set qa_path to {qa_path}')
+            paths['qa_path'] = check_path(paths['qa_path'], make_absolute=True)
+            logging.debug(f"Set qa_path to {paths['qa_path']}")
         except ValueError:
-            os.mkdir(qa_path)
-            qa_path = check_path(qa_path, make_absolute=True)
-            # logging.info(f'Created qa_path directory {qa_path}')   
-        setup.state['qa_path'] = qa_path
+            os.mkdir(paths['qa_path'])
+            paths['qa_path'] = check_path(paths['qa_path'], make_absolute=True)
+            logging.info(f"Created qa_path directory {paths['qa_path']}")    
+            
+        setup.state['qa_path'] = paths['qa_path']
     else:
         setup.state['qa_path'] = cwd
 
@@ -213,13 +237,15 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
     # Now write the paths to the user home directory
     #
 
-    # f = open(os.path.join(home_path, '.pyspextool_' + \
-    #                       setup.state['instrument'] + '.dat'), 'w')
+    # dat_file_name = f".pyspextool_{setup.state['instrument']}.dat"
+    # f = open(os.path.join(home_path, dat_file_name), 'w')
     # f.write('%s \n' % setup.state['raw_path'])
     # f.write('%s \n' % setup.state['cal_path'])
     # f.write('%s \n' % setup.state['proc_path'])
     # f.write('%s \n' % setup.state['qa_path'])
     # f.close()
+
+    # logging.info(f'Created {dat_file_name} in {home_path}')
 
     # Set the qa extension filetype
 
@@ -247,20 +273,7 @@ def set_parameters(raw_path=None, cal_path=None, proc_path=None, qa_path=None,
 
     setup.state['verbose'] = verbose
 
-    if verbose is True:
-        print()
-        print('Pyspextool Setup')
-        print('----------------')
-        print('Instrument: ', setup.state['instrument'])
-        print()
-        print('Rawpath: ', setup.state['raw_path'])
-        print('Calpath: ', setup.state['cal_path'])
-        print('Procpath: ', setup.state['proc_path'])
-        print('Qapath: ', setup.state['qa_path'])
-        print()
-        print('QA Extension:', setup.state['qa_extension'])
-        print('QA Plot:', setup.state['qa_plot'])
-        print('QA File:', setup.state['qa_file'], '\n')
+    return setup.state
 
 
 def set_instrument(instrument_name):
