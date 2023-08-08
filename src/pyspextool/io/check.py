@@ -43,7 +43,7 @@ def check_path(path, make_absolute=False):
     result = os.path.exists(path)
 
     cwd = os.path.abspath(os.getcwd())
-    files = os.listdir('tests/test_data/spex-prism')
+#    files = os.listdir('tests/test_data/spex-prism')
 
     if result is False:
 
