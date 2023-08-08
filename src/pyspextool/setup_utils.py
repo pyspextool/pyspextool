@@ -64,13 +64,26 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     if instrument is not None:
         set_instrument(instrument)
 
+
+    # Set up verbose scale and logging
+
+    setup.state['verbose'] = verbose
+
     if verbose is True:
         logging.getLogger().setLevel(logging.DEBUG)
     else:
         logging.getLogger().setLevel(logging.INFO)
 
+
+    # TODO: change to set_paths
     state = set_parameters(paths, verbose=verbose, qa_extension=qa_extension,
                    qa_file=qa_file, qa_plot=qa_plot)
+
+    
+    # TODO: make separate functions for qa state parameters.
+
+    
+
 
     msg = f"""
     Pyspextool Setup
@@ -265,10 +278,6 @@ def set_parameters(paths=None,
     else:
 
         setup.state['qa_extension'] = setup.state['qa_extensions'][0]
-            
-    # Set the verbose
-
-    setup.state['verbose'] = verbose
 
     return setup.state
 
@@ -373,3 +382,8 @@ def set_instrument(instrument_name):
     keywords = np.loadtxt(keywords_path, comments='#', dtype='str').tolist()
 
     setup.state['pyspextool_keywords'] = keywords
+
+    logging.info("Instrument state set to somethnig else")
+
+    return setup.state
+
