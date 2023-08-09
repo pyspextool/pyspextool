@@ -19,17 +19,17 @@ spex_prism_paths = {
 }
 
 spex_sxd_paths = {
-    "raw_path": "tests/test_data/spex-sxd/data/",
-    "cal_path": "tests/test_data/spex-sxd/cals/",
-    "proc_path": "tests/test_data/spex-sxd/proc/",
-    "qa_path": "tests/test_data/spex-sxd/qa/",
+    "raw_path": "tests/test_data/spex-SXD/data/",
+    "cal_path": "tests/test_data/spex-SXD/cals/",
+    "proc_path": "tests/test_data/spex-SXD/proc/",
+    "qa_path": "tests/test_data/spex-SXD/qa/",
 }
 
 uspex_sxd_paths = {
-    "raw_path": "tests/test_data/uspex-sxd/data/",
-    "cal_path": "tests/test_data/uspex-sxd/cals/",
-    "proc_path": "tests/test_data/uspex-sxd/proc/",
-    "qa_path": "tests/test_data/uspex-sxd/qa/",
+    "raw_path": "tests/test_data/uspex-SXD/data/",
+    "cal_path": "tests/test_data/uspex-SXD/cals/",
+    "proc_path": "tests/test_data/uspex-SXD/proc/",
+    "qa_path": "tests/test_data/uspex-SXD/qa/",
 }
 
 uspex_prism_paths = {
