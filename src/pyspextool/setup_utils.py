@@ -9,7 +9,6 @@ from pyspextool.plot.plot_image import plot_image
 from importlib.resources import files  # Python 3.10+
 
 
-
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
 
@@ -74,7 +73,7 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
 
     # Set the QA
 
-    state = set_qa(qa_path=paths['qa_path'], qa_extension=qa_extension, qa_plot=qa_plot, qa_file=qa_file)
+    state = set_qa_state(qa_path=paths['qa_path'], qa_extension=qa_extension, qa_plot=qa_plot, qa_file=qa_file)
     
     msg = f"""
     Pyspextool Setup
@@ -124,8 +123,7 @@ def set_paths(paths:dict=None):
 
     check_parameter('set_parameters', 'cal_path', paths['cal_path'], ['str', 'NoneType'])
 
-    check_parameter('set_parameters', 'proc_path', paths['proc_path'],
-                    ['str', 'NoneType'])
+    check_parameter('set_parameters', 'proc_path', paths['proc_path'], ['str', 'NoneType'])
 
     
     
@@ -191,19 +189,6 @@ def set_paths(paths:dict=None):
         setup.state['proc_path'] = paths['proc_path']
     else:
         setup.state['proc_path'] = cwd
-
-    if paths['qa_path'] is not None:
-        try:
-            paths['qa_path'] = check_path(paths['qa_path'], make_absolute=True)
-            logging.debug(f"Set qa_path to {paths['qa_path']}")
-        except ValueError:
-            os.mkdir(paths['qa_path'])
-            paths['qa_path'] = check_path(paths['qa_path'], make_absolute=True)
-            logging.info(f"Created qa_path directory {paths['qa_path']}")    
-            
-        setup.state['qa_path'] = paths['qa_path']
-    else:
-        setup.state['qa_path'] = cwd
 
     #
     # Now write the paths to the user home directory
@@ -341,7 +326,7 @@ def set_instrument(instrument_name):
     return setup.state
 
 
-def set_qa(qa_path:str=None, qa_extension:str=None, qa_plot:bool=None, qa_file:bool=None):
+def set_qa_state(qa_path:str=None, qa_extension:str=None, qa_plot:bool=None, qa_file:bool=None):
     """
     qa_path : str, optional
                 The path to the quality assurance directory.
@@ -367,6 +352,22 @@ def set_qa(qa_path:str=None, qa_extension:str=None, qa_plot:bool=None, qa_file:b
     check_parameter('set_parameters', 'qa_plot', qa_plot, ['NoneType', 'bool'])
 
     check_parameter('set_parameters', 'qa_file', qa_file, ['NoneType', 'bool'])
+
+    cwd = os.path.abspath(os.getcwd())
+
+    if qa_path is not None:
+        try:
+            qa_path = check_path(qa_path, make_absolute=True)
+            logging.debug(f"Set qa_path to {qa_path}")
+        except ValueError:
+            os.mkdir(qa_path)
+            check_path(qa_path, make_absolute=True)
+            logging.info(f"Created qa_path directory {qa_path}")    
+            
+        setup.state['qa_path'] = qa_path
+    else:
+        setup.state['qa_path'] = cwd
+
 
     # Set the qa extension filetype
 
