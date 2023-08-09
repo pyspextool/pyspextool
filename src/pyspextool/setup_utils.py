@@ -33,13 +33,12 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
                 The path to the calibration directory.
             proc_path : str, optional
                 The path to the processed directory.
-            qa_path : str, optional
-                The path to the quality assurance directory.
-            raw_path : str, optional
-                The path to the quality assurance directory.
 
     verbose : bool, default = True
         Set to report the setup results.
+
+    qa_path : str, optional
+                The path to the quality assurance directory. 
 
     qa_extension : {None, True, False}, optional
         Set True/False to override setup.state['qa_extension']
@@ -55,16 +54,6 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     None
 
     """
-
-    #
-    # We are not going to check parameters because the two routines we
-    # call do so.
-    #
-
-    if instrument is not None:
-        set_instrument(instrument)
-
-
     # Set up verbose scale and logging
 
     setup.state['verbose'] = verbose
@@ -74,17 +63,19 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     else:
         logging.getLogger().setLevel(logging.INFO)
 
+    # Set the instrument
 
-    # TODO: change to set_paths
-    state = set_parameters(paths, verbose=verbose, qa_extension=qa_extension,
-                   qa_file=qa_file, qa_plot=qa_plot)
+    if instrument is not None:
+        set_instrument(instrument)
 
+    # Set the paths
+
+    state = set_paths(paths)
+
+    # Set the QA
+
+    state = set_qa(qa_path=paths['qa_path'], qa_extension=qa_extension, qa_plot=qa_plot, qa_file=qa_file)
     
-    # TODO: make separate functions for qa state parameters.
-
-    
-
-
     msg = f"""
     Pyspextool Setup
     ----------------
@@ -93,8 +84,8 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     Rawpath: {setup.state['raw_path']}
     Calpath: {setup.state['cal_path']}
     Procpath: {setup.state['proc_path']}
+    
     Qapath: {setup.state['qa_path']}
-
     QA Extension: {setup.state['qa_extension']}
     QA Plot: {setup.state['qa_plot']}
     QA File: {setup.state['qa_file']}
@@ -103,10 +94,9 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     logging.debug(msg)
 
 
-def set_parameters(paths=None,
-                   verbose=True, qa_extension=None, qa_plot=None, qa_file=None):
+def set_paths(paths:dict=None):
     """
-    Set the pyspextool parameters
+    Set the pyspextool paths
 
     Parameters
     ----------
@@ -118,30 +108,11 @@ def set_parameters(paths=None,
 
     proc_path : str, optional
         The path to the processed directory.
-
-    qa_path : str, optional
-        The path to the quality assurance directory.
-
-    verbose : {True, False}, optional
-        Set to True/False to override config.state['verbose'] in the 
-        pyspextool config file. 
-
-    qa_extension : {None, 'pdf', 'png'}, optional
-        Set to override setup.state['qa_extension']
-
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the 
-        pyspextool config file.  If set to True, quality assurance 
-        plots will be interactively generated.
-
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the 
-        pyspextool config file.  If set to True, quality assurance 
-        plots will be written to disk.
+    
 
     Returns
     -------
-    None
+    setup.state : dict
 
     """
 
@@ -156,17 +127,8 @@ def set_parameters(paths=None,
     check_parameter('set_parameters', 'proc_path', paths['proc_path'],
                     ['str', 'NoneType'])
 
-    check_parameter('set_parameters', 'qa_path', paths['qa_path'], ['str', 'NoneType'])
-
-    check_parameter('set_parameters', 'verbose', verbose, 'bool')
-
-    check_parameter('set_parameters', 'qa_extension', qa_extension,
-                    ['NoneType', 'str'],
-                    possible_values=setup.state['qa_extensions'])
-
-    check_parameter('set_parameters', 'qa_plot', qa_plot, ['NoneType', 'bool'])
-
-    check_parameter('set_parameters', 'qa_file', qa_file, ['NoneType', 'bool'])
+    
+    
     #
     # Load the .pyspextool file if it exists.
     #
@@ -256,28 +218,6 @@ def set_parameters(paths=None,
     # f.close()
 
     # logging.info(f'Created {dat_file_name} in {home_path}')
-
-    # Set the qa extension filetype
-
-    setup.state['qa_extension'] = qa_extension
-
-    #
-    # Check defaults
-    #
-
-    if qa_file is not None:
-        setup.state['qa_file'] = qa_file
-
-    if qa_plot is not None:
-        setup.state['qa_plot'] = qa_plot
-
-    if qa_extension is not None:
-
-        setup.state['qa_extension'] = qa_extension
-
-    else:
-
-        setup.state['qa_extension'] = setup.state['qa_extensions'][0]
 
     return setup.state
 
@@ -383,7 +323,80 @@ def set_instrument(instrument_name):
 
     setup.state['pyspextool_keywords'] = keywords
 
-    logging.info("Instrument state set to somethnig else")
+    msg = f"""
+    Instrument Setup
+    ----------------
+    Instrument: {setup.state['instrument']}
+    State: {setup.state['suffix']}
+    NINT: {setup.state['nint']}
+    Extract Keywords: {setup.state['extract_keywords']}
+    Combine Keywords: {setup.state['combine_keywords']}
+    Telluric Keywords: {setup.state['telluric_keywords']}
+    Linearity Max: {setup.state['lincormax']}  
+    Bad Pixel Mask: {bad_pixel_mask_file}
+    """
+
+    logging.debug(msg)
 
     return setup.state
 
+
+def set_qa(qa_path:str=None, qa_extension:str=None, qa_plot:bool=None, qa_file:bool=None):
+    """
+    qa_path : str, optional
+                The path to the quality assurance directory.
+    
+    qa_extension : {None, 'pdf', 'png'}, optional
+        Set to override setup.state['qa_extension']
+
+    qa_plot : {None, True, False}, optional
+        Set to True/False to override config.state['qa_plot'] in the 
+        pyspextool config file.  If set to True, quality assurance 
+        plots will be interactively generated.
+
+    qa_file : {None, True, False}, optional
+        Set to True/False to override config.state['qa_file'] in the 
+        pyspextool config file.  If set to True, quality assurance 
+        plots will be written to disk.
+
+    """
+    check_parameter('set_parameters', 'qa_extension', qa_extension,
+                    ['NoneType', 'str'],
+                    possible_values=setup.state['qa_extensions'])
+
+    check_parameter('set_parameters', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+
+    check_parameter('set_parameters', 'qa_file', qa_file, ['NoneType', 'bool'])
+
+    # Set the qa extension filetype
+
+    setup.state['qa_extension'] = qa_extension
+
+    #
+    # Check defaults
+    #
+
+    if qa_file is not None:
+        setup.state['qa_file'] = qa_file
+
+    if qa_plot is not None:
+        setup.state['qa_plot'] = qa_plot
+
+    if qa_extension is not None:
+        setup.state['qa_extension'] = qa_extension
+
+    else:
+        setup.state['qa_extension'] = setup.state['qa_extensions'][0]
+
+    msg = f"""
+    QA Setup
+    ----------------
+    Qapath: {setup.state['qa_path']}
+
+    QA Extension: {setup.state['qa_extension']}
+    QA Plot: {setup.state['qa_plot']}
+    QA File: {setup.state['qa_file']}
+    """
+    logging.debug(msg)
+
+    return setup.state
