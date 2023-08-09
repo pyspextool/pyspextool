@@ -9,21 +9,26 @@ from importlib.resources import files  # Python 3.10+
 
 # TODO:  test logging works as expected. run some commands in the REPL
 
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
 
-def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
-                      verbose=True, qa_extension=None,
-                     qa_file=None, qa_plot=None):
+def pyspextool_setup(
+    instrument=setup.state["instruments"][0],
+    paths=None,
+    verbose=True,
+    qa_extension=None,
+    qa_file=None,
+    qa_plot=None,
+):
     """
     Set the pyspextool instrument, paths, and quality assurance settings
 
     Parameters
     ----------
     instrument : str, optional
-        The name of the instrument.  Must be one of 
+        The name of the instrument.  Must be one of
         config.setup['instruments'].
-    
+
     paths : dict, optional
         A dictionary of paths.  Should contain the following keys:
             raw_path : str, optional.
@@ -39,14 +44,14 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
         verbose = False sets the logging level to INFO
 
     qa_path : str, optional
-                The path to the quality assurance directory. 
+                The path to the quality assurance directory.
 
     qa_extension : {None, True, False}, optional
         Set True/False to override setup.state['qa_extension']
         Default: ??
 
     qa_file : {None, True, False}, optional
-        WHAT DOES THIS DO? 
+        WHAT DOES THIS DO?
         Set True/False to override setup.state['qa_file']
         Default: ??
 
@@ -62,7 +67,7 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     """
     # Set up verbose scale and logging
 
-    setup.state['verbose'] = verbose
+    setup.state["verbose"] = verbose
 
     if verbose is True:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -80,8 +85,13 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
 
     # Set the quality assurance settings
 
-    set_qa_state(qa_path=paths['qa_path'], qa_extension=qa_extension, qa_plot=qa_plot, qa_file=qa_file)
-    
+    set_qa_state(
+        qa_path=paths["qa_path"],
+        qa_extension=qa_extension,
+        qa_plot=qa_plot,
+        qa_file=qa_file,
+    )
+
     msg = f"""
     Pyspextool Setup
     ----------------
@@ -90,7 +100,7 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
     Rawpath: {setup.state['raw_path']}
     Calpath: {setup.state['cal_path']}
     Procpath: {setup.state['proc_path']}
-    
+
     Qapath: {setup.state['qa_path']}
     QA Extension: {setup.state['qa_extension']}
     QA Plot: {setup.state['qa_plot']}
@@ -101,7 +111,8 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
 
     return setup.state
 
-def set_paths(paths:dict=None):
+
+def set_paths(paths: dict = None):
     """
     Set the pyspextool paths
 
@@ -115,7 +126,7 @@ def set_paths(paths:dict=None):
 
     proc_path : str, optional
         The path to the processed directory.
-    
+
 
     Returns
     -------
@@ -127,14 +138,18 @@ def set_paths(paths:dict=None):
     # Check parameters
     #
 
-    check_parameter('set_parameters', 'raw_path', paths['raw_path'], ['str', 'NoneType'])
+    check_parameter(
+        "set_parameters", "raw_path", paths["raw_path"], ["str", "NoneType"]
+    )
 
-    check_parameter('set_parameters', 'cal_path', paths['cal_path'], ['str', 'NoneType'])
+    check_parameter(
+        "set_parameters", "cal_path", paths["cal_path"], ["str", "NoneType"]
+    )
 
-    check_parameter('set_parameters', 'proc_path', paths['proc_path'], ['str', 'NoneType'])
+    check_parameter(
+        "set_parameters", "proc_path", paths["proc_path"], ["str", "NoneType"]
+    )
 
-    
-    
     #
     # Load the .pyspextool file if it exists.
     #
@@ -165,38 +180,39 @@ def set_paths(paths:dict=None):
 
     #     # No.  Use the current working directory
 
-    # Should only use the current working directory if the user has not defined the paths
+    # Should only use the current working directory
+    # if the user has not defined the paths
     cwd = os.path.abspath(os.getcwd())
 
     # #
     # Now let's modify the paths based on the user requests.
     #
 
-    if paths['raw_path'] is not None:
-        paths['raw_path'] = check_path(paths['raw_path'], make_absolute=True)
-        setup.state['raw_path'] = paths['raw_path']
-        logging.debug(f"Set raw_path to {paths['raw_path']}")   
+    if paths["raw_path"] is not None:
+        paths["raw_path"] = check_path(paths["raw_path"], make_absolute=True)
+        setup.state["raw_path"] = paths["raw_path"]
+        logging.debug(f"Set raw_path to {paths['raw_path']}")
     else:
-        setup.state['raw_path'] = cwd
+        setup.state["raw_path"] = cwd
 
-    if paths['cal_path'] is not None:
+    if paths["cal_path"] is not None:
         try:
-            paths['cal_path'] = check_path(paths['cal_path'], make_absolute=True)
+            paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
             logging.debug(f"Set cal_path to {paths['cal_path']}")
         except ValueError:
-            os.mkdir(paths['cal_path'])
-            paths['cal_path'] = check_path(paths['cal_path'], make_absolute=True)
+            os.mkdir(paths["cal_path"])
+            paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
             logging.info(f"Created cal_path directory {paths['cal_path']}")
 
-        setup.state['cal_path'] = paths['cal_path']
+        setup.state["cal_path"] = paths["cal_path"]
     else:
-        setup.state['cal_path'] = cwd
+        setup.state["cal_path"] = cwd
 
-    if paths['proc_path'] is not None:
-        paths['proc_path'] = check_path(paths['proc_path'], make_absolute=True)
-        setup.state['proc_path'] = paths['proc_path']
+    if paths["proc_path"] is not None:
+        paths["proc_path"] = check_path(paths["proc_path"], make_absolute=True)
+        setup.state["proc_path"] = paths["proc_path"]
     else:
-        setup.state['proc_path'] = cwd
+        setup.state["proc_path"] = cwd
 
     #
     # Now write the paths to the user home directory
@@ -216,14 +232,13 @@ def set_paths(paths:dict=None):
 
 
 def set_instrument(instrument_name):
-
     """
     Set the instrument.
 
     Parameters
     ----------
     instrument_name : str
-        The name of the instrument.  Must be one of 
+        The name of the instrument.  Must be one of
         config.setup['instruments'].
 
     Returns
@@ -233,89 +248,81 @@ def set_instrument(instrument_name):
     """
 
     if instrument_name is None:
-        instrument_name = setup.state['instruments'][0]
+        instrument_name = setup.state["instruments"][0]
 
     #
     # Check parameter and store results
     #
 
-    check_parameter('set_instrument', 'instrument_name', instrument_name,
-                    'str')
+    check_parameter("set_instrument", "instrument_name", instrument_name, "str")
 
-    setup.state['instrument'] = instrument_name
+    setup.state["instrument"] = instrument_name
 
     #
     # Set the package path
     #
 
-    setup.state['package_path'] = str(files('pyspextool'))
+    setup.state["package_path"] = str(files("pyspextool"))
 
     #
     # Check to make sure the instrument path exists
     #
 
-    instrument_data_path = os.path.join(setup.state['package_path'],
-                                        'instrument_data',
-                                        instrument_name + '_dir')
-    data_path = os.path.join(setup.state['package_path'],
-                                        'data')
+    instrument_data_path = os.path.join(
+        setup.state["package_path"], "instrument_data", instrument_name + "_dir"
+    )
+    data_path = os.path.join(setup.state["package_path"], "data")
 
     check_path(instrument_data_path)
     check_path(data_path)
 
-    setup.state['instrument_path'] = instrument_data_path
+    setup.state["instrument_path"] = instrument_data_path
 
     #
     # Now get the instrument file and load
     #
 
-    instrument_info_file = os.path.join(instrument_data_path,
-                                        instrument_name + '.dat')
+    instrument_info_file = os.path.join(instrument_data_path, instrument_name + ".dat")
 
     check_file(instrument_info_file)
 
     instrument_info = read_instrument_file(instrument_info_file)
 
-    if instrument_name in ['uspex', 'spex']:
-        setup.state['irtf'] = True
+    if instrument_name in ["uspex", "spex"]:
+        setup.state["irtf"] = True
 
     # Fill out the state variables
 
-    setup.state['suffix'] = instrument_info['SUFFIX']
-
-    setup.state['nint'] = instrument_info['NINT']
-
-    setup.state['extract_keywords'] = instrument_info['XSPEXTOOL_KEYWORDS']
-
-    setup.state['combine_keywords'] = instrument_info['COMBINE_KEYWORDS']
-
-    setup.state['telluric_keywords'] = instrument_info['TELLURIC_KEYWORDS']   
+    setup.state["suffix"] = instrument_info["SUFFIX"]
+    setup.state["nint"] = instrument_info["NINT"]
+    setup.state["extract_keywords"] = instrument_info["XSPEXTOOL_KEYWORDS"]
+    setup.state["combine_keywords"] = instrument_info["COMBINE_KEYWORDS"]
+    setup.state["telluric_keywords"] = instrument_info["TELLURIC_KEYWORDS"]
 
     # Now store linearity numbers
 
-    setup.state['lincormax'] = instrument_info['LINCORMAX']
-    setup.state['linearity_info'] = {'max': setup.state['lincormax'],
-                                     'bit': 0}
+    setup.state["lincormax"] = instrument_info["LINCORMAX"]
+    setup.state["linearity_info"] = {"max": setup.state["lincormax"], "bit": 0}
 
     # Get the bad pixel mask
 
-    bad_pixel_mask_file = os.path.join(instrument_data_path,
-                                       setup.state['instrument'] + \
-                                       '_bdpxmk.fits')
+    bad_pixel_mask_file = os.path.join(
+        instrument_data_path, setup.state["instrument"] + "_bdpxmk.fits"
+    )
 
     check_file(bad_pixel_mask_file)
 
-    setup.state['raw_bad_pixel_mask'] = fits.getdata(bad_pixel_mask_file)
+    setup.state["raw_bad_pixel_mask"] = fits.getdata(bad_pixel_mask_file)
 
     #
     # Grab the Spextool keywords
     #
 
-    keywords_path = os.path.join(data_path, 'pyspextool_keywords.dat')
+    keywords_path = os.path.join(data_path, "pyspextool_keywords.dat")
 
-    keywords = np.loadtxt(keywords_path, comments='#', dtype='str').tolist()
+    keywords = np.loadtxt(keywords_path, comments="#", dtype="str").tolist()
 
-    setup.state['pyspextool_keywords'] = keywords
+    setup.state["pyspextool_keywords"] = keywords
 
     msg = f"""
     Instrument Setup
@@ -326,7 +333,7 @@ def set_instrument(instrument_name):
     Extract Keywords: {setup.state['extract_keywords']}
     Combine Keywords: {setup.state['combine_keywords']}
     Telluric Keywords: {setup.state['telluric_keywords']}
-    Linearity Max: {setup.state['lincormax']}  
+    Linearity Max: {setup.state['lincormax']}
     Bad Pixel Mask: {bad_pixel_mask_file}
     """
 
@@ -335,32 +342,41 @@ def set_instrument(instrument_name):
     return setup.state
 
 
-def set_qa_state(qa_path:str=None, qa_extension:str=None, qa_plot:bool=None, qa_file:bool=None):
+def set_qa_state(
+    qa_path: str = None,
+    qa_extension: str = None,
+    qa_plot: bool = None,
+    qa_file: bool = None,
+):
     """
     qa_path : str, optional
                 The path to the quality assurance directory.
-    
+
     qa_extension : {None, 'pdf', 'png'}, optional
         Set to override setup.state['qa_extension']
 
     qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the 
-        pyspextool config file.  If set to True, quality assurance 
+        Set to True/False to override config.state['qa_plot'] in the
+        pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
     qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the 
-        pyspextool config file.  If set to True, quality assurance 
+        Set to True/False to override config.state['qa_file'] in the
+        pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
     """
-    check_parameter('set_parameters', 'qa_extension', qa_extension,
-                    ['NoneType', 'str'],
-                    possible_values=setup.state['qa_extensions'])
+    check_parameter(
+        "set_parameters",
+        "qa_extension",
+        qa_extension,
+        ["NoneType", "str"],
+        possible_values=setup.state["qa_extensions"],
+    )
 
-    check_parameter('set_parameters', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter("set_parameters", "qa_plot", qa_plot, ["NoneType", "bool"])
 
-    check_parameter('set_parameters', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter("set_parameters", "qa_file", qa_file, ["NoneType", "bool"])
 
     cwd = os.path.abspath(os.getcwd())
 
@@ -371,32 +387,31 @@ def set_qa_state(qa_path:str=None, qa_extension:str=None, qa_plot:bool=None, qa_
         except ValueError:
             os.mkdir(qa_path)
             check_path(qa_path, make_absolute=True)
-            logging.info(f"Created qa_path directory {qa_path}")    
-            
-        setup.state['qa_path'] = qa_path
-    else:
-        setup.state['qa_path'] = cwd
+            logging.info(f"Created qa_path directory {qa_path}")
 
+        setup.state["qa_path"] = qa_path
+    else:
+        setup.state["qa_path"] = cwd
 
     # Set the qa extension filetype
 
-    setup.state['qa_extension'] = qa_extension
+    setup.state["qa_extension"] = qa_extension
 
     #
     # Check defaults
     #
 
     if qa_file is not None:
-        setup.state['qa_file'] = qa_file
+        setup.state["qa_file"] = qa_file
 
     if qa_plot is not None:
-        setup.state['qa_plot'] = qa_plot
+        setup.state["qa_plot"] = qa_plot
 
     if qa_extension is not None:
-        setup.state['qa_extension'] = qa_extension
+        setup.state["qa_extension"] = qa_extension
 
     else:
-        setup.state['qa_extension'] = setup.state['qa_extensions'][0]
+        setup.state["qa_extension"] = setup.state["qa_extensions"][0]
 
     msg = f"""
     QA Setup
