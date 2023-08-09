@@ -1,10 +1,14 @@
 name: pyspextool
 channels:
-  - defaults
+  - http://ssb.stsci.edu/astroconda
+  - conda-forge
 dependencies:
   - astropy
   - astroquery
   - matplotlib
   - numpy
   - pandas
+  - pip
   - scipy
+  - pip:
+    - git-lfs
