@@ -5,9 +5,9 @@ import logging
 from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter, check_path, check_file
-from pyspextool.plot.plot_image import plot_image
 from importlib.resources import files  # Python 3.10+
 
+# TODO:  test logging works as expected. run some commands in the REPL
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
@@ -16,7 +16,7 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
                       verbose=True, qa_extension=None,
                      qa_file=None, qa_plot=None):
     """
-    Set the pyspextool instrument and paths
+    Set the pyspextool instrument, paths, and quality assurance settings
 
     Parameters
     ----------
@@ -35,22 +35,29 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
 
     verbose : bool, default = True
         Set to report the setup results.
+        verbose = True sets the logging level to DEBUG
+        verbose = False sets the logging level to INFO
 
     qa_path : str, optional
                 The path to the quality assurance directory. 
 
     qa_extension : {None, True, False}, optional
         Set True/False to override setup.state['qa_extension']
+        Default: ??
 
     qa_file : {None, True, False}, optional
+        WHAT DOES THIS DO? 
         Set True/False to override setup.state['qa_file']
+        Default: ??
 
     qa_plot : {None, True, False}, optional
+        WHAT DOES THIS DO?
         Set True/False to override setup.state['qa_plot']
+        Default: ??
 
     Returns
     -------
-    None
+    setup.state : dict
 
     """
     # Set up verbose scale and logging
@@ -69,11 +76,11 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
 
     # Set the paths
 
-    state = set_paths(paths)
+    set_paths(paths)
 
-    # Set the QA
+    # Set the quality assurance settings
 
-    state = set_qa_state(qa_path=paths['qa_path'], qa_extension=qa_extension, qa_plot=qa_plot, qa_file=qa_file)
+    set_qa_state(qa_path=paths['qa_path'], qa_extension=qa_extension, qa_plot=qa_plot, qa_file=qa_file)
     
     msg = f"""
     Pyspextool Setup
@@ -92,6 +99,7 @@ def pyspextool_setup(instrument=setup.state['instruments'][0], paths=None,
 
     logging.debug(msg)
 
+    return setup.state
 
 def set_paths(paths:dict=None):
     """
@@ -215,11 +223,12 @@ def set_instrument(instrument_name):
     Parameters
     ----------
     instrument_name : str
-        The name of the instrument.
+        The name of the instrument.  Must be one of 
+        config.setup['instruments'].
 
     Returns
     -------
-    None
+    setup.state : dict
 
     """
 
