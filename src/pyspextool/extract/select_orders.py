@@ -8,7 +8,7 @@ from pyspextool.plot.plot_profiles import plot_profiles
 
 
 def select_orders(include=None, exclude=None, include_all=False, verbose=None,
-                  qa_plot=None, qa_file=None, qa_plotsize=(6, 10)):
+                  qa_show=None, qa_write=None, qa_showsize=(6, 10)):
     """
     To set which orders are to be traced and extracted
 
@@ -27,17 +27,17 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
     include_all : {False, True}, optional
         Set to include all orders.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -85,13 +85,13 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
 
     check_parameter('select_orders', 'include_all', include_all, 'bool')
 
-    check_parameter('select_orders', 'qa_plot', qa_plot,
+    check_parameter('select_orders', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('select_orders', 'qa_file', qa_file,
+    check_parameter('select_orders', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
-    check_parameter('select_orders', 'qa_plotsize', qa_plotsize, 'tuple')
+    check_parameter('select_orders', 'qa_showsize', qa_showsize, 'tuple')
 
     check_parameter('select_orders', 'verbose', verbose, ['NoneType', 'bool'])
 
@@ -107,11 +107,11 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -123,9 +123,9 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
     extract.orders['include'] = include
     extract.orders['exclude'] = exclude
     extract.orders['include_all'] = include_all
-    extract.orders['qaplot'] = qa_plot
-    extract.orders['qafile'] = qa_file
-    extract.orders['qaplotsize'] = qa_plotsize
+    extract.orders['qaplot'] = qa_show
+    extract.orders['qafile'] = qa_write
+    extract.orders['qaplotsize'] = qa_showsize
     extract.orders['verbose'] = verbose
 
     #
@@ -197,15 +197,15 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
         extract.state['psdoorders'] = test
         doorders = test
 
-    if qa_plot is True:
+    if qa_show is True:
         number = plot_profiles(extract.state['profiles'],
                                extract.state['slith_arc'],
                                doorders, apertures=extract.state['apertures'],
                                plot_number=extract.state['profiles_plotnum'],
-                               plot_size=qa_plotsize)
+                               plot_size=qa_showsize)
         extract.state['profiles_plotnum'] = number
 
-    if qa_file is True:
+    if qa_write is True:
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],
                       'filename': extract.state['qafilename'] +
@@ -221,7 +221,7 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
     #
 
     #    if extract.state['type'] == 'xs':
-    #        trace_apertures(verbose=verbose, qa_plot=qa_plot, qa_file=qa_file)
+    #        trace_apertures(verbose=verbose, qa_show=qa_show, qa_write=qa_write)
 
     #
     # Set the done variable

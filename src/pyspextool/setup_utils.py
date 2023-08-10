@@ -11,7 +11,6 @@ from importlib.resources import files  # Python 3.10+
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
-
 def pyspextool_setup(
     instrument=setup.state["instruments"][0],
     raw_path: str = None,
@@ -81,10 +80,10 @@ def pyspextool_setup(
     # Set up verbose scale and logging
 
     if verbose is True:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
     elif verbose is False:
-        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
     logging.info(f"Verbose set to {setup.state['verbose']}")
@@ -410,9 +409,9 @@ def set_qa_state(
         possible_values=setup.state["qa_extensions"],
     )
 
-    check_parameter("set_parameters", "qa_plot", qa_show, ["NoneType", "bool"])
+    check_parameter("set_parameters", "qa_show", qa_show, ["NoneType", "bool"])
 
-    check_parameter("set_parameters", "qa_file", qa_write, ["NoneType", "bool"])
+    check_parameter("set_parameters", "qa_write", qa_write, ["NoneType", "bool"])
 
     cwd = os.path.abspath(os.getcwd())
 

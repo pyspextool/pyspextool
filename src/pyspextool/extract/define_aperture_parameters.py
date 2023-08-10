@@ -9,7 +9,7 @@ from pyspextool.plot.plot_profiles import plot_profiles
 
 def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
                                bg_width=None, bg_regions=None, bg_fit_degree=1,
-                               qa_plot=None, qa_plotsize=(6, 10), qa_file=None):
+                               qa_show=None, qa_showsize=(6, 10), qa_write=None):
     """
     To define the extraction parameters
 
@@ -37,17 +37,17 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     bg_fit_degree : int, default=1, optional
         The polynomial degree of the fit to the background.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -75,24 +75,24 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     check_parameter('define_aperture_parameters', 'bg_fit_degree',
                     bg_fit_degree, ['int'], [1, 2])
 
-    check_parameter('define_aperture_parameters', 'qa_plot', qa_plot,
+    check_parameter('define_aperture_parameters', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('define_aperture_parameters', 'qa_file', qa_file,
+    check_parameter('define_aperture_parameters', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
-    check_parameter('define_aperture_parameters', 'qa_plotsize', qa_plotsize,
+    check_parameter('define_aperture_parameters', 'qa_showsize', qa_showsize,
                     'tuple')
 
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     #
     # Store user inputs 
@@ -104,9 +104,9 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     extract.parameters['bgwidth'] = bg_width
     extract.parameters['bgregions'] = bg_regions
     extract.parameters['bgdeg'] = bg_fit_degree
-    extract.parameters['qaplot'] = qa_plot
-    extract.parameters['qafile'] = qa_file
-    extract.parameters['qaplotsize'] = qa_plotsize
+    extract.parameters['qaplot'] = qa_show
+    extract.parameters['qafile'] = qa_write
+    extract.parameters['qaplotsize'] = qa_showsize
 
     #
     # Now things proceed depending on the extraction mode
@@ -285,18 +285,18 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
         doorders = extract.state['psdoorders']
         plot_aperture_radii = np.full(extract.state['naps'], aperture_radii)
 
-    if qa_plot is True:
+    if qa_show is True:
         
         number = plot_profiles(extract.state['profiles'],
                                extract.state['slith_arc'],
                                doorders, apertures=extract.state['apertures'],
                                aperture_radii=plot_aperture_radii,
                                psf_radius=psf_radius, ps_bginfo=psbginfo,
-                               xs_bginfo=xsbginfo, plot_size=qa_plotsize,
+                               xs_bginfo=xsbginfo, plot_size=qa_showsize,
                                plot_number=extract.state['profiles_plotnum'])
         extract.state['profiles_plotnum'] = number
         
-    if qa_file is True:
+    if qa_write is True:
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],
                       'filename': extract.state['qafilename'] + '_apertureparms',

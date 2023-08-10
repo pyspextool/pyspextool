@@ -8,24 +8,24 @@ from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.extract.profiles import make_1d_profile
 
 
-def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
+def make_spatial_profiles(qa_show=None, qa_write=None, qa_showsize=(6, 10),
                           verbose=None):
     """
     To create 1D "average" spatial profiles of the orders.
 
     Parameters 
     ----------
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6, 10)
+    qa_showsize : tuple, default=(6, 10)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -54,24 +54,24 @@ def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
     # Check the parameters
     #
 
-    check_parameter('make_spatial_profiles', 'qa_plot', qa_plot,
+    check_parameter('make_spatial_profiles', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
     check_parameter('make_spatial_profiles', 'verbose', verbose,
                     ['NoneType', 'bool'])
 
-    check_parameter('make_spatial_profiles', 'qa_file', qa_file,
+    check_parameter('make_spatial_profiles', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -80,8 +80,8 @@ def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
     # Save user inputs
     #
 
-    extract.profiles['qaplot'] = qa_plot
-    extract.profiles['qafile'] = qa_file
+    extract.profiles['qaplot'] = qa_show
+    extract.profiles['qafile'] = qa_write
     extract.profiles['verbose'] = verbose
 
     #
@@ -110,16 +110,16 @@ def make_spatial_profiles(qa_plot=None, qa_file=None, qa_plotsize=(6, 10),
 
     # Do the QA plotting
     
-    if qa_plot is True:
+    if qa_show is True:
         number = plot_profiles(extract.state['profiles'],
                                extract.state['slith_arc'],
                                np.ones(extract.state['norders'], dtype=int),
-                               plot_size=qa_plotsize,
+                               plot_size=qa_showsize,
                                plot_number=extract.state['profiles_plotnum'])
         extract.state['profiles_plotnum'] = number
         
         
-    if qa_file is True:
+    if qa_write is True:
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],
                       'filename': extract.state['qafilename'] + '_profiles',

@@ -7,8 +7,8 @@ from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 
 
-def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
-                              qa_file=None, qa_plotsize=(6, 10), verbose=None):
+def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_show=None,
+                              qa_write=None, qa_showsize=(6, 10), verbose=None):
     """
     To determine the locations of spectral extraction apertures
 
@@ -37,17 +37,17 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
         The approximate FWHM of the peak to be identified.  Only used 
         if `method` is 'auto' or 'guess'.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -85,14 +85,14 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
 
     check_parameter('define_aperture_positions', 'fwhm', fwhm, ['int', 'float'])
 
-    check_parameter('define_aperture_positions', 'qa_plot', qa_plot,
+    check_parameter('define_aperture_positions', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('define_aperture_positions', 'qa_file', qa_file,
+    check_parameter('define_aperture_positions', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
-    check_parameter('define_aperture_positions', 'qa_plotsize',
-                    qa_plotsize, 'tuple')
+    check_parameter('define_aperture_positions', 'qa_showsize',
+                    qa_showsize, 'tuple')
 
     check_parameter('load_image', 'verbose', verbose, ['NoneType', 'bool'])
 
@@ -100,11 +100,11 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -116,9 +116,9 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
     extract.apertures['apertures'] = apertures
     extract.apertures['method'] = method
     extract.apertures['fwhm'] = fwhm
-    extract.apertures['qaplot'] = qa_plot
-    extract.apertures['qafile'] = qa_file
-    extract.apertures['qaplotsize'] = qa_plotsize
+    extract.apertures['qaplot'] = qa_show
+    extract.apertures['qafile'] = qa_write
+    extract.apertures['qaplotsize'] = qa_showsize
     extract.apertures['verbose'] = verbose
 
     #
@@ -229,14 +229,14 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_plot=None,
     # Plot the results
     #
 
-    if qa_plot is True:
+    if qa_show is True:
         plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
                       np.ones(extract.state['norders'], dtype=int),
                       apertures=extract.state['apertures'],
                       plot_number=extract.state['profiles_plotnum'],
-                      plot_size=qa_plotsize)
+                      plot_size=qa_showsize)
 
-    if qa_file is True:
+    if qa_write is True:
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],
                       'filename': extract.state['qafilename'] +
