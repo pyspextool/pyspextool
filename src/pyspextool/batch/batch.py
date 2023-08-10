@@ -36,7 +36,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2023 Aug 8'
+VERSION = '2023 Aug 9'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -99,8 +99,8 @@ BATCH_PARAMETERS = {
 	'STITCHED_FILE_PREFIX': 'stitched',
 	'PROGRAM': '',
 	'OBSERVER': '',
-	'QA_FILE': True,
-	'QA_PLOT': False, 
+	'qa_write': True,
+	'qa_show': False, 
 	'PLOT_TYPE': '.pdf', 
 	'CALIBRATIONS': True,
 	'EXTRACT': True,
@@ -675,7 +675,7 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 		parameters['{}-{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
 
 # some specific parameters that need format conversation
-	for k in ['QA_FILE','QA_PLOT']:
+	for k in ['qa_write','qa_show']:
 		if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
 
 
@@ -1387,7 +1387,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			fstr = '{}'.format(numberList(fnum))
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
-				ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_plot=parameters['QA_PLOT'],qa_file=parameters['QA_FILE'],verbose=parameters['VERBOSE'])
+				ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_show=parameters['qa_show'],qa_write=parameters['qa_write'],verbose=parameters['VERBOSE'])
 			else:
 				if parameters['VERBOSE']==True: print('\nflat{}.fits already created, skipping (or use overwrite to remake)'.format(cs))
 
@@ -1402,7 +1402,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
 				ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs),\
-					qa_plot=parameters['QA_PLOT'],qa_file=parameters['QA_FILE'],verbose=parameters['VERBOSE'])
+					qa_show=parameters['qa_show'],qa_write=parameters['qa_write'],verbose=parameters['VERBOSE'])
 			else:
 				if parameters['VERBOSE']==True: print('\nwavecal{}.fits already created, skipping (or use overwrite to remake)'.format(cs))
 
@@ -1427,27 +1427,27 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 #		print(extract_filestring(spar['TARGET_FILES'],'index'))
 			ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
 				spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
-				flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # set extraction method
 			ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
 
 # make spatial profiles
-			ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-			ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # select orders to extract (set above)
-			ps.extract.select_orders(include=spar['ORDERS'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.select_orders(include=spar['ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # trace apertures
-			ps.extract.trace_apertures(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
 			ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'],qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],)
+						bg_width=spar['BACKGROUND_WIDTH'],qa_show=spar['qa_show'],qa_write=spar['qa_write'],)
 
 # extract away
 			ps.extract.extract_apertures(verbose=spar['VERBOSE'])
@@ -1462,27 +1462,27 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
 			ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
 				spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
-				flat_field=True, linearity_correction=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # set extraction method
 			ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
 
 # make spatial profiles
-			ps.extract.make_spatial_profiles(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-			ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=parameters['VERBOSE'])
+			ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=parameters['VERBOSE'])
 
 # select orders to extract (set above)
-			ps.extract.select_orders(include=spar['ORDERS'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.select_orders(include=spar['ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # trace apertures
-			ps.extract.trace_apertures(qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'], verbose=spar['VERBOSE'])
+			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
 			ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'], qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'])
+						bg_width=spar['BACKGROUND_WIDTH'], qa_show=spar['qa_show'],qa_write=spar['qa_write'])
 
 # extract away
 			ps.extract.extract_apertures(verbose=verbose)
@@ -1509,14 +1509,14 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)))==False or parameters['OVERWRITE']==True:
 				ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf),
-					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
+					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 			else:
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 
 			
 			# else:
 			# 	ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['TARGET_FILES']),
-			# 		scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
+			# 		scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 
 # telluric star
 #		if spar['MODE']=='SXD':
@@ -1528,12 +1528,12 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)))==False or parameters['OVERWRITE']==True:
 				ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf),
-					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
+					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 			else:
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 			# else:
 			# 	ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],spar['STD_FILES']),
-			# 		scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'])
+			# 		scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 
 ## FLUX CALIBRATE ###
 # CURRENTLY IMPLEMENTED AS A TEST CASE #
@@ -1567,7 +1567,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)))==False or parameters['OVERWRITE']==True:
 				ps.telluric.telluric_correction('{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf),spar['STD_NAME'],
 					'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf),'{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf),
-					standard_data=standard_data,qa_plot=spar['QA_PLOT'],qa_file=spar['QA_FILE'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])
+					standard_data=standard_data,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])
 			else:
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf))
 

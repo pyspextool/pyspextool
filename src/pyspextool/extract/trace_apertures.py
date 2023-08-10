@@ -10,7 +10,7 @@ from pyspextool.plot.plot_image import plot_image
 
 def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                     centroid_threshold=2, fwhm=0.8, verbose=None,
-                    qa_plot=None, qa_file=None, qa_plotsize=(6, 6)):
+                    qa_show=None, qa_write=None, qa_showsize=(6, 6)):
     """
     Command line call for tracing apertures.
 
@@ -35,17 +35,17 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     fwhm : float, optional, default 0.8
         The approximate FWHM of the peaks in arcseconds.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -98,21 +98,21 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
     check_parameter('trace_apertures', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('trace_apertures', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('trace_apertures', 'qa_write', qa_write, ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qa_plotsize', qa_plotsize, 'tuple')
+    check_parameter('trace_apertures', 'qa_showsize', qa_showsize, 'tuple')
 
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -126,9 +126,9 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     extract.trace['sumwidth'] = summation_width
     extract.trace['centresh'] = centroid_threshold
     extract.trace['fwhm'] = fwhm
-    extract.trace['qafile'] = qa_file
-    extract.trace['qaplot'] = qa_plot
-    extract.trace['qaplotsize'] = qa_plotsize
+    extract.trace['qafile'] = qa_write
+    extract.trace['qaplot'] = qa_show
+    extract.trace['qaplotsize'] = qa_showsize
     extract.trace['verbose'] = verbose
 
     #
@@ -156,7 +156,7 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         tracecoeffs = trace['coeffs']
 
-        if qa_plot is True or qa_file is True:
+        if qa_show is True or qa_write is True:
             norders, naps = np.shape(extract.state['apertures'])
             info = trace_to_xy(extract.state['ordermask'],
                                extract.state['wavecal'],
@@ -185,7 +185,7 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
         # Do the plotting stuff
 
-        if qa_plot is True or qa_file is True:
+        if qa_show is True or qa_write is True:
             norders, naps = np.shape(extract.state['apertures'])
             info = trace_to_xy(extract.state['ordermask'],
                                extract.state['wavecal'],
@@ -206,15 +206,15 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     # Plot stuff up if requested
     #
 
-    if qa_plot is True:
+    if qa_show is True:
 
         number = plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
                    plot_number=extract.state['image_plotnum'],
-                   plot_size=qa_plotsize)
+                   plot_size=qa_showsize)
         extract.state['image_plotnum'] = number
 
         
-    if qa_file is True:
+    if qa_write is True:
         qafileinfo = {'figsize': (7, 7),
                       'filepath': setup.state['qa_path'],
                       'filename': extract.state['qafilename'] + '_trace',

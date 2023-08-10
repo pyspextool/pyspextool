@@ -27,8 +27,8 @@ from pyspextool.io.wavecal import write_wavecal_1d
 
 
 def make_wavecal(files, flat_file, output_name, extension='.fits*',
-                 use_stored_solution=False, verbose=None, qa_file=None,
-                 qa_plot=None, qa_image_plotsize=(9, 9),
+                 use_stored_solution=False, verbose=None, qa_write=None,
+                 qa_show=None, qa_image_plotsize=(9, 9),
                  qa_shift_plotsize=(8,10), qa_residual_plotsize=(10,8),
                  overwrite=True):
     """
@@ -62,17 +62,17 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     overwrite : {True, False}, optional
         Set to True to overwrite an existing file.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.setup['qa_file'].  If set to True, 
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.setup['qa_write'].  If set to True, 
         quality assurance plots will be written to disk.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.setup['qa_plot'].  If set to True,
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.setup['qa_show'].  If set to True,
         quality assurance plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(8,10)
+    qa_showsize : tuple, default=(8,10)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
     Returns
     -------
@@ -103,22 +103,22 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     check_parameter('make_wavecal', 'overwrite', overwrite, 'bool')
 
-    check_parameter('make_wavecal', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('make_wavecal', 'qa_write', qa_write, ['NoneType', 'bool'])
 
-    check_parameter('make_wavecal', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('make_wavecal', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-#    check_parameter('make_wavecal', 'qa_plotsize', qa_plotsize,
+#    check_parameter('make_wavecal', 'qa_showsize', qa_showsize,
 #                    ['NoneType', 'tuple'])
 
     #
     # Check the qa variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -223,7 +223,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     # Do the QA plot
     #
 
-    if qa_plot is True:
+    if qa_show is True:
 
         orders_plotinfo = {'edgecoeffs': flatinfo['edgecoeffs'],
                            'xranges': flatinfo['xranges'],
@@ -233,18 +233,18 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
                    plot_size=qa_image_plotsize,
                    plot_number=extract.state['image_plotnum'])
 
-    if qa_file is True:
+    if qa_write is True:
 
         orders_plotinfo = {'edgecoeffs': flatinfo['edgecoeffs'],
                            'xranges': flatinfo['xranges'],
                            'orders': flatinfo['orders']}
         
-        qa_fileinfo = {'figsize': (6,6),
+        qa_writeinfo = {'figsize': (6,6),
                        'filepath': setup.state['qa_path'],
                        'filename': output_name + '_arc',
                        'extension': setup.state['qa_extension']}
 
-        plot_image(med, orders_plotinfo=orders_plotinfo, file_info=qa_fileinfo)
+        plot_image(med, orders_plotinfo=orders_plotinfo, file_info=qa_writeinfo)
 
     #
     # Let's do the extraction of the "arc" spectra
@@ -287,7 +287,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     xsource = np.squeeze(spectra['spectra'][z][0, :])
     fsource = np.squeeze(spectra['spectra'][z][1, :])
 
-    if qa_file is True:
+    if qa_write is True:
 
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],
@@ -297,8 +297,8 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     offset = get_spectral_pixelshift(xanchor, fanchor, xsource, fsource,
                                      qafileinfo=qafileinfo,
-                                     qa_plot=qa_plot,
-                                     qa_plotsize=qa_shift_plotsize)
+                                     qa_show=qa_show,
+                                     qa_showsize=qa_shift_plotsize)
 
     #
     # Are we using the stored solution?
@@ -348,7 +348,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         if verbose:
             print('Finding the lines...')
 
-        if qa_file is True:
+        if qa_write is True:
 
             qafileinfo = {'figsize': (8.5, 11),
                           'filepath': setup.state['qa_path'],
@@ -384,7 +384,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
             xdinfo = {'homeorder': wavecalinfo['homeorder'],
                       'orderdeg': wavecalinfo['ordrdeg']}
 
-        if qa_file is True:
+        if qa_write is True:
 
             qafileinfo = {'figsize': qafile_figsize,
                           'filepath': setup.state['qa_path'],
@@ -397,9 +397,9 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
         solution = wavecal_solution_1d(wavecalinfo['orders'], lineinfo,
                                        wavecalinfo['dispdeg'], xdinfo=xdinfo,
-                                       qa_fileinfo=qafileinfo,
-                                       qa_plot=qa_plot,
-                                       qa_plotsize=qa_residual_plotsize,
+                                       qa_writeinfo=qafileinfo,
+                                       qa_show=qa_show,
+                                       qa_showsize=qa_residual_plotsize,
                                        verbose=verbose)
 
     else:

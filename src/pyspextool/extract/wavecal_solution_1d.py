@@ -6,8 +6,8 @@ from pyspextool.fit.polyfit import poly_fit_1d
 from pyspextool.fit.polyfit import poly_fit_2d
 
 def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
-                        verbose=True, qa_plotsize=(5,8), qa_plot=None,
-                        qa_fileinfo=None):
+                        verbose=True, qa_showsize=(5,8), qa_show=None,
+                        qa_writeinfo=None):
     """
     To calculate a wavelength solution in the pyspextool 1D or 1DXD case.
 
@@ -42,15 +42,15 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
     verbose : {None, True, False}, optional
         Set to True/False to override config.setup['verbose']
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.setup['qa_plot'].  If set to True,
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.setup['qa_show'].  If set to True,
         quality assurance plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(5,8)
+    qa_showsize : tuple, default=(5,8)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_fileinfo : dict, optional
+    qa_writeinfo : dict, optional
         `"figsize"` : tuple
             A (2,) tuple giving the figure size.
 
@@ -99,22 +99,22 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
         residuals = (line_info['wavelength'].astype(np.float16) -
                      fit['yfit']) * 1e4
             
-        if qa_plot is True:
+        if qa_show is True:
 
             pl.ion()
-            do_1dplot(qa_plotsize, residuals, line_info['x'], fit['goodbad'],
+            do_1dplot(qa_showsize, residuals, line_info['x'], fit['goodbad'],
                       fit['rms'], dispersion_degree)
             pl.show()
             pl.pause(1)
         
-        if qa_fileinfo is not None:
+        if qa_writeinfo is not None:
 
             pl.ioff()
-            do_1dplot(qa_fileinfo['figsize'], residuals, line_info['x'],
+            do_1dplot(qa_writeinfo['figsize'], residuals, line_info['x'],
                       fit['goodbad'], fit['rms'], dispersion_degree)
-            pl.savefig(os.path.join(qa_fileinfo['filepath'],
-                                    qa_fileinfo['filename'] +
-                                    '_residuals'+qa_fileinfo['extension']))
+            pl.savefig(os.path.join(qa_writeinfo['filepath'],
+                                    qa_writeinfo['filename'] +
+                                    '_residuals'+qa_writeinfo['extension']))
             pl.close()
         
 
@@ -136,25 +136,25 @@ def wavecal_solution_1d(orders, line_info, dispersion_degree, xdinfo=None,
 
         residuals = (scaled_wavelengths - fit['zfit']) * 1e4
 
-        if qa_plot is True:
+        if qa_show is True:
 
             pl.ion()
-            do_1dxdplot(qa_plotsize, residuals, line_info['order'],
+            do_1dxdplot(qa_showsize, residuals, line_info['order'],
                         line_info['x'], orders, fit['goodbad'], fit['rms'],
                         dispersion_degree, xdinfo['orderdeg'])
             pl.show()
             pl.pause(1)
 
-        if qa_fileinfo is not None:
+        if qa_writeinfo is not None:
 
             pl.ioff()
-            do_1dxdplot(qa_fileinfo['figsize'], residuals, line_info['order'],
+            do_1dxdplot(qa_writeinfo['figsize'], residuals, line_info['order'],
                         line_info['x'], orders, fit['goodbad'], fit['rms'],
                         dispersion_degree, xdinfo['orderdeg'])
           
-            pl.savefig(os.path.join(qa_fileinfo['filepath'],
-                                    qa_fileinfo['filename'] +
-                                    '_residuals'+qa_fileinfo['extension']))
+            pl.savefig(os.path.join(qa_writeinfo['filepath'],
+                                    qa_writeinfo['filename'] +
+                                    '_residuals'+qa_writeinfo['extension']))
             pl.close()
                             
     #

@@ -11,8 +11,8 @@ from pyspextool.plot.plot_image import plot_image
 
 def locate_orders(img, guess_positions, search_ranges, step_size,
                   slit_height_range, poly_degree, ybuffer,
-                  intensity_fraction, com_width, qa_plot=None,
-                  qa_plotsize=(8, 8), qa_fileinfo=None):
+                  intensity_fraction, com_width, qa_show=None,
+                  qa_showsize=(8, 8), qa_writeinfo=None):
     """
     Locates orders in a (cross-dispersed) spectral image
 
@@ -59,10 +59,10 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
     com_width : int
         The window in units of pixels used to compute the center-of-mass (COM).
 
-    qa_plotsize : tuple, default=(8, 8)
+    qa_showsize : tuple, default=(8, 8)
         A (2,) tuple giving the plot size.
 
-    qa_fileinfo : dict, optional
+    qa_writeinfo : dict, optional
 
         `'figsize'` : tuple
             (2,) tuple of the figure size (inches).
@@ -307,13 +307,13 @@ def locate_orders(img, guess_positions, search_ranges, step_size,
     plotinfo = {'guess_positions': plguesspos, 'x': plcols, 'y': pledges,
                 'goodbad': plgoodbad, 'edgecoeffs': pledgecoeffs}
 
-    if qa_plot is True:
+    if qa_show is True:
         
-        plot_image(img, plot_size=qa_plotsize, locateorders_plotinfo=plotinfo)
+        plot_image(img, plot_size=qa_showsize, locateorders_plotinfo=plotinfo)
 
-    if qa_fileinfo is not None:
+    if qa_writeinfo is not None:
 
-        plot_image(img, file_info=qa_fileinfo, locateorders_plotinfo=plotinfo)
+        plot_image(img, file_info=qa_writeinfo, locateorders_plotinfo=plotinfo)
 
     return edgecoeffs, xranges
 
