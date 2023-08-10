@@ -1,5 +1,4 @@
 import numpy as np
-import logging
 from astropy.io import fits
 import os
 
@@ -62,10 +61,10 @@ def read_flat_fits(flatfile):
             float -> The plate scale (arcseconds per pixel).
 
         ``"ybuffer"``
-            int -> The number of native pixels from the top and bottom of the
-                   slit to avoid during the operation.  Useful to account for
-                   the fact that the drop-off in intensity at the edge of the
-                   slit is not a heaviside function but rather occurs over a
+            int -> The number of native pixels from the top and bottom of the 
+                   slit to avoid during the operation.  Useful to account for 
+                   the fact that the drop-off in intensity at the edge of the 
+                   slit is not a heaviside function but rather occurs over a 
                    few pixels.
 
         ``"slith_pix"``
@@ -122,89 +121,91 @@ def read_flat_fits(flatfile):
 
     """
 
-    # Read the data
+    # Read the data 
 
     hdul = fits.open(flatfile)
-    hdul[0].verify("silentfix")
+    hdul[0].verify('silentfix')
 
     hdr = hdul[0].header
 
-    flat = idl_rotate(hdul[1].data, hdr["ROTATION"])
-    var = idl_rotate(hdul[2].data, hdr["ROTATION"])
-    mask = idl_rotate(hdul[3].data, hdr["ROTATION"])
+    flat = idl_rotate(hdul[1].data, hdr['ROTATION'])
+    var = idl_rotate(hdul[2].data, hdr['ROTATION'])
+    mask = idl_rotate(hdul[3].data, hdr['ROTATION'])
 
     hdul.close()
 
     # create flatinfo dictionary
 
-    flatinfo = {"flat": flat}
-    flatinfo.update({"var": var})
-    flatinfo.update({"bitmask": np.uint8(mask)})
+    flatinfo = {'flat': flat}
+    flatinfo.update({'var': var})
+    flatinfo.update({'bitmask': np.uint8(mask)})
 
     shape = np.shape(flat)
-    flatinfo.update({"ncols": shape[1]})
-    flatinfo.update({"nrows": shape[0]})
+    flatinfo.update({'ncols': shape[1]})
+    flatinfo.update({'nrows': shape[0]})
 
-    flatinfo.update({"mode": hdr["MODE"]})
+    flatinfo.update({'mode': hdr['MODE']})
 
-    norders = hdr["NORDERS"]
-    flatinfo.update({"norders": norders})
+    norders = hdr['NORDERS']
+    flatinfo.update({'norders': norders})
 
-    orders = hdr["ORDERS"].split(",")
+    orders = hdr['ORDERS'].split(',')
     orders = [int(o) for o in orders]
-    flatinfo.update({"orders": np.array(orders, dtype=int)})
+    flatinfo.update({'orders': np.array(orders, dtype=int)})
 
-    edgedeg = hdr["EDGEDEG"]
-    flatinfo.update({"edgedeg": edgedeg})
+    edgedeg = hdr['EDGEDEG']
+    flatinfo.update({'edgedeg': edgedeg})
 
-    flatinfo.update({"ps": hdr["PLTSCALE"]})
-    flatinfo.update({"ybuffer": hdr["YBUFFER"]})
-    flatinfo.update({"slith_arc": hdr["SLTH_ARC"]})
-    flatinfo.update({"slith_pix": hdr["SLTH_PIX"]})
-    flatinfo.update({"slitw_arc": hdr["SLTW_ARC"]})
-    flatinfo.update({"slitw_pix": hdr["SLTW_PIX"]})
-    flatinfo.update({"rp": hdr["RP"]})
-    flatinfo.update({"rotation": hdr["ROTATION"]})
+    flatinfo.update({'ps': hdr['PLTSCALE']})
+    flatinfo.update({'ybuffer': hdr['YBUFFER']})    
+    flatinfo.update({'slith_arc': hdr['SLTH_ARC']})
+    flatinfo.update({'slith_pix': hdr['SLTH_PIX']})
+    flatinfo.update({'slitw_arc': hdr['SLTW_ARC']})
+    flatinfo.update({'slitw_pix': hdr['SLTW_PIX']})
+    flatinfo.update({'rp': hdr['RP']})
+    flatinfo.update({'rotation': hdr['ROTATION']})
 
     # Grab the edge coeffiecients, xranges, and rms values
 
-    ordermask = np.zeros([flatinfo["nrows"], flatinfo["ncols"]], dtype=int)
+    ordermask = np.zeros([flatinfo['nrows'], flatinfo['ncols']], dtype=int)
     edgecoeffs = np.empty([norders, 2, edgedeg])
     xranges = np.empty([norders, 2], dtype=int)
     rms = np.empty([norders])
 
     for i in range(norders):
-        root = "OR" + str(orders[i]).zfill(3)
+
+        root = 'OR' + str(orders[i]).zfill(3)
 
         for j in range(edgedeg):
-            edgecoeffs[i, 0, j] = hdr[root + "_B*"][j]
-            edgecoeffs[i, 1, j] = hdr[root + "_T*"][j]
+            edgecoeffs[i, 0, j] = hdr[root + '_B*'][j]
+            edgecoeffs[i, 1, j] = hdr[root + '_T*'][j]
 
-        xranges[i, :] = [int(x) for x in hdr[root + "_XR"].split(",")]
+        xranges[i, :] = [int(x) for x in hdr[root + '_XR'].split(',')]
 
         #  May not have an RMS if it wasn't normalized
 
         try:
-            rms[i] = hdr[root + "RMS"]
+
+            rms[i] = hdr[root + 'RMS']
 
         except KeyError as err:
+
             rms[i] = np.nan
 
-        # Create order mask
+        # Create order mask            
 
         x = np.arange(xranges[i, 0], xranges[i, 1] + 1, 1, dtype=int)
         bot = np.polynomial.polynomial.polyval(x, edgecoeffs[i, 0, :])
         top = np.polynomial.polynomial.polyval(x, edgecoeffs[i, 1, :])
 
         for j in range(len(x)):
-            ordermask[
-                np.floor(bot[j]).astype("int") : np.ceil(top[j]).astype("int"), x[j]
-            ] = orders[i]
+            ordermask[np.floor(bot[j]).astype('int'):
+                      np.ceil(top[j]).astype('int'), x[j]] = orders[i]
 
-    flatinfo.update({"edgecoeffs": edgecoeffs})
-    flatinfo.update({"xranges": xranges})
-    flatinfo.update({"rms": rms})
-    flatinfo = add_entry(flatinfo, "bitmask", "after", "ordermask", ordermask)
+    flatinfo.update({'edgecoeffs': edgecoeffs})
+    flatinfo.update({'xranges': xranges})
+    flatinfo.update({'rms': rms})
+    flatinfo = add_entry(flatinfo, 'bitmask', 'after', 'ordermask', ordermask)
 
     return flatinfo
 
@@ -225,7 +226,7 @@ def read_flatcal_file(file):
        A dictionary with the following keywords:
 
        rotation : int
-           IDL rotation command for the order numbers to increase
+           IDL rotation command for the order numbers to increase 
            upwards and wavelength increase to the right
 
            Direction  Transpose?  Rotation Counterclockwise
@@ -264,8 +265,8 @@ def read_flatcal_file(file):
        flatfrac : float
            see findorders.py
 
-       comwidth : int
-           The window in units of pixels used to compute the
+       comwidth : int 
+           The window in units of pixels used to compute the 
            center-of-mass (COM) (see findorders.py)
 
        edgedeg : int
@@ -279,7 +280,7 @@ def read_flatcal_file(file):
            See normspecflat.py and fiterpolate.py
 
        oversamp : float
-           See normspecflat.py
+           See normspecflat.py 
 
        ybuffer  : int
            See normspecflat.py
@@ -287,30 +288,30 @@ def read_flatcal_file(file):
        ycororder : int
            See adjustguesspos.py
 
-       xranges : array_like of int, [norders,2]
-           An (norders,2) array giving the column numbers over which to
-           search.  sranges[0,0] gives the starting column number for
-           the first order and sranges[0,1] gives the end column number
+       xranges : array_like of int, [norders,2] 
+           An (norders,2) array giving the column numbers over which to 
+           search.  sranges[0,0] gives the starting column number for 
+           the first order and sranges[0,1] gives the end column number 
            for the first order.
 
        edgecoeffs : array_like of float
-           (norders,2,ncoeffs) array giving the polynomial
-           coefficients delineating the top and bottom of each order.
-           edgecoeffs[0,0,:] gives the coefficients for the bottom of
-           the order closests to the bottom of `img` and
-           edgecoeffs[0,1,:] gives the coefficients for the top of said
-           order.
+           (norders,2,ncoeffs) array giving the polynomial 
+           coefficients delineating the top and bottom of each order.  
+           edgecoeffs[0,0,:] gives the coefficients for the bottom of 
+           the order closests to the bottom of `img` and 
+           edgecoeffs[0,1,:] gives the coefficients for the top of said 
+           order.  
 
        guesspos : array_like of int
-           An (norders,2) array giving the positions to start the
-           search.  guesspos[0,0] gives the column number for the
-           first order and guesspos[0,1] gives the row number for the
+           An (norders,2) array giving the positions to start the 
+           search.  guesspos[0,0] gives the column number for the 
+           first order and guesspos[0,1] gives the row number for the 
            first order.  Typically, the positions are near the center
            of the image and center of the slit.
 
     Procedure
     ---------
-    Just reads FITS header information, and calculates the guess
+    Just reads FITS header information, and calculates the guess 
     positions based on the edgecoeffs and the xranges
 
     Example
@@ -324,79 +325,69 @@ def read_flatcal_file(file):
     """
 
     # Open the file, grab the mask
-    try:
-        hdul = fits.open(file)
-        logging.debug(f"Opened flatcal file: {file}")
-    except OSError as e:
-        msg = f"""
-        Could not open the flatcal file: {file}.
-        Please check that the file downloaded from Git LFS properly. 
-        It should be approximately 2 MB.
-        Download directly from <URL TBD>"""
-        logging.error(msg)
-        raise OSError(e)
 
+    hdul = fits.open(file)
     omask = hdul[0].data
 
     # Clean the header and grab important keywords
 
-    hdul[0].verify("silentfix")  # this was needed for to correct hdr problems
+    hdul[0].verify('silentfix')  # this was needed for to correct hdr problems
 
-    val = hdul[0].header["ROTATION"]
-    result = {"rotation": val}
+    val = hdul[0].header['ROTATION']
+    result = {'rotation': val}
 
-    val = hdul[0].header["SLTH_ARC"]
-    result.update({"slith_arc": val})
+    val = hdul[0].header['SLTH_ARC']
+    result.update({'slith_arc': val})
 
-    val = hdul[0].header["SLTH_PIX"]
-    result.update({"slith_pix": val})
+    val = hdul[0].header['SLTH_PIX']
+    result.update({'slith_pix': val})
 
-    val = hdul[0].header["SLTH_RNG"].split(",")
+    val = hdul[0].header['SLTH_RNG'].split(',')
     val = [int(x) for x in val]
-    result.update({"slith_range": val})
+    result.update({'slith_range': val})
 
-    val = hdul[0].header["ORDERS"].split(",")
+    val = hdul[0].header['ORDERS'].split(',')
     orders = [int(x) for x in val]
     norders = len(orders)
-    result.update({"orders": orders})
+    result.update({'orders': orders})
 
-    val = hdul[0].header["RPPIX"]
-    result.update({"rpppix": val})
+    val = hdul[0].header['RPPIX']
+    result.update({'rpppix': val})
 
-    val = hdul[0].header["PLTSCALE"]
-    result.update({"ps": val})
+    val = hdul[0].header['PLTSCALE']
+    result.update({'ps': val})
 
     #    val = hdul[0].header['FIXED']
-    #    result.update({'fixed':val})
+    #    result.update({'fixed':val})        
 
     #    if not val:
 
-    val = hdul[0].header["STEP"]
-    result.update({"step": val})
+    val = hdul[0].header['STEP']
+    result.update({'step': val})
 
-    val = hdul[0].header["FLATFRAC"]
-    result.update({"flatfrac": val})
+    val = hdul[0].header['FLATFRAC']
+    result.update({'flatfrac': val})
 
-    val = hdul[0].header["COMWIN"]
-    result.update({"comwidth": val})
+    val = hdul[0].header['COMWIN']
+    result.update({'comwidth': val})
 
-    deg = int(hdul[0].header["EDGEDEG"])
-    result.update({"edgedeg": deg})
+    deg = int(hdul[0].header['EDGEDEG'])
+    result.update({'edgedeg': deg})
 
-    val = hdul[0].header["NORM_NXG"]
-    result.update({"nxgrid": int(val)})
+    val = hdul[0].header['NORM_NXG']
+    result.update({'nxgrid': int(val)})
 
-    val = hdul[0].header["NORM_NYG"]
-    result.update({"nygrid": int(val)})
+    val = hdul[0].header['NORM_NYG']
+    result.update({'nygrid': int(val)})
 
-    val = hdul[0].header["OVERSAMP"]
-    result.update({"oversamp": val})
+    val = hdul[0].header['OVERSAMP']
+    result.update({'oversamp': val})
 
-    val = hdul[0].header["YBUFFER"]
-    result.update({"ybuffer": val})
+    val = hdul[0].header['YBUFFER']
+    result.update({'ybuffer': val})
 
-    val = hdul[0].header["YCORORDR"]
-    result.update({"ycororder": val})
+    val = hdul[0].header['YCORORDR']
+    result.update({'ycororder': val})
 
     # Now get the edge coefficients and the xranges
 
@@ -405,9 +396,10 @@ def read_flatcal_file(file):
     guesspos = np.empty((norders, 2), dtype=int)
 
     for i in range(0, norders):
+
         # Get the xrange and guess position x position
 
-        val = hdul[0].header["OR" + str(orders[i]).zfill(3) + "_XR"].split(",")
+        val = hdul[0].header['OR' + str(orders[i]).zfill(3) + '_XR'].split(',')
         val = [int(x) for x in val]
         xranges[i, :] = val
 
@@ -416,51 +408,33 @@ def read_flatcal_file(file):
         # Now grab the edgecoefficients
 
         for j in range(0, deg + 1):
-            keyt = "OR" + str(orders[i]).zfill(3) + "_T" + str(j + 1).zfill(1)
-            keyb = "OR" + str(orders[i]).zfill(3) + "_B" + str(j + 1).zfill(1)
+            keyt = 'OR' + str(orders[i]).zfill(3) + '_T' + str(j + 1).zfill(1)
+            keyb = 'OR' + str(orders[i]).zfill(3) + '_B' + str(j + 1).zfill(1)
 
             edgecoeffs[i, 0, j] = hdul[0].header[keyb]
             edgecoeffs[i, 1, j] = hdul[0].header[keyt]
 
-        # Now determine the guess position y position
+        # Now determine the guess position y position 
 
-        bot = np.polynomial.polynomial.polyval(guesspos[i, 0], edgecoeffs[i, 0, :])
-        top = np.polynomial.polynomial.polyval(guesspos[i, 0], edgecoeffs[i, 1, :])
+        bot = np.polynomial.polynomial.polyval(guesspos[i, 0],
+                                               edgecoeffs[i, 0, :])
+        top = np.polynomial.polynomial.polyval(guesspos[i, 0],
+                                               edgecoeffs[i, 1, :])
 
         guesspos[i, 1] = int((bot + top) / 2)
 
-    result.update({"xranges": xranges})
-    result.update({"edgecoeffs": edgecoeffs})
-    result.update({"guesspos": guesspos})
+    result.update({'xranges': xranges})
+    result.update({'edgecoeffs': edgecoeffs})
+    result.update({'guesspos': guesspos})
     hdul.close()
 
     return result
 
 
-def write_flat(
-    flat,
-    var,
-    flag,
-    hdrinfo,
-    rotate,
-    orders,
-    edgecoeffs,
-    xranges,
-    ybuffer,
-    ps,
-    slith_pix,
-    slith_arc,
-    slitw_pix,
-    slitw_arc,
-    modename,
-    rms,
-    rp,
-    version,
-    history,
-    oname,
-    linmax=None,
-    overwrite=True,
-):
+def write_flat(flat, var, flag, hdrinfo, rotate, orders, edgecoeffs, xranges,
+               ybuffer, ps, slith_pix, slith_arc, slitw_pix, slitw_arc,
+               modename, rms, rp, version, history, oname, linmax=None,
+               overwrite=True):
     """
     To write a Spextool flat FITS file to disk.
 
@@ -586,98 +560,102 @@ def write_flat(
 
     keys = hdrinfo.keys()
     for key in keys:
-        if key == "COMMENT":
-            comments = hdrinfo["COMMENT"]
 
-        elif key != "HISTORY":  # probably not necessary, just in case
+        if key == 'COMMENT':
+
+            comments = hdrinfo['COMMENT']
+
+        elif key != 'HISTORY':  # probably not necessary, just in case
+
             hdr[key] = tuple(hdrinfo[key])
 
         # Now add new ones
 
-        hdr["FILENAME"] = (os.path.basename(oname), " Filename")
-        hdr["MODE"] = (modename, " Instrument Mode")
-        hdr["NORDERS"] = (norders, " Number of orders identified")
-        hdr["ORDERS"] = (",".join(str(o) for o in orders), " Orders identified")
-        hdr["PLTSCALE"] = (ps, " Plate scale (arcseconds per pixel)")
-        hdr["YBUFFER"] = (ybuffer, " y buffer (pixels)")
-        hdr["SLTH_PIX"] = (slith_pix, " Nominal slit length (pixels)")
-        hdr["SLTH_ARC"] = (slith_arc, " Slit length (arcseconds)")
-        hdr["SLTW_PIX"] = (slitw_pix, " Slit width (pixels)")
-        hdr["SLTW_ARC"] = (slitw_arc, " Slit width (arcseconds)")
-        hdr["RP"] = (rp, " Nominal resolving power")
-        hdr["ROTATION"] = (rotate, " IDL rotate value")
-        hdr["VERSION"] = (version, " Spextool version")
+        hdr['FILENAME'] = (os.path.basename(oname), ' Filename')
+        hdr['MODE'] = (modename, ' Instrument Mode')
+        hdr['NORDERS'] = (norders, ' Number of orders identified')
+        hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders identified')
+        hdr['PLTSCALE'] = (ps, ' Plate scale (arcseconds per pixel)')
+        hdr['YBUFFER'] = (ybuffer, ' y buffer (pixels)')
+        hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit length (pixels)')
+        hdr['SLTH_ARC'] = (slith_arc, ' Slit length (arcseconds)')
+        hdr['SLTW_PIX'] = (slitw_pix, ' Slit width (pixels)')
+        hdr['SLTW_ARC'] = (slitw_arc, ' Slit width (arcseconds)')
+        hdr['RP'] = (rp, ' Nominal resolving power')
+        hdr['ROTATION'] = (rotate, ' IDL rotate value')
+        hdr['VERSION'] = (version, ' Spextool version')
 
-    # Record linearity maximum if given
+    # Record linearity maximum if given 
 
     if linmax is not None:
-        hdr["LINMAX"] = (linmax, " Linearity maximum")
+        hdr['LINMAX'] = (linmax, ' Linearity maximum')
 
     # Add the RMS values.  Check to make sure not NaN
 
     if np.sum(np.isnan(rms)) == 0:
+
         for i in range(norders):
-            name = "OR" + str(orders[i]).zfill(3) + "RMS"
-            comment = " RMS of normalized order " + str(orders[i]).zfill(3)
+            name = 'OR' + str(orders[i]).zfill(3) + 'RMS'
+            comment = ' RMS of normalized order ' + str(orders[i]).zfill(3)
             hdr[name] = (rms[i], comment)
 
     # Add the xranges
 
     for i in range(norders):
-        name = "OR" + str(orders[i]).zfill(3) + "_XR"
-        comment = " Extraction range for order " + str(orders[i]).zfill(3)
-        hdr[name] = (",".join(str(x) for x in xranges[i, :]), comment)
+        name = 'OR' + str(orders[i]).zfill(3) + '_XR'
+        comment = ' Extraction range for order ' + str(orders[i]).zfill(3)
+        hdr[name] = (','.join(str(x) for x in xranges[i, :]), comment)
 
     # Add the edgecoeffs
 
-    hdr["EDGEDEG"] = (edgedeg, " Degree of the polynomial fit to order edges")
+    hdr['EDGEDEG'] = (edgedeg, ' Degree of the polynomial fit to order edges')
     for i in range(norders):
+
         for j in range(2):
+
             for k in range(edgedeg):
+
                 if j == 0:
-                    name = "OR" + str(orders[i]).zfill(3) + "_B" + str(k + 1)
-                    comment = (
-                        " a"
-                        + str(k)
-                        + " edge coefficient for bottom of order "
-                        + str(orders[i]).zfill(3)
-                    )
+                    name = 'OR' + str(orders[i]).zfill(3) + '_B' + str(k + 1)
+                    comment = ' a' + str(k) + \
+                              ' edge coefficient for bottom of order ' + \
+                              str(orders[i]).zfill(3)
 
                     hdr[name] = (edgecoeffs[i, j, k], comment)
 
                 if j == 1:
-                    name = "OR" + str(orders[i]).zfill(3) + "_T" + str(k + 1)
-                    comment = (
-                        " a"
-                        + str(k)
-                        + " edge coefficient for top of order "
-                        + str(orders[i]).zfill(3)
-                    )
+                    name = 'OR' + str(orders[i]).zfill(3) + '_T' + str(k + 1)
+                    comment = ' a' + str(k) + \
+                              ' edge coefficient for top of order ' + \
+                              str(orders[i]).zfill(3)
 
                     hdr[name] = (edgecoeffs[i, j, k], comment)
 
-    # Now add the comments
+    # Now add the comments 
 
-    if "comments" in locals():
+    if 'comments' in locals():
+
         for com in comments:
-            hdr["COMMENT"] = com
+            hdr['COMMENT'] = com
 
     # and then the history
 
-    label = "         ============ Spextool History ============"
-    hdr["HISTORY"] = label
+    label = '         ============ Spextool History ============'
+    hdr['HISTORY'] = label
     for hist in history:
-        hdr["HISTORY"] = hist
+        hdr['HISTORY'] = hist
 
     # Write the results
 
     flat = np.float32(flat)
     var = np.float32(var)
-    flag = np.int8(flag)
-
-    img_hdu = fits.ImageHDU(idl_unrotate(flat, rotate))
-    var_hdu = fits.ImageHDU(idl_unrotate(var, rotate))
+    flag = np.int8(flag)        
+        
+    img_hdu = fits.ImageHDU(idl_unrotate(flat,rotate))
+    var_hdu = fits.ImageHDU(idl_unrotate(var,rotate))
     flg_hdu = fits.ImageHDU(idl_unrotate(flag, rotate))
 
+
+    
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu])
     hdu.writeto(oname, overwrite=overwrite)
