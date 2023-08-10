@@ -1,6 +1,7 @@
 import importlib
 import os
 import numpy as np
+import logging
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
 
@@ -20,24 +21,32 @@ from pyspextool.utils.split_text import split_text
 from pyspextool.utils.for_print import for_print
 
 
-def make_flat(files, output_name, extension='.fits*', normalize=True,
-              overwrite=True, qa_show=None, qa_showsize=(8,8),
-              qa_write=None, verbose=None):
+def make_flat(
+    files,
+    output_name,
+    extension=".fits*",
+    normalize=True,
+    overwrite=True,
+    qa_show=None,
+    qa_showsize=(8, 8),
+    qa_write=None,
+    verbose=None,
+):
     """
     To create a (normalized) pyspextool flat field file.
 
     Parameters
     ----------
     files : str or list
-        If type is str, then a comma-separated string of full file names, 
+        If type is str, then a comma-separated string of full file names,
         e.g. 'spc00001.a.fits, spc00002.b.fits'.
 
         If type is list, then a two-element list where
-        files[0] is a str giving the perfix, files[1] is a str giving the 
+        files[0] is a str giving the perfix, files[1] is a str giving the
         index numbers of the files, e.g. ['spc', '1-2,5-10,13,14'].
-        
+
     output_name : str
-        The filename of the flat field image to written to disk.      
+        The filename of the flat field image to written to disk.
 
     extension : str, default='.fits*'
         The file extension
@@ -77,60 +86,61 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Check the input parmameters
     #
 
-    check_parameter('make_flat', 'files', files, ['str', 'list'])
+    check_parameter("make_flat", "files", files, ["str", "list"])
 
     if isinstance(files, list):
-        check_parameter('make_flat', 'files[0]', files[0], 'str')
-        check_parameter('make_flat', 'files[1]', files[1],
-                        ['str', 'list', 'int'])
+        check_parameter("make_flat", "files[0]", files[0], "str")
+        check_parameter("make_flat", "files[1]", files[1], ["str", "list", "int"])
 
-    check_parameter('make_flat', 'files', files, ['str', 'list'])
+    check_parameter("make_flat", "files", files, ["str", "list"])
 
-    check_parameter('make_flat', 'output_name', output_name, 'str')
+    check_parameter("make_flat", "output_name", output_name, "str")
 
-    check_parameter('make_flat', 'extension', extension, 'str')
+    check_parameter("make_flat", "extension", extension, "str")
 
-    check_parameter('make_flat', 'normalize', normalize, 'bool')
+    check_parameter("make_flat", "normalize", normalize, "bool")
 
-    check_parameter('make_flat', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter("make_flat", "verbose", verbose, ["NoneType", "bool"])
 
-    check_parameter('make_flat', 'overwrite', overwrite, 'bool')
+    check_parameter("make_flat", "overwrite", overwrite, "bool")
 
-    check_parameter('make_flat', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter("make_flat", "qa_write", qa_write, ["NoneType", "bool"])
 
-    check_parameter('make_flat', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter("make_flat", "qa_show", qa_show, ["NoneType", "bool"])
 
-    check_parameter('make_flat', 'qa_showsize', qa_showsize,
-                    ['NoneType', 'tuple'])
+    check_parameter("make_flat", "qa_showsize", qa_showsize, ["NoneType", "tuple"])
 
     #
     # Check the qa variables and set to system default if need be.
     #
 
     if qa_write is None:
-        qa_write = setup.state['qa_write']
+        qa_write = setup.state["qa_write"]
 
     if qa_show is None:
-        qa_show = setup.state['qa_show']
+        qa_show = setup.state["qa_show"]
 
     if verbose is None:
-        verbose = setup.state['verbose']
+        verbose = setup.state["verbose"]
 
     #
     # Let the user know what you are doing.
     #
-    
-    if verbose is True:
-        print('Generating Flat Field')
-        print('---------------------')        
 
-        
+    if verbose is True:
+        print("Generating Flat Field")
+        print("---------------------")
+
     #
     # Load the instrument module for the read_fits program
     #
 
-    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
-             '_dir.' + setup.state['instrument']
+    module = (
+        "pyspextool.instrument_data."
+        + setup.state["instrument"]
+        + "_dir."
+        + setup.state["instrument"]
+    )
 
     instr = importlib.import_module(module)
 
@@ -141,46 +151,53 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Create the file names
 
     if isinstance(files, str):
-
         # You are in FILENAME mode
 
-        files = files.replace(" ", "").split(',')
-        files = make_full_path(setup.state['raw_path'], files, exist=True)
+        files = files.replace(" ", "").split(",")
+        files = make_full_path(setup.state["raw_path"], files, exist=True)
 
     else:
-
         # You are in INDEX mode
 
         prefix = files[0]
         nums = files[1]
 
-        files = make_full_path(setup.state['raw_path'], nums,
-                               indexinfo={'nint': setup.state['nint'],
-                                          'prefix': prefix,
-                                          'suffix': setup.state['suffix'],
-                                          'extension': extension},
-                               exist=True)
+        files = make_full_path(
+            setup.state["raw_path"],
+            nums,
+            indexinfo={
+                "nint": setup.state["nint"],
+                "prefix": prefix,
+                "suffix": setup.state["suffix"],
+                "extension": extension,
+            },
+            exist=True,
+        )
+
+    logging.info("Reading files: " + str(files))
 
     # Get the mode name from the first file in order to get the array
     # rotation value.
 
-    img, var, hdr, mask = instr.read_fits(files, setup.state['linearity_info'],
-                                          verbose=False)
+    img, var, hdr, mask = instr.read_fits(
+        files, setup.state["linearity_info"], verbose=False
+    )
 
-    mode = hdr[0]['MODE'][0]
+    mode = hdr[0]["MODE"][0]
 
-    modefile = os.path.join(setup.state['instrument_path'],
-                            mode + '_flatinfo.fits')
+    modefile = os.path.join(setup.state["instrument_path"], mode + "_flatinfo.fits")
 
     modeinfo = read_flatcal_file(modefile)
 
     # Load the FITS files into memory
 
-    img, var, hdr, mask = instr.read_fits(files,
-                                          setup.state['linearity_info'],
-                                          rotate=modeinfo['rotation'],
-                                    keywords=setup.state['extract_keywords'],
-                                          verbose=verbose)
+    img, var, hdr, mask = instr.read_fits(
+        files,
+        setup.state["linearity_info"],
+        rotate=modeinfo["rotation"],
+        keywords=setup.state["extract_keywords"],
+        verbose=verbose,
+    )
 
     average_header = average_header_info(hdr)
 
@@ -195,14 +212,14 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Now scale their intensities to a common flux level
 
     if verbose is True:
-        print('Scaling images...')
+        print("Scaling images...")
 
     simgs, svars, scales = math.scale_data_stack(img, None)
 
     # Now median the scaled images
 
     if verbose is True:
-        print('Medianing the images...')
+        print("Medianing the images...")
 
     med, munc = math.median_data_stack(simgs)
 
@@ -213,53 +230,59 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Get set up for QA plotting
 
     if qa_write is True:
-
-        qa_writeinfo = {'figsize': (6,6),
-                       'filepath': setup.state['qa_path'],
-                       'filename': output_name + '_locateorders',
-                       'extension': setup.state['qa_extension']}
+        qa_writeinfo = {
+            "figsize": (6, 6),
+            "filepath": setup.state["qa_path"],
+            "filename": output_name + "_locateorders",
+            "extension": setup.state["qa_extension"],
+        }
 
     else:
-
         qa_writeinfo = None
-        
-    
-    if verbose is True:
-        print('Locating the orders...')
 
-    edgecoeffs, xranges = locate_orders(med, modeinfo['guesspos'],
-                                        modeinfo['xranges'], modeinfo['step'],
-                                        modeinfo['slith_range'],
-                                        modeinfo['edgedeg'],
-                                        modeinfo['ybuffer'],
-                                        modeinfo['flatfrac'],
-                                        modeinfo['comwidth'],
-                                        qa_show=qa_show,
-                                        qa_writeinfo=qa_writeinfo,
-                                        qa_showsize=qa_showsize)
+    if verbose is True:
+        print("Locating the orders...")
+
+    edgecoeffs, xranges = locate_orders(
+        med,
+        modeinfo["guesspos"],
+        modeinfo["xranges"],
+        modeinfo["step"],
+        modeinfo["slith_range"],
+        modeinfo["edgedeg"],
+        modeinfo["ybuffer"],
+        modeinfo["flatfrac"],
+        modeinfo["comwidth"],
+        qa_show=qa_show,
+        qa_writeinfo=qa_writeinfo,
+        qa_showsize=qa_showsize,
+    )
 
     #
     # Normalize the flat if requested
     #
 
     if normalize is True:
-
         if verbose is True:
-            print('Normalizing the median image...')
+            print("Normalizing the median image...")
 
-        nimg, nvar, rms = normalize_flat(med, edgecoeffs, xranges,
-                                         modeinfo['slith_arc'],
-                                         modeinfo['nxgrid'],
-                                         modeinfo['nygrid'],
-                                         var=munc ** 2, oversamp=1,
-                                         ybuffer=modeinfo['ybuffer'],
-                                         verbose=verbose)
+        nimg, nvar, rms = normalize_flat(
+            med,
+            edgecoeffs,
+            xranges,
+            modeinfo["slith_arc"],
+            modeinfo["nxgrid"],
+            modeinfo["nygrid"],
+            var=munc**2,
+            oversamp=1,
+            ybuffer=modeinfo["ybuffer"],
+            verbose=verbose,
+        )
 
     else:
-
         nimg = med
-        nvar = munc ** 2
-        rms = np.full((len(modeinfo['orders'])), np.nan)
+        nvar = munc**2
+        rms = np.full((len(modeinfo["orders"])), np.nan)
 
     # Protect against zeros
 
@@ -269,27 +292,33 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Make the qaplot
 
     if qa_show is True:
+        orders_plotinfo = {
+            "edgecoeffs": edgecoeffs,
+            "xranges": xranges,
+            "orders": modeinfo["orders"],
+        }
 
-        orders_plotinfo = {'edgecoeffs': edgecoeffs,
-                           'xranges': xranges,
-                           'orders': modeinfo['orders']}
-        
-        plot_image(nimg, mask=flag, orders_plotinfo=orders_plotinfo,
-                   plot_size=qa_showsize)
-            
+        plot_image(
+            nimg, mask=flag, orders_plotinfo=orders_plotinfo, plot_size=qa_showsize
+        )
+
     if qa_write is True:
+        orders_plotinfo = {
+            "edgecoeffs": edgecoeffs,
+            "xranges": xranges,
+            "orders": modeinfo["orders"],
+        }
 
-        orders_plotinfo = {'edgecoeffs': edgecoeffs,
-                           'xranges': xranges,
-                           'orders': modeinfo['orders']}
+        qa_writeinfo = {
+            "figsize": (6, 6),
+            "filepath": setup.state["qa_path"],
+            "filename": output_name + "_normalized",
+            "extension": setup.state["qa_extension"],
+        }
 
-        qa_writeinfo = {'figsize': (6,6),
-                       'filepath': setup.state['qa_path'],
-                       'filename': output_name + '_normalized',
-                       'extension': setup.state['qa_extension']}
-
-        plot_image(nimg, mask=flag, orders_plotinfo=orders_plotinfo,
-                   file_info=qa_writeinfo)
+        plot_image(
+            nimg, mask=flag, orders_plotinfo=orders_plotinfo, file_info=qa_writeinfo
+        )
 
     #
     # Write the file to disk
@@ -298,37 +327,56 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     # Create the HISTORY
 
     if verbose is True:
-        print('Writing flat to disk...')
+        print("Writing flat to disk...")
 
     basenames = []
     for file in files:
         basenames.append(os.path.basename(file))
 
-    history = 'This flat was created by scaling the files ' + \
-              ', '.join(str(b) for b in basenames) + ' to a common ' + \
-              'median flux level and then medianing the scaled imges.  ' + \
-              'The variance is given by (1.4826*MAD)**2/nimages where MAD ' + \
-              'is the median absolute deviation.  The zeroth bit of pixels ' + \
-              'in the third extension are set if their corresponding ' + \
-              'intensity values are greater than LINCORMAX.  User selected ' + \
-              'FITS keywords are from the first frame in the series.'
+    history = (
+        "This flat was created by scaling the files "
+        + ", ".join(str(b) for b in basenames)
+        + " to a common "
+        + "median flux level and then medianing the scaled imges.  "
+        + "The variance is given by (1.4826*MAD)**2/nimages where MAD "
+        + "is the median absolute deviation.  The zeroth bit of pixels "
+        + "in the third extension are set if their corresponding "
+        + "intensity values are greater than LINCORMAX.  User selected "
+        + "FITS keywords are from the first frame in the series."
+    )
 
     history = split_text(history)
 
     # Get the slit widths and resolving power and write to disk
 
-    slitw_arc = float(average_header['SLIT'][0][0:3])
-    slitw_pix = slitw_arc / modeinfo['ps']
+    slitw_arc = float(average_header["SLIT"][0][0:3])
+    slitw_pix = slitw_arc / modeinfo["ps"]
 
-    resolvingpower = modeinfo['rpppix'] / slitw_pix
+    resolvingpower = modeinfo["rpppix"] / slitw_pix
 
-    write_flat(nimg, nvar, flag, average_header, modeinfo['rotation'],
-               modeinfo['orders'], edgecoeffs, xranges,
-               modeinfo['ybuffer'], modeinfo['ps'], modeinfo['slith_pix'],
-               modeinfo['slith_arc'], slitw_pix, slitw_arc, mode, rms,
-               resolvingpower, setup.state['version'], history,
-               os.path.join(setup.state['cal_path'],
-                            output_name + '.fits'), overwrite=overwrite)
+    write_flat(
+        nimg,
+        nvar,
+        flag,
+        average_header,
+        modeinfo["rotation"],
+        modeinfo["orders"],
+        edgecoeffs,
+        xranges,
+        modeinfo["ybuffer"],
+        modeinfo["ps"],
+        modeinfo["slith_pix"],
+        modeinfo["slith_arc"],
+        slitw_pix,
+        slitw_arc,
+        mode,
+        rms,
+        resolvingpower,
+        setup.state["version"],
+        history,
+        os.path.join(setup.state["cal_path"], output_name + ".fits"),
+        overwrite=overwrite,
+    )
 
     if verbose is True:
-        print('Flat field ' + output_name + '.fits written to disk.\n')
+        print("Flat field " + output_name + ".fits written to disk.\n")
