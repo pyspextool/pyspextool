@@ -3,6 +3,9 @@ import numpy as np
 from astropy.io import fits
 from astroquery.simbad import Simbad
 from astropy.table.table import Table
+import logging
+from astropy.io import fits
+import typing
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
@@ -15,17 +18,29 @@ from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.utils.interpolate import linear_bitmask_interp1d
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.split_text import split_text
+from pyspextool.utils import units
 
 from pyspextool.utils.for_print import for_print
 
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def telluric_correction(object_file, standard, standard_file, output_name,
-                        standard_data=None, input_path=None, output_path=None,
-                        qa_path=None, qa_show=None, qa_showsize=(10, 6),
-                        qa_write=None, verbose=None, overwrite=True):
+
+def telluric_correction(object_file:str, standard:str, standard_file:str,
+                        output_name:str, fluxdensity_units:str='W m-2 um-1',
+                        reflectance:bool=False,
+                        standard_data:typing.Optional[dict]=None,
+                        input_path:typing.Optional[str]=None,
+                        output_path:typing.Optional[str]=None,
+                        qa_path:typing.Optional[str]=None,
+                        qa_show:typing.Optional[bool]=None,
+                        qa_showsize:tuple=(10, 6),
+                        qa_write:typing.Optional[bool]=None,
+                        verbose:typing.Optional[bool]=None,
+                        overwrite:bool=True):
 
     """
-    To combine raw extracted spectra
+    To correct spectra for telluric absorption and flux calibrate
 
     Parameters
     ----------
@@ -40,6 +55,14 @@ def telluric_correction(object_file, standard, standard_file, output_name,
 
     output_name : str
         The output file name sans the suffix.
+
+    fluxdensity_units : {'W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 
+                         'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'}
+        The flux density units of the output.  
+        
+    refelectence : {False, True} 
+        Set to simply divide by the standard and return a relative 
+        reflectance spectrum.
 
     standard_data: dict or None
         An optional dictionary giving the standard star information.  If given, 
@@ -106,6 +129,11 @@ def telluric_correction(object_file, standard, standard_file, output_name,
 
     check_parameter('basic_tellcor', 'output_name', output_name, 'str')
 
+    check_parameter('basic_tellcor', 'fluxdensity_units', fluxdensity_units,
+                    'str')    
+
+    check_parameter('basic_tellcor', 'reflectance', reflectance, 'bool')    
+
     check_parameter('basic_tellcor', 'standard_data', standard_data,
                     ['dict', 'NoneType'])    
 
@@ -141,6 +169,15 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     if verbose is None:
         verbose = setup.state['verbose']
 
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        setup.state["verbose"] = True
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+        setup.state["verbose"] = False
+
+
     # Get user paths if need be.
         
     if input_path is None:
@@ -167,6 +204,8 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     telluric.load['standard'] = standard
     telluric.load['standard_file'] = standard_file
     telluric.load['output_name'] = output_name
+    telluric.load['fluxdensity_units'] = fluxdensity_units
+    telluric.load['reflectance'] = reflectance
     telluric.load['input_path'] = input_path
     telluric.load['output_path'] = output_path
     telluric.load['qa_path'] = qa_path      
@@ -180,12 +219,10 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     # Load the files into memory
     #
 
-    if verbose is True:
+    logging.info(f" Telluric Correction\n-------------------------\n")
 
-        print('Reflectance Telluric Correction')
-        print('-------------------------------')
-        print('Loading the data...')        
-        
+    logging.info(f" Loading the data...")
+            
     # Object first
     
     fullpath = make_full_path(input_path, object_file, exist=True)
@@ -216,12 +253,9 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     
         # Get SIMBAD information of the standard
 
-        if verbose is True:
-
-            print('Querying SIMBAD for standard star information...')
-    
-    
-            Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
+        logging.info(f'Querying SIMBAD for standard star information...')
+        
+        Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
         table = Simbad.query_object(standard)
 
         if isinstance(table,Table):
@@ -260,8 +294,52 @@ def telluric_correction(object_file, standard, standard_file, output_name,
 
         message = 'The standard lacks an order the object has.'
         raise ValueError(message)
-
     
+    #
+    # Now figure out which Vega model to use and load if need be
+    #
+
+    if reflectance is False:
+
+        model = get_modeinfo(standard_hdrinfo['MODE'][0])
+
+        file = os.path.join(setup.state['package_path'],'Vega'+model+'.fits')
+
+        hdul = fits.open(setup.state['package_path']+'/data/Vega5000.fits') 
+        data  = hdul[1].data
+
+        vega_wavelength = data['wavelength']
+        vega_flux = data['flux density']
+        vega_continuum = data['continuum flux density']
+        vega_fitted_continuum = data['fitted continuum flux density']
+        
+        hdul.close()
+
+        # Scale it by the vband magnitude
+
+        vega_vmagnitude = 0.03
+        vega_bminv = 0.00
+        scale = 10.0**(-0.4*(standard_vmag-vega_vmagnitude))
+        vega_flux /= scale
+
+        # Convert to the users requested units
+        
+        vega_flux = units.convert_fluxdensity(vega_wavelength, vega_flux,
+                                              'um', 'erg s-1 cm-2 A-1',
+                                              fluxdensity_units) 
+        
+        # Set the units
+
+        yunits = fluxdensity_units
+        lyunits, lylabel = units.get_latex_fluxdensity(fluxdensity_units)
+
+        
+    else:
+
+        yunits = ''
+        lyunits = ''
+        lylabel = 'ratio'
+        
     #
     # Start the loop over object order number
     #
@@ -278,20 +356,35 @@ def telluric_correction(object_file, standard, standard_file, output_name,
 
             k =z[0][0]*object_info['napertures']+j
             
-            # Interpolate the data and the bit mask
+            # Interpolate the standard and bit mask onto the object
                 
-            spectrum, unc = linear_interp1d(standard_spectra[z,0,:],
-                                            standard_spectra[z,1,:],
-                                            object_spectra[k,0,:],
-                                            input_u=standard_spectra[z,2,:])
+            rspectrum, runc = linear_interp1d(standard_spectra[z,0,:],
+                                              standard_spectra[z,1,:],
+                                              object_spectra[k,0,:],
+                                              input_u=standard_spectra[z,2,:])
 
+            if reflectance is False:
+
+                rvega = linear_interp1d(vega_wavelength, vega_flux,
+                                        object_spectra[k,0,:])
+
+                correction = rvega/rspectrum
+                correction_unc =  rvega/rspectrum**2 * runc               
+                
+
+            else:
+
+                correction = 1/rspectrum
+                correction_unc = 1/rspectrum**2 * runc
+                
+            
             # Do the correction and error propagation
 
-            value = object_spectra[k,1,:] / spectrum
+            value = object_spectra[k,1,:] * correction
 
-            var = value**2 * ((object_spectra[k,2,:]/object_spectra[k,1,:])**2+
-                              (unc/spectrum)**2)     
-
+            var = object_spectra[k,1,:]**2 * correction_unc**2 + \
+                  correction**2 * object_spectra[k,2,:]**2
+            
             object_spectra[k,1,:] = value
             object_spectra[k,2,:] = np.sqrt(var)
 
@@ -315,9 +408,9 @@ def telluric_correction(object_file, standard, standard_file, output_name,
 
     object_hdrinfo['MODULE'][0] = 'telluric'
     object_hdrinfo['FILENAME'][0] = output_name+'.fits'
-    object_hdrinfo['YUNITS'][0] = ''
-    object_hdrinfo['LYUNITS'][0] = ''
-    object_hdrinfo['LYLABEL'][0] = 'ratio'
+    object_hdrinfo['YUNITS'][0] = yunits
+    object_hdrinfo['LYUNITS'][0] = lyunits
+    object_hdrinfo['LYLABEL'][0] = lylabel
 
     object_hdrinfo['OBJFILE'] = (object_file, ' Object file name')
     object_hdrinfo['STANDARD'] = (standard_name, ' Standard')
@@ -388,6 +481,53 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     # Update the user
     #
 
-    if verbose is True:
+    message = ' Wrote '+os.path.basename(output_fullpath)+' to disk.'
+    logging.info(message)
 
-            print('Wrote', os.path.basename(output_fullpath), 'to disk.')
+
+def get_modeinfo(mode):
+
+    """
+    Reads the telluric_modeinfo file and returns values for a given mode.
+
+    Parameters
+    ----------
+    mode : str
+        The instrument mode
+
+    Returns
+    -------
+    
+
+    """
+
+    #
+    # Check parameters
+    #
+    
+    check_parameter('get_modeinfo', 'mode', mode, 'str')
+
+    # Get the file name and read it
+    
+    file = os.path.join(setup.state['instrument_path'],'telluric_modeinfo.dat')
+    
+    modes, vega_models = np.loadtxt(file, comments='#', unpack=True,
+                                    delimiter='|', dtype='str')
+
+    # Convert to list and compress strings
+    
+    modes = list(modes)
+    vega_models = list(vega_models)
+
+    modes = np.array([m.strip() for m in modes])
+    vega_models = np.array([m.strip() for m in vega_models]    )
+
+    # Find the matching mode and return results
+    
+    z = modes == mode
+
+    return vega_models[z][0]
+
+    
+
+    
