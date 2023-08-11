@@ -10,8 +10,8 @@ import os
 
 def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
                             savitzky_golay=True, qafileinfo=None,
-                            qa_plot=False,
-                            qa_plotsize=(5, 8)):
+                            qa_show=False,
+                            qa_showsize=(5, 8)):
     """
     To determine the pixel shift between two spectra.
 
@@ -47,13 +47,13 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
             The file extension.  Must be compatible with the savefig
             function of matplotlib.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.setup['qa_plot'].  If set to True,
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.setup['qa_show'].  If set to True,
         quality assurance plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(5,8)
+    qa_showsize : tuple, default=(5,8)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
     Returns
     -------
@@ -143,10 +143,10 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     # Do the QA plotting
     #
     
-    if qa_plot is True:
+    if qa_show is True:
 
         pl.ion()
-        do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
+        do_plot(xanchor, yanchor, xsource, ysource, qa_showsize, lag, xcor,
                 fitlag, fitxcor, r['fit'], offset)
 
         pl.show()
@@ -166,7 +166,7 @@ def get_spectral_pixelshift(xanchor, yanchor, xsource, ysource,
     return offset
 
 
-def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
+def do_plot(xanchor, yanchor, xsource, ysource, qa_showsize, lag, xcor,
             fitlag, fitxcor, fit, offset):
 
     """
@@ -185,7 +185,7 @@ def do_plot(xanchor, yanchor, xsource, ysource, qa_plotsize, lag, xcor,
     # Make the figure
     #
     
-    fig = pl.figure(figsize=qa_plotsize)
+    fig = pl.figure(figsize=qa_showsize)
     fig.subplots_adjust(hspace=0.5)
 
     # Create the spectral plot

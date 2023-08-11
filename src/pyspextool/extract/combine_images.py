@@ -26,7 +26,7 @@ def combine_images(files, output_name, extension='.fits*',
                    flat_field_name=None, flat_field=False,
                    statistic='robust weighted mean',
                    robust_sigma=8, output_directory='proc', overwrite=True,
-                   qa_plot=None, qa_plotsize=(6, 6), qa_file=None,
+                   qa_show=None, qa_showsize=(6, 6), qa_write=None,
                    verbose=None):
     """
     To combine (pair-subtracted) images for later extraction
@@ -97,17 +97,17 @@ def combine_images(files, output_name, extension='.fits*',
     overwrite : {True, False}
         Set to True to overwrite a file on disk with the same name.
 
-    qa_plot : {None, True, False}
-        Set to True/False to override config.state['qa_plot'] in the 
+    qa_show : {None, True, False}
+        Set to True/False to override config.state['qa_show'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(10, 6)
+    qa_showsize : tuple, default=(10, 6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}
-        Set to True/False to override config.state['qa_file'] in the 
+    qa_write : {None, True, False}
+        Set to True/False to override config.state['qa_write'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be written to disk.
 
@@ -166,22 +166,22 @@ def combine_images(files, output_name, extension='.fits*',
 
     check_parameter('combine_images', 'overwrite', overwrite, 'bool')
 
-    check_parameter('combine_images', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('combine_images', 'qa_write', qa_write, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('combine_images', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'qa_plotsize', qa_plotsize,
+    check_parameter('combine_images', 'qa_showsize', qa_showsize,
                     ['NoneType', 'tuple'])
 
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -196,9 +196,9 @@ def combine_images(files, output_name, extension='.fits*',
     extract.combine['flat_field_name'] = flat_field_name
     extract.combine['flat_field'] = flat_field
     extract.combine['overwrite'] = overwrite
-    extract.combine['qaplotsize'] = qa_plotsize
-    extract.combine['qaplot'] = qa_plot
-    extract.combine['qafile'] = qa_file
+    extract.combine['qaplotsize'] = qa_showsize
+    extract.combine['qaplot'] = qa_show
+    extract.combine['qafile'] = qa_write
     extract.combine['verbose'] = verbose
 
     #

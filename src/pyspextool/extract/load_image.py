@@ -21,8 +21,8 @@ from pyspextool.fit.polyfit import poly_1d
 def load_image(files, flat_name, wavecal_name, *output_files,
                reduction_mode='A-B', directory='raw', suffix=None,
                flat_field=True, linearity_correction=True, verbose=None,
-               do_all_steps=False, qa_plot=None, qa_file=None,
-               qa_plotsize=(6, 6)):
+               do_all_steps=False, qa_show=None, qa_write=None,
+               qa_showsize=(6, 6)):
     """
     To load a (pair-subtracted, sky/dark subrtracted) image into memory.
 
@@ -67,19 +67,19 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     verbose : {None, True, False}, optional
         Set to True/False to override config.setup['verbose'].
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the 
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be written to disk.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the 
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the 
         Pyspextool config file.  If set to True, quality assurance 
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
     do_all_steps : {False, True}, optional
         Set to True to skip loading the flat and wavecals.
@@ -123,22 +123,22 @@ def load_image(files, flat_name, wavecal_name, *output_files,
 
     check_parameter('load_image', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('load_image', 'qa_write', qa_write, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('load_image', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_plotsize', qa_plotsize,
+    check_parameter('load_image', 'qa_showsize', qa_showsize,
                     ['NoneType', 'tuple'])
 
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -149,11 +149,11 @@ def load_image(files, flat_name, wavecal_name, *output_files,
 
     extract.load['doflat'] = flat_field
     extract.load['dolinearity'] = linearity_correction
-    extract.load['qaplotsize'] = qa_plotsize
+    extract.load['qaplotsize'] = qa_showsize
     extract.load['flatfile'] = flat_name
     extract.load['wavecalfile'] = wavecal_name
-    extract.load['qaplot'] = qa_plot
-    extract.load['qafile'] = qa_file
+    extract.load['qaplot'] = qa_show
+    extract.load['qafile'] = qa_write
     extract.load['verbose'] = verbose
 
     # Get the readfits module
@@ -508,14 +508,14 @@ def load_image(files, flat_name, wavecal_name, *output_files,
                       'edgecoeffs': extract.state['edgecoeffs'],
                       'orders': extract.state['orders']}
 
-    if qa_plot is True:
+    if qa_show is True:
         number = plot_image(extract.state['workimage'],
                             orders_plotinfo=order_plotinfo,
-                            plot_size=qa_plotsize,
+                            plot_size=qa_showsize,
                             plot_number=extract.state['image_plotnum'])
         extract.state['image_plotnum'] = number
 
-    if qa_file is True:
+    if qa_write is True:
         qafileinfo = {'figsize': (7, 7),
                       'filepath': setup.state['qa_path'],
                       'filename': qafilename + '_image',

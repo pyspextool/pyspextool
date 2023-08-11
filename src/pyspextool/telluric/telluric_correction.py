@@ -25,8 +25,8 @@ from pyspextool.utils.for_print import for_print
 def telluric_correction(object_file, standard, standard_file, output_name,
                         fluxdensity_units='W m-2 um-1', reflectance=False,
                         standard_data=None, input_path=None, output_path=None,
-                        qa_path=None, qa_plot=None, qa_plotsize=(10, 6),
-                        qa_file=None, verbose=None, overwrite=True):
+                        qa_path=None, qa_show=None, qa_showsize=(10, 6),
+                        qa_write=None, verbose=None, overwrite=True):
 
     """
     To correct spectra for telluric absorption and flux calibrate
@@ -78,17 +78,17 @@ def telluric_correction(object_file, standard, standard_file, output_name,
         An optional qa path.  Otherwise the default is the qa/
         directory.
 
-    qa_plot : {None, True, False}
-        Set to True/False to override config.state['qa_plot'] in the 
+    qa_show : {None, True, False}
+        Set to True/False to override config.state['qa_show'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(10, 6)
+    qa_showsize : tuple, default=(10, 6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}
-        Set to True/False to override config.state['qa_file'] in the 
+    qa_write : {None, True, False}
+        Set to True/False to override config.state['qa_write'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be written to disk.
 
@@ -133,11 +133,11 @@ def telluric_correction(object_file, standard, standard_file, output_name,
                     ['NoneType', 'str'])
 
     check_parameter('basic_tellcor', 'qa_path', qa_path, ['NoneType', 'str'])            
-    check_parameter('basic_tellcor', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('basic_tellcor', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('basic_tellcor', 'qa_plotsize', qa_plotsize, 'tuple')    
+    check_parameter('basic_tellcor', 'qa_showsize', qa_showsize, 'tuple')    
 
-    check_parameter('basic_tellcor', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('basic_tellcor', 'qa_write', qa_write, ['NoneType', 'bool'])
 
     check_parameter('basic_tellcor', 'verbose', verbose, ['NoneType', 'bool'])
 
@@ -147,13 +147,13 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     # Check the qa and verbose variables and set to system default if need be.
     #
         
-    if qa_file is None:
+    if qa_write is None:
 
-        qa_file = setup.state['qa_file']
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
+    if qa_show is None:
 
-        qa_plot = setup.state['qa_plot']
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -199,9 +199,9 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     telluric.load['input_path'] = input_path
     telluric.load['output_path'] = output_path
     telluric.load['qa_path'] = qa_path      
-    telluric.load['qa_plot'] = qa_plot
-    telluric.load['qa_plotsize'] = qa_plotsize
-    telluric.load['qa_file'] = qa_file
+    telluric.load['qa_show'] = qa_show
+    telluric.load['qa_showsize'] = qa_showsize
+    telluric.load['qa_write'] = qa_write
     telluric.load['verbose'] = verbose
     telluric.load['overwrite'] = overwrite
 
@@ -451,16 +451,16 @@ def telluric_correction(object_file, standard, standard_file, output_name,
     # Plot the results
     #
 
-    if telluric.load['qa_plot'] is True:
+    if telluric.load['qa_show'] is True:
 
         number = plot_spectra(output_fullpath, title=output_name+'.fits',
-                              plot_size=qa_plotsize,
+                              plot_size=qa_showsize,
                               plot_number=telluric.state['spectra_plotnum'])
         telluric.state['spectra_plotnum'] = number
                     
-    if telluric.load['qa_file'] is True:
+    if telluric.load['qa_write'] is True:
 
-        qafileinfo = {'figsize': telluric.load['qa_plotsize'],
+        qafileinfo = {'figsize': telluric.load['qa_showsize'],
                       'filepath': telluric.load['qa_path'],
                       'filename': telluric.load['output_name'],
                       'extension': setup.state['qa_extension']}
