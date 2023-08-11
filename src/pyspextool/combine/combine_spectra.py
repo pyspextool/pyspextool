@@ -22,7 +22,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
                     scale_spectra=True, scale_order=None, scale_range=None,
                     scale_range_fraction=0.7, correct_spectral_shape=False,
                     statistic='robust weighted mean', robust_sigma=8,
-                    qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
+                    qa_show=None, qa_showsize=(10, 6), qa_write=None,
                     line_width=0.5, verbose=None, overwrite=True):
 
     """
@@ -91,17 +91,17 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
         1.482*median(|x_i-x_med|).
     
-    qa_plot : {None, True, False}
-        Set to True/False to override config.state['qa_plot'] in the 
+    qa_show : {None, True, False}
+        Set to True/False to override config.state['qa_show'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(10, 6)
+    qa_showsize : tuple, default=(10, 6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}
-        Set to True/False to override config.state['qa_file'] in the 
+    qa_write : {None, True, False}
+        Set to True/False to override config.state['qa_write'] in the 
         pyspextool config file.  If set to True, quality assurance 
         plots will be written to disk.
 
@@ -154,11 +154,11 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     check_parameter('combine_spectra', 'robust_sigma', robust_sigma,
                     ['int', 'float'])            
 
-    check_parameter('combine_spectra', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('combine_spectra', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('combine_spectra', 'qa_plotsize', qa_plotsize, 'tuple')    
+    check_parameter('combine_spectra', 'qa_showsize', qa_showsize, 'tuple')    
 
-    check_parameter('combine_spectra', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('combine_spectra', 'qa_write', qa_write, ['NoneType', 'bool'])
 
     check_parameter('combine_spectra', 'line_width', line_width,
                     ['float', 'int'])    
@@ -171,13 +171,13 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Check the qa and verbose variables and set to system default if need be.
     #
         
-    if qa_file is None:
+    if qa_write is None:
 
-        qa_file = setup.state['qa_file']
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
+    if qa_show is None:
 
-        qa_plot = setup.state['qa_plot']
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -210,9 +210,9 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     combine.load['correct_spectral_shape'] = correct_spectral_shape
     combine.load['statistic'] = statistic.lower()
     combine.load['robust_sigma'] = robust_sigma    
-    combine.load['qa_plot'] = qa_plot
-    combine.load['qa_plotsize'] = qa_plotsize
-    combine.load['qa_file'] = qa_file
+    combine.load['qa_show'] = qa_show
+    combine.load['qa_showsize'] = qa_showsize
+    combine.load['qa_write'] = qa_write
     combine.load['line_width'] = line_width
     combine.load['verbose'] = verbose
     combine.load['overwrite'] = overwrite
@@ -260,11 +260,11 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     # Do the qa plotting
 
-    if combine.load['qa_plot']:
+    if combine.load['qa_show']:
 
-        plot_allorders(figure_size=qa_plotsize, title='raw')
+        plot_allorders(figure_size=qa_showsize, title='raw')
 
-    if combine.load['qa_file']:
+    if combine.load['qa_write']:
         
         qafileinfo = {'figsize': (11,8.5),
                       'filepath': setup.state['qa_path'],
@@ -289,12 +289,12 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Do the qa plotting
     #
     
-    if combine.load['qa_plot']:
+    if combine.load['qa_show']:
 
-        plot_allorders(figure_size=qa_plotsize, title='Scaled',
+        plot_allorders(figure_size=qa_showsize, title='Scaled',
                        plot_scale_range=True)
 
-    if combine.load['qa_file']:
+    if combine.load['qa_write']:
         
         qafileinfo = {'figsize': (11,8.5),
                       'filepath': setup.state['qa_path'],
@@ -787,6 +787,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         junk, junk, scale = math.scale_data_stack(intensity[:, z_wave[0]],
                                                    None)
         scales[i,:] = scale
+        print(scales[i,:])
         
         # Now scale each order
 
@@ -795,6 +796,8 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         tile_info = (1, shape[1])        
 
         scale_array = np.tile(np.reshape(scale, reshape_info), tile_info)
+        print('hi')
+        #        scale_array = np.absolute(scale_array)
         
         for j in range(combine.state['norders']):
 
@@ -992,16 +995,16 @@ def write_file():
     # Do the plotting
     #
 
-    if combine.load['qa_plot'] is True:
+    if combine.load['qa_show'] is True:
 
         plot_spectra(full_path, ytype='flux and uncertainty',
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path))
 
         
-    if combine.load['qa_file'] is True:
+    if combine.load['qa_write'] is True:
 
-        qafileinfo = {'figsize': combine.load['qa_plotsize'],
+        qafileinfo = {'figsize': combine.load['qa_showsize'],
                       'filepath': setup.state['qa_path'],
                       'filename': combine.load['output_name'],
                       'extension': setup.state['qa_extension']}

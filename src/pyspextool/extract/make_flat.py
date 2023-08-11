@@ -21,8 +21,8 @@ from pyspextool.utils.for_print import for_print
 
 
 def make_flat(files, output_name, extension='.fits*', normalize=True,
-              overwrite=True, qa_plot=None, qa_plotsize=(8,8),
-              qa_file=None, verbose=None):
+              overwrite=True, qa_show=None, qa_showsize=(8,8),
+              qa_write=None, verbose=None):
     """
     To create a (normalized) pyspextool flat field file.
 
@@ -48,17 +48,17 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     overwrite : {True, False}, optional
         Set to True to overwrite an existing file.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -96,22 +96,22 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     check_parameter('make_flat', 'overwrite', overwrite, 'bool')
 
-    check_parameter('make_flat', 'qa_file', qa_file, ['NoneType', 'bool'])
+    check_parameter('make_flat', 'qa_write', qa_write, ['NoneType', 'bool'])
 
-    check_parameter('make_flat', 'qa_plot', qa_plot, ['NoneType', 'bool'])
+    check_parameter('make_flat', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('make_flat', 'qa_plotsize', qa_plotsize,
+    check_parameter('make_flat', 'qa_showsize', qa_showsize,
                     ['NoneType', 'tuple'])
 
     #
     # Check the qa variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -212,16 +212,16 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     # Get set up for QA plotting
 
-    if qa_file is True:
+    if qa_write is True:
 
-        qa_fileinfo = {'figsize': (6,6),
+        qa_writeinfo = {'figsize': (6,6),
                        'filepath': setup.state['qa_path'],
                        'filename': output_name + '_locateorders',
                        'extension': setup.state['qa_extension']}
 
     else:
 
-        qa_fileinfo = None
+        qa_writeinfo = None
         
     
     if verbose is True:
@@ -234,9 +234,9 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
                                         modeinfo['ybuffer'],
                                         modeinfo['flatfrac'],
                                         modeinfo['comwidth'],
-                                        qa_plot=qa_plot,
-                                        qa_fileinfo=qa_fileinfo,
-                                        qa_plotsize=qa_plotsize)
+                                        qa_show=qa_show,
+                                        qa_writeinfo=qa_writeinfo,
+                                        qa_showsize=qa_showsize)
 
     #
     # Normalize the flat if requested
@@ -268,28 +268,28 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     # Make the qaplot
 
-    if qa_plot is True:
+    if qa_show is True:
 
         orders_plotinfo = {'edgecoeffs': edgecoeffs,
                            'xranges': xranges,
                            'orders': modeinfo['orders']}
         
         plot_image(nimg, mask=flag, orders_plotinfo=orders_plotinfo,
-                   plot_size=qa_plotsize)
+                   plot_size=qa_showsize)
             
-    if qa_file is True:
+    if qa_write is True:
 
         orders_plotinfo = {'edgecoeffs': edgecoeffs,
                            'xranges': xranges,
                            'orders': modeinfo['orders']}
 
-        qa_fileinfo = {'figsize': (6,6),
+        qa_writeinfo = {'figsize': (6,6),
                        'filepath': setup.state['qa_path'],
                        'filename': output_name + '_normalized',
                        'extension': setup.state['qa_extension']}
 
         plot_image(nimg, mask=flag, orders_plotinfo=orders_plotinfo,
-                   file_info=qa_fileinfo)
+                   file_info=qa_writeinfo)
 
     #
     # Write the file to disk

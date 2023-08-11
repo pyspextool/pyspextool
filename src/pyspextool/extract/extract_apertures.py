@@ -10,7 +10,7 @@ from pyspextool.io.write_apertures_fits import write_apertures_fits
 from pyspextool.plot.plot_spectra import plot_spectra
 
 
-def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
+def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
                       fix_bad_pixels=True, use_mean_profile=False,
                       bad_pixel_thresh=extract.state['bad_pixel_thresh'],
                       verbose=None):
@@ -20,17 +20,17 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
 
     Parameters
     ----------
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(6,6)
+    qa_showsize : tuple, default=(6,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -63,13 +63,13 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     # Check parameters.  Just do it now to not waste extracting.
     #
 
-    check_parameter('extract_apertures', 'qa_plot', qa_plot,
+    check_parameter('extract_apertures', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('extract_apertures', 'qa_plotsize', qa_plotsize,
+    check_parameter('extract_apertures', 'qa_showsize', qa_showsize,
                     'tuple')
 
-    check_parameter('extract_apertures', 'qa_file', qa_file,
+    check_parameter('extract_apertures', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
     check_parameter('extract_apertures', 'fix_bad_pixels',
@@ -85,11 +85,11 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     # Check the qa and verbose variables and set to system default if need be.
     #
 
-    if qa_file is None:
-        qa_file = setup.state['qa_file']
+    if qa_write is None:
+        qa_write = setup.state['qa_write']
 
-    if qa_plot is None:
-        qa_plot = setup.state['qa_plot']
+    if qa_show is None:
+        qa_show = setup.state['qa_show']
 
     if verbose is None:
         verbose = setup.state['verbose']
@@ -98,8 +98,8 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
     # Store user inputs
     #
 
-    extract.extract['qafile'] = qa_file
-    extract.extract['qaplot'] = qa_plot
+    extract.extract['qafile'] = qa_write
+    extract.extract['qaplot'] = qa_show
     extract.extract['verbose'] = verbose
     extract.extract['fix_bad_pixels'] = fix_bad_pixels
     extract.extract['use_mean_profile'] = use_mean_profile
@@ -234,7 +234,7 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
 
     write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
                     optimal_info=optimalinfo, badpixel_info=badpixelinfo,
-                    qa_file=qa_file, qa_plot=qa_plot, qa_plotsize=qa_plotsize,
+                    qa_write=qa_write, qa_show=qa_show, qa_showsize=qa_showsize,
                     verbose=verbose)
 
     #
@@ -245,8 +245,8 @@ def extract_apertures(qa_plot=None, qa_plotsize=(10, 6), qa_file=None,
 
 
 def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
-                    badpixel_info=None, qa_plot=None, qa_file=None,
-                    qa_plotsize=(10, 6), verbose=None):
+                    badpixel_info=None, qa_show=None, qa_write=None,
+                    qa_showsize=(10, 6), verbose=None):
 
     """
     To write extracted spectra to disk.
@@ -274,17 +274,17 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
         `"degree"` : int
             The background polynomial fit degree.
 
-    qa_plot : {None, True, False}, optional
-        Set to True/False to override config.state['qa_plot'] in the
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_plotsize : tuple, default=(10,6)
+    qa_showsize : tuple, default=(10,6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_plotsize)) for the interactive plot.
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_file : {None, True, False}, optional
-        Set to True/False to override config.state['qa_file'] in the
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
@@ -373,16 +373,16 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
             # Plot the spectra
 
             filename = os.path.basename(output_fullpath)            
-            if qa_plot is True:
+            if qa_show is True:
                 
                 number = plot_spectra(output_fullpath + '.fits',
-                                      title=filename+'.fits',                                                         plot_size=qa_plotsize,
+                                      title=filename+'.fits',                                                         plot_size=qa_showsize,
                                       flag_linearity=True,
                             plot_number=extract.state['spectra_a_plotnum'])
 
                 extract.state['spectra_a_plotnum'] = number
 
-            if qa_file is True:
+            if qa_write is True:
 
                 qafileinfo['filename'] = os.path.basename(output_fullpath)
                 plot_spectra(output_fullpath + '.fits',
@@ -434,18 +434,18 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                 # Plot the spectra
 
                 filename = os.path.basename(output_fullpath)
-                if qa_plot is True:
+                if qa_show is True:
 
                     number = plot_spectra(output_fullpath + '.fits',
                                  title=filename+'.fits',
-                                 plot_size=qa_plotsize,
+                                 plot_size=qa_showsize,
                                  flag_linearity=True,
                                  plot_number=extract.state['spectra_a_plotnum'])
 
                     extract.state['spectra_a_plotnum'] = number
 
                     
-                if qa_file is True:
+                if qa_write is True:
 
                     qafileinfo['filename'] = filename
                     plot_spectra(output_fullpath + '.fits',
@@ -493,16 +493,16 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                 # Plot the spectra
 
                 filename = os.path.basename(output_fullpath)
-                if qa_plot is True:
+                if qa_show is True:
 
                     number = plot_spectra(output_fullpath + '.fits',
                                           title=filename+'.fits',
                                           flag_linearity=True,                
-                                          plot_size=qa_plotsize,
+                                          plot_size=qa_showsize,
                                 plot_number=extract.state['spectra_b_plotnum'])
                     extract.state['spectra_b_plotnum'] = number
                     
-                if qa_file is True:
+                if qa_write is True:
 
                     qafileinfo['filename'] = filename
                     plot_spectra(output_fullpath + '.fits',flag_linearity=True,
@@ -557,11 +557,11 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
 
             # Plot the spectra
 
-            if qa_plot is True:
+            if qa_show is True:
                 plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_plotsize)
+                             plot_size=qa_showsize)
 
-            if qa_file is True:
+            if qa_write is True:
                 qafileinfo['filename'] = os.path.basename(output_fullpath)
                 plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
 
@@ -594,11 +594,11 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
 
             # Plot the spectra
 
-            if qa_plot is True:
+            if qa_show is True:
                 plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_plotsize)
+                             plot_size=qa_showsize)
 
-            if qa_file is True:
+            if qa_write is True:
                 qafileinfo['filename'] = os.path.basename(output_fullpath)
                 plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
 

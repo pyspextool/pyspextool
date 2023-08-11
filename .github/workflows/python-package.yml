@@ -16,16 +16,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11"]
 
     steps:
     - uses: actions/checkout@v3
       with:
         lfs: true
+        submodules: true
+    - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE" 
+    - name: Create LFS file list # relevant issue https://github.com/actions/checkout/issues/165#issuecomment-1639209867_
+      run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+    - name: LFS Cache
+      uses: actions/cache@v3
+      with:
+        path: .git/lfs/objects
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+        restore-keys: |
+          ${{ runner.os }}-lfs-
+    - name: Git LFS Pull
+      run: git lfs pull
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip

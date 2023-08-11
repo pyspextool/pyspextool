@@ -108,9 +108,9 @@ def do_all_steps(files, verbose=None):
                    extract.load['wavecalfile'],
                    flat_field=extract.load['doflat'],
                    linearity_correction=extract.load['doflat'],
-                   qa_plot=extract.load['qaplot'],
-                   qa_file=extract.load['qafile'],
-                   qa_plotsize=extract.load['qaplotsize'],
+                   qa_show=extract.load['qaplot'],
+                   qa_write=extract.load['qafile'],
+                   qa_showsize=extract.load['qaplotsize'],
                    reduction_mode=extract.state['reductionmode'],
                    do_all_steps=True, verbose=extract.load['verbose'])
 
@@ -121,9 +121,9 @@ def do_all_steps(files, verbose=None):
         #
 
         make_spatial_profiles(verbose=extract.profiles['verbose'],
-                              qa_plot=extract.profiles['qaplot'],
-                              qa_file=extract.profiles['qafile'],
-                              qa_plotsize=extract.profiles['qaplotsize'])
+                              qa_show=extract.profiles['qaplot'],
+                              qa_write=extract.profiles['qafile'],
+                              qa_showsize=extract.profiles['qaplotsize'])
 
         extract.state['profiles_done'] = True
 
@@ -133,9 +133,9 @@ def do_all_steps(files, verbose=None):
 
         locate_aperture_positions(extract.apertures['apertures'],
                                   method=extract.apertures['method'],
-                                  qa_plot=extract.apertures['qaplot'],
-                                  qa_plotsize=extract.apertures['qaplotsize'],
-                                  qa_file=extract.apertures['qafile'],
+                                  qa_show=extract.apertures['qaplot'],
+                                  qa_showsize=extract.apertures['qaplotsize'],
+                                  qa_write=extract.apertures['qafile'],
                                   verbose=extract.apertures['verbose'])
 
         extract.state['apetures_done'] = True
@@ -148,9 +148,9 @@ def do_all_steps(files, verbose=None):
                       exclude=extract.orders['exclude'],
                       include_all=extract.orders['include_all'],
                       verbose=extract.orders['verbose'],
-                      qa_plot=extract.orders['qaplot'],
-                      qa_plotsize=extract.orders['qaplotsize'],
-                      qa_file=extract.orders['qafile'])
+                      qa_show=extract.orders['qaplot'],
+                      qa_showsize=extract.orders['qaplotsize'],
+                      qa_write=extract.orders['qafile'])
 
         extract.state['select_done'] = True
 
@@ -164,9 +164,9 @@ def do_all_steps(files, verbose=None):
                         centroid_threshold=extract.trace['centhresh'],
                         fwhm=extract.trace['fwhm'],
                         verbose=extract.trace['verbose'],
-                        qa_plot=extract.trace['qaplot'],
-                        qa_plotsize=extract.trace['qaplotsize'],
-                        qa_file=extract.trace['qafile'])
+                        qa_show=extract.trace['qaplot'],
+                        qa_showsize=extract.trace['qaplotsize'],
+                        qa_write=extract.trace['qafile'])
 
         extract.state['trace_done'] = True
 
@@ -180,9 +180,9 @@ def do_all_steps(files, verbose=None):
                                    bg_width=extract.parameters['bgwidth'],
                                    bg_regions=extract.parameters['bgregions'],
                                    bg_fit_degree=extract.parameters['bgdeg'],
-                                   qa_plot=extract.parameters['qaplot'],
-                                   qa_plotsize=extract.parameters['qaplotsize'],
-                                   qa_file=extract.parameters['qafile'])
+                                   qa_show=extract.parameters['qaplot'],
+                                   qa_showsize=extract.parameters['qaplotsize'],
+                                   qa_write=extract.parameters['qafile'])
 
         extract.state['apertures_done'] = True
 
