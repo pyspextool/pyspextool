@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as pl
 import scipy
 import os
@@ -9,10 +10,16 @@ from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.telluric import config as telluric
 from pyspextool.plot.limits import get_spec_range
 
-def vega_xcorrelate(object_wavelength, object_flux, vega_wavelength,
-                    vega_flux, vega_continuum, minimum_wavelength=None,
-                    maximum_wavelength=None, resolving_power=None,
-                    qa_show=False, qa_show_plotsize=(6,10), qa_fileinfo=None):
+import typing
+
+def vega_xcorrelate(object_wavelength:npt.ArrayLike, object_flux:npt.ArrayLike,
+                    vega_wavelength:npt.ArrayLike, vega_flux:npt.ArrayLike,
+                    vega_continuum:npt.ArrayLike,
+                    minimum_wavelength:typing.Optional[float]=None,
+                    maximum_wavelength:typing.Optional[float]=None,
+                    resolving_power:typing.Optional[float]=None,
+                    qa_show:bool=False, qa_show_plotsize:tuple=(6,10),
+                    qa_fileinfo:typing.Optional[dict]=None):
 
     """
     To determine the velocity shift between an A0 V star and a Vega model

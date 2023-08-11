@@ -322,7 +322,7 @@ def extract_pointsource_1dxd(image, variance, order_mask, orders, wavecal,
             for k in range(naps):
                 l = i * naps + k
                 wave = np.array(spectrum_wave[j], dtype='float', ndmin=1)
-                appos[k] = poly_1d(wave, trace_coefficients[l])
+                appos[k] = poly_1d(wave, float(trace_coefficients[l]))
 
             # Generate the aperture mask
 

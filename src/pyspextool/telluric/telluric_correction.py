@@ -5,6 +5,7 @@ from astroquery.simbad import Simbad
 from astropy.table.table import Table
 import logging
 from astropy.io import fits
+import typing
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
@@ -21,12 +22,22 @@ from pyspextool.utils import units
 
 from pyspextool.utils.for_print import for_print
 
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def telluric_correction(object_file, standard, standard_file, output_name,
-                        fluxdensity_units='W m-2 um-1', reflectance=False,
-                        standard_data=None, input_path=None, output_path=None,
-                        qa_path=None, qa_show=None, qa_showsize=(10, 6),
-                        qa_write=None, verbose=None, overwrite=True):
+
+def telluric_correction(object_file:str, standard:str, standard_file:str,
+                        output_name:str, fluxdensity_units:str='W m-2 um-1',
+                        reflectance:bool=False,
+                        standard_data:typing.Optional[dict]=None,
+                        input_path:typing.Optional[str]=None,
+                        output_path:typing.Optional[str]=None,
+                        qa_path:typing.Optional[str]=None,
+                        qa_show:typing.Optional[bool]=None,
+                        qa_showsize:tuple=(10, 6),
+                        qa_write:typing.Optional[bool]=None,
+                        verbose:typing.Optional[bool]=None,
+                        overwrite:bool=True):
 
     """
     To correct spectra for telluric absorption and flux calibrate
@@ -166,8 +177,7 @@ def telluric_correction(object_file, standard, standard_file, output_name,
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)            
+
     # Get user paths if need be.
         
     if input_path is None:
