@@ -36,7 +36,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2023 Aug 9'
+VERSION = '2023 Aug 12'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -114,11 +114,13 @@ BATCH_PARAMETERS = {
 OBSERVATION_PARAMETERS_REQUIRED = {
 	'MODE': 'SXD',
 	'TARGET_TYPE': 'fixed ps',
+	'TARGET_REDUCTION_MODE': 'A-B',
 	'TARGET_NAME': 'target',
 	'TARGET_PREFIX': 'spc',
 	'TARGET_FILES': '1-2',
 	'TARGET_FLAT_FILE': 'flat.fits',
 	'TARGET_WAVECAL_FILE': 'wavecal.fits',
+	'STD_REDUCTION_MODE': 'A-B',
 	'STD_NAME': 'standard',
 	'STD_PREFIX': 'spc',
 	'STD_FILES': '1-2',
@@ -130,13 +132,14 @@ OBSERVATION_PARAMETERS_REQUIRED = {
 	}
 
 # these are optional parameters for target-calibration sequences
+# note that all with have a TARGET and STD prefix attached when actual code is run
 OBSERVATION_PARAMETERS_OPTIONAL = {
 #	'USE_STORED_SOLUTION': False,
 	'ORDERS': '3-9',
 #	'TARGET_TYPE': 'ps',
-	'REDUCTION_MODE': 'A-B',
+#	'REDUCTION_MODE': 'A-B',
 	'NPOSITIONS': 2,
-	'APERTURE_POSITIONS': [3.7,11.2],
+	'APERTURE_POSITIONS': [4.,11.5],
 	'APERTURE_METHOD': 'auto',
 	'APERTURE': 1.5,
 	'PSF_RADIUS': 1.5,
@@ -648,7 +651,8 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 	slines = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x, lines))
 	for i,sline in enumerate(slines):
 		spar = copy.deepcopy(OBSERVATION_PARAMETERS_REQUIRED)
-		spar.update(OBSERVATION_PARAMETERS_OPTIONAL)
+		for k in list(OBSERVATION_PARAMETERS_OPTIONAL.keys()):
+			for x in ['STD','TARGET']: spar['{}_{}'.format(x,k)] = OBSERVATION_PARAMETERS_OPTIONAL[k]
 # update with global batch parameters			
 		for k in list(spar.keys()):
 			if k in list(parameters.keys()):
@@ -663,13 +667,25 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 			opars = list(filter(lambda x: ('=' in x), rpars))
 			new_opar = dict([l.strip().split('=') for l in opars])
 			for k in list(new_opar.keys()): new_opar[k.upper()] = new_opar.pop(k)
+# process special cases
+			for k in ['GUESS','FIXED']:
+				if k in list(new_opar.keys()):
+					new_opar['TARGET_APERTURE_METHOD'] = k.lower()
+					new_opar['TARGET_APERTURE_POSITIONS'] = [float(x) for x in new_opar[k].split(',')]
+			if 'SUB' in list(new_opar.keys()):
+				new_opar['TARGET_REDUCTION_MODE'] = new_opar['SUB'].strip()
+			for k in ['ORDER','ORDERS']:
+				if k in list(new_opar.keys()):
+					for x in ['TARGET','STD']: new_opar['{}_ORDERS'.format(x)] = new_opar[k]
 			spar.update(new_opar)
 # some instrument specific adjustments
 # THIS MIGHT NEED TO BE MANAGED THROUGH OTHER PYSPEXTOOL FUNCTIONS
-			if spar['MODE'] in ['Prism','LowRes15']: spar['ORDERS'] = '1'
+			if spar['MODE'] in ['Prism','LowRes15']: 
+				for x in ['TARGET','STD']: spar['{}_ORDERS'.format(x)] = '1'
 #				if verbose==True: print('Updated prism mode orders to 1')
-			if parameters['INSTRUMENT'] == 'spex' and 'SXD' in spar['MODE'] and spar['ORDERS'][-1]=='9':
-				spar['ORDERS'] = spar['ORDERS'][:-1]+'8'
+			for x in ['STD','TARGET']:
+				if parameters['INSTRUMENT'] == 'spex' and 'SXD' in spar['MODE'] and spar['{}_ORDERS'.format(x)][-1]=='9':
+					spar['{}_ORDERS'.format(x)] = spar['{}_ORDERS'.format(x)][:-1]+'8'
 #				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
 
 		parameters['{}-{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
@@ -824,7 +840,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 # write out instructions
 	try: f = open(driver_file,'w')
 	except: raise ValueError('Cannot write to {}, check file path and permissions'.format(driver_file))
-	f.write('# Batch reduction driver file for {} observations on {}\n'.format(dpc['INSTRUMENT'].iloc[0],dpc['UT_DATE'].iloc[0]))
+	f.write('# pyspextool batch reduction driver file for {} observations on {}\n'.format(dpc['INSTRUMENT'].iloc[0],dpc['UT_DATE'].iloc[0]))
 	f.write('# Code version {}\n'.format(VERSION))
 	if comment!='': f.write('# {}\n'.format(comment.replace('\n','\n# ')))
 
@@ -870,7 +886,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 
 # loop over names
 	f.write('\n# Science observations')
-	f.write('\n#\tMode\tTarget Type\tTarget Name\tTarget Prefix\tTarget Files\tTarget Flat\tTarget Wavecal\tStd Name\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
+	f.write('\n#\tMode\tTarget Type\tTarget Sub\tTarget Name\tTarget Prefix\tTarget Files\tTarget Flat\tTarget Wavecal\tStd Sub\tStd Name\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
 	for n in tnames:
 		dps = dpc[dpc['TARGET_NAME']==n]
 		dps = dps[dps['TARGET_TYPE']=='target']
@@ -882,7 +898,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		srcmodes.sort()
 		for m in srcmodes:
 			dpsrc = dps[dps['MODE']==m]
-			line='{}\t{}\t{}-ps\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
+			line='{}\t{}\t{}-ps\tA-B\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc['FIXED-MOVING'].iloc[0]),n,str(dpsrc['PREFIX'].iloc[0]))
 #			print(n,m,np.array(dpsrc['FILE NUMBER']),numberList(np.array(dpsrc['FILE NUMBER'])))
 			line+='\t{}'.format(numberList(np.array(dpsrc['FILE NUMBER'])))
 
@@ -902,7 +918,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 # assign flux cals based on closest in airmass (0.2), time (2 hr) and position (10")
 			dpflux = dpc[dpc['TARGET_TYPE']=='standard']
 			dpflux = dpflux[dpflux['MODE']==dpsrc['MODE'].iloc[0]]
-			ftxt = '\t{}\tUNKNOWN\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+			ftxt = '\tA-B\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[ical],cal_sets.split(',')[ical])
 			if len(dpflux)==0: 
 				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dps['MODE'].iloc[0],n))
 				line+=ftxt
@@ -923,7 +939,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 						ical = np.argmin(np.abs(cnum1-np.median(dpfluxs['FILE NUMBER'])))
 #						ical = np.argmin(np.abs(np.array(dpcals['FILE NUMBER'])-np.median(dpfluxs['FILE NUMBER'])))
 						cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
-					line+='\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),numberList(fnum),cs,cs)
+					line+='\tA-B\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),numberList(fnum),cs,cs)
 
 					# if len(fnum)==2: 
 					# 	line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
@@ -1426,7 +1442,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
 #		print(extract_filestring(spar['TARGET_FILES'],'index'))
 			ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
-				spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
+				spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['TARGET_REDUCTION_MODE'], \
 				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # set extraction method
@@ -1436,18 +1452,21 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-			ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+			if spar['TARGET_APERTURE_METHOD']=='auto':
+				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+			else:
+				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # select orders to extract (set above)
-			ps.extract.select_orders(include=spar['ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+			ps.extract.select_orders(include=spar['TARGET_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # trace apertures
 			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-			ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'],qa_show=spar['qa_show'],qa_write=spar['qa_write'],)
+			ps.extract.define_aperture_parameters(spar['TARGET_APERTURE'], psf_radius=spar['TARGET_PSF_RADIUS'],bg_radius=spar['TARGET_BACKGROUND_RADIUS'],\
+						bg_width=spar['TARGET_BACKGROUND_WIDTH'],qa_show=spar['qa_show'],qa_write=spar['qa_write'],)
 
 # extract away
 			ps.extract.extract_apertures(verbose=spar['VERBOSE'])
@@ -1459,30 +1478,35 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 
 # FLUX STANDARD
 # now reduce the first pair of standards
+# NOTE: ASSUMING THESE ARE BRIGHT POINT SOURCES WITH AUTO APERTURE FINDING
 # NOTE: WOULD BE HELPFUL TO ADD CHECK THAT FILES HAVEN'T ALREADY BEEN REDUCED
 			ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
-				spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['REDUCTION_MODE'], \
+				spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['STD_REDUCTION_MODE'], \
 				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # set extraction method
-			ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
+			ps.extract.set_extraction_type('ps')
 
 # make spatial profiles
 			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # identify aperture positions
-			ps.extract.locate_aperture_positions(spar['NPOSITIONS'], method=spar['APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=parameters['VERBOSE'])
+			# if spar['STD_APERTURE_METHOD']=='auto':
+			# 	ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+			# else:
+			# 	ps.extract.locate_aperture_positions(spar['STD_APERTURE_POSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+			ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method='auto', qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=parameters['VERBOSE'])
 
 # select orders to extract (set above)
-			ps.extract.select_orders(include=spar['ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+			ps.extract.select_orders(include=spar['STD_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # trace apertures
 			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
 # define the aperture - psf, width, background
 # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-			ps.extract.define_aperture_parameters(spar['APERTURE'], psf_radius=spar['PSF_RADIUS'],bg_radius=spar['BACKGROUND_RADIUS'],\
-						bg_width=spar['BACKGROUND_WIDTH'], qa_show=spar['qa_show'],qa_write=spar['qa_write'])
+			ps.extract.define_aperture_parameters(spar['STD_APERTURE'], psf_radius=spar['STD_PSF_RADIUS'],bg_radius=spar['STD_BACKGROUND_RADIUS'],\
+						bg_width=spar['STD_BACKGROUND_WIDTH'], qa_show=spar['qa_show'],qa_write=spar['qa_write'])
 
 # extract away
 			ps.extract.extract_apertures(verbose=verbose)
@@ -1509,7 +1533,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)))==False or parameters['OVERWRITE']==True:
 				ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf),
-					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
+					scale_spectra=True,scale_range=spar['TARGET_SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 			else:
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 
@@ -1528,7 +1552,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)))==False or parameters['OVERWRITE']==True:
 				ps.combine.combine_spectra(['spectra',spar['STD_FILES']],'{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf),
-					scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
+					scale_spectra=True,scale_range=spar['STD_SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 			else:
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 			# else:
@@ -1536,22 +1560,14 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			# 		scale_spectra=True,scale_range=spar['SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
 
 ## FLUX CALIBRATE ###
-# CURRENTLY IMPLEMENTED AS A TEST CASE #
 	if parameters['FLUXTELL']==True:
 		for k in scikeys:
 			spar = parameters[k]
 			for kk in bkeys:
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
-# depends on fixed or moving source which method we use
-			if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed':
-				if spar['VERBOSE']==True: print('\nfixed target; doing standard telluric correction and flux calibration')
-			elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving':
-				if spar['VERBOSE']==True: print('\nmoving target; doing reflectance telluric correction and flux calibration')
-			else:
-				if spar['VERBOSE']==True: print('\nTarget type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split('-')[0]))
-
-			if spar['VERBOSE']==True: print('\n\n ** TEMPORARY: RUNNING SIMPLE FLUX CALIBRATION ** \n\n')
+# NOTE: CURRENTLY LEAVING OF STANDARD INFORMATION - COULD BE EXTRACTED FROM LOG
+			standard_data = None
 
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
@@ -1559,15 +1575,32 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			tmp = re.split('[,-]',spar['STD_FILES'])
 			csuf = '{}-{}'.format(tmp[0],tmp[-1])
 
-# run telluric correction code
-# CURRENTLY LEAVING OF STANDARD INFORMATION - COULD BE EXTRACTED FROM LOG
-			standard_data = None
-# 			standard_data={'sptype':std_type,'bmag':std_bmag,'vmag':std_vmag}			
-# if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],'{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)))==False or parameters['OVERWRITE']==True:
-				ps.telluric.telluric_correction('{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf),spar['STD_NAME'],
-					'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf),'{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf),
-					standard_data=standard_data,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])
+
+
+# depends on fixed or moving source which method we use
+				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed':
+					if spar['VERBOSE']==True: print('\nfixed target; doing standard telluric correction and flux calibration')
+
+# TEMPORARY WARNING THAT THIS IS PARTIAL CALIBRATION
+					if spar['VERBOSE']==True: 
+						print('\n\n ** NOTE: RUNNING SIMPLE FLUX CALIBRATION ASSUMING A0 V, H I LINES WILL BE PRESENT IN SPECTRUM ** \n\n')
+
+					ps.telluric.telluric_correction('{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf),spar['STD_NAME'],
+						'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf),'{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf),
+						standard_data=standard_data,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])
+
+				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving':
+					if spar['VERBOSE']==True: print('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
+
+					ps.telluric.telluric_correction('{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf),spar['STD_NAME'],
+						'{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf),'{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf),reflectance=True,
+						standard_data=standard_data,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])
+
+				else:
+					if spar['VERBOSE']==True: print('\nTarget type {} not recognized, skipping telluric correction and flux calibration'.format(spar['TARGET_TYPE'].split('-')[0]))
+
+# do nothing if not overwriting existing file
 			else:
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (or use overwrite to remake)'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf))
 
@@ -1580,7 +1613,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 			if spar['MODE'] not in ['Prism','LowRes15']:
-				print('This is where the order stitching code would go when completed')
+				if spar['VERBOSE']==True: 
+					print('\n** NOTE: STITCHING HAS NOT BEEN IMPLEMENTED **')
 
 	return
 

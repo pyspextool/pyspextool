@@ -508,7 +508,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                     plot_spectra(output_fullpath + '.fits',flag_linearity=True,
                                  file_info=qafileinfo)
 
-        elif extract.state['reductionmode'] == 'A-Sky/Dark':
+        elif extract.state['reductionmode'] == 'A-Sky':
 
             x = 1
 
@@ -602,7 +602,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                 qafileinfo['filename'] = os.path.basename(output_fullpath)
                 plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
 
-        elif extract.state['reductionmode'] == 'A-Sky/Dark':
+        elif extract.state['reductionmode'] == 'A-Sky':
 
             x = 1
 

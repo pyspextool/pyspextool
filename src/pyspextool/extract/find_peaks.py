@@ -131,8 +131,8 @@ def find_peaks(profiles, method_info, fwhm=0.8):
 
         for i in range(norders):
 
-            x = profiles[i]['y']
-            y = profiles[i]['p']
+            x = profiles[i]['angle']
+            y = profiles[i]['profile']
 
             # Trim NaNs
 
@@ -143,23 +143,25 @@ def find_peaks(profiles, method_info, fwhm=0.8):
             # Subtract the background
 
             y = y - np.median(y)
+            absy = np.abs(y)
 
             # Now loop over each aperture and do the fit
 
             for j in range(npeaks):
                 # Get the peak value for the guess
 
-                idx = int(find_index(x, guess_peaks[i, j]))
+                idx = int(find_index(x, float(guess_peaks[i, j])))
 
                 # Do the fit
 
-                fit = fit_peak1d(x, y, p0=[y[idx], guess_peaks[i, j],
-                                           fwhm / 2.354, 0])
+#                fit = fit_peak1d(x, absy, p0=[y[idx], guess_peaks[i, j], fwhm / 2.354, 0])
+                fit = fit_peak1d(x, absy, p0=[y[idx], x[idx], fwhm / 2.354, 0])
                 peaks[i, j] = fit['parms'][1]
 
                 # Get the aperture sign
 
-                signs[i, j] = 1 if fit['parms'][0] > 0 else -1
+#                signs[i, j] = 1 if fit['parms'][0] > 0 else -1
+                signs[i, j] = 1 if y[idx] > 0 else -1
 
     elif method_info['method'] == 'fixed':
 
@@ -177,8 +179,8 @@ def find_peaks(profiles, method_info, fwhm=0.8):
 
         for i in range(norders):
 
-            x = profiles[i]['y']
-            y = profiles[i]['p']
+            x = profiles[i]['angle']
+            y = profiles[i]['profile']
 
             # Trim NaNs
 
@@ -189,15 +191,17 @@ def find_peaks(profiles, method_info, fwhm=0.8):
             # Subtract the background
 
             y = y - np.median(y)
+            absy = np.abs(y)
 
             for j in range(npeaks):
                 # Get the peak value for the guess
 
-                idx = find_index(x, guess_peaks[i, j])
+                idx = find_index(x, float(guess_peaks[i, j]))
 
                 # Store results
 
-                peaks[i, j] = guess_peaks[i, j]
+#                peaks[i, j] = guess_peaks[i, j]
+                peaks[i, j] = x[idx]
 
                 # Get the aperture sign
 
