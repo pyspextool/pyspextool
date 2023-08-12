@@ -202,6 +202,7 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     hdr['SLTW_ARC'] = (slitw_arc, ' Slit width (arcseconds)')
     hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit height (pixels)')
     hdr['SLTW_PIX'] = (slitw_pix, ' Slit width (pixels)')
+    hdr['RP'] = (resolving_power, ' Average resolving power')
 
     # Add the aperture positions
 

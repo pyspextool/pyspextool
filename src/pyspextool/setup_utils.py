@@ -127,7 +127,7 @@ def pyspextool_setup(
     QA Write: {setup.state['qa_write']}
     QA path: {setup.state['qa_path']}
     QA Extension: {setup.state['qa_extension']}
-    
+
     Verbose: {setup.state['verbose']}
     """
 
@@ -223,10 +223,11 @@ def set_paths(paths: dict = None):
         try:
             paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
             logging.debug(f"Set cal_path to {paths['cal_path']}")
-        except ValueError:
-            os.mkdir(paths["cal_path"])
-            paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
-            logging.info(f"Created cal_path directory {paths['cal_path']}")
+        except ValueError as e:
+            # os.mkdir(paths["cal_path"])
+            # paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
+            logging.error(f"Can't verify cal_path directory {paths['cal_path']}")
+            raise (e)
 
         setup.state["cal_path"] = paths["cal_path"]
     else:
@@ -419,10 +420,11 @@ def set_qa_state(
         try:
             qa_path = check_path(qa_path, make_absolute=True)
             logging.debug(f"Set qa_path to {qa_path}")
-        except ValueError:
-            os.mkdir(qa_path)
-            check_path(qa_path, make_absolute=True)
-            logging.info(f"Created qa_path directory {qa_path}")
+        except ValueError as e:
+            # os.mkdir(qa_path)
+            # check_path(qa_path, make_absolute=True)
+            logging.error(f"Can't verify qa_path directory {qa_path}")
+            raise (e)
 
         setup.state["qa_path"] = qa_path
     else:
@@ -452,11 +454,10 @@ def set_qa_state(
     QA Setup
     ----------------
     QA Show: {setup.state['qa_show']}
-    
+
     QA Write: {setup.state['qa_write']}
     QA Path: {setup.state['qa_path']}
     QA Extension: {setup.state['qa_extension']}
-    
     """
     logging.debug(msg)
 
