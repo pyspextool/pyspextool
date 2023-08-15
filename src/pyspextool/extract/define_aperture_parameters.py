@@ -64,9 +64,10 @@ def define_aperture_parameters(aperture_radii, psf_radius=None, bg_radius=None,
     #
 
     if extract.state['trace_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        message = "extract.state['trace_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)
 
     #
     # Check common parameters

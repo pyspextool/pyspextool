@@ -787,7 +787,6 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         junk, junk, scale = math.scale_data_stack(intensity[:, z_wave[0]],
                                                    None)
         scales[i,:] = scale
-        print(scales[i,:])
         
         # Now scale each order
 
@@ -796,7 +795,6 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         tile_info = (1, shape[1])        
 
         scale_array = np.tile(np.reshape(scale, reshape_info), tile_info)
-        print('hi')
         #        scale_array = np.absolute(scale_array)
         
         for j in range(combine.state['norders']):

@@ -39,9 +39,9 @@ def set_extraction_type(extraction_type, verbose=None):
     
     if extract.state['load_done'] is False:
 
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+        message = "extract.state['load_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)
     
     #
     # Check parameter

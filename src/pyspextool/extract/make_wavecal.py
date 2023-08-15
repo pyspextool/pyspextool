@@ -291,7 +291,8 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
         qafileinfo = {'figsize': (8.5, 11),
                       'filepath': setup.state['qa_path'],
-                      'filename': output_name, 'extension': '.pdf'}
+                      'filename': output_name,
+                      'extension': setup.state['qa_extension']}
     else:
         qafileinfo = None
 
@@ -352,8 +353,9 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
             qafileinfo = {'figsize': (8.5, 11),
                           'filepath': setup.state['qa_path'],
-                          'filename': output_name, 'extension': '.pdf'}
-
+                          'filename': output_name,
+                          'extension': setup.state['qa_extension']}
+                
         else:
             qafileinfo = None
 
@@ -388,7 +390,8 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
             qafileinfo = {'figsize': qafile_figsize,
                           'filepath': setup.state['qa_path'],
-                          'filename': output_name, 'extension': '.pdf'}
+                          'filename': output_name,
+                          'extension': setup.state['qa_extension']}
 
         else:
             qafileinfo = None
