@@ -211,8 +211,9 @@ def trace_spectrum_1dxd(image, order_mask, orders, wavecal, spatcal,
                 guessz = f(guesss)
 
                 fit = fit_peak1d(slits, slitz,
-                                 p0=[guessz, guesss, fwhm / 2.354, 0])
-
+                                 p0=[guessz, guesss, fwhm / 2.354, 0],
+                                 ignore_optimizewarning=True)
+               
                 if not fit['goodfit']:
                     continue
 

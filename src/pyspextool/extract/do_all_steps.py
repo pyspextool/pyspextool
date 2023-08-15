@@ -1,8 +1,11 @@
+import logging
+
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 from pyspextool.extract.load_image import load_image
+from pyspextool.extract.set_extraction_type import set_extraction_type
 from pyspextool.extract.make_spatial_profiles import make_spatial_profiles
 from pyspextool.extract.locate_aperture_positions import locate_aperture_positions
 from pyspextool.extract.select_orders import select_orders
@@ -29,9 +32,10 @@ def do_all_steps(files, verbose=None):
         Set to True/False to override config.state['verbose'] in the 
         pyspextool config file.  
 
-    Returns
+    Returns 
     -------
-    None.  Writes FITS files to disk.
+    list
+    A list of str giving the names of the files successfully written to disk.
 
     """
 
@@ -40,9 +44,11 @@ def do_all_steps(files, verbose=None):
     #
 
     if extract.state['extract_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        
+        message = "extract.state['extract_done'] is False.  "+\
+                  "Previous steps not completed."
+        raise ValueError(message)
 
     #
     # Check parameter
@@ -59,6 +65,14 @@ def do_all_steps(files, verbose=None):
 
     if verbose is None:
         verbose = setup.state['verbose']
+
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        setup.state["verbose"] = True
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+        setup.state["verbose"] = False
     
     #
     # Figure out how many files we are talking about
@@ -92,6 +106,8 @@ def do_all_steps(files, verbose=None):
     # Start the loop
     #
 
+    good_files = []
+        
     for i in range(nloop):
 
         if extract.state['reductionmode'] == 'A-B':
@@ -114,7 +130,11 @@ def do_all_steps(files, verbose=None):
                    reduction_mode=extract.state['reductionmode'],
                    do_all_steps=True, verbose=extract.load['verbose'])
 
-        extract.state['load_done'] = True
+        #
+        # Set the extraction type
+        #
+
+        set_extraction_type(extract.type['type'])
 
         #
         # Make the Profiles
@@ -124,8 +144,6 @@ def do_all_steps(files, verbose=None):
                               qa_show=extract.profiles['qaplot'],
                               qa_write=extract.profiles['qafile'],
                               qa_showsize=extract.profiles['qaplotsize'])
-
-        extract.state['profiles_done'] = True
 
         #
         # Locate the Aperture Positions
@@ -137,9 +155,7 @@ def do_all_steps(files, verbose=None):
                                   qa_showsize=extract.apertures['qaplotsize'],
                                   qa_write=extract.apertures['qafile'],
                                   verbose=extract.apertures['verbose'])
-
-        extract.state['apetures_done'] = True
-
+            
         #
         # Select orders
         #
@@ -152,7 +168,6 @@ def do_all_steps(files, verbose=None):
                       qa_showsize=extract.orders['qaplotsize'],
                       qa_write=extract.orders['qafile'])
 
-        extract.state['select_done'] = True
 
         #
         # Trace apertures
@@ -168,13 +183,14 @@ def do_all_steps(files, verbose=None):
                         qa_showsize=extract.trace['qaplotsize'],
                         qa_write=extract.trace['qafile'])
 
-        extract.state['trace_done'] = True
-
         #
         # Define aperture parameters
         #
 
-        define_aperture_parameters(extract.parameters['apradii'],
+
+        try:
+            
+            define_aperture_parameters(extract.parameters['apradii'],
                                    psf_radius=extract.parameters['psfradius'],
                                    bg_radius=extract.parameters['bgradius'],
                                    bg_width=extract.parameters['bgwidth'],
@@ -184,25 +200,34 @@ def do_all_steps(files, verbose=None):
                                    qa_showsize=extract.parameters['qaplotsize'],
                                    qa_write=extract.parameters['qafile'])
 
-        extract.state['apertures_done'] = True
+        except(ValueError) as e:
 
+            message = f"\n\n\nEncountered error `{e}` in "+\
+              "define_aperture_parameters.  Moving on to next extraction.\n\n\n"
+            
+            logging.info(message)
+            
+            continue
+            
         #
         # Extract apertures
         #
 
-        extract_apertures(verbose=extract.extract['verbose'])
-
-        #
-        # Set the done variable
-
-        extract.state['extract_done'] = True
-
-        if verbose is True:
-
-            print('Do All Steps Complete.')
-
+        filenames = extract_apertures(verbose=extract.extract['verbose'])
         
         #
+        # Store the successful file names
+        #
+
+        for item in filenames: good_files.append(item)
+            
+                
+    logging.info(f" Do All Steps Complete.")
+
+    return good_files
+
+        
+    #
     # Things proceed differently depending on whether you are extracting a
     # point source or an extended source
     #

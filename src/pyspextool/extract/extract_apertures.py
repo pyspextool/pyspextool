@@ -46,7 +46,8 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
 
     Returns 
     -------
-    None
+    list
+    A list of str giving the names of the files successfully written to disk.
 
     """
 
@@ -55,9 +56,10 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
     #
 
     if extract.state['parameters_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        message = "extract.state['parameters_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)
 
     #
     # Check parameters.  Just do it now to not waste extracting.
@@ -232,17 +234,24 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
     # Write the results to disk
     #
 
-    write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
-                    optimal_info=optimalinfo, badpixel_info=badpixelinfo,
-                    qa_write=qa_write, qa_show=qa_show, qa_showsize=qa_showsize,
-                    verbose=verbose)
-
+    filenames = write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
+                                optimal_info=optimalinfo,
+                                badpixel_info=badpixelinfo, qa_write=qa_write,
+                                qa_show=qa_show, qa_showsize=qa_showsize,
+                                verbose=verbose)
+    
     #
     # Set the done variable
     #
 
     extract.state['extract_done'] = True
 
+    #
+    # Return the filenames written to disk
+    #
+
+    return filenames
+    
 
 def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                     badpixel_info=None, qa_show=None, qa_write=None,
@@ -294,9 +303,10 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
 
     Returns 
     -------
-    None
+    list
+    A list of str giving the names of the files successfully written to disk.
 
-       Writes FITS files to disk.
+    Also writes FITS files to disk.
 
     """
 
@@ -367,7 +377,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                  wavecalinfo=wavecalinfo,
                                  psbginfo=psbginfo,
                                  optimal_info=optimal_info,
-                                 badpixel_info=badpixel_info,             
+                                 badpixel_info=badpixel_info,
                                  verbose=verbose)
 
             # Plot the spectra
@@ -389,7 +399,13 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                              flat_linearity=True,
                              file_info=qafileinfo)
 
+            # Store name of successfully written files 
+                
+            filenames = filename
+
         elif extract.state['reductionmode'] == 'A-B':
+
+            filenames = []
 
             # Are there positive apertures?
 
@@ -433,11 +449,12 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
 
                 # Plot the spectra
 
-                filename = os.path.basename(output_fullpath)
+                a_filename = os.path.basename(output_fullpath)
+
                 if qa_show is True:
 
                     number = plot_spectra(output_fullpath + '.fits',
-                                 title=filename+'.fits',
+                                 title=a_filename+'.fits',
                                  plot_size=qa_showsize,
                                  flag_linearity=True,
                                  plot_number=extract.state['spectra_a_plotnum'])
@@ -447,11 +464,13 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                     
                 if qa_write is True:
 
-                    qafileinfo['filename'] = filename
+                    qafileinfo['filename'] = a_filename
                     plot_spectra(output_fullpath + '.fits',
                                  flag_linearity=True,                 
                                  file_info=qafileinfo)
 
+                filenames.append(a_filename+'.fits')
+                
             # Are there negative apertures?
 
             z_neg = extract.state['apsigns'] == -1
@@ -492,11 +511,11 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
 
                 # Plot the spectra
 
-                filename = os.path.basename(output_fullpath)
+                b_filename = os.path.basename(output_fullpath)
                 if qa_show is True:
 
                     number = plot_spectra(output_fullpath + '.fits',
-                                          title=filename+'.fits',
+                                          title=b_filename+'.fits',
                                           flag_linearity=True,                
                                           plot_size=qa_showsize,
                                 plot_number=extract.state['spectra_b_plotnum'])
@@ -504,10 +523,14 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                     
                 if qa_write is True:
 
-                    qafileinfo['filename'] = filename
+                    qafileinfo['filename'] = b_filename
                     plot_spectra(output_fullpath + '.fits',flag_linearity=True,
                                  file_info=qafileinfo)
 
+                filenames.append(b_filename+'.fits')
+                
+            # Store name of successfully written files 
+            
         elif extract.state['reductionmode'] == 'A-Sky/Dark':
 
             x = 1
@@ -611,3 +634,6 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
             print('Reduction Mode Unknown.')
 
     print(' ')
+
+    return filenames
+    
