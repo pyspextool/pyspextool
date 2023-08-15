@@ -75,7 +75,7 @@ def test_batchReduce_spex_prism():
     qa_pdf_files = glob.glob(os.path.join(base_folder, "qa/*.pdf"))
     assert len(proc_fits_files) == 17
     assert len(cal_fits_files) == 2
-    assert len(qa_pdf_files) == 55
+    assert len(qa_pdf_files) == 60
 
     # CLEANUP
     # remove generated files
