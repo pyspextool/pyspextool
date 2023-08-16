@@ -14,7 +14,7 @@ from pyspextool.extract.define_aperture_parameters import define_aperture_parame
 from pyspextool.extract.extract_apertures import extract_apertures
 
 
-def do_all_steps(files, verbose=None):
+def do_all_steps(files, verbose=None, overwrite=None):
     """
     To extract spectra from images in a loop after parameters are set.
 
@@ -31,6 +31,13 @@ def do_all_steps(files, verbose=None):
     verbose : {None, True, False}, optional
         Set to True/False to override config.state['verbose'] in the 
         pyspextool config file.  
+
+    overwrite : {None, True, False}, optional
+        Set to True/False to override config.state['overwrite'] in the
+        pyspextool config file.  
+        overwrite = True: FITS files will be overwritten.
+        overwrite = False: FITS files will not be overwritten but no OSError 
+        will be thrown. 
 
     Returns 
     -------
@@ -56,11 +63,14 @@ def do_all_steps(files, verbose=None):
 
     check_parameter('do_all_steps', 'files', files, ['str', 'list'])
 
-    check_parameter('do_all_steps', 'verbose', verbose, ['NoneType','bool'])    
+    check_parameter('do_all_steps', 'verbose', verbose, ['NoneType','bool'])
 
+    check_parameter('do_all_steps', 'ovewrite', overwrite, ['NoneType','bool'])
+    
 
     #
-    # Check the qa and verbose variables and set to system default if need be.
+    # Check the qa, verbose, overwrite variables and set to system default if
+    # need be.
     #
 
     if verbose is None:
@@ -73,6 +83,9 @@ def do_all_steps(files, verbose=None):
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
+
+    if overwrite is None:
+        overwrite = setup.state['overwrite']        
     
     #
     # Figure out how many files we are talking about
@@ -213,7 +226,8 @@ def do_all_steps(files, verbose=None):
         # Extract apertures
         #
 
-        filenames = extract_apertures(verbose=extract.extract['verbose'])
+        filenames = extract_apertures(verbose=extract.extract['verbose'],
+                                      overwrite=overwrite)
         
         #
         # Store the successful file names

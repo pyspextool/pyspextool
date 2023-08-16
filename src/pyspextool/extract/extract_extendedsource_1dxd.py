@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 from pyspextool.extract.make_aperture_mask import make_aperture_mask
 from pyspextool.fit.polyfit import poly_fit_1d
@@ -131,13 +132,13 @@ def extract_extendedsource_1dxd(img, var, ordermask, orders, wavecal, spatcal,
 
         if verbose is True and i == 0:
 
-            message = 'Extracting ' + str(naps) + ' apertures in ' + str(norders) + \
+            message = ' Extracting ' + str(naps) + ' apertures in ' + str(norders) + \
                       ' orders'
 
             if bgregions is not None:
-                print(message + ' (with background subtraction)...')
+                logging.info(message + ' (with background subtraction)...')
             else:
-                print(message + ' (without background subtraction)...')
+                logging.info(message + ' (without background subtraction)...')
 
         zordr = np.where(ordermask == orders[i])
         xmin = np.min(xx[zordr])

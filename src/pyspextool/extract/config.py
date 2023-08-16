@@ -88,8 +88,8 @@ parameters = {'apradii':1, 'psfradius':1, 'bgradius':1, 'bgwidth':1,
               'bgregions':1, 'bgdeg':1, 'qaplot':False, 'qafile':False,
               'qaplotsize':(6,10)}
 
-extract = {'verbose':True, 'qaplot':False, 'qafile':False, 'qaplotsize':(10,6),
-           'fix_bad_pixels':True, 'use_mean_profile':False}
+extract = {'verbose':True, 'overwrite':True, 'qaplot':False, 'qafile':False,
+           'qaplotsize':(10,6), 'fix_bad_pixels':True, 'use_mean_profile':False}
 
 combine = {'linearity_correction':True, 'beam_mode':1, 'scale_orders':False,
            'background_subtraction':False, 'flat_field_name':None,

@@ -18,6 +18,7 @@ def pyspextool_setup(
     cal_path: str = None,
     proc_path: str = None,
     verbose: bool = False,
+    overwrite: bool = True, 
     qa_show: bool = None,
     qa_write: bool = None,
     qa_path: str = None,
@@ -51,6 +52,11 @@ def pyspextool_setup(
             Lots of information will be printed to the screen.
         verbose = False sets the logging level to INFO
             Only important information will be printed to the screen.
+
+    overwrite : bool, default = True
+        overwrite = True.  Will overwrite FITS images.
+        overwrite = False.  Will not overwrite FITS images but also not 
+        throw an OSError.
 
     qa_show : {True, False}, optional
         True: Display the quality assurance plots to the screen.
@@ -86,8 +92,13 @@ def pyspextool_setup(
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
-
+            
     logging.info(f"Verbose set to {setup.state['verbose']}")
+
+    # Set overwrite
+
+    setup.state["overwrite"] = overwrite
+
     # Set the instrument
 
     if instrument is not None:

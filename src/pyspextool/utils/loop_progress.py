@@ -1,3 +1,5 @@
+import logging
+
 def loop_progress(idx, bot, top, message=None):
 
     """
@@ -21,27 +23,21 @@ def loop_progress(idx, bot, top, message=None):
     --------
     None
 
-    Procedure
-    ---------
-    Just prints a updating message on the command line
-
     Example
     --------
     >>> loopprogress(i,0,100)
      90% |*************************************                       |
 
 
-    Modification History
-    --------------------
-    2022-05-25 - Written by M. Cushing, University of Toledo.
-                Based on the Spextool mc_loopprogress.pro IDL program.
     """
+
+    logging.getLogger().setLevel(logging.INFO)    
     
     # Print the message if necessary
     
     if idx == 0 and message is not None:
 
-        print(message)
+        logging.info(' '+message)
 
     # Run counter        
             

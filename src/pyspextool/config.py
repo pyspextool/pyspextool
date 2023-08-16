@@ -10,6 +10,7 @@ state = {
     "lincormax": 0,
     "linearity_info": 0,
     "nint": 4,
+    "overwrite":True,
     "package_path": "",
     "proc_path": "",
     "pyspextool_keywords": "",

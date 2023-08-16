@@ -1,6 +1,7 @@
 import os
 from astropy.io import fits
 import numpy as np
+import logging
 
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.split_text import split_text
@@ -108,6 +109,16 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
     check_parameter('write_apertures_fits', 'verbose', verbose,
                     'bool')
 
+    #
+    # Deal with logging
+    #
+    
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+    
     #    
     # Get set up
     #
@@ -308,22 +319,20 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
 
     hdr['FILENAME'] = (os.path.basename(output_fullpath)+'.fits', ' File name')
 
-    fits.writeto(output_fullpath + '.fits', array, hdr, overwrite=overwrite)
+    try:
+    
+        fits.writeto(output_fullpath + '.fits', array, hdr, overwrite=overwrite)
+        message = ' Wrote file '+os.path.basename(output_fullpath)+\
+                  '.fits to disk.'
+        logging.info(message)
 
-    #
-    # Update the user
-    #
+    except OSError as e:
 
-    if verbose is True:
-
-        if xsbginfo is None:
-            print('Wrote', os.path.basename(output_fullpath)+'.fits',
-                  'to disk.')
-
-        if xsbginfo is not None:
-            print('Wrote', os.path.basename(output_fullpath)+'.fits', 'and',
-                  os.path.basename(output_fullpath)+'.fits', 'to disk.')
-
+            message = f"\n\n\nEncountered error `{e}` in "+\
+              "io.write_apertures_fits.  \n\nNo file written to disk.\n\n\n"
+            
+            logging.error(message)        
+        
     #
     # Return the file name written to disk
     #

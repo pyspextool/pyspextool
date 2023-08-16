@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import logging
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -13,7 +14,7 @@ from pyspextool.plot.plot_spectra import plot_spectra
 def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
                       fix_bad_pixels=True, use_mean_profile=False,
                       bad_pixel_thresh=extract.state['bad_pixel_thresh'],
-                      verbose=None):
+                      verbose=None, overwrite=None):
     
     """
     User function to extract spectra.
@@ -37,6 +38,13 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
     verbose : {None, True, False}, optional
         Set to True/False to override config.state['verbose'] in the
         pyspextool config file.
+
+    overwrite : {None, True, False}, optional
+        Set to True/False to override config.state['overwrite'] in the
+        pyspextool config file.  
+        overwrite = True: FITS files will be overwritten.
+        overwrite = False: FITS files will not be overwritten but no OSError 
+        will be thrown. 
 
     fix_bad_pixels : {True, False}, optional
         Set to True to fix bad pixels using the 2D model profiles.  
@@ -68,23 +76,23 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
     check_parameter('extract_apertures', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('extract_apertures', 'qa_showsize', qa_showsize,
-                    'tuple')
+    check_parameter('extract_apertures', 'qa_showsize', qa_showsize, 'tuple')
 
     check_parameter('extract_apertures', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
-    check_parameter('extract_apertures', 'fix_bad_pixels',
-                    fix_bad_pixels, 'bool')
+    check_parameter('extract_apertures', 'fix_bad_pixels', fix_bad_pixels,
+                    'bool')
 
-    check_parameter('extract_apertures', 'use_mean_profile',
-                    use_mean_profile, 'bool')        
+    check_parameter('extract_apertures', 'use_mean_profile', use_mean_profile,
+                    'bool')        
     
-    check_parameter('extract_apertures', 'verbose',
-                    verbose, ['NoneType', 'bool'])
+    check_parameter('extract_apertures', 'verbose', verbose,
+                    ['NoneType', 'bool'])
 
     #
-    # Check the qa and verbose variables and set to system default if need be.
+    # Check the qa, verbose, overwrite variables and set to system default
+    # if need be.
     #
 
     if qa_write is None:
@@ -96,6 +104,15 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
     if verbose is None:
         verbose = setup.state['verbose']
 
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+
+    if overwrite is None:
+        overwrite = setup.state['overwrite']
+
     #
     # Store user inputs
     #
@@ -103,6 +120,7 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
     extract.extract['qafile'] = qa_write
     extract.extract['qaplot'] = qa_show
     extract.extract['verbose'] = verbose
+    extract.extract['overwrite'] = overwrite    
     extract.extract['fix_bad_pixels'] = fix_bad_pixels
     extract.extract['use_mean_profile'] = use_mean_profile
 
@@ -238,7 +256,7 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
                                 optimal_info=optimalinfo,
                                 badpixel_info=badpixelinfo, qa_write=qa_write,
                                 qa_show=qa_show, qa_showsize=qa_showsize,
-                                verbose=verbose)
+                                verbose=verbose, overwrite=overwrite)
     
     #
     # Set the done variable
@@ -255,7 +273,7 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
 
 def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                     badpixel_info=None, qa_show=None, qa_write=None,
-                    qa_showsize=(10, 6), verbose=None):
+                    qa_showsize=(10, 6), verbose=True, overwrite=True):
 
     """
     To write extracted spectra to disk.
@@ -297,9 +315,13 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
-    verbose : {None, True, False}, optional
-        Set to True/False to override config.state['verbose'] in the
-        pyspextool config file.
+    verbose : {True, False}, optional
+        Set to True to report to the command line. 
+
+    overwrite : {True, False}, optional
+        overwrite = True: FITS files will be overwritten.
+        overwrite = False: FITS files will not be overwritten but no OSError 
+        will be thrown. 
 
     Returns 
     -------
@@ -378,7 +400,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                  psbginfo=psbginfo,
                                  optimal_info=optimal_info,
                                  badpixel_info=badpixel_info,
-                                 verbose=verbose)
+                                 verbose=verbose, overwrite=overwrite)
 
             # Plot the spectra
 
@@ -445,7 +467,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                      psbginfo=psbginfo,
                                      optimal_info=optimal_info,
                                      badpixel_info=badpixel_info,
-                                     verbose=verbose)
+                                     verbose=verbose, overwrite=overwrite)
 
                 # Plot the spectra
 
@@ -507,7 +529,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                      output_fullpath,
                                      wavecalinfo=wavecalinfo,
                                      psbginfo=psbginfo,
-                                     verbose=verbose)
+                                     verbose=verbose, overwrite=overwrite)
 
                 # Plot the spectra
 
@@ -576,7 +598,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                  output_fullpath, wavecalinfo=wavecalinfo,
 #                                 background_spectra=background[z],
                                  xsbginfo=xsbginfo,
-                                 verbose=verbose)
+                                 verbose=verbose, overwrite=overwrite)
 
             # Plot the spectra
 
@@ -613,7 +635,7 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                  output_fullpath, wavecalinfo=wavecalinfo,
 #                                 background_spectra=background[z],
                                  xsbginfo=xsbginfo,
-                                 verbose=verbose)
+                                 verbose=verbose, overwrite=overwrite)
 
             # Plot the spectra
 

@@ -37,7 +37,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
                         qa_showsize:tuple=(10, 6),
                         qa_write:typing.Optional[bool]=None,
                         verbose:typing.Optional[bool]=None,
-                        overwrite:bool=True):
+                        overwrite:bool=None):
 
     """
     To correct spectra for telluric absorption and flux calibrate
@@ -152,7 +152,8 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
     check_parameter('basic_tellcor', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('basic_tellcor', 'overwrite', overwrite, 'bool')    
+    check_parameter('basic_tellcor', 'overwrite', overwrite,
+                    ['NoneType','bool'])    
 
     #
     # Check the qa and verbose variables and set to system default if need be.
@@ -177,6 +178,9 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
+    if overwrite is None:
+        overwrite = setup.state['overwrite']
+        
 
     # Get user paths if need be.
         
@@ -454,9 +458,21 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         hdr['HISTORY'] = hist
 
     output_fullpath = os.path.join(output_path, output_name+'.fits')
-    
-    fits.writeto(output_fullpath, object_spectra, hdr, overwrite=overwrite)
 
+    try:
+    
+        fits.writeto(output_fullpath, object_spectra, hdr, overwrite=overwrite)
+        message = ' Wrote file '+os.path.basename(output_fullpath)+' to disk.'
+        logging.info(message)
+
+    except OSError as e:
+
+        message = f"\n\n\nEncountered error `{e}` in "+\
+              "telluric.telluric_correction.  \n\n"+\
+              "No file written to disk.\n\n\n"
+            
+        logging.error(message)
+        
     #
     # Plot the results
     #
@@ -481,8 +497,6 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     # Update the user
     #
 
-    message = ' Wrote '+os.path.basename(output_fullpath)+' to disk.'
-    logging.info(message)
 
 
 def get_modeinfo(mode):

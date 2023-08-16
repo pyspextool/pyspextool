@@ -2,6 +2,7 @@ import importlib
 import os
 import numpy as np
 import time
+import logging
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -11,7 +12,7 @@ from pyspextool.io.flat import read_flat_fits
 from pyspextool.io.files import make_full_path
 from pyspextool.io.wavecal import read_wavecal_file
 from pyspextool.io.wavecal import read_line_list
-
+from pyspextool.io.wavecal import write_wavecal_1d
 from pyspextool.extract.find_lines_1dxd import find_lines_1dxd
 from pyspextool.extract.wavecal_solution_1d import wavecal_solution_1d
 from pyspextool.extract.get_line_guess_position import get_line_guess_position
@@ -23,14 +24,13 @@ from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.math import scale_data_stack
 from pyspextool.utils.math import median_data_stack
 
-from pyspextool.io.wavecal import write_wavecal_1d
 
 
 def make_wavecal(files, flat_file, output_name, extension='.fits*',
                  use_stored_solution=False, verbose=None, qa_write=None,
                  qa_show=None, qa_image_plotsize=(9, 9),
                  qa_shift_plotsize=(8,10), qa_residual_plotsize=(10,8),
-                 overwrite=True):
+                 overwrite=None):
     """
     To create a spextool wavecal file.
 
@@ -59,8 +59,12 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     verbose : {None, True, False}, optional
         Set to True/False to override config.setup['verbose']
 
-    overwrite : {True, False}, optional
-        Set to True to overwrite an existing file.
+    overwrite : {None, True, False}, optional
+        Set to True/False to override config.state['overwrite'] in the
+        pyspextool config file.  
+        overwrite = True: FITS files will be overwritten.
+        overwrite = False: FITS files will not be overwritten but no OSError 
+        will be thrown. 
 
     qa_write : {None, True, False}, optional
         Set to True/False to override config.setup['qa_write'].  If set to True, 
@@ -101,17 +105,16 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     check_parameter('make_wavecal', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('make_wavecal', 'overwrite', overwrite, 'bool')
+    check_parameter('make_wavecal', 'overwrite', overwrite,
+                    ['NoneType', 'bool'])
 
     check_parameter('make_wavecal', 'qa_write', qa_write, ['NoneType', 'bool'])
 
     check_parameter('make_wavecal', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-#    check_parameter('make_wavecal', 'qa_showsize', qa_showsize,
-#                    ['NoneType', 'tuple'])
-
     #
-    # Check the qa variables and set to system default if need be.
+    # Check the qa, verbose, overwrite variables and set to system default
+    # if need be.
     #
 
     if qa_write is None:
@@ -123,14 +126,21 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     if verbose is None:
         verbose = setup.state['verbose']
 
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+
+    if overwrite is None:
+        overwrite = setup.state['overwrite']
+        
     #
     # Let the user know what you are doing.
     #
+
+    logging.info(f" Generating Wavelength Solution\n-------------------------------\n")        
     
-    if verbose is True:
-        print('Generating Wavelength Solution')
-        print('------------------------------')        
-        
     #
     # Load the instrument module for the read_fits program
     #
@@ -199,9 +209,8 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     if len(files) > 1:
 
-        if verbose is True:
-            print('Scaling images...')
-
+        logging.info(' Scaling images...')
+        
         simgs, svars, scales = scale_data_stack(img, None)
 
     else:
@@ -211,8 +220,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     if len(files) > 1:
 
-        if verbose is True:
-            print('Medianing the images...')
+        logging.info(' Medianing the images...')
 
         med, munc = median_data_stack(simgs)
 
@@ -346,8 +354,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
         # Now find the lines
 
-        if verbose:
-            print('Finding the lines...')
+        logging.info(' Finding the lines...')
 
         if qa_write is True:
 
@@ -370,8 +377,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         # Let's do the actual calibration
         #
 
-        if verbose:
-            print('Determining the wavelength solution...')
+        logging.info(' Determining the wavelength solution...')
 
         # Get set up for either 1d of 1dxd
 
@@ -407,8 +413,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     else:
 
-        if verbose:
-            print('Using stored solution...')
+        logging.info(' Using stored solution...')
 
         solution = {'coeffs': wavecalinfo['coeffs'],
                     'covar': wavecalinfo['covar'],
@@ -438,8 +443,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
     # Write the wavecal file to disk.
     #
 
-    if verbose:
-        print('Writing wavecal to disk...')
+    logging.info(' Writing wavecal to disk...')
 
     if wavecalinfo['wcaltype'] == '1d':
 
@@ -450,19 +454,28 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
         xdinfo = {'orderdeg': wavecalinfo['ordrdeg'],
                   'homeorder': wavecalinfo['homeorder']}
 
-    write_wavecal_1d(flatinfo['ncols'], flatinfo['nrows'],
-                     flatinfo['orders'], flatinfo['edgecoeffs'],
-                     flatinfo['xranges'], solution['coeffs'],
-                     solution['covar'], wavecalinfo['dispdeg'],
-                     solution['rms'] * 1e4, solution['nlines'],
-                     solution['ngood'], solution['nbad'],
-                     wavecal_pixels, spatcal, indices, flatinfo['rotation'],
-                     flat_file, os.path.join(setup.state['cal_path'],
-                                             output_name + '.fits'),
-                     setup.state['version'],
-                     xdinfo=xdinfo,
-                     stored_solution=use_stored_solution,
-                     overwrite=overwrite)
+    try:
+            
+        write_wavecal_1d(flatinfo['ncols'], flatinfo['nrows'],
+                         flatinfo['orders'], flatinfo['edgecoeffs'],
+                         flatinfo['xranges'], solution['coeffs'],
+                         solution['covar'], wavecalinfo['dispdeg'],
+                         solution['rms'] * 1e4, solution['nlines'],
+                         solution['ngood'], solution['nbad'],
+                         wavecal_pixels, spatcal, indices, flatinfo['rotation'],
+                         flat_file, os.path.join(setup.state['cal_path'],
+                                                 output_name + '.fits'),
+                         setup.state['version'],
+                         xdinfo=xdinfo,
+                        stored_solution=use_stored_solution,
+                        overwrite=overwrite)
 
-    if verbose:
-        print('Wavecal ' + output_name + '.fits written to disk.\n')
+        message = ' Wavecal file ' + output_name + '.fits written to disk.\n'
+        logging.info(message)
+
+    except OSError as e:
+
+        message = f"\n\n\nEncountered error `{e}` in "+\
+              "write_wavecal_1d.  \n\nNo file written to disk.\n\n\n"
+            
+        logging.error(message)        

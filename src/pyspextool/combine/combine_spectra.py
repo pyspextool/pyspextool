@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.pyplot import cm
 from astropy.io import fits
+import logging
 
 from pyspextool import config as setup
 from pyspextool.combine import config as combine
@@ -23,7 +24,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
                     scale_range_fraction=0.7, correct_spectral_shape=False,
                     statistic='robust weighted mean', robust_sigma=8,
                     qa_show=None, qa_showsize=(10, 6), qa_write=None,
-                    line_width=0.5, verbose=None, overwrite=True):
+                    line_width=0.5, verbose=None, overwrite=None):
 
     """
     To combine raw extracted spectra
@@ -112,8 +113,12 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         Set to True/False to override config.state['verbose'] in the 
         pyspextool config file.  
 
-    overwrite: {True, False}, optional
-        Set to False to to not overwrite a file already on disk.
+    overwrite : {None, True, False}, optional
+        Set to True/False to override config.state['overwrite'] in the
+        pyspextool config file.  
+        overwrite = True: FITS files will be overwritten.
+        overwrite = False: FITS files will not be overwritten but no OSError 
+        will be thrown. 
 
     Returns
     -------
@@ -165,10 +170,12 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     check_parameter('combine_spectra', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('combine_spectra', 'overwrite', overwrite, 'bool')    
+    check_parameter('combine_spectra', 'overwrite', overwrite,
+                    ['NoneType', 'bool'])    
 
     #
-    # Check the qa and verbose variables and set to system default if need be.
+    # Check the qa, verbose, overwrite variables and set to system default
+    # if need be.
     #
         
     if qa_write is None:
@@ -181,6 +188,15 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     if verbose is None:
         verbose = setup.state['verbose']
+
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+
+    if overwrite is None:
+        overwrite = setup.state['overwrite']
 
     # Get user paths if need be.
         
@@ -250,11 +266,8 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Read the files
     #
 
-    if verbose is True:
-
-        print('Combining Spectra')
-        print('-----------------')
-        print('Loading spectra...')
+    logging.info(f" Combining Spectra\n----------------------\n")
+    logging.info(f' Loading spectra...')
         
     load_allorders()
 
@@ -279,10 +292,8 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     if scale_spectra is True:
 
-        if verbose is True:
-
-            print('Scaling the spectra...')
-
+        logging.info(f' Scaling the spectra...')
+        
         scale_allorders(scale_order, scale_range, scale_range_fraction)
 
     #
@@ -308,9 +319,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Combine them 
     #
 
-    if verbose is True:
-
-        print('Combining spectra...')
+    logging.info(f' Combining  the spectra...')        
         
     combine_allorders()
 
@@ -318,7 +327,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Write the results to disk
     #
 
-    write_file()
+    write_file(overwrite)
 
 
 def combine_allorders():
@@ -809,7 +818,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
     combine.state['scales'] = scales
     
 
-def write_file():
+def write_file(overwrite):
 
     """
     To write the results to disk.
@@ -982,13 +991,21 @@ def write_file():
 
     full_path = os.path.join(combine.load['output_path'],
                              combine.load['output_name']+'.fits')
-    
-    fits.writeto(full_path, array, hdr, overwrite=combine.load['overwrite'])
 
-    if combine.load['verbose'] is True:
-        print('Wrote', os.path.basename(full_path) + ' to disk.')    
+    try:
 
-            
+        fits.writeto(full_path, array, hdr, overwrite=overwrite)
+        logging.info(f" Wrote file "+os.path.basename(full_path) + \
+                     ' to disk.\n')
+        
+    except OSError as e:
+
+        message = f"\n\n\nEncountered error `{e}` in "+\
+              "combine.combine_spetra.write_file.  "+\
+              "\n\nNo file written to disk.\n\n\n"
+
+        logging.error(message)
+                        
     #
     # Do the plotting
     #
@@ -1010,6 +1027,3 @@ def write_file():
         plot_spectra(full_path, ytype='flux and uncertainty',
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path), file_info=qafileinfo)            
-        if combine.load['verbose'] is True:
-            print('Wrote', combine.load['output_name']+\
-                  setup.state['qa_extension']+' to disk.')    
