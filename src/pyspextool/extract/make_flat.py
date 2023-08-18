@@ -1,9 +1,10 @@
 import importlib
 import os
 import numpy as np
+import logging
+
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
-
 from pyspextool.extract.locate_orders import locate_orders
 from pyspextool.extract.normalize_flat import normalize_flat
 from pyspextool.io.check import check_parameter
@@ -11,18 +12,14 @@ from pyspextool.io.files import make_full_path
 from pyspextool.io.fitsheader import average_header_info
 from pyspextool.io.flat import read_flatcal_file
 from pyspextool.io.flat import write_flat
-
 from pyspextool.plot.plot_image import plot_image
-
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
 
-from pyspextool.utils.for_print import for_print
-
 
 def make_flat(files, output_name, extension='.fits*', normalize=True,
-              overwrite=True, qa_show=None, qa_showsize=(8,8),
-              qa_write=None, verbose=None):
+              qa_show=None, qa_showsize=(8,8), qa_write=None, verbose=None):
+
     """
     To create a (normalized) pyspextool flat field file.
 
@@ -44,9 +41,6 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     normalize : {True, False}, optional
         Set to True to normalize the orders.
-
-    overwrite : {True, False}, optional
-        Set to True to overwrite an existing file.
 
     qa_show : {None, True, False}, optional
         Set to True/False to override config.state['qa_show'] in the
@@ -94,8 +88,6 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     check_parameter('make_flat', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('make_flat', 'overwrite', overwrite, 'bool')
-
     check_parameter('make_flat', 'qa_write', qa_write, ['NoneType', 'bool'])
 
     check_parameter('make_flat', 'qa_show', qa_show, ['NoneType', 'bool'])
@@ -116,15 +108,18 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     if verbose is None:
         verbose = setup.state['verbose']
 
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+        
     #
     # Let the user know what you are doing.
     #
     
-    if verbose is True:
-        print('Generating Flat Field')
-        print('---------------------')        
+    logging.info(f' Generating Flat Field\n---------------------\n')
 
-        
     #
     # Load the instrument module for the read_fits program
     #
@@ -194,15 +189,13 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     # Now scale their intensities to a common flux level
 
-    if verbose is True:
-        print('Scaling images...')
+    logging.info(' Scaling images...')
 
     simgs, svars, scales = math.scale_data_stack(img, None)
 
     # Now median the scaled images
 
-    if verbose is True:
-        print('Medianing the images...')
+    logging.info(' Medianing the images...')
 
     med, munc = math.median_data_stack(simgs)
 
@@ -222,10 +215,8 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
     else:
 
         qa_writeinfo = None
-        
-    
-    if verbose is True:
-        print('Locating the orders...')
+            
+    logging.info(' Locating the orders...')
 
     edgecoeffs, xranges = locate_orders(med, modeinfo['guesspos'],
                                         modeinfo['xranges'], modeinfo['step'],
@@ -244,8 +235,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     if normalize is True:
 
-        if verbose is True:
-            print('Normalizing the median image...')
+        logging.info(' Normalizing the median image...')
 
         nimg, nvar, rms = normalize_flat(med, edgecoeffs, xranges,
                                          modeinfo['slith_arc'],
@@ -260,7 +250,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
         nimg = med
         nvar = munc ** 2
         rms = np.full((len(modeinfo['orders'])), np.nan)
-
+    
     # Protect against zeros
 
     z = np.where(nimg == 0)
@@ -297,8 +287,7 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
 
     # Create the HISTORY
 
-    if verbose is True:
-        print('Writing flat to disk...')
+    logging.info(' Writing flat to disk...')
 
     basenames = []
     for file in files:
@@ -328,7 +317,6 @@ def make_flat(files, output_name, extension='.fits*', normalize=True,
                modeinfo['slith_arc'], slitw_pix, slitw_arc, mode, rms,
                resolvingpower, setup.state['version'], history,
                os.path.join(setup.state['cal_path'],
-                            output_name + '.fits'), overwrite=overwrite)
+                            output_name + '.fits'), overwrite=True)
 
-    if verbose is True:
-        print('Flat field ' + output_name + '.fits written to disk.\n')
+    logging.info(' Flat field file ' + output_name + '.fits written to disk.\n')

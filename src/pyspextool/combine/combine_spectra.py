@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.pyplot import cm
 from astropy.io import fits
+import logging
 
 from pyspextool import config as setup
 from pyspextool.combine import config as combine
@@ -23,7 +24,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
                     scale_range_fraction=0.7, correct_spectral_shape=False,
                     statistic='robust weighted mean', robust_sigma=8,
                     qa_show=None, qa_showsize=(10, 6), qa_write=None,
-                    line_width=0.5, verbose=None, overwrite=True):
+                    line_width=0.5, verbose=None):
 
     """
     To combine raw extracted spectra
@@ -112,9 +113,6 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         Set to True/False to override config.state['verbose'] in the 
         pyspextool config file.  
 
-    overwrite: {True, False}, optional
-        Set to False to to not overwrite a file already on disk.
-
     Returns
     -------
     None
@@ -158,14 +156,14 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     check_parameter('combine_spectra', 'qa_showsize', qa_showsize, 'tuple')    
 
-    check_parameter('combine_spectra', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('combine_spectra', 'qa_write', qa_write,
+                    ['NoneType', 'bool'])
 
     check_parameter('combine_spectra', 'line_width', line_width,
                     ['float', 'int'])    
 
     check_parameter('combine_spectra', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('combine_spectra', 'overwrite', overwrite, 'bool')    
 
     #
     # Check the qa and verbose variables and set to system default if need be.
@@ -182,6 +180,13 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     if verbose is None:
         verbose = setup.state['verbose']
 
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+
+        
     # Get user paths if need be.
         
     if input_path is None:
@@ -215,7 +220,6 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     combine.load['qa_write'] = qa_write
     combine.load['line_width'] = line_width
     combine.load['verbose'] = verbose
-    combine.load['overwrite'] = overwrite
 
     #
     # Create the file names
@@ -250,11 +254,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Read the files
     #
 
-    if verbose is True:
-
-        print('Combining Spectra')
-        print('-----------------')
-        print('Loading spectra...')
+    logging.info(' Combining Spectra\n-----------------\nLoading spectra...')
         
     load_allorders()
 
@@ -279,9 +279,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     if scale_spectra is True:
 
-        if verbose is True:
-
-            print('Scaling the spectra...')
+        logging.info(' Scaling the spectra...')
 
         scale_allorders(scale_order, scale_range, scale_range_fraction)
 
@@ -308,9 +306,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Combine them 
     #
 
-    if verbose is True:
-
-        print('Combining spectra...')
+    logging.info(' Combining spectra...')
         
     combine_allorders()
 
@@ -318,7 +314,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     # Write the results to disk
     #
 
-    write_file()
+    write_file(verbose=combine.load['verbose'])
 
 
 def combine_allorders():
@@ -509,7 +505,7 @@ def load_allorders():
 
     intensities = np.full(shape, np.nan)
     uncertainties = np.full(shape, np.nan)
-    bitmasks = np.full(shape, 0)
+    bitmasks = np.full(shape, 0, dtype=np.int8)
         
     #
     # Now start the loop over each file
@@ -547,7 +543,7 @@ def load_allorders():
                     wavelengths[k,j,:] = spectra[idx,0,:]
                     intensities[k,j,i,:] = spectra[idx,1,:]
                     uncertainties[k,j,i,:] = spectra[idx,2,:]
-                    bitmasks[k,j,i,:] = spectra[idx,3,:]
+                    bitmasks[k,j,i,:] = np.nan_to_num(spectra[idx,3,:]).astype(np.int8)
 
                 else:
 
@@ -555,7 +551,7 @@ def load_allorders():
                     wavelengths[0,j,:] = spectra[idx,0,:]
                     intensities[0,j,k,:] = spectra[idx,1,:]
                     uncertainties[0,j,k,:] = spectra[idx,2,:]
-                    bitmasks[0,j,k,:] = spectra[idx,3,:]
+                    bitmasks[0,j,k,:] = np.nan_to_num(spectra[idx,3,:]).astype(np.int8)
 
     # Load into memory
                     
@@ -809,7 +805,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
     combine.state['scales'] = scales
     
 
-def write_file():
+def write_file(verbose=False):
 
     """
     To write the results to disk.
@@ -824,6 +820,13 @@ def write_file():
 
     """
 
+    if verbose is True:
+        logging.getLogger().setLevel(logging.INFO)
+        
+    elif verbose is False:
+        logging.getLogger().setLevel(logging.ERROR)
+
+    
     #
     # Create an array into which you can store the results
     #
@@ -983,10 +986,9 @@ def write_file():
     full_path = os.path.join(combine.load['output_path'],
                              combine.load['output_name']+'.fits')
     
-    fits.writeto(full_path, array, hdr, overwrite=combine.load['overwrite'])
+    fits.writeto(full_path, array, hdr, overwrite=True)
 
-    if combine.load['verbose'] is True:
-        print('Wrote', os.path.basename(full_path) + ' to disk.')    
+    logging.info(' Wrote file'+os.path.basename(full_path) + ' to disk.')    
 
             
     #
@@ -1010,6 +1012,5 @@ def write_file():
         plot_spectra(full_path, ytype='flux and uncertainty',
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path), file_info=qafileinfo)            
-        if combine.load['verbose'] is True:
-            print('Wrote', combine.load['output_name']+\
-                  setup.state['qa_extension']+' to disk.')    
+        logging.info(' Wrote file'+combine.load['output_name']+\
+                      setup.state['qa_extension']+' to disk.')    
