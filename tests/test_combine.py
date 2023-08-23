@@ -12,11 +12,11 @@ def test_combine():
                         verbose=True, qa_show=False, qa_write=True,
                         qa_extension='.png')
 
-    ps.combine.combine_spectra(['spectra','1-8'], 'spectra1-8',
+    ps.combine.combine_spectra(['spectra','1-7'], 'spectra1-7',
                                 statistic='mean')
     
 
-    fits_files = glob.glob(os.path.join("tests/test_data/misc_data/","spectra1-8.fits"))
+    fits_files = glob.glob(os.path.join("tests/test_data/misc_data/","spectra1-7.fits"))
     png_files = glob.glob(os.path.join("tests/test_data/misc_data/","*.png"))
 
     assert len(fits_files) == 1
@@ -24,6 +24,6 @@ def test_combine():
     
     # CLEANUP
     # remove generated files
-    for files in png_files:
+    for files in fits_files + png_files:
         os.remove(files)
 

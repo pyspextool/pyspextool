@@ -2,15 +2,6 @@ import glob
 import os
 import pyspextool as ps
 
-#
-# Running the test gives:
-#
-#  /opt/homebrew/lib/python3.11/site-packages/scipy/stats/_stats_py.py:1069: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
-
-# which have tracked down to the moments.py function and the call to stats.  But I cannot figure out what is going on.  Deal with later.
-#
-
-
 def test_make_wavecal():
 
     ps.pyspextool_setup(raw_path='tests/test_data/uspex-prism/data/',
