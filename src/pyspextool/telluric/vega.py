@@ -295,6 +295,70 @@ def vega_xcorrelate(object_wavelength:npt.ArrayLike, object_flux:npt.ArrayLike,
     return velocity_shift
 
 
+def vega_deconvolution(object_wavelength:npt.ArrayLike,
+                       object_normalized_flux:npt.ArrayLike,
+                       vega_wavelength:npt.ArrayLike,
+                       normalized_vega_flux:npt.ArrayLike,
+                       line_wavelength_range:npt.ArrayLike):
+                       
+    """
+    To 
+
+    """
+
+    #
+    # Check Parameters
+    #
+
+    check_parameter('vega_deconvolution', 'object_wavelength',
+                    object_wavelength, 'ndarray', 1)
+
+    check_parameter('vega_deconvolution', 'object_normalized_flux',
+                    object_normalized_flux, 'ndarray', 1)    
+
+    check_parameter('vega_deconvolution', 'vega_wavelength',
+                    vega_wavelength, 'ndarray', 1)
+
+    check_parameter('vega_deconvolution', 'vega_normalized_flux',
+                    vega_normalized_flux, 'ndarray', 1)    
+
+    check_parameter('vega_deconvolution', 'line_wavelength_range',
+                    line_wavelength_range, 'ndarray', 1)    
+
+    #
+    # Locate the deconvolution region for the object and Vega
+    #
+
+    zobject = np.logical_and((object_wavelength > line_wavelength_range[0]),
+                             (object_wavelength < line_wavelength_range[1])
+
+    zvega = np.logical_and((vega_wavelength > line_wavelength_range[0]),
+                           (vega_wavelength < line_wavelength_range[1])
+
+    #
+    # Require the number of points to be odd
+    #
+
+    
+
+                           
+    
+    
+
+
+    
+
+    
+
+    
+
+
+    
+    
+
+
+
+
 
 def make_xcorrelate_plot(wavelengths, object_flux, vega_flux, xcor, lag,
                          fit, offset, velocity, redshift, plot_size,
