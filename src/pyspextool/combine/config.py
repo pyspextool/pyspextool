@@ -21,5 +21,5 @@ load = {'files':1, 'output_name':1, 'input_path':1, 'output_path':1,
         'scale_spectra':1, 'scale_order':1, 'scale_range':1,
         'scale_range_fraction':1, 'correct_spectral_shape':1, 'statistic':1,
         'robust_sigma':1, 'qafile':True, 'qaplot':True, 'qaplotsize':(6,6),
-        'line_width':0.5, 'verbose':True, 'overwrite':True}
+        'line_width':0.5, 'verbose':True}
 

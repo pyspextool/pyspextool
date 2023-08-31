@@ -2,9 +2,10 @@ import numpy as np
 import scipy
 from scipy import optimize
 
+import warnings
 
 def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
-              negative=False, nan=True):
+              negative=False, nan=True, ignore_optimizewarning=False):
 
     """
     To fit 1D data with either a Gaussian or Lorentzian function.
@@ -45,6 +46,9 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
 
     nan : {True, False}, optional
         Set to True to ignore NaN values.
+
+    ignore_optimizewarning : {False, True}, optional
+        Set to True to suppress any OptimizeWarning messages.
 
     Returns
     -------
@@ -144,16 +148,25 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
         raise Exception(exception)        
 
     # Now do the call
-
-    try:
     
-        popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)
+    try:
 
+        if ignore_optimizewarning is True:
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", scipy.optimize.OptimizeWarning)
+
+                popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)
+
+        else:
+
+            popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)            
+                
         fit = {'parms': popt}
         fit['fit'] = f(x, *popt)
         fit['goodfit'] = True
             
-    except RuntimeError:
+    except (RuntimeError, scipy.optimize.OptimizeWarning) as e:
 
         fit = {'parms': np.full_like(p0, np.nan)}
         fit['fit'] = np.full_like(y, np.nan)

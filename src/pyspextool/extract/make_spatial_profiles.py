@@ -46,9 +46,10 @@ def make_spatial_profiles(qa_show=None, qa_write=None, qa_showsize=(6, 10),
     #
 
     if extract.state['type_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        message = "extract.state['type_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)
 
     #
     # Check the parameters
