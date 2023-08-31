@@ -248,7 +248,8 @@ def read_wavecal_file(file):
 
     z = orders == xcororder
     xcorspec = np.squeeze(spectra[z, :, :])
-    xcorspec[0, :] = np.arange(xranges[z, 0], xranges[z, 1] + 1)
+    xcorspec[0, :] = np.arange(np.squeeze(xranges[z, 0]),
+                               np.squeeze(xranges[z, 1]) + 1)
 
     result.update({'xcorspec': xcorspec})
 

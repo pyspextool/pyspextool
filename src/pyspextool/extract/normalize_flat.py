@@ -132,7 +132,7 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
         # Do the rectification
 
         order = rectify_order(img, xidx, yidx, ybuffer=ybuffer)
-                
+
         # Fiterpolate the results after median smoothing to minimize bad pixels
 
         model = fiterpolate(medfilt2d(order['image'], kernel_size=(5, 5)),
@@ -202,6 +202,7 @@ def normalize_flat(img, edgecoeffs, xranges, slith_arc, nxgrid, nygrid,
         m = moments(nimg[z], robust=4.5)
         rms[i] = m['stddev']
 
+    
         if verbose:
             loop_progress(i, 0, norders, message='Normalizing the flat...')
 

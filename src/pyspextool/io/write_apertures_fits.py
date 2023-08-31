@@ -323,3 +323,9 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         if xsbginfo is not None:
             print('Wrote', os.path.basename(output_fullpath)+'.fits', 'and',
                   os.path.basename(output_fullpath)+'.fits', 'to disk.')
+
+    #
+    # Return the file name written to disk
+    #
+
+    return hdr['FILENAME']

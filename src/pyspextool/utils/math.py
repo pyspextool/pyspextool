@@ -774,7 +774,6 @@ def moments(data, goodbad=False, robust=None, silent=True):
     # Do the stats
 
     stats = describe(sample[mask])
-
     ngood = stats.nobs
     mean = stats.mean
     var = stats.variance

@@ -69,9 +69,10 @@ def locate_aperture_positions(apertures, method='auto', fwhm=0.8, qa_show=None,
     #
 
     if extract.state['profile_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        message = "extract.state['profile_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)
 
     #
     # Check parameters that don't depend on extraction type.

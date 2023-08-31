@@ -69,9 +69,10 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
     #
 
     if extract.state['apertures_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        message = "extract.state['apertures_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)        
 
     #
     # Check parameters

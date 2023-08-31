@@ -76,9 +76,10 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     #
 
     if extract.state['select_done'] is False:
-        message = 'Previous steps not completed.'
-        print(message)
-        return
+
+        message = "extract.state['select_done']=False.  "+\
+          "Previous steps not complete."        
+        raise ValueError(message)
 
     #
     # Check parameters
@@ -153,7 +154,7 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
                                     step_size=step_size,
                                     centroid_threshold=centroid_threshold,
                                     fwhm=fwhm, verbose=verbose)
-
+        
         tracecoeffs = trace['coeffs']
 
         if qa_show is True or qa_write is True:
