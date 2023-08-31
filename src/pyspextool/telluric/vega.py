@@ -329,11 +329,11 @@ def vega_deconvolution(object_wavelength:npt.ArrayLike,
     # Locate the deconvolution region for the object and Vega
     #
 
-    zobject = np.logical_and((object_wavelength > line_wavelength_range[0]),
-                             (object_wavelength < line_wavelength_range[1])
+#    zobject = np.logical_and((object_wavelength > line_wavelength_range[0]),
+#                             (object_wavelength < line_wavelength_range[1])
 
-    zvega = np.logical_and((vega_wavelength > line_wavelength_range[0]),
-                           (vega_wavelength < line_wavelength_range[1])
+#    zvega = np.logical_and((vega_wavelength > line_wavelength_range[0]),
+#                           (vega_wavelength < line_wavelength_range[1])
 
     #
     # Require the number of points to be odd
