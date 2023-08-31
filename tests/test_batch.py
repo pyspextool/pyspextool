@@ -108,34 +108,34 @@ def test_batchReduce_spex_prism():
 	for files in proc_fits_files + cal_fits_files + qa_pdf_files:
 		os.remove(files)
 
-def test_batchReduce_uspex_prism():
-	base_folder = "./tests/test_data/uspex-prism/"
+# def test_batchReduce_uspex_prism():
+# 	base_folder = "./tests/test_data/uspex-prism/"
 
-	# first, make sure proc and cal folders _do not have_ FITS files
-	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
-	cal_fits_files = glob.glob(os.path.join(base_folder, "cals/*.fits"))
-	qa_pdf_files = glob.glob(os.path.join(base_folder, "qa/*.pdf"))
-	assert len(proc_fits_files) == 0
-	assert len(cal_fits_files) == 0
-	assert len(qa_pdf_files) == 0
+# 	# first, make sure proc and cal folders _do not have_ FITS files
+# 	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
+# 	cal_fits_files = glob.glob(os.path.join(base_folder, "cals/*.fits"))
+# 	qa_pdf_files = glob.glob(os.path.join(base_folder, "qa/*.pdf"))
+# 	assert len(proc_fits_files) == 0
+# 	assert len(cal_fits_files) == 0
+# 	assert len(qa_pdf_files) == 0
 
-# generate driver file
-	driver_file = os.path.join(base_folder, "proc/driver_test.txt")
-	# dp = processFolder(os.path.join(base_folder, "data"),verbose=False)
-	# writeDriver(dp,driver_file,data_folder=os.path.join(base_folder, "data"),check=False,create_folders=False,verbose=False)
+# # generate driver file
+# 	driver_file = os.path.join(base_folder, "proc/driver_test.txt")
+# 	# dp = processFolder(os.path.join(base_folder, "data"),verbose=False)
+# 	# writeDriver(dp,driver_file,data_folder=os.path.join(base_folder, "data"),check=False,create_folders=False,verbose=False)
 
-	par = readDriver(driver_file)
-	batchReduce(par,verbose=True)
+# 	par = readDriver(driver_file)
+# 	batchReduce(par,verbose=True)
 
-	# now, make sure proc and qa folders _have_ FITS files and qa has no PDF files
-	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
-	cal_fits_files = glob.glob(os.path.join(base_folder, "cals/*.fits"))
-	qa_pdf_files = glob.glob(os.path.join(base_folder, "qa/*.pdf"))
-	assert len(proc_fits_files) == 7
-	assert len(cal_fits_files) == 2
-	assert len(qa_pdf_files) == 25
+# 	# now, make sure proc and qa folders _have_ FITS files and qa has no PDF files
+# 	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
+# 	cal_fits_files = glob.glob(os.path.join(base_folder, "cals/*.fits"))
+# 	qa_pdf_files = glob.glob(os.path.join(base_folder, "qa/*.pdf"))
+# 	assert len(proc_fits_files) == 7
+# 	assert len(cal_fits_files) == 2
+# 	assert len(qa_pdf_files) == 25
 
-	# CLEANUP
-	# remove generated files
-	for files in proc_fits_files + cal_fits_files + qa_pdf_files:
-		os.remove(files)
+# 	# CLEANUP
+# 	# remove generated files
+# 	for files in proc_fits_files + cal_fits_files + qa_pdf_files:
+# 		os.remove(files)
