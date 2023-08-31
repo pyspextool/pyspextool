@@ -803,7 +803,9 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 # if blank, create cals, proc, and qa folders parallel to data folder
 		if driver_param[x]=='': 
 #			driver_param[x] = driver_param['DATA_FOLDER'].replace(os.path.split(os.path.dirname(driver_param['DATA_FOLDER']))[-1],(x.split('_')[0]).lower())
+			print(os.path.split(driver_param['DATA_FOLDER'])[0])
 			driver_param[x] = os.path.join(os.path.split(driver_param['DATA_FOLDER'])[0],(x.split('_')[0]).lower())
+			print(x,driver_param[x])
 #			print(x,driver_param['DATA_FOLDER'],driver_param[x])
 		if os.path.exists(driver_param[x])==False:
 			if create_folders==True: 
