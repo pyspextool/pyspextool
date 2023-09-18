@@ -1,6 +1,7 @@
 import os
 import glob
 import pandas
+import pytest
 from pyspextool.batch.batch import readDriver, writeDriver, writeLog, batchReduce, processFolder
 from pyspextool.batch.batch import HEADER_DATA, REDUCTION_FOLDERS, BATCH_PARAMETERS, LOG_PARAMETERS, OBSERVATION_SET_KEYWORD
 
