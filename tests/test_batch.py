@@ -76,6 +76,7 @@ def test_writeReadDriver():
 #	 pass
 
 
+@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
 def test_batchReduce_spex_prism():
 	base_folder = "./tests/test_data/spex-prism/"
 
