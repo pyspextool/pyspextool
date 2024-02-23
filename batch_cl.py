@@ -35,6 +35,14 @@ class runBatch():
 			required=False, help='set log file prefix (default is "log")')
 		parser.add_argument('-d', metavar='driver-filename', nargs=1, default='',
 			required=False, help='set driver file name (default is "driver.txt")')
+		parser.add_argument('--test', action='store_true',default=False,
+			required=False, help='set to test the pyspextool installation')
+		parser.add_argument('--organize', action='store_true',default=False,
+			required=False, help='organize the legacy archive download data files')
+		parser.add_argument('--organize-legacy', action='store_true',default=False,
+			required=False, help='organize the legacy archive download data files')
+		parser.add_argument('--organize-irsa', action='store_true',default=False,
+			required=False, help='organize the IRSA archive download data files')
 		parser.add_argument('--log-only', action='store_true',default=False,
 			required=False, help='set to just save a log file')
 		parser.add_argument('--driver-only', action='store_true',default=False,
@@ -57,10 +65,6 @@ class runBatch():
 			required=False, help='set to remove all pauses for user input')
 		# parser.add_argument('--verbose', action='store_true',default=False,
 		# 	required=False, help='set to return verbose feedback')
-		parser.add_argument('--organize', action='store_true',default=False,
-			required=False, help='organize the legacy download data files')
-		parser.add_argument('--organize-legacy', action='store_true',default=False,
-			required=False, help='organize the legacy download data files')
 		parser.add_argument('--no-cals', action='store_true',default=False,
 			required=False, help='set to skip calibration file creation')
 		parser.add_argument('--no-extract', action='store_true',default=False,
@@ -89,6 +93,11 @@ class runBatch():
 		if args['quiet']==False: print('\npyspextool batch reduction code version {}\n'.format(VERSION))
 		if args['version']==True: return
 
+# test
+		if args['test']==True: 
+			batch.test()
+			return
+
 # if nothing passed, assume we are using the local folder as the base folder
 		if len(folders)<1: 
 			base_folder='./'
@@ -105,7 +114,13 @@ class runBatch():
 # organize legacy data?
 		if args['organize']==True or args['organize_legacy']==True:
 			batch.organizeLegacy(base_folder,verbose=(not args['quiet']),overwrite=args['overwrite'],makecopy=True)
-			if args['quiet']==False: print('\n\nFinished file organization\n\n')
+			if args['quiet']==False: print('\n\nFinished IRTF Legacy archive file organization\n\n')
+			return
+
+# organize legacy data?
+		if args['organize_irsa']==True:
+			batch.organizeIRSA(base_folder,verbose=(not args['quiet']),overwrite=args['overwrite'],makecopy=True)
+			if args['quiet']==False: print('\n\nFinished IRTF IRSA archive file organization\n\n')
 			return
 
 # two inputs - assume to be data folder and base folder 
@@ -142,7 +157,7 @@ class runBatch():
 					if os.path.exists(log_file_prefix+x) and args['overwrite']==False and args['rebuild_log']==False:
 						print('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
 					else:
-						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
+#						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
 						batch.writeLog(dp,log_file_prefix+x)
 
 # query to pause and check log

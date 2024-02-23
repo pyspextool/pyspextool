@@ -200,8 +200,8 @@ def find_peaks(profiles, method_info, fwhm=0.8):
 
                 # Store results
 
-#                peaks[i, j] = guess_peaks[i, j]
-                peaks[i, j] = x[idx]
+                peaks[i, j] = guess_peaks[i, j]
+#                peaks[i, j] = x[idx]
 
                 # Get the aperture sign
 

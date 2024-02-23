@@ -36,7 +36,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2023 Aug 12'
+VERSION = '2024 Feb 22'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -49,6 +49,8 @@ ARC_NAME = 'arc lamp'
 FLAT_NAME = 'flat lamp'
 OBSERVATION_SET_KEYWORD = 'OBS_SET'
 DRIVER_DEFAULT_FILENAME = 'driver.txt'
+BACKUP_INSTRUMENT_DATA_URL = 'https://drive.google.com/drive/folders/1hxWS9a4G41qh9d_tk_eAx2aOmJrKvPe6?usp=sharing'
+BACKUP_REDUCTION_DATA_URL = 'https://drive.google.com/drive/folders/1fK345gOCKHtffluiFjPLUuRYbS7tK_yl?usp=sharing'
 
 # modes to ignore
 IGNORE_MODES = ['LongXD2.3','LongXD2.1','LongXD1.9','LongSO','LXD2.3','LXD2.1','LXD1.9','LXD_short','LXD_long','LowRes60']
@@ -178,12 +180,151 @@ SIMBAD_RADIUS = 30*u.arcsecond
 
 # legacy download constants
 LEGACY_FOLDER = 'irtfdata.ifa.hawaii.edu'
+IRSA_FOLDER = 'IRTF'
+IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 
 # observing schedule
 OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule_compact.csv')
 
+##################################
+####### BASIC TEST OF CODE #######
+##################################
 
+def test(verbose=True):
+	'''
+	Purpose
+	-------
+	Checks to make sure installation is correct and necessary data files are present
+
+	Parameters
+	----------
+	None
+
+	Outputs
+	-------
+	Will raise warning errors if any aspects of code aren't working, otherwise returns True
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> batch.test(verbose=True)
+	...checking that code can find instrument data
+		PASS
+	...checking that code can find reduction data
+		PASS
+	...checking that code can find test data
+		PASS
+	...checking that code can process data files
+		PASS
+	...checking that code can generate log
+		PASS
+	...checking that code can generate driver
+		PASS
+	*** Batch reduction tests have all passed - happy reducing! ***
+
+	Dependencies
+	------------
+	processfolder()
+	writeLog()
+	writeDriver()
+	readDriver()
+	glob
+	os
+	pandas
+	'''	
+	testdatafold = DIR+"/../../../tests/test_data/"
+	instrumentdatafold = DIR+"/../instrument_data/"
+	reductiondatafold = DIR+"/../data/"
+	test_instruments = ["spex-prism", "spex-SXD"]
+	tfold = os.path.join(testdatafold, "spex-prism")
+	rawfold = os.path.join(testdatafold, "raw/")
+	procfold = os.path.join(testdatafold, "processed/")
+
+# make sure code can find main instrument data files
+	if verbose==True: print('...checking that code can find instrument data')
+	assert os.path.exists(instrumentdatafold), 'could not find instrument data folder {}, try downloading from {}'.format(instrumentdatafold,BACKUP_INSTRUMENT_DATA_URL)
+	for x in ['spex','uspex']:
+		testfold = os.path.join(instrumentdatafold,'{}_dir'.format(x))
+		assert os.path.exists(testfold), 'could not find instrument data folder {}, try downloading from {}'.format(testfold,BACKUP_INSTRUMENT_DATA_URL)
+		testfile = os.path.join(testfold,'{}_bdpxmk.fits'.format(x))
+		assert os.path.exists(testfile), 'could not find bad pixel mask file {}, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
+		fstat = os.stat(testfile)
+		assert fstat.st_size > 1000000, 'file {} is too small, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
+	if verbose==True: print('\tPASS')
+
+# make sure code can find main reduction data files
+	if verbose==True: print('...checking that code can find reduction data')
+	assert os.path.exists(reductiondatafold), 'could not find reduction data folder {}, try downloading from {}'.format(reductiondatafold,BACKUP_REDUCTION_DATA_URL)
+	for x in [100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000,6000,60000,75000]:
+		atmfile = os.path.join(reductiondatafold,'atran{:.0f}.fits'.format(x))
+		assert os.path.exists(atmfile), 'could not find atmosphere transmission file {}, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
+		fstat = os.stat(atmfile)
+		assert fstat.st_size > 1000000, 'atmosphere transmission file {} is too small, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
+	for x in [5000,50000]:
+		vfile = os.path.join(reductiondatafold,'Vega{:.0f}.fits'.format(x))
+		assert os.path.exists(vfile), 'Vega spectrum file {} not found in data folder {}, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
+		fstat = os.stat(vfile)
+		assert fstat.st_size > 1000000, 'Vega spectrum file {} is too small, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
+	if verbose==True: print('\tPASS')
+
+
+# make sure code can find test data
+	if verbose==True: print('...checking that code can find test data')
+	assert os.path.exists(testdatafold), 'Could not find test data folder {}'.format(testdatafold)
+	for inst in test_instruments:
+		assert os.path.exists(os.path.join(testdatafold, inst)), 'Could not find test data folder {}'.format(os.path.join(testdatafold, inst))
+		for fold in REDUCTION_FOLDERS:
+			assert os.path.exists(os.path.join(testdatafold, inst, fold)), 'Could not find test data folder {}'.format(os.path.join(testdatafold, inst, fold))
+	dfiles = glob.glob(os.path.join(tfold, "data/*.fits"))
+	assert len(dfiles) > 0, 'no data files found in {}'.format(os.path.join(tfold, "data/*.fits"))
+	if verbose==True: print('\tPASS')
+
+	if verbose==True: print('...checking that code can process data files')
+	result = processFolder(os.path.join(tfold, "data/"),verbose=False)
+	assert isinstance(result, pd.core.frame.DataFrame), 'Could not process data folder {}'.format(os.path.join(tfold, "data/"))
+	assert len(result) > 0, 'no data files found in {}'.format(os.path.join(tfold, "data/"))
+	for x in list(HEADER_DATA.keys()):
+		assert x in list(result.columns), 'Could not find required header data {} in log file {}'.format(x,logfile)
+	if verbose==True: print('\tPASS')
+
+# process files and generate a test log
+	if verbose==True: print('...checking that code can generate log')
+	logfile = os.path.join(tfold, "qa", "log_test.csv")
+	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
+	writeLog(dp,logfile,verbose=False)
+	assert os.path.exists(logfile), 'Could not find log file {} after creation'.format(driver_file)
+	dp = pd.read_csv(logfile)
+	assert isinstance(dp, pd.core.frame.DataFrame), 'Log file parameter error: not a pandas dataframe for log file {}'.format(log_file)
+	assert len(dp)>0
+	for x in LOG_PARAMETERS['COLUMNS']:
+		assert x in list(dp.columns), 'Could not find required column {} in log file {}'.format(x,logfile)
+	if verbose==True: print('\tPASS')
+
+# CLEANUP
+# remove generated files
+
+# process files and generate a driver file
+	if verbose==True: print('...checking that code can generate driver')
+	driver_file = os.path.join(tfold, "proc/driver_drivertest.txt")
+	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
+	writeDriver(dp,driver_file,data_folder=os.path.join(tfold, "data"),check=False,create_folders=False,verbose=False)
+	assert os.path.exists(driver_file), 'Could not find driver file {} after creation'.format(driver_file)
+
+# read in existing driver in test folder and check
+	par = readDriver(driver_file,verbose=False)
+	assert isinstance(par, dict), 'Driver file parameter error: not a dictionary for driver file {}'.format(driver_file)
+	for x in BATCH_PARAMETERS:
+		assert x in list(par.keys()), 'Could not find required parameter {} in driver file {}'.format(x,driver_file)
+	if verbose==True: print('\tPASS')
+
+# CLEANUP
+# remove generated files
+	os.remove(logfile)
+	os.remove(driver_file)
+	if verbose==True: print('*** Batch reduction tests have all passed - happy reducing! ***\n')
+
+	return
 
 ##################################
 ######### PROCESS FOLDERS ########
@@ -253,7 +394,7 @@ def processFolder(folder,verbose=False):
 
 # run through each file header and populate the dataframe
 	for i,f in enumerate(files):
-		hdu = fits.open(f)
+		hdu = fits.open(f,ignore_missing_end=True)
 		hdu[0].verify('silentfix')
 		header = hdu[0].header
 		hdu.close()
@@ -309,8 +450,8 @@ def processFolder(folder,verbose=False):
 # NOTE: THIS FAILS IF USER DOESN'T CHANGE NAME OF SOURCE
 	dp['FIXED-MOVING'] = ['fixed']*len(dp)
 	names = list(set(list(dp['TARGET_NAME'])))
-	names.remove(ARC_NAME)
-	names.remove(FLAT_NAME)
+	if ARC_NAME in names: names.remove(ARC_NAME)
+	if FLAT_NAME in names: names.remove(FLAT_NAME)
 	if len(names)==0:
 		if verbose==True: print('Warning: no science files identified in {}'.format(folder))
 	else:
@@ -318,15 +459,18 @@ def processFolder(folder,verbose=False):
 			dps = dp[dp['TARGET_NAME']==n]
 			dpsa = dps[dps['BEAM']=='A']
 			if len(dpsa)>1:	
-				pos1 = SkyCoord(dpsa['RA'].iloc[0]+' '+dpsa['DEC'].iloc[0],unit=(u.hourangle, u.deg))
-				pos2 = SkyCoord(dpsa['RA'].iloc[-1]+' '+dpsa['DEC'].iloc[-1],unit=(u.hourangle, u.deg))
-				dx = pos1.separation(pos2).to(u.arcsec)
-				time1 = Time(dpsa['DATETIME'].iloc[0],format='isot', scale='utc')
-				time2 = Time(dpsa['DATETIME'].iloc[-1],format='isot', scale='utc')
-				dt = (time2-time1).to(u.hour)
-				if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
-					dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
-				if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+				try:
+					pos1 = SkyCoord(dpsa['RA'].iloc[0]+' '+dpsa['DEC'].iloc[0],unit=(u.hourangle, u.deg))
+					pos2 = SkyCoord(dpsa['RA'].iloc[-1]+' '+dpsa['DEC'].iloc[-1],unit=(u.hourangle, u.deg))
+					dx = pos1.separation(pos2).to(u.arcsec)
+					time1 = Time(dpsa['DATETIME'].iloc[0],format='isot', scale='utc')
+					time2 = Time(dpsa['DATETIME'].iloc[-1],format='isot', scale='utc')
+					dt = (time2-time1).to(u.hour)
+					if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
+						dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
+					if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+				except Exception as e:
+					if verbose==True: print('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
 
 # program and PI info (based on code by Evan Watson)
 # NOTE: in this realization we're assuming its the same program and PI for the entire folder
@@ -339,23 +483,39 @@ def processFolder(folder,verbose=False):
 		dp['PROGRAM'] = [obs_sch['PROGRAM'].iloc[0]]*len(dp)
 		dp['OBSERVER'] = [obs_sch['PI'].iloc[0]]*len(dp)
 
+# some additional cleanup
+	dp['TARGET_NAME'] = [x.replace('.','_').replace(',','_') for x in dp['TARGET_NAME']]
+
 	return dp
 
-def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
+
+
+
+def organize(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
 	'''
 	Purpose
 	-------
-	Organizes files downloaded from the IRTF Legacy database into distinct datasets
+	Organizes set of fits data files into distinct reduction datasets
+	Specifically moves files from infolder into a data folder within a top level folder set by date
+	If data are from IRTF Legacy archive or IRSA Archive, will automatically go to these settings
+	Also creates proc, cals, and qa folders
 
 	Parameters
 	----------
 	folder : str
-		full path to the folder containing the downloaded LEGACY_FOLDER, into which other folders will be organized
+		full path to the folder containing the data
 
-	outfolder : str, default='dataset'
-		string indicating top-level organization folder under which data, cals, proc, and qa folders will be created 
+	outfolder : str, default=''
+		string indicating top-level organization folder under which data, cals, proc, and qa folders will be created
+		if empty string, current directory is assumed 
 
-	verbose : bool, default=False
+	makecopy : bool, default=True
+		If True, then copies data files; otherwise moves them
+
+	overwrite : bool, default=False
+		If True, overwrites files that are already in target directory, otherwise skips
+
+	verbose : bool, default=ERROR_CHECKING
 		Set to True to return verbose output
 
 	Outputs
@@ -365,18 +525,123 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 	Example
 	-------
 	>>> from pyspextool.batch import batch
-	>>> dpath = '/Users/adam/data/reductions/'
-	>>> batch.organizeLegacy(dpath)
+	>>> dpath = '/Users/me/spex/reductions/data/'
+	>>> batch.organize(dpath)
+
+	From command line:
+
+	> python batch.cl --organize
 
 	Dependencies
 	------------
-	astropy.coordinates
-	astropy.io
-	astropy.time
-	astropy.units
+	astropy.io.fits
 	glob
 	os.path
-	pandas
+	shutil
+	batch.organizeLegacy()
+	batch.organizeIRSA()
+	'''	
+
+# First look to see if LEGACY_FOLDER or IRSA_FOLDER is in the infolder path
+	if LEGACY_FOLDER in folder: 
+		if verbose==True: print('Detected IRTF Legacy archive path {} in input path; using organizeLegacy'.format(LEGACY_FOLDER))
+		organizeLegacy(folder,outfolder=outfolder,verbose=verbose,makecopy=makecopy,overwrite=overwrite)
+	if IRSA_FOLDER in folder: 
+		if verbose==True: print('Detected IRTF IRSA archive path {} in input path; using organizeLegacy'.format(IRSA_FOLDER))
+		organizeIRSA(folder,outfolder=outfolder,verbose=verbose,makecopy=makecopy,overwrite=overwrite)
+
+# Generate a list of all fits files in folder
+	fits_paths = glob.glob(os.path.join(folder, '*.fits'))
+	fits_paths.sort()
+	fits_files = [os.path.basename(f) for f in fits_paths]
+
+# define folders based on file date (requires file read - can take a while)
+	fits_outfolders = []
+	for f in fits_paths:
+		ofld = ''
+		hdu = fits.open(f,ignore_missing_end=True)
+		hd = hdu[0].header
+		hdu.close()
+		for k in HEADER_DATA['UT_DATE']:
+			if k in list(hd.keys()): ofld+=hd[k].replace('/','').replace('-','')
+		for k in HEADER_DATA['PROGRAM']:
+			if k in list(hd.keys()): ofld+='-'+hd[k].replace('/','').replace('-','').replace(' ','')
+		fits_outfolders.append(ofld)
+	all_outfolders = list(set(fits_outfolders))
+
+# make the necessary output folders
+	for f in all_outfolders:
+		output_folder = os.path.join(outfolder,f)
+		if os.path.exists(output_folder)== False: 
+			os.makedirs(output_folder)
+			if verbose==True: print('Creating folder {}'.format(output_folder))
+
+# create other folders
+		for rf in REDUCTION_FOLDERS:
+			rfolder = os.path.join(output_folder,rf)
+			if os.path.exists(rfolder) == False:
+				os.makedirs(rfolder)
+				if verbose==True: print('Creating folder {}'.format(rfolder))
+		data_folder = os.path.join(output_folder,REDUCTION_FOLDERS[0])
+
+# run through fits files and copy relevant files over
+		for i,fl in enumerate(fits_paths):
+			if fits_outfolders[i]==f:
+				if os.path.exists(os.path.join(data_folder,os.path.basename(fl)))==False or overwrite==True: 
+					if makecopy==False: shutil.move(fl,data_folder)
+					else: shutil.copy2(fl,data_folder)
+				else: print('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
+
+		if verbose==True: print('\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+	return
+
+
+
+def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
+	'''
+	Purpose
+	-------
+	Organizes files downloaded from the IRTF Legacy database into distinct datasets
+	Specifically moves files into a data folder within a top level folder set by date and program number
+	Also creates proc, cals, and qa folders
+
+	Parameters
+	----------
+	folder : str
+		full path to the folder containing the downloaded LEGACY_FOLDER, into which other folders will be organized
+
+	outfolder : str, default='dataset'
+		string indicating top-level organization folder under which data, cals, proc, and qa folders will be created 
+
+	makecopy : bool, default=True
+		If True, then copies data files; otherwise moves them
+
+	overwrite : bool, default=False
+		If True, overwrites files that are already in target directory, otherwise skips
+
+	verbose : bool, default=ERROR_CHECKING
+		Set to True to return verbose output
+
+	Outputs
+	-------
+	None
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/me/spex/reductions/'
+	>>> batch.organizeLegacy(dpath)
+
+	From command line:
+
+	> python batch.cl --organize-legacy
+
+	Dependencies
+	------------
+	astropy.io.fits
+	glob
+	os.path
+	shutil
 	'''	
 
 # Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
@@ -397,7 +662,7 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 # generate file name from UT date of first fits file if not provided
 		if verbose==True: print('\nOrganizing data folder {}'.format(f))
 		if outfolder=='':
-			hdu = fits.open(glob.glob(os.path.join(f,'*.fits'))[0])
+			hdu = fits.open(glob.glob(os.path.join(f,'*.fits'))[0],ignore_missing_end=True)
 			hd = hdu[0].header
 			hdu.close()
 			for k in HEADER_DATA['UT_DATE']:
@@ -434,7 +699,106 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 				os.makedirs(rfolder)
 				if verbose==True: print('Creating folder {}'.format(rfolder))
 
-	if verbose==True: print('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+		if verbose==True: print('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+	return
+
+
+
+def organizeIRSA(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=True,overwrite=False):
+	'''
+	Purpose
+	-------
+	Organizes files downloaded from the IRTF IRSA archive database into distinct datasets based on date and program
+	Specifically moves files into a data folder within a top level folder set by date and program number
+	Also creates proc, cals, and qa folders
+
+	Parameters
+	----------
+	folder : str
+		full path to the folder containing the downloaded IRSA_FOLDER, into which other folders will be organized
+
+	outfolder : str, default=''
+		string indicating top-level organization folder under which data, cals, proc, and qa folders will be created 
+		if empty string, assumes current directory
+
+	makecopy : bool, default=True
+		If True, then copies data files; otherwise moves them
+
+	overwrite : bool, default=False
+		If True, overwrites files that are already in target directory, otherwise skips
+
+	verbose : bool, default=ERROR_CHECKING
+		Set to True to return verbose output
+
+	Outputs
+	-------
+	None
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/me/spex/reductions/'
+	>>> batch.organizeIRSA(dpath)
+
+	From command line:
+	> python batch.cl --organize-irsa
+
+
+	Dependencies
+	------------
+	glob
+	os.path
+	shutil
+	'''	
+
+# Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
+	base_folder = os.path.join(folder, IRSA_FOLDER)
+	if not os.path.exists(base_folder):
+		raise ValueError("ERROR: IRSA archive output folder {} not found in the current directory".format(IRSA_FOLDER))
+
+# Generate a list of all fits files
+	fits_paths = glob.glob(os.path.join(base_folder, '**', '*.fits'), recursive=True)
+	fits_paths.sort()
+	fits_files = [os.path.basename(f) for f in fits_paths]
+# first check
+	if fits_files[0][:len(IRSA_PREFIX)]!=IRSA_PREFIX:
+		raise ValueError("ERROR: IRSA archive file prefix {} not found with first file".format(IRSA_PREFIX))
+
+# define folders based on program number and date based on typical fits file name
+	padstr = ''
+	fits_programs = [x.split('.')[1] for x in fits_files]
+	fits_dates = [x.split('.')[2] for x in fits_files]
+	if len(fits_dates[0])==6: padstr='20'
+	fits_folders = [padstr+x.split('.')[2]+'-'+x.split('.')[1] for x in fits_files]
+	fits_folders = list(set(list(fits_folders)))
+	fits_folders.sort()
+
+# make the necessary output folders
+	for f in fits_folders:
+		output_folder = os.path.join(folder,f)
+		if os.path.exists(output_folder)== False: 
+			os.makedirs(output_folder)
+			if verbose==True: print('Creating folder {}'.format(output_folder))
+
+# create other folders
+		for rf in REDUCTION_FOLDERS:
+			rfolder = os.path.join(output_folder,rf)
+			if os.path.exists(rfolder) == False:
+				os.makedirs(rfolder)
+				if verbose==True: print('Creating folder {}'.format(rfolder))
+		data_folder = os.path.join(output_folder,REDUCTION_FOLDERS[0])
+
+# run through fits files and copy relevant file over
+		mtchstr = f.split('-')[1]+'.'+f.split('-')[0][len(padstr):]
+		mtch = [s for s in fits_paths if mtchstr in s]
+		if verbose==True: print('Copying {} files in {}'.format(len(mtch),data_folder))
+		for i,fl in enumerate(mtch): 
+			if os.path.exists(os.path.join(data_folder,os.path.basename(fl)))==False or overwrite==True: 
+				if makecopy==False: shutil.move(fl,data_folder)
+				else: shutil.copy2(fl,data_folder)
+			else: print('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
+
+		if verbose==True: print('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
 	return
 
 
@@ -510,10 +874,14 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	else: dpout = copy.deepcopy(dp)
 
 # fix for RA and DEC for proper formatting
+# catch is for rare cases where telescope data is missed
 	for x in ['RA','DEC']:
 		if x in list(dpout.columns):
 			for i,y in enumerate(dpout[x]):
-				if str(y)[0] not in ['-','+']: dpout.loc[i,x]='+{}'.format(str(y))
+				try: 
+					if str(y)[0] not in ['-','+']: dpout.loc[i,x]='+{}'.format(str(y))
+				except Exception as e: 
+					if verbose==True: print('\n\tWARNING: {} error: {} for file {} is missing\n'.format(e,x,dpout['FILE'].iloc[i]))
 
 # FIX FOR PATHOLOGICAL CASE WHERE NO TARGET NAMES ARE GIVEN
 	if 'TARGET_NAME' in list(dpout.columns) and 'TARGET_TYPE' in list(dpout.columns):
@@ -802,11 +1170,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	for x in ['CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
 # if blank, create cals, proc, and qa folders parallel to data folder
 		if driver_param[x]=='': 
-#			driver_param[x] = driver_param['DATA_FOLDER'].replace(os.path.split(os.path.dirname(driver_param['DATA_FOLDER']))[-1],(x.split('_')[0]).lower())
-			print(os.path.split(driver_param['DATA_FOLDER'])[0])
 			driver_param[x] = os.path.join(os.path.split(driver_param['DATA_FOLDER'])[0],(x.split('_')[0]).lower())
-			print(x,driver_param[x])
-#			print(x,driver_param['DATA_FOLDER'],driver_param[x])
 		if os.path.exists(driver_param[x])==False:
 			if create_folders==True: 
 				os.mkdir(driver_param[x])
@@ -989,7 +1353,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 #############################
 
 
-def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log_html_name='log.html',options={},show_options=False,verbose=ERROR_CHECKING):
+def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log_html_name='',options={},show_options=False,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -1083,6 +1447,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 
 # replace relevant parameters in top of index
 	output_text = output_text.replace('[CSS_FILE]',os.path.basename(qa_parameters['CSS_FILE']))
+	if log_html_name=='': log_html_name = os.path.basename(log_input).replace('.csv','.html')
 	output_text = output_text.replace('[LOG_HTML]',log_html_name)
 # NEED TO UPDATE WEATHER LINK
 	output_text = output_text.replace('[WEATHER_HTML]',qa_parameters['MKWC_ARCHIVE_URL'])
