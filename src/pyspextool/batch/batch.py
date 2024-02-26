@@ -36,7 +36,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 Feb 22'
+VERSION = '2024 Feb 25'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
