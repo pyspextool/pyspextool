@@ -2,6 +2,7 @@ import glob
 import os
 import pyspextool as ps
 
+
 def test_make_wavecal():
 
     ps.pyspextool_setup(
@@ -15,11 +16,16 @@ def test_make_wavecal():
         qa_extension=".png",
     )
 
-    ps.extract.make_flat(['sbd.2022B046.221019.flat.','15-19'],'flat15-19',
-                          verbose=True)
+    ps.extract.make_flat(
+        ["sbd.2022B046.221019.flat.", "15-19"], "flat15-19", verbose=True
+    )
 
-    ps.extract.make_wavecal(['sbd.2022B046.221019.arc.','20'],'flat15-19.fits',
-                         'wavecal20', use_stored_solution=False)
+    ps.extract.make_wavecal(
+        ["sbd.2022B046.221019.arc.", "20"],
+        "flat15-19.fits",
+        "wavecal20",
+        use_stored_solution=False,
+    )
 
     fits_files = glob.glob(
         os.path.join("tests/test_data/raw/uspex-prism/cals/", "*.fits")
