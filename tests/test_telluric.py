@@ -22,9 +22,9 @@ def test_telluric():
     )
 
     ps.telluric.telluric_correction(
-        "spectra1-8.fits",
-        "HD 101369",
-        "spectra11-18.fits",
+        "combspec1-8.fits",
+        "HD 101060",
+        "combspec9-14.fits",
         "test",
         fluxdensity_units="Jy",
         input_path=proc_path,
