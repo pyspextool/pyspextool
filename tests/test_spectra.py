@@ -15,7 +15,7 @@ def test_normalize_continuum():
 
     ps.pyspextool_setup(qa_path=qa_path, qa_extension=".png")
 
-    objspectra, hdrdict = read_spectra_fits(join(proc_path, "spectra11-18.fits"))
+    objspectra, hdrdict = read_spectra_fits(join(proc_path, "combspec11-18.fits"))
 
     wavelength = objspectra[3, 0, :]
     flux = objspectra[3, 1, :]
