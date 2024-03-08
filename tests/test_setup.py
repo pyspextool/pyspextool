@@ -12,31 +12,31 @@ from pyspextool.setup_utils import (
 cwd = os.path.abspath(os.getcwd())
 
 spex_prism_paths = {
-    "raw_path": "tests/test_data/spex-prism/data/",
-    "cal_path": "tests/test_data/spex-prism/cals/",
-    "proc_path": "tests/test_data/spex-prism/proc/",
-    "qa_path": "tests/test_data/spex-prism/qa/",
+    "raw_path": "tests/test_data/raw/spex-prism/data/",
+    "cal_path": "tests/test_data/raw/spex-prism/cals/",
+    "proc_path": "tests/test_data/raw/spex-prism/proc/",
+    "qa_path": "tests/test_data/raw/spex-prism/qa/",
 }
 
 spex_sxd_paths = {
-    "raw_path": "tests/test_data/spex-SXD/data/",
-    "cal_path": "tests/test_data/spex-SXD/cals/",
-    "proc_path": "tests/test_data/spex-SXD/proc/",
-    "qa_path": "tests/test_data/spex-SXD/qa/",
+    "raw_path": "tests/test_data/raw/spex-SXD/data/",
+    "cal_path": "tests/test_data/raw/spex-SXD/cals/",
+    "proc_path": "tests/test_data/raw/spex-SXD/proc/",
+    "qa_path": "tests/test_data/raw/spex-SXD/qa/",
 }
 
 uspex_sxd_paths = {
-    "raw_path": "tests/test_data/uspex-SXD/data/",
-    "cal_path": "tests/test_data/uspex-SXD/cals/",
-    "proc_path": "tests/test_data/uspex-SXD/proc/",
-    "qa_path": "tests/test_data/uspex-SXD/qa/",
+    "raw_path": "tests/test_data/raw/uspex-SXD/data/",
+    "cal_path": "tests/test_data/raw/uspex-SXD/cals/",
+    "proc_path": "tests/test_data/raw/uspex-SXD/proc/",
+    "qa_path": "tests/test_data/raw/uspex-SXD/qa/",
 }
 
 uspex_prism_paths = {
-    "raw_path": "tests/test_data/uspex-prism/data/",
-    "cal_path": "tests/test_data/uspex-prism/cals/",
-    "proc_path": "tests/test_data/uspex-prism/proc/",
-    "qa_path": "tests/test_data/uspex-prism/qa/",
+    "raw_path": "tests/test_data/raw/uspex-prism/data/",
+    "cal_path": "tests/test_data/raw/uspex-prism/cals/",
+    "proc_path": "tests/test_data/raw/uspex-prism/proc/",
+    "qa_path": "tests/test_data/raw/uspex-prism/qa/",
 }
 
 
