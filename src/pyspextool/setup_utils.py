@@ -104,6 +104,7 @@ def pyspextool_setup(
     set_paths(paths)
 
     logging.info("Paths set")
+    print("paths: ", paths)
 
     # Set the quality assurance settings
 
@@ -213,7 +214,7 @@ def set_paths(paths: dict = None):
     #
 
     if paths["raw_path"] is not None:
-        paths["raw_path"] = check_path(paths["raw_path"], make_absolute=True)
+        paths["raw_path"] = check_path(paths["raw_path"], make_absolute=False)
         setup.state["raw_path"] = paths["raw_path"]
         logging.debug(f"Set raw_path to {paths['raw_path']}")
     else:
@@ -221,7 +222,7 @@ def set_paths(paths: dict = None):
 
     if paths["cal_path"] is not None:
         try:
-            paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
+            paths["cal_path"] = check_path(paths["cal_path"], make_absolute=False)
             logging.debug(f"Set cal_path to {paths['cal_path']}")
         except ValueError as e:
             # os.mkdir(paths["cal_path"])
@@ -234,7 +235,7 @@ def set_paths(paths: dict = None):
         setup.state["cal_path"] = cwd
 
     if paths["proc_path"] is not None:
-        paths["proc_path"] = check_path(paths["proc_path"], make_absolute=True)
+        paths["proc_path"] = check_path(paths["proc_path"], make_absolute=False)
         setup.state["proc_path"] = paths["proc_path"]
     else:
         setup.state["proc_path"] = cwd
