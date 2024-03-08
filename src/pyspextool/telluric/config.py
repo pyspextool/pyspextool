@@ -1,8 +1,27 @@
-state = {'spectra_plotnum':None,
-         'xcorrelate_plotnum':None}         
+state = {'mode_info':0,
+         'object_spectra':1,
+         'object_hdrinfo':1,
+         'object_info':1,                  
+         'standrd_info':1,         
+         'standard_spectra':1, 
+         'standard_hdrinfo':1,
+         'standard_sptype':'A0V',
+         'standard_name': 'name',
+         'standard_vmag':0.0,
+         'standard_bmag':0.0,         
+         'spectra_plotnum':None,
+         'xcorrelate_plotnum':None,
+         'vega_wavelength':0,
+         'vega_flux':0,
+         'vega_continuum':0,
+         'vega_fitted_continuum':0,
+         'yunits':'',
+         'latex_yunits':'',
+         'latex_ylabel':''}         
 
 load = {'object_file':1, 'standard': 1, 'standard_file':1, 'v_magnitude':1,
-        'output_name':1, 'fluxdensity_units':1, 'reflectance': 1,
-        'input_path':1, 'output_path':1, 'qa_path':1, 'qafile':True,
-        'qaplot':True, 'qaplotsize':(6,6), 'verbose':True, 'overwrite':True}
+        'output_name':1, 'fluxdensity_units':1, 'standard_data':None,
+        'reflectance': 1, 'input_path':1, 'output_path':1, 'qa_path':1,
+        'qafile':True, 'qaplot':True, 'qaplotsize':(6,6), 'verbose':True,
+        'overwrite':True}
 

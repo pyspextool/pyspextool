@@ -259,34 +259,34 @@ def vega_xcorrelate(object_wavelength:npt.ArrayLike, object_flux:npt.ArrayLike,
     # Do the QA plotting
     #
 
-    if qa_show is True:
-
-        pl.ion()
-        number = make_xcorrelate_plot(lnlambda_wavelengths,
-                                      object_resampled_flux,
-                                      vega_resampled_flux,
-                                      xcor, lag, fit, offset_pixels,
-                                      velocity_shift, redshift,
-                                      qa_show_plotsize,
-                            plot_number=telluric.state['xcorrelate_plotnum'])
-
-
-        telluric.state['xcorrelate_plotnum'] = number
-        pl.show()
-        pl.pause(1)
-
-    if qa_fileinfo is not None:
- 
-        pl.ioff()
-
-        make_xcorrelate_plot(lnlambda_wavelengths, object_resampled_flux,
-                             vega_resampled_flux, xcor, lag, fit, offset_pixels,
-                             velocity_shift, redshift, qa_show_plotsize)
-
-        pl.savefig(os.path.join(qa_fileinfo['filepath'],
-                                qa_fileinfo['filename']) + \
-                   '_xcorrelate' + qa_fileinfo['extension'])
-        pl.close()
+#    if qa_show is True:
+#
+#        pl.ion()
+#        number = make_xcorrelate_plot(lnlambda_wavelengths,
+#                                      object_resampled_flux,
+#                                      vega_resampled_flux,
+#                                      xcor, lag, fit, offset_pixels,
+#                                      velocity_shift, redshift,
+#                                      qa_show_plotsize,
+#                            plot_number=telluric.state['xcorrelate_plotnum'])
+#
+#
+#        telluric.state['xcorrelate_plotnum'] = number
+#        pl.show()
+#        pl.pause(1)
+#
+#    if qa_fileinfo is not None:
+# 
+#        pl.ioff()
+#
+#        make_xcorrelate_plot(lnlambda_wavelengths, object_resampled_flux,
+#                             vega_resampled_flux, xcor, lag, fit, offset_pixels,
+#                             velocity_shift, redshift, qa_show_plotsize)
+#
+#        pl.savefig(os.path.join(qa_fileinfo['filepath'],
+#                                qa_fileinfo['filename']) + \
+#                   '_xcorrelate' + qa_fileinfo['extension'])
+#        pl.close()
 
     #
     # Return the velocity shift
@@ -294,131 +294,65 @@ def vega_xcorrelate(object_wavelength:npt.ArrayLike, object_flux:npt.ArrayLike,
             
     return velocity_shift
 
-
-def vega_deconvolution(object_wavelength:npt.ArrayLike,
-                       object_normalized_flux:npt.ArrayLike,
-                       vega_wavelength:npt.ArrayLike,
-                       normalized_vega_flux:npt.ArrayLike,
-                       line_wavelength_range:npt.ArrayLike):
-                       
-    """
-    To 
-
-    """
-
-    #
-    # Check Parameters
-    #
-
-    check_parameter('vega_deconvolution', 'object_wavelength',
-                    object_wavelength, 'ndarray', 1)
-
-    check_parameter('vega_deconvolution', 'object_normalized_flux',
-                    object_normalized_flux, 'ndarray', 1)    
-
-    check_parameter('vega_deconvolution', 'vega_wavelength',
-                    vega_wavelength, 'ndarray', 1)
-
-    check_parameter('vega_deconvolution', 'vega_normalized_flux',
-                    vega_normalized_flux, 'ndarray', 1)    
-
-    check_parameter('vega_deconvolution', 'line_wavelength_range',
-                    line_wavelength_range, 'ndarray', 1)    
-
-    #
-    # Locate the deconvolution region for the object and Vega
-    #
-
-#    zobject = np.logical_and((object_wavelength > line_wavelength_range[0]),
-#                             (object_wavelength < line_wavelength_range[1])
-
-#    zvega = np.logical_and((vega_wavelength > line_wavelength_range[0]),
-#                           (vega_wavelength < line_wavelength_range[1])
-
-    #
-    # Require the number of points to be odd
-    #
-
-    
-
-                           
-    
-    
-
-
-    
-
-    
-
-    
-
-
-    
-    
-
-
-
-
-
-def make_xcorrelate_plot(wavelengths, object_flux, vega_flux, xcor, lag,
-                         fit, offset, velocity, redshift, plot_size,
-                         plot_number=None):
-
-    """
-    To create a plot for the cross correlation device independently
-
-
-    """
-
-    #
-    # Make the figure
-    #
-    
-    fig = pl.figure(num=plot_number, figsize=plot_size)
-
-    # Create the spectral plot
-
-    yrange = get_spec_range(object_flux, vega_flux, frac=0.1)
-    
-    axes1 = fig.add_subplot(211)
-    axes1.margins(x=0)
-    axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes1.step(wavelengths, object_flux, '#1f77b4')
-    axes1.step(wavelengths, vega_flux, 'r')
-    axes1.set(xlabel='Wavelength ($\mu$m)', ylabel='Relative Intensity')
-
-    axes1.text(0.95, 0.2, 'data', color='#1f77b4', ha='right',
-                transform=axes1.transAxes)
-
-    axes1.text(0.95, 0.1, 'Vega', color='r', ha='right',
-              transform=axes1.transAxes)
-    
-    # Create the cross correlation plot
-
-    yrange = get_spec_range(xcor, fit['fit'], frac=0.1)
-    
-    axes2 = fig.add_subplot(212)    
-    axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes2.step(lag, xcor, '#1f77b4')
-    axes2.step(lag, fit['fit'], 'r')
-    axes2.set(xlabel='lag (pixels)', ylabel='Relative Intensity')
-
-    axes2.text(0.05, 0.9, 'X Correlation', color='#1f77b4', ha='left',
-                transform=axes2.transAxes)
-
-    axes2.text(0.05, 0.85, 'Fit', color='r', ha='left',
-              transform=axes2.transAxes)
-
-    axes2.text(0.95, 0.9, 'Offset='+'%.2f' % offset+' pixels',
-               color='black', ha='right', transform=axes2.transAxes)
-
-    axes2.text(0.95, 0.85, 'Velocity='+'%.2f' % velocity+' km s$^{-1}$',
-               color='black', ha='right', transform=axes2.transAxes)    
-    
-    #
-    # Get the plot number and return the results
-    #
-    
-    plot_number = pl.gcf().number
-    return plot_number
+#def make_xcorrelate_plot(wavelengths, object_flux, vega_flux, xcor, lag,
+#                         fit, offset, velocity, redshift, plot_size,
+#                         plot_number=None):
+#
+#    """
+#    To create a plot for the cross correlation device independently
+#
+#
+#    """
+#
+#    #
+#    # Make the figure
+#    #
+#    
+#    fig = pl.figure(num=plot_number, figsize=plot_size)
+#
+#    # Create the spectral plot
+#
+#    yrange = get_spec_range(object_flux, vega_flux, frac=0.1)
+#    
+#    axes1 = fig.add_subplot(211)
+#    axes1.margins(x=0)
+#    axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
+#    axes1.step(wavelengths, object_flux, '#1f77b4')
+#    axes1.step(wavelengths, vega_flux, 'r')
+#    axes1.set(xlabel='Wavelength ($\mu$m)', ylabel='Relative Intensity')
+#
+#    axes1.text(0.95, 0.2, 'data', color='#1f77b4', ha='right',
+#                transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.1, 'Vega', color='r', ha='right',
+#              transform=axes1.transAxes)
+#    
+#    # Create the cross correlation plot
+#
+#    yrange = get_spec_range(xcor, fit['fit'], frac=0.1)
+#    
+#    axes2 = fig.add_subplot(212)    
+#    axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
+#    axes2.step(lag, xcor, '#1f77b4')
+#    axes2.step(lag, fit['fit'], 'r')
+#    axes2.set(xlabel='lag (pixels)', ylabel='Relative Intensity')
+#
+#    axes2.text(0.05, 0.9, 'X Correlation', color='#1f77b4', ha='left',
+#                transform=axes2.transAxes)
+#
+#    axes2.text(0.05, 0.85, 'Fit', color='r', ha='left',
+#              transform=axes2.transAxes)
+#
+#    axes2.text(0.95, 0.9, 'Offset='+'%.2f' % offset+' pixels',
+#               color='black', ha='right', transform=axes2.transAxes)
+#
+#    axes2.text(0.95, 0.85, 'Velocity='+'%.2f' % velocity+' km s$^{-1}$',
+#               color='black', ha='right', transform=axes2.transAxes)    
+#    
+#    #
+#    # Get the plot number and return the results
+#    #
+#    
+#    plot_number = pl.gcf().number
+#    return plot_number
     
