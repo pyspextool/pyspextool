@@ -1,6 +1,7 @@
 from os.path import basename, join
 import logging
 import numpy as np
+from datetime import date, datetime
 from astropy.io import fits
 import astropy.units as u
 from specutils import Spectrum1D
@@ -8,7 +9,7 @@ import matplotlib.pyplot as plt
 from astropy.table import Table
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 
-__all__ = ["convert_to_fits", "spectrum_plottable"]
+__all__ = ["convert_to_fits", "spectrum_isplottable"]
 
 logger = logging.getLogger("pyspextool")
 
@@ -24,8 +25,7 @@ def spectrum_isplottable(spectrum_path, raise_error=True, show_plot=False):
         spectrum = Spectrum1D.read(spectrum_path)
     except Exception as e:
         msg = (
-            str(e) + f"\nSkipping {spectrum_path}: \n"
-            "unable to load file as Spectrum1D object"
+            str(e) + f"\n{spectrum_path}: \n" "unable to load file as Spectrum1D object"
         )
         if raise_error:
             logger.error(msg)
@@ -39,7 +39,7 @@ def spectrum_isplottable(spectrum_path, raise_error=True, show_plot=False):
         wave: np.ndarray = spectrum.spectral_axis.to(u.micron).value
         flux: np.ndarray = spectrum.flux.value
     except AttributeError as e:
-        msg = str(e) + f"Skipping {spectrum_path}: unable to parse spectral axis"
+        msg = str(e) + f"{spectrum_path}: unable to parse spectral axis"
         if raise_error:
             logger.error(msg)
             raise IOError(msg)
@@ -47,9 +47,7 @@ def spectrum_isplottable(spectrum_path, raise_error=True, show_plot=False):
             logger.warning(msg)
             return False
     except u.UnitConversionError as e:
-        msg = (
-            e + f"Skipping {spectrum_path}: unable to convert spectral axis to microns"
-        )
+        msg = e + f"{spectrum_path}: unable to convert spectral axis to microns"
         if raise_error:
             logger.error(msg)
             raise IOError(msg)
@@ -57,7 +55,7 @@ def spectrum_isplottable(spectrum_path, raise_error=True, show_plot=False):
             logger.warning(msg)
             return False
     except ValueError as e:
-        msg = e + f"Skipping {spectrum_path}: Value error"
+        msg = e + f"{spectrum_path}: Value error"
         if raise_error:
             logger.error(msg)
             raise IOError(msg)
@@ -70,7 +68,7 @@ def spectrum_isplottable(spectrum_path, raise_error=True, show_plot=False):
     wave = wave[nan_check]
     flux = flux[nan_check]
     if not len(wave):
-        msg = f"Skipping {spectrum_path}: spectrum is all NaNs"
+        msg = f"{spectrum_path}: spectrum is all NaNs"
         if raise_error:
             logger.error(msg)
             raise IOError(msg)
@@ -109,17 +107,27 @@ def convert_to_fits(input_file, output_path="."):
     wavelength = spectra[0, 0, :]
     flux = spectra[0, 1, :]
     flux_unc = spectra[0, 2, :]
+    # mask?
 
     # header = compile_header(wavelength, **spectrum_info_all)
     header = header_dict["header"]
     header["HISTORY"] = (
-        f"Converted {basename(input_file)} using pyspextool convert_to_fits.py function"
+        f"Converted {basename(input_file)} using pyspextool.io convert_to_fits"
     )
-    object_name = header["OBJECT"]
-    obs_date = header["AVE_DATE"]
+
+    # replace spaces in object name with underscores
+    object_name = header["OBJECT"].replace(" ", "_").replace("/", "_")
+
+    # convert obsdate to format YYYYMonDD
+    obs_date = datetime.strptime(header["AVE_DATE"], "%Y-%m-%d").strftime("%Y%b%d")
+
+    # Update Date the file was written
+    header["DATE"] = date.today().strftime("%Y-%m-%d")
 
     x_units = header["XUNITS"]
     y_units = header["YUNITS"]
+    if y_units == "DN s-1":
+        y_units = "count s-1"
 
     spectrum_data_out = Table(
         {
@@ -140,11 +148,8 @@ def convert_to_fits(input_file, output_path="."):
 
     fits_filename = f"{object_name}_{obs_date}.fits"
     fits_path = join(output_path, fits_filename)
-    try:
-        spectrum_mef.writeto(fits_path, overwrite=True, output_verify="exception")
-        # TODO: think about overwrite
-        logger.info(f"Wrote {fits_path}")
-    except:
-        raise
+    spectrum_mef.writeto(fits_path, overwrite=True, output_verify="exception")
+    # TODO: think about overwrite
+    logger.info(f"Wrote {fits_path}")
 
     return
