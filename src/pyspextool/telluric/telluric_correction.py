@@ -28,7 +28,6 @@ from pyspextool.utils.for_print import for_print
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-
 def telluric_correction(object_file:str, standard:str, standard_file:str,
                         output_name:str, fluxdensity_units:str='W m-2 um-1',
                         reflectance:bool=False,

@@ -49,7 +49,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         A str or list of str of output files names.  Only required if `files` 
         gives file names intead of a prefix and index numbers.
 
-    reduction_mode : {'A-B', 'A', 'A-Sky/Dark'}, optional
+    reduction_mode : {'A-B', 'A', 'A-Sky'}, optional
         The image reduction mode.
 
     directory : {'raw', 'cal', 'proc'}, optional
@@ -109,7 +109,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     if len(output_files) != 0:
         check_parameter('load_image', 'output_files', output_files[0], 'str')                
     check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
-                    possible_values=['A', 'A-B', 'A-Sky/Dark'])
+                    possible_values=['A', 'A-B', 'A-Sky'])
 
     check_parameter('load_image', 'directory', directory, 'str',
                     possible_values=['raw', 'cal', 'proc'])
@@ -245,8 +245,8 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         message = 'The A reduction mode requires 1 image.'
         raise ValueError(message)
 
-    if reduction_mode == 'A-Sky/Dark' and nfiles != 1:
-        message = 'The A-Sky/Dark reduction mode requires 1 image.'
+    if reduction_mode == 'A-Sky' and nfiles != 1:
+        message = 'The A-Sky reduction mode requires 1 image.'
         raise ValueError(message)
 
     if reduction_mode == 'A-B' and nfiles != 2:
