@@ -123,7 +123,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     check_parameter('basic_tellcor', 'object_file', object_file, 'str')
 
     check_parameter('basic_tellcor', 'standard', standard, 'str')
-    
+
     check_parameter('basic_tellcor', 'standard_file', standard_file, 'str')
 
     check_parameter('basic_tellcor', 'output_name', output_name, 'str')
@@ -156,7 +156,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
-        
+
     if qa_write is None:
 
         qa_write = setup.state['qa_write']
@@ -171,14 +171,13 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
-        
+
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-
     # Get user paths if need be.
-        
+
     if input_path is None:
 
         input_path = setup.state['proc_path']
@@ -194,7 +193,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     check_path(input_path)
     check_path(output_path)
     check_path(qa_path)        
-        
+
     #
     # Store user inputs
     #
@@ -221,9 +220,9 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     logging.info(f" Telluric Correction\n-------------------------\n")
 
     logging.info(f" Loading the data...")
-            
+
     # Object first
-    
+
     fullpath = make_full_path(input_path, object_file, exist=True)
 
     object_spectra, object_info = read_spectra_fits(fullpath)
@@ -249,11 +248,11 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     #
 
     if standard_data is None:
-    
+
         # Get SIMBAD information of the standard
 
         logging.info(f'Querying SIMBAD for standard star information...')
-        
+
         Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
         table = Simbad.query_object(standard)
 
@@ -285,7 +284,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
         message = 'The standard has more than one aperture.'
         raise ValueError(message)
-    
+
     intersection = np.intersect1d(object_info['orders'],
                                   standard_info['orders'])
 
@@ -293,25 +292,25 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
         message = 'The standard lacks an order the object has.'
         raise ValueError(message)
-    
+
     #
     # Now figure out which Vega model to use and load if need be
     #
 
     if reflectance is False:
 
-        model = get_modeinfo(standard_hdrinfo['MODE'][0])
+        # model = get_modeinfo(standard_hdrinfo['MODE'][0])
 
-        file = os.path.join(setup.state['package_path'],'Vega'+model+'.fits')
+        # file = os.path.join(setup.state['package_path'],'Vega'+model+'.fits')
 
         hdul = fits.open(setup.state['package_path']+'/data/Vega5000.fits') 
-        data  = hdul[1].data
+        data = hdul[1].data
 
         vega_wavelength = data['wavelength']
         vega_flux = data['flux density']
         vega_continuum = data['continuum flux density']
         vega_fitted_continuum = data['fitted continuum flux density']
-        
+
         hdul.close()
 
         # Scale it by the vband magnitude
@@ -322,23 +321,22 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         vega_flux /= scale
 
         # Convert to the users requested units
-        
+
         vega_flux = units.convert_fluxdensity(vega_wavelength, vega_flux,
                                               'um', 'erg s-1 cm-2 A-1',
                                               fluxdensity_units) 
-        
+
         # Set the units
 
         yunits = fluxdensity_units
         lyunits, lylabel = units.get_latex_fluxdensity(fluxdensity_units)
 
-        
     else:
 
         yunits = ''
         lyunits = ''
         lylabel = 'ratio'
-        
+
     #
     # Start the loop over object order number
     #
@@ -346,17 +344,17 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     for i in range(object_info['norders']):
 
         # Find the order
-        
+
         z = np.where(object_info['orders'][i] == standard_info['orders'])
 
         # Now loop over the apertures
-        
+
         for j in range(object_info['napertures']):
 
             k =z[0][0]*object_info['napertures']+j
-            
+
             # Interpolate the standard and bit mask onto the object
-                
+
             rspectrum, runc = linear_interp1d(standard_spectra[z,0,:],
                                               standard_spectra[z,1,:],
                                               object_spectra[k,0,:],
@@ -369,21 +367,19 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
                 correction = rvega/rspectrum
                 correction_unc =  rvega/rspectrum**2 * runc               
-                
 
             else:
 
                 correction = 1/rspectrum
                 correction_unc = 1/rspectrum**2 * runc
-                
-            
+
             # Do the correction and error propagation
 
             value = object_spectra[k,1,:] * correction
 
             var = object_spectra[k,1,:]**2 * correction_unc**2 + \
                   correction**2 * object_spectra[k,2,:]**2
-            
+
             object_spectra[k,1,:] = value
             object_spectra[k,2,:] = np.sqrt(var)
 
@@ -392,7 +388,6 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
             mask = linear_bitmask_interp1d(standard_spectra[z,0,:],
                                  standard_spectra[z,3,:].astype(np.uint8),
                                            object_spectra[k,0,:])
-
 
             stack = np.stack((object_spectra[k,3,:].astype(np.uint8),mask))
             mask = combine_flag_stack(stack)
@@ -403,7 +398,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     # Write the file to disk
     #
 
-    # Update the object hdrinfo 
+    # Update the object hdrinfo
 
     object_hdrinfo['MODULE'][0] = 'telluric'
     object_hdrinfo['FILENAME'][0] = output_name+'.fits'
@@ -421,20 +416,20 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     # Store the history
 
     old_history = object_hdrinfo['HISTORY']
-    
+
     # remove it from the avehdr
 
     object_hdrinfo.pop('HISTORY')
-    
+
     # Create a new header
 
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
 
     # Add our keywords
-    
+
     keys = list(object_hdrinfo.keys())
-    
+
     for i in range(len(keys)):
 
         if keys[i] == 'COMMENT':
@@ -453,7 +448,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         hdr['HISTORY'] = hist
 
     output_fullpath = os.path.join(output_path, output_name+'.fits')
-    
+
     fits.writeto(output_fullpath, object_spectra, hdr, overwrite=overwrite)
 
     #
@@ -466,7 +461,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
                               plot_size=qa_showsize,
                               plot_number=telluric.state['spectra_plotnum'])
         telluric.state['spectra_plotnum'] = number
-                    
+
     if telluric.load['qa_write'] is True:
 
         qafileinfo = {'figsize': telluric.load['qa_showsize'],
@@ -503,18 +498,18 @@ def get_modeinfo(mode):
     #
     # Check parameters
     #
-    
+
     check_parameter('get_modeinfo', 'mode', mode, 'str')
 
     # Get the file name and read it
-    
+
     file = os.path.join(setup.state['instrument_path'],'telluric_modeinfo.dat')
-    
+
     modes, vega_models = np.loadtxt(file, comments='#', unpack=True,
                                     delimiter='|', dtype='str')
 
     # Convert to list and compress strings
-    
+
     modes = list(modes)
     vega_models = list(vega_models)
 
@@ -522,11 +517,7 @@ def get_modeinfo(mode):
     vega_models = np.array([m.strip() for m in vega_models]    )
 
     # Find the matching mode and return results
-    
+
     z = modes == mode
 
     return vega_models[z][0]
-
-    
-
-    
