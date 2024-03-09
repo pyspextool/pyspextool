@@ -200,9 +200,10 @@ def read_wavecal_file(file):
         hdul = fits.open(file)
     except OSError as e:
         msg = (
-            f"Error opening wavecal file:  {file} \n"
-            "This file is managed by Git LFS and you probably "
-            "need to download it directly from location TBD. "
+            f"Could not open the wavecal file:  {file} \n"
+            "Please check that the file downloaded from Git LFS properly. "
+            "It should be 3-30 MB. Try `git lfs pull` or"
+            "download directly from <URL TBD>"
         )
         logger.error(msg)
         raise e

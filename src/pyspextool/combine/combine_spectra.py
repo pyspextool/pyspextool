@@ -181,7 +181,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         verbose = setup.state['verbose']
 
     if verbose is True:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.INFO)
 
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
