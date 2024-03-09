@@ -48,33 +48,33 @@ def test_make_full_path():
     "file,output_path,out_file",
     [
         (
-            "tests/test_data/spex-SXD/proc/combspec626-635.fits",
-            "tests/test_data/spex-SXD/proc/",
+            "tests/test_data/processed/spex-SXD/proc/combspec626-635.fits",
+            "tests/test_data/processed/spex-SXD/proc/",
             "HD_160365_2003Jul07.fits",
         ),
         (
-            "tests/test_data/spex-SXD/proc/combspec636-645.fits",
-            "tests/test_data/spex-SXD/proc/",
+            "tests/test_data/processed/spex-SXD/proc/combspec636-645.fits",
+            "tests/test_data/processed/spex-SXD/proc/",
             "HD_165029_2003Jul07.fits",
         ),
         (
-            "tests/test_data/uspex-prism/proc/combspec1-2.fits",
-            "tests/test_data/uspex-prism/proc/",
+            "tests/test_data/processed/uspex-prism/proc/combspec1-2.fits",
+            "tests/test_data/processed/uspex-prism/proc/",
             "2010-1707_2022Oct19.fits",
         ),
         (
-            "tests/test_data/uspex-prism/proc/combspec7-8.fits",
-            "tests/test_data/uspex-prism/proc/",
+            "tests/test_data/processed/uspex-prism/proc/combspec7-8.fits",
+            "tests/test_data/processed/uspex-prism/proc/",
             "HD_193689_2022Oct19.fits",
         ),
         (
-            "tests/test_data/uspex-SXD/proc/combspec1-8.fits",
-            "tests/test_data/uspex-SXD/proc/",
+            "tests/test_data/processed/uspex-SXD/proc/combspec1-8.fits",
+            "tests/test_data/processed/uspex-SXD/proc/",
             "HD100906_G9w+_2015Jun03.fits",
         ),
         (
-            "tests/test_data/uspex-SXD/proc/combspec11-18.fits",
-            "tests/test_data/uspex-SXD/proc/",
+            "tests/test_data/processed/uspex-SXD/proc/combspec11-18.fits",
+            "tests/test_data/processed/uspex-SXD/proc/",
             "HD101369_A0V_2015Jun03.fits",
         ),
     ],
@@ -87,12 +87,12 @@ def test_convert_to_fits(file, output_path, out_file):
 @pytest.mark.parametrize(
     "file",
     [
-        "tests/test_data/spex-SXD/proc/HD_160365_2003Jul07.fits",
-        "tests/test_data/spex-SXD/proc/HD_165029_2003Jul07.fits",
-        "tests/test_data/uspex-prism/proc/2010-1707_2022Oct19.fits",
-        "tests/test_data/uspex-prism/proc/HD_193689_2022Oct19.fits",
-        "tests/test_data/uspex-SXD/proc/HD100906_G9w+_2015Jun03.fits",
-        "tests/test_data/uspex-SXD/proc/HD101369_A0V_2015Jun03.fits",
+        "tests/test_data/processed/spex-SXD/proc/HD_160365_2003Jul07.fits",
+        "tests/test_data/processed/spex-SXD/proc/HD_165029_2003Jul07.fits",
+        "tests/test_data/processed/uspex-prism/proc/2010-1707_2022Oct19.fits",
+        "tests/test_data/processed/uspex-prism/proc/HD_193689_2022Oct19.fits",
+        "tests/test_data/processed/uspex-SXD/proc/HD100906_G9w+_2015Jun03.fits",
+        "tests/test_data/processed/uspex-SXD/proc/HD101369_A0V_2015Jun03.fits",
     ],
 )
 def test_spectrum_isplottable(file):
