@@ -9,7 +9,7 @@ def test_combine():
     qa_path = "tests/test_data/processed/spex-prism/qa"
 
     ps.pyspextool_setup(
-        instrument="SpeX",
+        instrument="spex",
         raw_path="tests/test_data/raw/spex-prism/data",
         qa_path=qa_path,
         cal_path="tests/test_data/processed/spex-prism/cals",
