@@ -196,10 +196,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
         output_path = setup.state['proc_path']        
 
-    print("combine spectra input_path=" + input_path)
     check_path(input_path)
-
-    print("combine spectra output_path=" + output_path)
     check_path(output_path)    
 
     #

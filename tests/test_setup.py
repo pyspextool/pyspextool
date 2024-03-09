@@ -43,7 +43,7 @@ uspex_prism_paths = {
 def test_pyspextool_setup_defaults():
     pyspextool_setup()
 
-    assert setup.state["verbose"] == False
+    assert setup.state["verbose"] is False
 
     assert setup.state["raw_path"] == cwd
     assert setup.state["cal_path"] == cwd
@@ -53,8 +53,8 @@ def test_pyspextool_setup_defaults():
 
     assert setup.state["qa_path"] == cwd
     assert setup.state["qa_extension"] == ".pdf"
-    assert setup.state["qa_show"] == False
-    assert setup.state["qa_write"] == True
+    assert setup.state["qa_show"] is False
+    assert setup.state["qa_write"] is True
 
 
 @pytest.mark.parametrize(
@@ -86,6 +86,9 @@ def test_set_instrument(instrument):
 
 def test_set_instrument_state_bad():
     with pytest.raises(ValueError):
+        set_instrument("SpeX")
+
+    with pytest.raises(ValueError):
         set_instrument("not_an_instrument")
 
     with pytest.raises(TypeError):
@@ -95,7 +98,7 @@ def test_set_instrument_state_bad():
 def test_set_qa_state():
     set_qa_state()
 
-    assert setup.state["qa_show"] == False
-    assert setup.state["qa_write"] == True
+    assert setup.state["qa_show"] is False
+    assert setup.state["qa_write"] is True
     assert setup.state["qa_path"] == cwd
     assert setup.state["qa_extension"] == ".pdf"
