@@ -437,10 +437,10 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
     if weights is not None:
 
-        sum_weights = np.nansum(weights, axis=0)
+        sum_weights = np.nansum(weights, dtype=float, axis=0)
         z_allnan = sum_weights == 0
         sum_weights[z_allnan] = np.nan
-
+ 
         mvar = 1/sum_weights
         mean = np.nansum(np.multiply(data, weights),axis=0)*mvar
         
@@ -457,7 +457,7 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
         ndat[z_allnan] = 2
 
         # Do the calculation
-        
+
         mean = np.sum(data, axis=0)/ndat
         mvar = (np.sum(data**2,axis=0)-ndat*mean**2)/(ndat-1)
 
@@ -468,7 +468,7 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
 
         mean[z_allnan] = np.nan
         mvar[z_allnan] = np.nan
-            
+
     return (mean, mvar, goodbad)
     
 

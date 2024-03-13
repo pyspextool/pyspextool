@@ -1,7 +1,9 @@
 import numpy as np
 from astropy.io import fits
+import typing
 
 from pyspextool.extract.make_order_mask import make_order_mask
+from pyspextool.fit.polyfit import poly_fit_1d
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.fit.polyfit import poly_2d
 from pyspextool.io.check import check_parameter
@@ -354,14 +356,30 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Generate the wavelengths
 
+    dispersions = np.empty(norders)            
     if xdinfo is None:
 
         # This is the pure 1D case.
 
         for i in range(norders):
-            z = np.where(omask == orders[i])
-            wavecal[z] = poly_1d(wavecal[z], coeffs)
 
+            # Find the pixels in the order
+            
+            z = np.where(omask == orders[i])
+            
+            # Evaluate the polynomial at these values
+
+            wgrid = poly_1d(wavecal[z], coeffs)
+
+            # Get dispersion
+
+            fit = poly_fit_1d(wavecal[z],wgrid,1)
+            dispersions[i] = fit['coeffs'][1]
+
+            # Now store the results
+                        
+            wavecal[z] = wgrid
+            
         ncoeffs = dispersion_degree + 1
         wctype = '1D'
 
@@ -370,15 +388,32 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
         # This is the 1DXD case.
 
         for i in range(norders):
+
+            # Find the pixels in the order and get the scale factor
+            
             z = np.where(omask == orders[i])
             scale = xdinfo['homeorder'] / orders[i]
-            wavecal[z] = poly_2d(wavecal[z], omask[z], dispersion_degree,
-                                 xdinfo['orderdeg'], coeffs) * scale
 
+            # Evaluate the polynomial at these values            
+            
+            wgrid = poly_2d(wavecal[z], omask[z], dispersion_degree,
+                            xdinfo['orderdeg'], coeffs) * scale
+
+            # Get the dispersion
+
+            fit = poly_fit_1d(wavecal[z],wgrid,1)
+            dispersions[i] = fit['coeffs'][1]
+
+            # Now store the results
+                        
+            wavecal[z] = wgrid            
+            
         ncoeffs = (dispersion_degree + 1) * (xdinfo['orderdeg'] + 1)
 
         wctype = '1DXD'
 
+    # Fill in header things
+        
     hdr['FLATFILE'] = (flatname, ' Assocaited flat-field image')
     hdr['ROTATION'] = (rotate, ' IDL rotate value')
     hdr['NORDERS'] = (norders, ' Number of orders identified')
@@ -404,6 +439,14 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
         name = 'OR' + str(orders[i]).zfill(3) + '_XR'
         comment = ' Extraction range for order ' + str(orders[i]).zfill(3)
         hdr[name] = (','.join(str(x) for x in xranges[i, :]), comment)
+
+    # Write the dispersion
+
+    for i in range(norders):
+        name = 'OR' + str(orders[i]).zfill(3) + '_DP'
+        comment = ' Fitted dispersion (um pix-1) for order ' + \
+            str(orders[i]).zfill(3)
+        hdr[name] = (dispersions[i], comment)
 
     # Write the coefficients
 
@@ -442,25 +485,41 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
     hdu.writeto(oname, overwrite=overwrite)
 
 
-def read_wavecal_fits(file, rotate=True):
+def read_wavecal_fits(fullpath:str, rotate:bool=True):
 
     """
     Reads a pyspextool wavecal FITS file.
 
+    Parameters
+    ----------
+    fullpath : str
+        The fullpath to a pySpextool wavecal file.
 
+    rotate : {True, False}
+        Set to True to rotate the images give the ROTATION keyword.
+    
+    Returns
+    -------
+    dict
+
+    
+    
+    
     """
 
     #
     # Check the parameters
     #
 
-    check_parameter('read_wavecal_fits', 'file', file, 'str')
+    check_parameter('read_wavecal_fits', 'fullpath', fullpath, 'str')
+
+    check_parameter('read_wavecal_fits', 'rotate', rotate, 'bool')    
 
     #
     # Read the data 
     #
 
-    hdul = fits.open(file)
+    hdul = fits.open(fullpath)
     hdul[0].verify('silentfix')
 
     hdr = hdul[0].header
@@ -534,11 +593,22 @@ def read_wavecal_fits(file, rotate=True):
     xranges = np.empty([hdr['NORDERS'], 2], dtype=int)
     coeffs = np.empty(ncoeffs, dtype=float)
     covar = np.empty([ncoeffs, ncoeffs], dtype=float)
+    dispersions = np.empty(hdr['NORDERS'], dtype=float)
 
     for i in range(hdr['NORDERS']):
+
         name = 'OR' + str(orders[i]).zfill(3) + '_XR'
         xranges[i, :] = [int(x) for x in hdr[name].split(',')]
 
+
+        name = 'OR' + str(orders[i]).zfill(3) + '_DP'
+        dispersions[i] = hdr[name]
+
+
+    wavecalinfo.update({'xranges':xranges})
+    wavecalinfo.update({'dispersions':dispersions})                           
+                           
+                           
     for i in range(ncoeffs):
         name = 'COEFF_' + str(i).zfill(2)
         coeffs[i] = hdr[name]
@@ -549,4 +619,8 @@ def read_wavecal_fits(file, rotate=True):
             name = 'COV_' + str(i).zfill(2) + str(j).zfill(2)
             covar[j, i] = hdr[name]
 
+    wavecalinfo.update({'coefficients':coeffs})
+    wavecalinfo.update({'covariance':covar})                           
+
+                           
     return wavecalinfo

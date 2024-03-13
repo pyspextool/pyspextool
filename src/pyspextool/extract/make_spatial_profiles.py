@@ -6,6 +6,7 @@ from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.extract.profiles import make_1d_profile
+import matplotlib.pyplot as pl
 
 
 def make_spatial_profiles(qa_show=None, qa_write=None, qa_showsize=(6, 10),

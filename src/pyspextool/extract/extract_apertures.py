@@ -180,6 +180,10 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
             if extract.load['wavecalfile'] is not None:
 
                 optimalinfo['atmosphere'] = extract.state['atmosphere']
+
+            else:
+
+                optimalinfo['atmosphere'] = None
                     
         else:
 
@@ -324,7 +328,8 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
 
         wavecalinfo = {'file': extract.load['wavecalfile'],
                        'wavecaltype': extract.state['wavecaltype'],
-                       'wavetype': 'vacuum'}
+                       'wavetype': 'vacuum',
+                       'dispersions': extract.state['dispersions']}
 
     else:
 
