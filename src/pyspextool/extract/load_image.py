@@ -361,6 +361,12 @@ def load_image(files, flat_name, wavecal_name, *output_files,
             array = fits.getdata(np.array(fullpath)[z][0])
             atmosphere = {'wavelength':array[0, :], 'transmission':array[1, :]}
 
+            # Get units
+
+            xunits = 'um'
+            latex_xunits = '$\mu$m'
+            latex_xlabel = 'Wavelength ($\mu$m)'
+            
             
         else:
 
@@ -372,6 +378,11 @@ def load_image(files, flat_name, wavecal_name, *output_files,
 
             dispersions = None
             atmosphere  = None
+
+            xunits = 'pixel'
+            latex_xunits = 'pixel'
+            latex_xlabel = 'Wavelength (pixel)'
+
             
 
         extract.state['wavecal'] = wavecal
@@ -379,6 +390,9 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         extract.state['rectindices'] = indices
         extract.state['dispersions'] = dispersions
         extract.state['atmosphere'] = atmosphere
+        extract.state['xunits'] = xunits
+        extract.state['latex_xunits'] = latex_xunits
+        extract.state['latex_xlabel'] = latex_xlabel
         
     #
     # Load the data

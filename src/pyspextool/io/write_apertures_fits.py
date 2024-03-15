@@ -281,6 +281,8 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
         hdr['BGDEGREE'] = (xsbginfo['degree'],
                            ' Background polynomial fit degree')
 
+    # Deal with units
+        
     hdr['XUNITS'] = (xunits, ' Units of the x axis')
     hdr['YUNITS'] = (yunits, ' Units of the y axis')
 
