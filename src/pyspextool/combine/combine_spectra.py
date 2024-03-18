@@ -280,7 +280,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     if scale_spectra is True:
 
         logging.info(' Scaling the spectra...')
-
+        
         scale_allorders(scale_order, scale_range, scale_range_fraction)
 
     #
@@ -435,6 +435,7 @@ def load_allorders():
     combine.state['norders'] = len(info['orders'])
     combine.state['napertures'] = info['napertures']
     combine.state['xlabel'] = info['lxlabel']
+    combine.state['xunits'] = info['xunits']    
 
     #
     # Determine the combination parameters
@@ -728,7 +729,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
     #
     # Now let's figure out the wavelength range over which to do the scaling.
-    
+
     if scale_range is None:
 
         # Determine the wavelenth range ourselves.  
@@ -779,9 +780,10 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
                           (wave < combine.state['scale_range'][1]))
             
         # Get scale factors
-                
+
         junk, junk, scale = math.scale_data_stack(intensity[:, z_wave[0]],
                                                    None)
+
         scales[i,:] = scale
         
         # Now scale each order
@@ -791,6 +793,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         tile_info = (1, shape[1])        
 
         scale_array = np.tile(np.reshape(scale, reshape_info), tile_info)
+#        print(scale_array)
         #        scale_array = np.absolute(scale_array)
         
         for j in range(combine.state['norders']):
@@ -988,7 +991,7 @@ def write_file(verbose=False):
     
     fits.writeto(full_path, array, hdr, overwrite=True)
 
-    logging.info(' Wrote file'+os.path.basename(full_path) + ' to disk.')    
+    logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')    
 
             
     #
@@ -1012,5 +1015,5 @@ def write_file(verbose=False):
         plot_spectra(full_path, ytype='flux and uncertainty',
                      line_width=combine.load['line_width'],
                      title=os.path.basename(full_path), file_info=qafileinfo)            
-        logging.info(' Wrote file'+combine.load['output_name']+\
+        logging.info(' Wrote file '+combine.load['output_name']+\
                       setup.state['qa_extension']+' to disk.')    

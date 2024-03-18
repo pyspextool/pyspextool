@@ -11,8 +11,8 @@
 # Output         : telluric spectrum, vega spectrum
 #                : 0 - no, 1 - yes
 #
-#==================================
-# Instrument Mode  |  Vega Model  |
-#==================================
-ShortXD            |  50000       
-LowRes15           |  5000        
+#========================================================================================
+# Instrument Mode  |  Vega Model  | Method        | Normalization Ranges | Poly Deg     
+#========================================================================================
+ShortXD            |  50000       | deconvolution | 0.975 0.99 1.02 1.04 | 2            |
+LowRes15           |  5000        | IP            | 0.975 0.99 1.02 1.04 | 1            |

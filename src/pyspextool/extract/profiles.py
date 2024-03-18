@@ -108,9 +108,9 @@ def make_1d_profile(rectified_order, atmospheric_transmission=None,
         weights = np.rot90(weights, 3)
 
     else:
-
+        
         weights = None
-
+        
     # Collapse the profile using a mean, weighted by `weights`.
 
     mean, mvar, mask = mean_data_stack(np.fliplr(np.rot90(img, 3)),
