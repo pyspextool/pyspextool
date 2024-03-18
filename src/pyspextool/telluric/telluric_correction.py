@@ -22,7 +22,7 @@ from pyspextool.utils.split_text import split_text
 from pyspextool.utils import units
 from pyspextool.utils.spectra import normalize_continuum
 from pyspextool.utils.spectra import model_xcorrelate
-
+from pyspextool.telluric.kernel import make_instrument_profile
 from pyspextool.utils.for_print import for_print
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -243,18 +243,23 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         #
         
         load_vega()
-        
+    
         #
         # Get the kernel
         #
 
         telluric.state['mode_info']['method'] = 'IP'
-        load_kernels()
+
+        if telluric.state['mode_info']['method'] == 'IP':
+
+            logging.info(f" Mike must deal with RV shift.")            
 
         
+        if telluric.state['mode_info']['method'] == 'deconvolution':
 
+            deconvolve_line()
 
-
+            
 
     
 #        kernel_info = get_kernel(np.squeeze(standard_spectra[z,0,:]),
@@ -419,285 +424,8 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 #    logging.info(message)
 #
 #
-##def make_telluric_spectrum():
 
     
-
-def load_data():
-
-    """
-    Loads the users requested data into memory
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None - Loads data into the config state variable.
-
-    """
-    
-    #
-    # Load the files into memory
-    #
-
-    logging.info(f" Telluric Correction\n-------------------------\n")
-
-    logging.info(f" Loading the data...")
-            
-    # Object first
-    
-    fullpath = make_full_path(telluric.load['input_path'],
-                              telluric.load['object_file'], exist=True)
-
-    object_spectra, object_info = read_spectra_fits(fullpath)
-
-    header = fits.getheader(fullpath)
-
-    object_hdrinfo = get_header_info(header,
-                                    keywords=setup.state['telluric_keywords'])
-
-    # Now the standard
-
-    fullpath = make_full_path(telluric.load['input_path'],
-                              telluric.load['standard_file'], exist=True)
-
-    standard_spectra, standard_info = read_spectra_fits(fullpath)
-
-    header = fits.getheader(fullpath)
-
-    standard_hdrinfo = get_header_info(header,
-                                       keywords=setup.state['telluric_keywords'])
-
-    #
-    # Get standard star information
-    #
-
-    if telluric.load['standard_data'] is None:
-    
-        # Get SIMBAD information of the standard
-
-        logging.info(f' Querying SIMBAD for standard star information...')
-        
-        Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
-        table = Simbad.query_object(telluric.load['standard'])
-
-        if isinstance(table,Table):
-            standard_name = table['MAIN_ID'][0]
-            standard_sptype = table['SP_TYPE'][0]
-            standard_vmag = table['FLUX_V'][0]
-            standard_bmag = table['FLUX_B'][0]         
-
-    else:
-
-        standard_name = standard
-        standard_sptype = standard_data['sptype']
-        standard_vmag = standard_data['bmag']
-        standard_bmag = standard_data['vmag']
-
-    #
-    # error check standard information - what do we do if there is no
-    # standard data?
-    #
-    
-    try:
-        type(standard_name)
-
-    except:
-        
-        message = 'Standard name "{}"" was not found in SIMBAD; provided '\
-            'correct name or provide the optional standard_data keyword with '\
-            'a dictionary containing keys '\
-            '"sptype", "bmag", and "vmag"'.format(standard)
-
-        
-        raise ValueError(message)
-
-    #
-    # Let's do some checks to ensure 1) the standard has only one aperture and
-    # 2) the standard has the orders required.
-    #
-
-    if standard_info['napertures'] != 1:
-
-        message = 'The standard has more than one aperture.'
-        raise ValueError(message)
-    
-    intersection = np.intersect1d(object_info['orders'],
-                                  standard_info['orders'])
-
-    if np.size(intersection) != object_info['norders']:
-
-        message = 'The standard lacks an order the object has.'
-        raise ValueError(message)
-
-    #
-    # Store the results
-    #
-
-    telluric.state['standard_spectra'] = standard_spectra
-    telluric.state['standard_info'] = standard_info
-    telluric.state['standard_hdrinfo'] = standard_hdrinfo
-    telluric.state['standard_name'] = standard_name
-    telluric.state['standard_vmag'] = standard_vmag
-    telluric.state['standard_bmag'] = standard_bmag    
-    telluric.state['object_spectra'] = object_spectra
-    telluric.state['object_info'] = object_info    
-    telluric.state['object_hdrinfo'] = object_hdrinfo
-
-
-    # Finally, get the mode info 
-
-    mode_info = get_modeinfo(telluric.state['standard_hdrinfo']['MODE'][0])
-    telluric.state['mode_info'] = mode_info
-
-    
-    
-def load_kernels():
-
-    """
-    Loads the kernels for the convolution step later
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
-
-    """
-
-    if telluric.state['mode_info']['method'] == 'deconvolution':
-
-        z = np.where(telluric.state['standard_info']['orders'] == \
-                     telluric.state['mode_info']['order'])[0]
-
-        
-
-
-
-    if telluric.state['mode_info']['method'] == 'IP':
-
-        
-        # Get the file name
-        
-        file = os.path.join(setup.state['instrument_path'],\
-                            'IP_coefficients.dat')
-
-        # Load the data
-        
-        slitw_arc, c0, c1, c2 = np.loadtxt(file,comments='#', unpack=True)
-
-        # Find the right slit and yank coefficients
-        
-        z = np.where(slitw_arc == \
-                     telluric.state['standard_hdrinfo']['SLTW_ARC'][0])[0]
-
-        ip_coeffients = np.array((c0[z],c1[z],c2[z]))
-
-        # Create the profile
-        
-                     
-                     
-
-        
-
-    
-    
-    
-def load_vega():
-
-    """
-    Loads the proper Vega model 
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
-
-    """
-
-    #
-    # Determine which Vega model to use and load
-    #
-
-    file = os.path.join(setup.state['package_path'],'data',\
-                        'Vega'+telluric.state['mode_info']['vega_model']+'.fits')
-    
-    hdul = fits.open(file) 
-    data  = hdul[1].data
-    
-    vega_wavelength = data['wavelength']
-    vega_flux = data['flux density']
-    vega_continuum = data['continuum flux density']
-    vega_fitted_continuum = data['fitted continuum flux density']
-    
-    hdul.close()
-    
-    # Scale it by the vband magnitude
-    
-    vega_vmagnitude = 0.03
-    vega_bminv = 0.00
-    scale = 10.0**(-0.4*(telluric.state['standard_vmag']-vega_vmagnitude))
-    vega_flux /= scale
-    
-    # Convert to the users requested units
-    
-    vega_flux = units.convert_fluxdensity(vega_wavelength, vega_flux,
-                                          'um', 'erg s-1 cm-2 A-1',
-                                          telluric.load['fluxdensity_units']) 
-    
-    # Set the units
-        
-    yunits = telluric.load['fluxdensity_units']
-    latex_yunits, latex_ylabel = units.get_latex_fluxdensity(telluric.load['fluxdensity_units'])
-        
-    # Store the results
-
-    telluric.state['vega_wavelength'] = vega_wavelength
-    telluric.state['vega_flux'] = vega_flux
-    telluric.state['vega_continuum'] = vega_continuum
-    telluric.state['vega_fitted_continuum'] = vega_fitted_continuum
-    telluric.state['yunits'] = yunits
-    telluric.state['latex_yunits'] = latex_yunits
-    telluric.state['latex_ylabel'] = latex_ylabel
-    
-
-def load_instrument_profile(fullpath):
-
-    """
-    To load the Instrument Profile (IP) coefficients
-
-    Parameters
-    ----------
-
-    fullpath : string
-        A string givin the fullpath to a pySpextool/SpeX IP file
-
-    Returns
-    -------
-
-    """
-
-    #
-    # Check parameters
-    #
-    
-    check_parameter('load_instrument_profile', 'fullpath', fullpath, 'str')
-
-    
-    data = np.loadtxt(fullpath,comments='#')
-    print(data)
-    
-    
-
-    
-
 def get_modeinfo(mode:str):
 
     """
@@ -777,6 +505,294 @@ def get_modeinfo(mode:str):
 
 
     
+
+def load_data():
+
+    """
+    Loads the users requested data into memory
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None - Loads data into the config state variable.
+
+    """
+    
+    #
+    # Load the files into memory
+    #
+
+    logging.info(f" Telluric Correction\n-------------------------\n")
+
+    logging.info(f" Loading the data...")
+            
+    # Object first
+    
+    fullpath = make_full_path(telluric.load['input_path'],
+                              telluric.load['object_file'], exist=True)
+
+    object_spectra, object_info = read_spectra_fits(fullpath)
+
+    header = fits.getheader(fullpath)
+
+    object_hdrinfo = get_header_info(header,
+                                    keywords=setup.state['telluric_keywords'])
+
+    # Now the standard
+
+    fullpath = make_full_path(telluric.load['input_path'],
+                              telluric.load['standard_file'], exist=True)
+
+    standard_spectra, standard_info = read_spectra_fits(fullpath)
+
+    header = fits.getheader(fullpath)
+
+    standard_hdrinfo = \
+        get_header_info(header, keywords=setup.state['telluric_keywords'])
+
+    
+    #
+    # Get standard star information
+    #
+
+    if telluric.load['standard_data'] is None:
+    
+        # Get SIMBAD information of the standard
+
+        logging.info(f' Querying SIMBAD for standard star information...')
+        
+        Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
+        table = Simbad.query_object(telluric.load['standard'])
+
+        if isinstance(table,Table):
+            standard_name = table['MAIN_ID'][0]
+            standard_sptype = table['SP_TYPE'][0]
+            standard_vmag = table['FLUX_V'][0]
+            standard_bmag = table['FLUX_B'][0]         
+
+    else:
+
+        standard_name = standard
+        standard_sptype = standard_data['sptype']
+        standard_vmag = standard_data['bmag']
+        standard_bmag = standard_data['vmag']
+
+    #
+    # error check standard information - what do we do if there is no
+    # standard data?
+    #
+    
+    try:
+        type(standard_name)
+
+    except:
+        
+        message = 'Standard name "{}"" was not found in SIMBAD; provided '\
+            'correct name or provide the optional standard_data keyword with '\
+            'a dictionary containing keys '\
+            '"sptype", "bmag", and "vmag"'.format(standard)
+
+        
+        raise ValueError(message)
+
+    #
+    # Let's do some checks to ensure 1) the standard has only one aperture and
+    # 2) the standard has the orders required.
+    #
+
+    if standard_info['napertures'] != 1:
+
+        message = 'The standard has more than one aperture.'
+        raise ValueError(message)
+    
+    intersection = np.intersect1d(object_info['orders'],
+                                  standard_info['orders'])
+
+    if np.size(intersection) != object_info['norders']:
+
+        message = 'The standard lacks an order the object has.'
+        raise ValueError(message)
+
+    #
+    # Store the results
+    #
+
+    telluric.state['standard_spectra'] = standard_spectra
+    telluric.state['standard_info'] = standard_info
+    telluric.state['standard_hdrinfo'] = standard_hdrinfo
+    telluric.state['standard_name'] = standard_name
+    telluric.state['standard_vmag'] = standard_vmag
+    telluric.state['standard_bmag'] = standard_bmag    
+    telluric.state['object_spectra'] = object_spectra
+    telluric.state['object_info'] = object_info    
+    telluric.state['object_hdrinfo'] = object_hdrinfo
+
+    #
+    # Get other information from the headers
+    #
+    
+    telluric.state['object_norders'] = object_hdrinfo['NORDERS'][0]
+    telluric.state['standard_norders'] = standard_hdrinfo['NORDERS'][0]
+
+    telluric.state['object_orders'] = object_hdrinfo['ORDERS'][0]
+    telluric.state['standard_orders'] = standard_hdrinfo['ORDERS'][0]
+
+    telluric.state['standard_dispersions'] = standard_info['dispersions']
+
+    telluric.state['standard_fwhm'] = standard_info['dispersions']*\
+        standard_info['slitw_pix']
+            
+    #
+    # Finally, get the mode info 
+    #
+    
+    mode_info = get_modeinfo(telluric.state['standard_hdrinfo']['MODE'][0])
+    telluric.state['mode_info'] = mode_info
+
+    #
+    # Load the instrument profile parameters
+    #
+
+    # Get the file name
+        
+    file = os.path.join(setup.state['instrument_path'],'IP_coefficients.dat')
+
+    # Read the file
+        
+    slitw_arc, c0, c1, c2 = np.loadtxt(file,comments='#', unpack=True)
+
+    # Find the right slit width and store the coefficients
+    
+    z = np.where(slitw_arc == \
+                 telluric.state['standard_hdrinfo']['SLTW_ARC'][0])[0]
+
+    ip_coefficients = np.squeeze(np.array((c0[z],c1[z],c2[z])))
+
+    telluric.state['ip_coefficients'] = ip_coefficients
+    
+
+        
+                                                   
+def load_vega():
+
+    """
+    Loads the proper Vega model 
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+
+    """
+
+    logging.info(f' Loading Vega model...')
+    #
+    # Determine which Vega model to use and load
+    #
+
+    root = 'Vega'+telluric.state['mode_info']['vega_model']+'.fits'
+    file = os.path.join(setup.state['package_path'],'data',root)
+    
+    hdul = fits.open(file) 
+    data  = hdul[1].data
+    
+    vega_wavelength = data['wavelength']
+    vega_flux = data['flux density']
+    vega_continuum = data['continuum flux density']
+    vega_fitted_continuum = data['fitted continuum flux density']
+    
+    hdul.close()
+    
+    # Scale it by the vband magnitude
+    
+    vega_vmagnitude = 0.03
+    vega_bminv = 0.00
+    scale = 10.0**(-0.4*(telluric.state['standard_vmag']-vega_vmagnitude))
+    vega_flux /= scale
+    
+    # Convert to the users requested units
+    
+    vega_flux = units.convert_fluxdensity(vega_wavelength, vega_flux,
+                                          'um', 'erg s-1 cm-2 A-1',
+                                          telluric.load['fluxdensity_units']) 
+    
+    # Set the units
+        
+    yunits = telluric.load['fluxdensity_units']
+    latex_yunits, latex_ylabel = \
+        units.get_latex_fluxdensity(telluric.load['fluxdensity_units'])
+        
+    # Store the results
+
+    telluric.state['vega_wavelength'] = vega_wavelength
+    telluric.state['vega_flux'] = vega_flux
+    telluric.state['vega_continuum'] = vega_continuum
+    telluric.state['vega_fitted_continuum'] = vega_fitted_continuum
+    telluric.state['yunits'] = yunits
+    telluric.state['latex_yunits'] = latex_yunits
+    telluric.state['latex_ylabel'] = latex_ylabel
+    
+    #
+    # Generate the instrument profiles so they are only created once
+    #
+
+    instrument_profiles = []
+    for i in range(telluric.state['standard_norders']):
+
+        # Get the min/max wavelengths of the data
+        
+        min = np.nanmin(telluric.state['standard_spectra'][i,0,:])
+        max = np.nanmax(telluric.state['standard_spectra'][i,0,:])
+
+        # Determine the Vega model dispersion over these wavelengths
+
+        z = np.where((telluric.state['vega_wavelength'] >= min) &
+                     (telluric.state['vega_wavelength'] <= max))[0]
+
+        # Compute the dispersion
+        
+        dispersion = telluric.state['vega_wavelength'][z] - \
+            np.roll(telluric.state['vega_wavelength'][z],1)
+
+        # Determine the median dispersion, ignoring the first pixel
+        
+        vega_dispersion = np.median(dispersion[1:-1])
+
+        # Figure out the number of pixels required.
+        
+        nkernel = np.round(10*telluric.state['standard_fwhm'][i]/\
+                           vega_dispersion).astype(int)
+
+        # enforce oddity
+
+        if nkernel % 2 == 0: nkernel += 1
+        
+        # Create x values
+
+        x = np.arange(-1*(nkernel//2),nkernel//2+1)*vega_dispersion/\
+            telluric.state['standard_dispersions'][i]
+
+        # Create the profile
+
+        p = make_instrument_profile(x,telluric.state['ip_coefficients'])
+
+        instrument_profiles.append(p)
+
+    # Store the results
+        
+    telluric.state['convolution_kernels'] = instrument_profiles
+    
+        
+
+
+
+    
 def get_kernel(object_wavelength:npt.ArrayLike, object_flux:npt.ArrayLike,
                resolving_power:float, vega_wavelength:npt.ArrayLike,
                vega_flux:npt.ArrayLike, vega_continuum:npt.ArrayLike,
@@ -801,6 +817,11 @@ def get_kernel(object_wavelength:npt.ArrayLike, object_flux:npt.ArrayLike,
     # Normalized the spectrum
     #
 
+
+#        z = np.where(telluric.state['standard_info']['orders'] == \
+#                     telluric.state['mode_info']['order'])[0]
+
+    
     print('hi')
     object_nflux = normalize_continuum(object_wavelength, object_flux,
                                        normalization_windows,

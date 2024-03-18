@@ -1,13 +1,14 @@
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as pl
-from math import erf 
+
 import logging
 from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
+from scipy.special import erf
 import typing
-from pyspextool.utils.for_print import for_print
 
+from pyspextool.utils.for_print import for_print
 from pyspextool.io.check import check_parameter
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.utils.math import moments
@@ -348,7 +349,54 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     logging.info(' Maximum deviation '+str(maximum_deviation))
 
 
-def make_instrument_profile():
+def make_instrument_profile(x:npt.ArrayLike, parameters:npt.ArrayLike):
 
-    x = 1
+    """
+    To create a pySpextool instrument profile.
 
+    Parameters
+    ----------
+    x : ndarray
+        An (ndata,) array of x
+
+    parameters : ndarray
+        An (3,) array of parameters.
+
+    Returns
+    -------
+    ndarray
+        An (ndata,) array of values that give the instrument profile at x.
+
+    Notes
+    -----
+
+    The instrument profile P is given by,
+
+    P(x) = C * {  erf[ (x + parameter[1] - parameter[0])/parameter[2] -
+                  erf[ (x - parameter[1] - parameter[0])/parameter[2] }
+
+    where parameter[0] is typically zero for the profile to be centered in x
+    and C is determined by normalizing the profile by its sum.  
+    
+    """
+
+    #
+    # Check Parameters
+    #
+
+    check_parameter('make_instrument_profile', 'x', x, 'ndarray', 1)
+
+    check_parameter('make_instrument_profile', 'parameters', parameters,
+                    'ndarray', 1)    
+
+    #
+    # Just do it
+    #
+
+    ip = erf( (x+parameters[1]-parameters[0])/parameters[2]) - \
+         erf( (x-parameters[1]-parameters[0])/parameters[2])
+
+    ip /= np.sum(ip)
+
+    return ip
+    
