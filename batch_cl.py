@@ -16,8 +16,8 @@ from pyspextool.batch import batch
 
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_DEFAULT = 'driver.txt'
-#VERSION = batch.VERSION
-VERSION = '2024.02.25'
+VERSION = batch.VERSION
+#VERSION = '2024.02.25'
 AUTHORS = [
 	'Adam Burgasser',
 	'Jean Marroquin',
@@ -61,7 +61,7 @@ class runBatch():
 		parser.add_argument('--qaplot-off', action='store_false',default=True,
 			required=False, help='set to turn OFF QA plots')
 		parser.add_argument('--overwrite', action='store_true',default=False,
-			required=False, help='set to automatically overwrite files')
+			required=False, help='set to automatically overwrite files, including log and driver')
 		parser.add_argument('--no-pause', action='store_true',default=False,
 			required=False, help='set to remove all pauses for user input')
 		# parser.add_argument('--verbose', action='store_true',default=False,
@@ -201,6 +201,14 @@ class runBatch():
 			# if os.path.isdir(driver_file)==True: raise ValueError('Parameter you passed - {} - is a directory; provide path to driver file'.format(driver_file)) 
 			if os.path.exists(driver_file)==False: raise ValueError('Cannot find driver file {}'.format(driver_file)) 
 			par = batch.readDriver(driver_file)
+
+# stop if there are no science or calibration files
+			if 'OBS_SET' not in list(par.keys()):
+				print('No science files listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
+				return
+			if 'CAL_SETS' not in list(par.keys()):
+				print('No calibration sets listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
+				return
 
 # add in additional keywords for specific reduction steps:
 			if args['no_cals']==True: par['CALIBRATIONS']=False

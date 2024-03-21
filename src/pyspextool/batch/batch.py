@@ -19,24 +19,27 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 from astropy.table import Table
 from astroquery.xmatch import XMatch
+from astropy.utils.exceptions import AstropyWarning
 import astropy.units as u
 import copy
 import os
 import glob
 import pandas as pd
+pd.set_option('mode.chained_assignment',None) # suppress pandas warnings
 import numpy as np
 import re
 import shutil
 import sys
 import yaml
-pd.set_option('mode.chained_assignment',None) # suppress pandas warnings
+import warnings
+warnings.simplefilter('ignore', category=AstropyWarning)
 
 import pyspextool as ps
 from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 Feb 25'
+VERSION = '2024 Mar 21'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -54,6 +57,7 @@ BACKUP_REDUCTION_DATA_URL = 'https://drive.google.com/drive/folders/1fK345gOCKHt
 
 # modes to ignore
 IGNORE_MODES = ['LongXD2.3','LongXD2.1','LongXD1.9','LongSO','LXD2.3','LXD2.1','LXD1.9','LXD_short','LXD_long','LowRes60']
+IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60']
 
 # this is the data to extract from header, with options for header keywords depending on when file was written
 HEADER_DATA={
@@ -433,6 +437,11 @@ def processFolder(folder,verbose=False):
 	for igmode in IGNORE_MODES:
 		dp.loc[dp['MODE']==igmode,'TARGET_TYPE'] = 'ignore'
 
+# ignore cases where the slit is 60"
+	# for i in range(len(dp)):
+	# 	if 'x60' in dp['SLIT'].iloc[i]: dp['TARGET_TYPE'].iloc[i] = 'ignore'
+	dp.loc[dp['SLIT'].isin(IGNORE_SLITS),'TARGET_TYPE'] = 'ignore'
+
 # fix to coordinates
 	for k in ['RA','DEC']:
 		dp[k] = [x.strip() for x in dp[k]]
@@ -453,7 +462,8 @@ def processFolder(folder,verbose=False):
 	if ARC_NAME in names: names.remove(ARC_NAME)
 	if FLAT_NAME in names: names.remove(FLAT_NAME)
 	if len(names)==0:
-		if verbose==True: print('Warning: no science files identified in {}'.format(folder))
+		print('Warning: no science files identified in {}'.format(folder))
+		return dp
 	else:
 		for n in names:
 			dps = dp[dp['TARGET_NAME']==n]
