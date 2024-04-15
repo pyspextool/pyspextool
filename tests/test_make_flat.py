@@ -13,27 +13,30 @@ import pyspextool as ps
 
 def test_make_flat():
 
-    ps.pyspextool_setup(raw_path='tests/test_data/uspex-prism/data/',
-                        qa_path='tests/test_data/uspex-prism/qa/',
-                        cal_path='tests/test_data/uspex-prism/cals/',
-                        proc_path='tests/test_data/uspex-prism/proc/',
-                        verbose=True, qa_show=False, qa_write=True,
-                        qa_extension='.png')
-    
+    ps.pyspextool_setup(
+        raw_path="tests/test_data/raw/uspex-prism/data/",
+        qa_path="tests/test_data/raw/uspex-prism/qa/",
+        cal_path="tests/test_data/raw/uspex-prism/cals/",
+        proc_path="tests/test_data/raw/uspex-prism/proc/",
+        verbose=True,
+        qa_show=False,
+        qa_write=True,
+        qa_extension=".png",
+    )
+
     ps.extract.make_flat(['sbd.2022B046.221019.flat.','15-19'],'flat15-19',
                           verbose=True)
 
-    fits_files = glob.glob(os.path.join('tests/test_data/uspex-prism/cals/',
-                                        "flat15-19.fits"))
+    fits_files = glob.glob(
+        os.path.join("tests/test_data/raw/uspex-prism/cals/", "flat15-19.fits")
+    )
 
-    png_files = glob.glob(os.path.join('tests/test_data/uspex-prism/qa/',
-                                       "*.png"))    
+    png_files = glob.glob(os.path.join("tests/test_data/raw/uspex-prism/qa/", "*.png"))
 
     assert len(fits_files) == 1
     assert len(png_files) == 2
-    
+
     # CLEANUP
     # remove generated files
     for files in fits_files + png_files:
         os.remove(files)
-

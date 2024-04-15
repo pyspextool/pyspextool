@@ -12,38 +12,38 @@ from pyspextool.setup_utils import (
 cwd = os.path.abspath(os.getcwd())
 
 spex_prism_paths = {
-    "raw_path": "tests/test_data/spex-prism/data/",
-    "cal_path": "tests/test_data/spex-prism/cals/",
-    "proc_path": "tests/test_data/spex-prism/proc/",
-    "qa_path": "tests/test_data/spex-prism/qa/",
+    "raw_path": "tests/test_data/raw/spex-prism/data/",
+    "cal_path": "tests/test_data/raw/spex-prism/cals/",
+    "proc_path": "tests/test_data/raw/spex-prism/proc/",
+    "qa_path": "tests/test_data/raw/spex-prism/qa/",
 }
 
 spex_sxd_paths = {
-    "raw_path": "tests/test_data/spex-SXD/data/",
-    "cal_path": "tests/test_data/spex-SXD/cals/",
-    "proc_path": "tests/test_data/spex-SXD/proc/",
-    "qa_path": "tests/test_data/spex-SXD/qa/",
+    "raw_path": "tests/test_data/raw/spex-SXD/data/",
+    "cal_path": "tests/test_data/raw/spex-SXD/cals/",
+    "proc_path": "tests/test_data/raw/spex-SXD/proc/",
+    "qa_path": "tests/test_data/raw/spex-SXD/qa/",
 }
 
 uspex_sxd_paths = {
-    "raw_path": "tests/test_data/uspex-SXD/data/",
-    "cal_path": "tests/test_data/uspex-SXD/cals/",
-    "proc_path": "tests/test_data/uspex-SXD/proc/",
-    "qa_path": "tests/test_data/uspex-SXD/qa/",
+    "raw_path": "tests/test_data/raw/uspex-SXD/data/",
+    "cal_path": "tests/test_data/raw/uspex-SXD/cals/",
+    "proc_path": "tests/test_data/raw/uspex-SXD/proc/",
+    "qa_path": "tests/test_data/raw/uspex-SXD/qa/",
 }
 
 uspex_prism_paths = {
-    "raw_path": "tests/test_data/uspex-prism/data/",
-    "cal_path": "tests/test_data/uspex-prism/cals/",
-    "proc_path": "tests/test_data/uspex-prism/proc/",
-    "qa_path": "tests/test_data/uspex-prism/qa/",
+    "raw_path": "tests/test_data/raw/uspex-prism/data/",
+    "cal_path": "tests/test_data/raw/uspex-prism/cals/",
+    "proc_path": "tests/test_data/raw/uspex-prism/proc/",
+    "qa_path": "tests/test_data/raw/uspex-prism/qa/",
 }
 
 
 def test_pyspextool_setup_defaults():
     pyspextool_setup()
 
-    assert setup.state["verbose"] == False
+    assert setup.state["verbose"] is False
 
     assert setup.state["raw_path"] == cwd
     assert setup.state["cal_path"] == cwd
@@ -53,8 +53,8 @@ def test_pyspextool_setup_defaults():
 
     assert setup.state["qa_path"] == cwd
     assert setup.state["qa_extension"] == ".pdf"
-    assert setup.state["qa_show"] == False
-    assert setup.state["qa_write"] == True
+    assert setup.state["qa_show"] is False
+    assert setup.state["qa_write"] is True
 
 
 @pytest.mark.parametrize(
@@ -86,6 +86,9 @@ def test_set_instrument(instrument):
 
 def test_set_instrument_state_bad():
     with pytest.raises(ValueError):
+        set_instrument("SpeX")
+
+    with pytest.raises(ValueError):
         set_instrument("not_an_instrument")
 
     with pytest.raises(TypeError):
@@ -95,7 +98,7 @@ def test_set_instrument_state_bad():
 def test_set_qa_state():
     set_qa_state()
 
-    assert setup.state["qa_show"] == False
-    assert setup.state["qa_write"] == True
+    assert setup.state["qa_show"] is False
+    assert setup.state["qa_write"] is True
     assert setup.state["qa_path"] == cwd
     assert setup.state["qa_extension"] == ".pdf"

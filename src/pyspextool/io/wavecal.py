@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 from astropy.io import fits
 
 from pyspextool.extract.make_order_mask import make_order_mask
@@ -7,6 +8,8 @@ from pyspextool.fit.polyfit import poly_2d
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.arrays import idl_unrotate
 from pyspextool.utils.arrays import idl_rotate
+
+logger = logging.getLogger("pyspextool")
 
 
 def read_line_list(file, delta_to_microns=False):
@@ -193,11 +196,19 @@ def read_wavecal_file(file):
     check_parameter('read_wavecal_file', 'file', file, 'str')
 
     # Open the file
+    try:
+        hdul = fits.open(file)
+    except OSError as e:
+        msg = (
+            f"Could not open the wavecal file:  {file} \n"
+            "Please check that the file downloaded from Git LFS properly. "
+            "It should be 3-30 MB. Try `git lfs pull` or"
+            "download directly from <URL TBD>"
+        )
+        logger.error(msg)
+        raise e
 
-    hdul = fits.open(file)
-
-    # Store the spectrum 
-
+    # Store the spectrum
     spectra = hdul[0].data
     if spectra.ndim == 2:
         spectra = np.expand_dims(spectra, 0)
@@ -221,11 +232,11 @@ def read_wavecal_file(file):
     slits = hdul[0].header['SLITS'].split(',')
     slits = np.array([float(x) for x in slits])
     result.update({'slits': slits})
-    
+
     usestored = hdul[0].header['USESTORE'].split(',')
     usestored = np.array([eval(x) for x in usestored])
     result.update({'usestored': usestored})
-    
+
     linelist = hdul[0].header['LINELIST']
     result.update({'linelist': linelist.strip()})
 
@@ -277,7 +288,6 @@ def read_wavecal_file(file):
         result.update({'ordrdeg': ordrdeg})
 
         ncoeffs = (dispdeg + 1) * (ordrdeg + 1)
-
 
     elif wcaltype == '1d':
 
