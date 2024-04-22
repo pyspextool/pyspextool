@@ -9,6 +9,7 @@ from pyspextool.io.check import check_parameter, check_file
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 
 
+
 def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
                  title=None, colors='green', line_width=0.5,
                  yrange_buffer=0.05, order_numbers=True, file_info=None,

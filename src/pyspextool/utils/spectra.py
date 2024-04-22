@@ -20,7 +20,8 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
                      maximum_wavelength:typing.Optional[float]=None,
                      resolving_power:typing.Optional[float]=None,
                      qa_show:bool=False, qa_show_plotsize:tuple=(6,10),
-                     qa_fileinfo:typing.Optional[dict]=None):
+                     qa_fileinfo:typing.Optional[dict]=None,
+                     block:bool=False):                    
 
     """
     To determine the velocity shift between a model and data using a line
@@ -50,15 +51,39 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
         The resolving power of the observations.  A not-perfect attempt to 
         convolve the model to the same resolving power is then made.
 
+    qa_show : {False, True}
+        If set to True, a quality assurance plot will be shown to the user.
+
+    qa_show_plotsize : tuple, default=(6,10)
+        if qa_show is True, then the quality assurance plot will be created
+        with this size.
+
+    qa_fileinfo : dict, optional
+
+        `'figsize'` : tuple
+            A (2,) tuple giving the figure size.
+
+        `'filepath'` : str
+            A string giving the write path.
+    
+        `'filename'` : str
+            The root of the file.
+
+        `'extension'` : str
+            The file extension.
+
+        The result is os.path.join(qa_fileinfo['filepath'],
+                                   qa_fileinfo['filename'] + \
+                                   qa_fileinfo['extension'])
+    
+    block : {False, True}, optional
+        Set to make the plot block access to the command line, e.g. pl.ioff().
+    
     Returns
     -------
     ndarray
         The velocity shift of the model relative to the data in km s-1.  
 
-    Notes
-    -----
-    While in principle any Vega model can be passed, the code was designed 
-    to work with a Kurucz Vega model.
         
     """
 
@@ -87,6 +112,13 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     check_parameter('model_xcorrelate', 'resolving_power',
                     resolving_power, ['NoneType', 'int', 'float'])        
 
+    check_parameter('model_xcorrelate', 'qa_show', qa_show, 'bool')
+
+    check_parameter('model_xcorrelate', 'qa_fileinfo', qa_fileinfo,
+                    ['NoneType','dict'])        
+
+    check_parameter('model_xcorrelate', 'block', block, 'bool')
+    
     
     #
     # Get set up
@@ -96,8 +128,8 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
 
     # subtract the continuum
 
-    model_nflux -= 1
-    object_nflux -= 1
+    model_zflux = model_nflux - 1
+    object_zflux = object_nflux-1
 
     #
     # Now get the wavelength range over which to do the x-correlation
@@ -172,7 +204,7 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
         gaussian = np.exp(-(x/sigma)**2 / 2)
         gaussian /= np.sum(gaussian)
 
-        model_nflux = np.convolve(model_nflux,gaussian, mode='same')
+        model_zflux = np.convolve(model_zflux,gaussian, mode='same')
         
     #
     # Resampling to a constant spacing in ln lambda: v/c = d(ln lambda)
@@ -189,17 +221,17 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
 
     # Do the resampling
 
-    f = scipy.interpolate.interp1d(object_wavelength, object_nflux)
-    object_resampled_nflux = f(lnlambda_wavelengths)
+    f = scipy.interpolate.interp1d(object_wavelength, object_zflux)
+    object_resampled_zflux = f(lnlambda_wavelengths)
 
-    f = scipy.interpolate.interp1d(model_wavelength, model_nflux)
-    model_resampled_nflux = f(lnlambda_wavelengths)    
+    f = scipy.interpolate.interp1d(model_wavelength, model_zflux)
+    model_resampled_zflux = f(lnlambda_wavelengths)    
 
     #
     # Do the cross correlation
     #
 
-    xcor = scipy.signal.correlate(object_resampled_nflux, model_resampled_nflux,
+    xcor = scipy.signal.correlate(object_resampled_zflux, model_resampled_zflux,
                                   mode='same', method='fft')
     xcor = xcor / np.nanmax(xcor)
 
@@ -219,23 +251,43 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
 
     if qa_show is True:
 
-        pl.ion()
-        number = make_xcorrelate_plot(lnlambda_wavelengths,
-                                      object_resampled_flux,
-                                      vega_resampled_flux,
-                                      xcor, lag, fit, offset_pixels,
-                                      velocity_shift, redshift,
-                                      qa_show_plotsize,
-                            plot_number=telluric.state['xcorrelate_plotnum'])
 
+        if block is True:
 
-        telluric.state['xcorrelate_plotnum'] = number
-        pl.show()
-        pl.pause(1)
+            pl.ioff()
 
+        else:
 
+            pl.ion()
     
-    return velocity_shift
+        number = plot_model_xcorrelate(lnlambda_wavelengths,
+                                       object_resampled_zflux,
+                                       model_resampled_zflux,
+                                       lag, xcor, fit, offset_pixels,
+                                       velocity_shift, redshift,
+                                       qa_show_plotsize)
+
+
+#        telluric.state['xcorrelate_plotnum'] = number
+        pl.show()
+
+
+    if qa_fileinfo is not None:
+
+        pl.ioff()
+        plot_model_xcorrelate(lnlambda_wavelengths,
+                              object_resampled_zflux,
+                              model_resampled_zflux,
+                              lag, xcor, fit, offset_pixels,
+                              velocity_shift, redshift,
+                              qa_fileinfo['figsize'])
+
+        pl.savefig(os.path.join(qa_fileinfo['filepath'],
+                                qa_fileinfo['filename'] + \
+                                qa_fileinfo['extension']))
+        pl.close()
+    
+    return velocity_shift, redshift
     
 
     
@@ -244,8 +296,11 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
                         ranges:npt.ArrayLike, degree:int,
                         robust:typing.Optional[dict]=None,
                         qa_show:bool=False, qa_show_scale:float=1.0,
-                        qa_fileinfo:typing.Optional[dict]=None):
+                        qa_fileinfo:typing.Optional[dict]=None,
+                        latex_xlabel:typing.Optional[str]=None,
+                        block:bool=True):
 
+    
     """
     To normalize the continuum of a spectrum using a robust polynomial
 
@@ -284,7 +339,7 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
         Set to True to show a QA plot on the screen.
 
     qa_show_scale : float or int, default=1.0
-        The scale factor for the QA plot size, default=(6,10)
+        The scale factor for the QA plot size.  The baseline size is (10, 6).
 
     qa_fileinfo : dict, optional
         `"figsize"` : tuple
@@ -300,7 +355,12 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
             The file extension.  Must be compatible with the savefig
             function of matplotlib.
 
+    latex_xlabel : str, default='Wavelength'
+        A latex string giving the xlabel.
 
+    block : {False, True}, optional
+        Set to make the plot block access to the command line, e.g. pl.ioff().
+    
     Returns
     -------
 
@@ -330,11 +390,16 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
     check_parameter('normalize_continuum', 'qa_show', qa_show, 'bool')
 
     check_parameter('normalize_continuum', 'qa_show_scale', qa_show_scale,
-                    ['int', 'float'])    
+                    ['int','float'])    
 
     check_parameter('normalize_continuum', 'qa_fileinfo', qa_fileinfo,
                     ['NoneType', 'dict'])
-        
+
+    check_parameter('normalize_continuum', 'latex_xlabel', latex_xlabel, 'str')
+
+    check_parameter('normalize_continuum', 'block', block, 'bool')    
+
+    
     #
     # Determine if the wavelengths are monotonically increasing
     #
@@ -403,52 +468,72 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
     #
     # Make the QA plot
     #
-
+    
+    plot_number = None
     if qa_show is True:
 
-        pl.ion()
-        figure_size = tuple(qa_show_scale*np.array((6,10)))
-        plot_normalize_continuum(figure_size, wavelength, flux,
-                                 continuum, zregions)
+        # This is to the screen
 
+        if block is True:
+
+            pl.ioff()
+
+        else:
+
+            pl.ion()
+
+        plot_number = plot_normalization(wavelength,
+                                         flux,
+                                         continuum,
+                                         zregions,
+                                         (10*qa_show_scale, 6*qa_show_scale),
+                                         latex_xlabel=latex_xlabel)
         pl.show()
         pl.pause(1)
 
-#    if qa_fileinfo is not None:
-#        
-#        pl.ioff()
-#
-#        plot_normalize_continuum((8.5,11), wavelength, flux, continuum,
-#                                 zregions)
-#    
-#        pl.savefig(os.path.join(qa_fileinfo['filepath'],
-#                                qa_fileinfo['filename']) + \
-#                                qa_fileinfo['extension'])
-#        pl.close()
+    if qa_fileinfo is not None:
+
+        pl.ioff()
+        plot_normalization(wavelength,
+                           flux,
+                           continuum,
+                           zregions,
+                           qa_fileinfo['figsize'],
+                           latex_xlabel=latex_xlabel)
+
+        pl.savefig(os.path.join(qa_fileinfo['filepath'],
+                                qa_fileinfo['filename'] + \
+                                qa_fileinfo['extension']))
+        pl.close()
+
+            
+    return flux_normalized, plot_number
+
+
+
+def plot_normalization(wavelength:npt.ArrayLike,
+                       intensity:npt.ArrayLike,
+                       continuum:npt.ArrayLike,
+                       zregions:npt.ArrayLike,
+                       figure_size:tuple,
+                       plot_number:typing.Optional[float]=None,
+                       latex_xlabel:str='Wavelength',
+                       file_info:typing.Optional[str]=None,
+                       block:bool=False):
+
     
-    return flux_normalized
-
-
-
-def plot_normalize_continuum(figsize:tuple, wavelength:npt.ArrayLike,
-                             flux:npt.ArrayLike, continuum:npt.ArrayLike,
-                             zregions:npt.ArrayLike):
-
     """
     To plot the results of normalize_continuum
 
     Parameters
     ----------
-    figsize : tuple
-        A (2,) tuple giving the figure size in inches.
-
     wavelength : ndarray
         A (nwave,) array of wavelengths.
 
-    flux : ndarray
+    intensity : ndarray
         A (nwave,) array of "intensities".
 
-    flux : ndarray
+    continuum : ndarray
         A (nwave,) array of the fitted continuum values.
 
     zranges : ndarray
@@ -464,8 +549,9 @@ def plot_normalize_continuum(figsize:tuple, wavelength:npt.ArrayLike,
     # Make the two-panel figure
     #
     
-    fig = pl.figure(figsize=figsize)
-
+    fig = pl.figure(num=plot_number, figsize=figure_size)
+    pl.clf()
+    
     # Get the plot range for x axis
     
     xrange = get_spec_range(wavelength[zregions], frac=0.1)
@@ -483,21 +569,21 @@ def plot_normalize_continuum(figsize:tuple, wavelength:npt.ArrayLike,
 
     # Determine the yrange for spectral plot
     
-    yrange = get_spec_range([flux[zplotrange], continuum[zplotrange]], frac=0.1)
+    yrange = get_spec_range([intensity[zplotrange], continuum[zplotrange]],
+                            frac=0.1)
 
     axes1 = fig.add_subplot(211)    
-    axes1.step(wavelength, flux, '#1f77b4')
+    axes1.step(wavelength, intensity, 'black')
     axes1.set_ylim(ymin = yrange[0], ymax=yrange[1])
     axes1.set_xlim(xmin = xrange[0], xmax=xrange[1])    
-    axes1.set_xlabel('Wavlength')
     axes1.set_ylabel('Intensity')    
 
     # Now plot the fitted pixels in red
     
-    tmp = np.copy(flux)
+    tmp = np.copy(intensity)
     tmp[~zregions] = np.nan
     
-    axes1.plot(wavelength, tmp, 'red')
+    axes1.step(wavelength, tmp, 'red')
 
     # Plot the continuum
     
@@ -509,15 +595,15 @@ def plot_normalize_continuum(figsize:tuple, wavelength:npt.ArrayLike,
 
     # Normalize and get the plot range
     
-    normalized = flux/continuum
+    normalized = intensity/continuum
     yrange = get_spec_range(normalized[zplotrange], frac=0.1)
 
 
     axes2 = fig.add_subplot(212)    
-    axes2.step(wavelength, normalized, '#1f77b4')
+    axes2.step(wavelength, normalized, 'black')
     axes2.set_ylim(ymin = yrange[0], ymax=yrange[1])
     axes2.set_xlim(xmin = xrange[0], xmax=xrange[1])    
-    axes2.set_xlabel('Wavlength')
+    axes2.set_xlabel(latex_xlabel)
     axes2.set_ylabel('Normalized Intensity')    
     
     # Plot the fitted pixels in red
@@ -525,7 +611,7 @@ def plot_normalize_continuum(figsize:tuple, wavelength:npt.ArrayLike,
     tmp = np.copy(normalized)
     tmp[~zregions] = np.nan
     
-    axes2.plot(wavelength, tmp, 'red')
+    axes2.step(wavelength, tmp, 'red')
     axes2.axhline(y=1, linestyle='--', color='green')
 
 
@@ -539,6 +625,10 @@ def plot_model_xcorrelate(wavelength, object_flux, model_flux, lag,
     """
     To create a plot for the cross correlation device independently
 
+    Parameters
+    ----------
+    
+    
 
     """
 
@@ -546,32 +636,32 @@ def plot_model_xcorrelate(wavelength, object_flux, model_flux, lag,
     # Make the figure
     #
     
-    fig = pl.figure(num=plot_number, figsize=plot_size)
+    fig = pl.figure(figsize=plot_size)
 
     # Create the spectral plot
 
-    yrange = get_spec_range(object_flux, vega_flux, frac=0.1)
+    yrange = get_spec_range(object_flux, model_flux, frac=0.1)
     
     axes1 = fig.add_subplot(211)
     axes1.margins(x=0)
     axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes1.step(wavelengths, object_flux, '#1f77b4')
-    axes1.step(wavelengths, vega_flux, 'r')
+    axes1.step(wavelength, object_flux, '#1f77b4')
+    axes1.step(wavelength, model_flux, 'r')
     axes1.set(xlabel='Wavelength ($\mu$m)', ylabel='Relative Intensity')
 
     axes1.text(0.95, 0.2, 'data', color='#1f77b4', ha='right',
                 transform=axes1.transAxes)
 
-    axes1.text(0.95, 0.1, 'Vega', color='r', ha='right',
+    axes1.text(0.95, 0.1, 'Model', color='r', ha='right',
               transform=axes1.transAxes)
     
     # Create the cross correlation plot
 
-    yrange = get_spec_range(xcor, fit['fit'], frac=0.1)
+    yrange = get_spec_range(xcorrelation, fit['fit'], frac=0.1)
     
     axes2 = fig.add_subplot(212)    
     axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes2.step(lag, xcor, '#1f77b4')
+    axes2.step(lag, xcorrelation, '#1f77b4')
     axes2.step(lag, fit['fit'], 'r')
     axes2.set(xlabel='lag (pixels)', ylabel='Relative Intensity')
 

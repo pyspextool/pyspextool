@@ -160,7 +160,6 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     logging.info(' Model Line EW = '+str(model_ew))
     logging.info(' Data Line EW = '+str(data_ew))
     logging.info(' EW Scale Factor= '+str(scale_ew))            
-    return
     
     #
     # Zero the spectra and scale the model
@@ -168,7 +167,7 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
 
     data_zeroed_line_flux = data_normalized_line_flux-1
     model_zeroed_scaled_line_flux = (model_normalized_line_flux-1)*scale_ew
-
+    
     #
     # Interpolate the data to the model wavelength grid.  I set fill_value
     # To match the default behavior or interpol in IDL.
@@ -229,13 +228,13 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     kernel = np.roll(kernel, nmodel//2)
     kernel /= np.sum(kernel)
 
-    f = open("kernel_python.dat","w+")
-    for i in range(len(kernel)):
-        f.write(str(kernel[i])+'\n')
+#    f = open("kernel_python.dat","w+")
+#    for i in range(len(kernel)):
+#        f.write(str(kernel[i])+'\n')
 
-    f.close()
+#    f.close()
         
-    return
+#    return
     
     #
     # Convolve the model over the data_wavelength range
@@ -286,8 +285,6 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
             'convolved_model':rmodel_zeroed_scaled_convolved_line_flux,
             'residuals':ratio-1,'maximum_deviation':maximum_deviation,
             'rms_deviation':rms_deviation}
-
-    
 
     #
     # Create the QA plot
