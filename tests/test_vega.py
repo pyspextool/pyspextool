@@ -5,7 +5,7 @@ import os
 from os.path import join
 import pyspextool as ps
 from pyspextool import config as setup
-from pyspextool.telluric.vega import vega_xcorrelate
+from pyspextool.utils.spectra import model_xcorrelate
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 import pyspextool.fit.polyfit as polyfit
 
@@ -64,12 +64,12 @@ def test_vega_xcorrelate():
     qafileinfo = {'figsize': (8.5, 11), 'filepath': setup.state['qa_path'],
                   'filename': 'test', 'extension': setup.state['qa_extension']}
 
-    vega_xcorrelate(
+    model_xcorrelate(
         object_wavelength[z],
         object_normalized[z],
         vega_wavelength,
         vega_flux,
-        vega_continuum,
+        #vega_continuum,
         resolving_power=2000,
         qa_show=False,
         qa_fileinfo=qafileinfo,
