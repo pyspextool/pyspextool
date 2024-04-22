@@ -11,6 +11,7 @@ from importlib.resources import files  # Python 3.10+
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
+
 def pyspextool_setup(
     instrument=setup.state["instruments"][0],
     raw_path: str = None,
@@ -174,42 +175,12 @@ def set_paths(paths: dict = None):
         "set_parameters", "proc_path", paths["proc_path"], ["str", "NoneType"]
     )
 
-    #
-    # Load the .pyspextool file if it exists.
-    #
-
-    # Change to use the current working directory rather than HOME
-    # home_path = os.path.expanduser('~')
-    # file_name = '.pyspextool_' + setup.state['instrument'] + '.dat'
-    # full_path = os.path.join(home_path, file_name)
-
-    # Does the file exist?
-
-    # if os.path.isfile(full_path) is True:
-
-    #     # Yes.  Load the previous paths.
-
-    #     f = open(full_path, 'r')
-    #     paths = []
-
-    #     for line in f:
-    #         paths.append(line.strip())
-
-    #     setup.state['raw_path'] = paths[0]
-    #     setup.state['cal_path'] = paths[1]
-    #     setup.state['proc_path'] = paths[2]
-    #     setup.state['qa_path'] = paths[3]
-
-    # else:
-
-    #     # No.  Use the current working directory
-
     # Should only use the current working directory
     # if the user has not defined the paths
     cwd = os.path.abspath(os.getcwd())
 
     # #
-    # Now let's modify the paths based on the user requests.
+    # Modify the paths based on the user requests.
     #
 
     if paths["raw_path"] is not None:
@@ -239,20 +210,6 @@ def set_paths(paths: dict = None):
     else:
         setup.state["proc_path"] = cwd
 
-    #
-    # Now write the paths to the user home directory
-    #
-
-    # dat_file_name = f".pyspextool_{setup.state['instrument']}.dat"
-    # f = open(os.path.join(home_path, dat_file_name), 'w')
-    # f.write('%s \n' % setup.state['raw_path'])
-    # f.write('%s \n' % setup.state['cal_path'])
-    # f.write('%s \n' % setup.state['proc_path'])
-    # f.write('%s \n' % setup.state['qa_path'])
-    # f.close()
-
-    # logging.info(f'Created {dat_file_name} in {home_path}')
-
     return
 
 
@@ -281,7 +238,13 @@ def set_instrument(instrument_name: str):
     # Check parameter and store results
     #
 
-    check_parameter("set_instrument", "instrument_name", instrument_name, "str")
+    check_parameter(
+        "set_instrument",
+        "instrument_name",
+        instrument_name,
+        "str",
+        possible_values=["spex", "uspex"],
+    )
 
     setup.state["instrument"] = instrument_name
 

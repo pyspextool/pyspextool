@@ -168,7 +168,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
-        
+
     if qa_write is None:
 
         qa_write = setup.state['qa_write']
@@ -183,14 +183,13 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
-        
+
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-
     # Get user paths if need be.
-        
+
     if input_path is None:
 
         input_path = setup.state['proc_path']
@@ -206,7 +205,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     check_path(input_path)
     check_path(output_path)
     check_path(qa_path)        
-        
+
     #
     # Store user inputs
     #
@@ -685,7 +684,7 @@ def load_data():
     logging.info(f" Telluric Correction\n-------------------------\n")
 
     logging.info(f" Loading the data...")
-            
+
     # Object first
     
     fullpath = make_full_path(telluric.load['input_path'],
@@ -764,7 +763,7 @@ def load_data():
 
         message = 'The standard has more than one aperture.'
         raise ValueError(message)
-    
+
     intersection = np.intersect1d(object_info['orders'],
                                   standard_info['orders'])
 
@@ -837,10 +836,8 @@ def load_data():
     ip_coefficients = np.squeeze(np.array((c0[z],c1[z],c2[z])))
 
     telluric.state['ip_coefficients'] = ip_coefficients
-    
-
-        
-                                                   
+   
+                                                         
 def load_vega():
 
     """
@@ -871,7 +868,6 @@ def load_vega():
     vega_flux = data['flux density']
     vega_continuum = data['continuum flux density']
     vega_fitted_continuum = data['fitted continuum flux density']
-
     
     hdul.close()
        
@@ -894,10 +890,7 @@ def load_vega():
     telluric.state['vega_normalized_flux'] = vega_flux/vega_fitted_continuum
 
     
-
-    
 def load_kernels():
-
 
     """
     To calculate the convolution kernel
@@ -911,26 +904,15 @@ def load_kernels():
     """
 
     instrument_profiles = []
-
     
-
-
-    
-#    if telluric.state['mode_info']['method'] == 'deconvolution':
-
-#        print('hi')
-        
-    
-
-        
-
-    
-
-    
+    #    if telluric.state['mode_info']['method'] == 'deconvolution':
+    #        print('hi')
+            
     if telluric.state['mode_info']['method'] == 'ip':
 
     
         for i in range(telluric.state['standard_norders']):
+
 
             # Get the min/max wavelengths of the data
         
@@ -970,7 +952,6 @@ def load_kernels():
             p = make_instrument_profile(x,telluric.state['ip_coefficients'])
             
             instrument_profiles.append(p)
-
             
     # Store the results
         
@@ -994,7 +975,7 @@ def normalize_order():
 
     """
 
-    logging.info(f" Normalizing order "+\
+   logging.info(f" Normalizing order "+\
                  str(telluric.state['normalized_order'])+"...")
 
 
@@ -1043,29 +1024,3 @@ def normalize_order():
     telluric.state['normalized_order_flux'] = nspectrum
     telluric.state['normalization_plotnum'] = plotnum
     
-
-
-    
-
-    
-                
-
-
-
-
-                
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
