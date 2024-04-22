@@ -434,8 +434,9 @@ def processFolder(folder,verbose=False):
 		if verbose==True: print('Warning: no standards present in list; be sure to check driver file carefully')
 
 # ignore certain modes
-	for igmode in IGNORE_MODES:
-		dp.loc[dp['MODE']==igmode,'TARGET_TYPE'] = 'ignore'
+	dp.loc[dp['MODE'].isin(IGNORE_MODES),'TARGET_TYPE'] = 'ignore'
+	# for igmode in IGNORE_MODES:
+	# 	dp.loc[dp['MODE']==igmode,'TARGET_TYPE'] = 'ignore'
 
 # ignore cases where the slit is 60"
 	# for i in range(len(dp)):
@@ -462,7 +463,7 @@ def processFolder(folder,verbose=False):
 	if ARC_NAME in names: names.remove(ARC_NAME)
 	if FLAT_NAME in names: names.remove(FLAT_NAME)
 	if len(names)==0:
-		print('Warning: no science files identified in {}'.format(folder))
+		if verbose==True: print('Warning: no science files identified in {}'.format(folder))
 		return dp
 	else:
 		for n in names:
@@ -1491,9 +1492,9 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			if 'fixed' in sci_param['TARGET_TYPE']:
 				stxt = stxt.replace('[COORDINATE]',coord)
 				stxt = stxt.replace('[TARGET_ALADIN_URL]',\
-					'[<a href="https://aladin.cds.unistra.fr/AladinLite/?target={}&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]'.format(desig.replace('+','%2B')))
+					'[<a href="https://aladin.cds.unistra.fr/AladinLite/?target={}&fov=0.12&survey=CDS%2FP%2F2MASS%2Fcolor" target="_blank">Aladin</a>]'.format(desig.replace('+','%2B').replace(' ','++')))
 				stxt = stxt.replace('[TARGET_SIMBAD_URL]',\
-					'[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord={}&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]'.format(desig.replace('+','%2B')))
+					'[<a href="https://simbad.cds.unistra.fr/simbad/sim-coo?Coord={}&CooFrame=FK5&CooEpoch=2000&CooEqui=2000&CooDefinedFrames=none&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=" target="_blank">SIMBAD</a>]'.format(desig.replace('+','%2B').replace(' ','++')))
 				stxt = stxt.replace('[SBDB]','')
 			else:
 				stxt = stxt.replace('[COORDINATE]','{} at MJD {}'.format(coord,str(sci_log['MJD'].iloc[0])))
@@ -1501,7 +1502,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 				stxt = stxt.replace('[TARGET_SIMBAD_URL]','')
 				stxt = stxt.replace('[SBDB]','[<a href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr={}" target="_blank">JPL SBDB</a>]'.format(sci_param['TARGET_NAME'].replace(' ','')))
 			stxt = stxt.replace('[STD_SIMBAD_URL]',\
-				'[<a href="https://simbad.u-strasbg.fr/simbad/sim-id?Ident={}&NbIdent=1&Radius=2&Radius.unit=arcmin&submit=submit+id" target="_blank">SIMBAD</a>]'.format(sci_param['STD_NAME'].replace(' ','+')))
+				'[<a href="https://simbad.u-strasbg.fr/simbad/sim-id?Ident={}&NbIdent=1&Radius=2&Radius.unit=arcmin&submit=submit+id" target="_blank">SIMBAD</a>]'.format(sci_param['STD_NAME'].replace('+','%2B').replace(' ','++')))
 			stxt = stxt.replace('[DESIGNATION_URL]',desig.replace('+','%2B'))
 			stxt = stxt.replace('[UT_START]',str(sci_log['UT_TIME'].iloc[0]).split('.')[0])
 			stxt = stxt.replace('[UT_END]',str(sci_log['UT_TIME'].iloc[-1]).split('.')[0])
