@@ -975,8 +975,7 @@ def normalize_order():
 
     """
 
-   logging.info(f" Normalizing order "+\
-                 str(telluric.state['normalized_order'])+"...")
+    logging.info(f" Normalizing order "+ str(telluric.state['normalized_order'])+"...")
 
 
     
