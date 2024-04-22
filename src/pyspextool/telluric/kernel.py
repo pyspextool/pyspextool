@@ -21,7 +21,8 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                     line_wavelength_range:npt.ArrayLike,
                     tapered_window_factor:int|float=10,
                     verbose:bool=False, qa_show:bool=False,
-                    qa_show_plotsize:tuple=(6,4),
+                    qa_showscale:float=1.0,
+                    qa_block:bool=False,
                     qa_fileinfo:typing.Optional[dict]=None,
                     qa_wavelength_units:str='$\mu$m'):
 
@@ -46,6 +47,11 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     line_wavelength_range : ndarray
         A (2,) array of of wavelengths giving the range over which to do the 
         deconvolution.
+
+    qa_showscale : tuple, default=(10, 6)
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
+    
 
     Returns
     -------
@@ -263,6 +269,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     results = moments(ratio)
     rms_deviation = results['stddev']
 
+    logging.info(' RMS deviation '+str(rms_deviation))        
+    logging.info(' Maximum deviation '+str(maximum_deviation))    
+
     #
     # Get things ready to return in the dictionary
     #
@@ -290,62 +299,117 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Create the QA plot
     #
 
+    figure_size = (6*qa_showscale,4*qa_showscale)
+
+    
+    if qa_show is True:
+
+        # This is to the screen
+
+        if qa_block is True:
+
+            pl.ioff()
+
+        else:
+
+            pl.ion()
+
+        plot_number = plot_deconvolve_line(data_line_wavelength,
+                                           data_zeroed_line_flux,
+                                           rmodel_zeroed_line_flux,
+                                rmodel_zeroed_scaled_convolved_line_flux,
+                                           ratio,
+                                           qa_wavelength_units,
+                                           rms_deviation,
+                                           maximum_deviation,
+                                           figure_size)
+
+
+
+
+            
+#        plot_number = plot_normalization(wavelength,
+#                                         flux,
+#                                         continuum,
+#                                         zregions,
+#                                         (10*qa_show_scale, 6*qa_show_scale),
+#                                         latex_xlabel=latex_xlabel)
+#        pl.show()
+        pl.pause(1)
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     # Create the resampled Vega model just for show
 
-    
-    
-    
-    fig = pl.figure()
-    axes1 = fig.add_subplot(111)
-
-    xrange = [np.min(data_line_wavelength),np.max(data_line_wavelength)]
-    pl.xlim(xrange)
-    pl.ylim([-0.4,0.05])
-    
-    axes1.step(data_line_wavelength, data_zeroed_line_flux,color='black',
-               where='mid')
-    axes1.step(data_line_wavelength, rmodel_zeroed_scaled_convolved_line_flux,
-               color='green', where='mid')
-    axes1.step(data_line_wavelength,ratio-1,color='blue', where='mid')
-    axes1.axhline(y=0.01,color='magenta',linestyle='dotted')
-    axes1.axhline(y=-0.01,color='magenta',linestyle='dotted')   
-
-    axes1.set(xlabel='Wavelength ('+qa_wavelength_units+')',
-              ylabel='Residual Intensity')
-    
-    axes1.step(data_line_wavelength, rmodel_zeroed_line_flux,color='red',
-               where='mid')
-
-#    axes1.step(model_wavelength, model_normalized_flux-1,color='red',
+          
+#    fig = pl.figure()
+#    axes1 = fig.add_subplot(111)
+#
+#    xrange = [np.min(data_line_wavelength),np.max(data_line_wavelength)]
+#    pl.xlim(xrange)
+#    pl.ylim([-0.4,0.05])
+#    
+#    axes1.step(data_line_wavelength, data_zeroed_line_flux,color='black',
 #               where='mid')
+#    axes1.step(data_line_wavelength, rmodel_zeroed_scaled_convolved_line_flux,
+#               color='green', where='mid')
+#    axes1.step(data_line_wavelength,ratio-1,color='blue', where='mid')
+#    axes1.axhline(y=0.01,color='magenta',linestyle='dotted')
+#    axes1.axhline(y=-0.01,color='magenta',linestyle='dotted')   
+#
+#    axes1.set(xlabel='Wavelength ('+qa_wavelength_units+')',
+#              ylabel='Residual Intensity')
+#    
+#    axes1.step(data_line_wavelength, rmodel_zeroed_line_flux,color='red',
+#               where='mid')
+#
+##    axes1.step(model_wavelength, model_normalized_flux-1,color='red',
+##               where='mid')
+#
+#
+#    
+#    axes1.text(0.02, 0.2, 'Max Deviation = '+"{:.4f}".format(maximum_deviation),
+#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
+#
+#    axes1.text(0.02, 0.15, 'RMS Deviation = '+"{:.4f}".format(rms_deviation),
+#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
+#
+#
+#    axes1.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
+#               transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
+#               transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
+#               va='bottom', transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
+#               va='bottom', transform=axes1.transAxes)
+#    
+#    pl.show()
+#    
+#    
+#    logging.info(' Maximum deviation '+str(maximum_deviation))
+
 
 
     
-    axes1.text(0.02, 0.2, 'Max Deviation = '+"{:.4f}".format(maximum_deviation),
-               ha='left', va='bottom', transform=axes1.transAxes, color='black')
-
-    axes1.text(0.02, 0.15, 'RMS Deviation = '+"{:.4f}".format(rms_deviation),
-               ha='left', va='bottom', transform=axes1.transAxes, color='black')
-
-
-    axes1.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
-               transform=axes1.transAxes)
-
-    axes1.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
-               transform=axes1.transAxes)
-
-    axes1.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
-               va='bottom', transform=axes1.transAxes)
-
-    axes1.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
-               va='bottom', transform=axes1.transAxes)
-    
-    pl.show()
-    
-    
-    logging.info(' Maximum deviation '+str(maximum_deviation))
-
-
 def make_instrument_profile(x:npt.ArrayLike, parameters:npt.ArrayLike):
 
     """
@@ -396,4 +460,109 @@ def make_instrument_profile(x:npt.ArrayLike, parameters:npt.ArrayLike):
     ip /= np.sum(ip)
 
     return ip
+
+
+
+def plot_deconvolve_line(wavelength:npt.ArrayLike,
+                         data_flux:npt.ArrayLike,
+                         model_flux:npt.ArrayLike,
+                         model_convolved_flux:npt.ArrayLike,
+                         ratio:npt.ArrayLike,
+                         wavelength_unit:str,
+                         rms_deviation:float,
+                         maximum_deviation:float,
+                         figure_size:tuple):
+
+    """
+    To plot the results of the deconvolution.
+
+    Parameters
+    ----------
+    wavelength : ndarray
+        A (nwave,) array of wavelengths.
+
+    data_flux : ndarray
+        A (nwave,) array of zeroed data "intensities".
+
+    model_flux : ndarray
+        A (nwave,) array of zeroed model "intensities".
+    
+    model_convolved_flux : ndarray
+        A (nwave,) array of zeroed convolved model "intensities".
+
+    ratio : ndarray
+        A (nwave,) array of the ratio of the non-zeroed data_flux and
+        model_convolved_flux
+    
+    wavelength_unit : str
+        A str giving the units of wavelengths.
+
+    rms_deviation: float
+        A float giving the rms deviation of the residual.
+    
+    maximum_deviation : float
+        A float giving  giving the maximum deviation of the residual.
+
+    figure_size : tuple
+
+    
+    Returns
+    -------
+    Nothing
+
+    """
+
+    fig = pl.figure(num=plot_number, figsize=figure_size)
+    axes1 = fig.add_subplot(111)
+
+    xrange = [np.min(data_line_wavelength),np.max(data_line_wavelength)]
+    pl.xlim(xrange)
+    pl.ylim([-0.4,0.05])
+    
+    axes1.step(wavelength, data_flux,color='black', where='mid')
+    axes1.step(wavelength, model_flux, color='green', where='mid')
+    axes1.step(wavelength,ratio-1,color='blue', where='mid')
+    axes1.axhline(y=0.01,color='magenta',linestyle='dotted')
+    axes1.axhline(y=-0.01,color='magenta',linestyle='dotted')   
+
+    axes1.set(xlabel='Wavelength ('+wavelength_unit+')',
+              ylabel='Residual Intensity')
+    
+#    axes1.step(wavelength, rmodel_zeroed_line_flux,color='red',
+#               where='mid')
+#
+##    axes1.step(model_wavelength, model_normalized_flux-1,color='red',
+##               where='mid')
+#
+#
+#    
+#    axes1.text(0.02, 0.2, 'Max Deviation = '+"{:.4f}".format(maximum_deviation),
+#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
+#
+#    axes1.text(0.02, 0.15, 'RMS Deviation = '+"{:.4f}".format(rms_deviation),
+#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
+#
+#
+#    axes1.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
+#               transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
+#               transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
+#               va='bottom', transform=axes1.transAxes)
+#
+#    axes1.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
+#               va='bottom', transform=axes1.transAxes)
+#    
+#    pl.show()
+#    
+#    
+
+
+
+
+
+
+    
     

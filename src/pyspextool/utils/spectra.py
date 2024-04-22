@@ -298,7 +298,7 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
                         qa_show:bool=False, qa_show_scale:float=1.0,
                         qa_fileinfo:typing.Optional[dict]=None,
                         latex_xlabel:typing.Optional[str]=None,
-                        block:bool=True):
+                        qa_block:bool=True):
 
     
     """
@@ -358,7 +358,7 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
     latex_xlabel : str, default='Wavelength'
         A latex string giving the xlabel.
 
-    block : {False, True}, optional
+    qa_block : {False, True}, optional
         Set to make the plot block access to the command line, e.g. pl.ioff().
     
     Returns

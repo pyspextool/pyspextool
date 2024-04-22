@@ -255,13 +255,13 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         # Determine the radial velocity
         #
 
-        get_radialvelocity()
+#        get_radialvelocity()
         
         #
         # Get the convolution kernel
         #
 
-        get_kernel()
+#        get_kernel()
 
         
         #
@@ -472,7 +472,7 @@ def correct_spectra():
 def get_kernel():
 
     """
-    Determines the convolution kernel if necessary
+    Determines the convolution kernel.
 
     Parameters
     ----------
@@ -484,6 +484,10 @@ def get_kernel():
 
     """
 
+    #
+    # Only run if the method is deconvolution
+    #
+    
     if telluric.state['method'] == 'deconvolution':    
 
         #
@@ -497,28 +501,28 @@ def get_kernel():
                         'filename':telluric.load['output_name']+'_deconvolve',
                         'extension':setup.state['qa_extension']}
         
-    else:
+        else:
 
-        fileinfo = None
+            fileinfo = None
         
         # Scale the vega wavelengths for the radial velocity
 
         vega_wavelength = telluric.state['vega_wavelength']
         vega_wavelength *= (1+telluric.state['object_redshift'])
+
+        # Do the deconvolution
         
         deconvolve_line(telluric.state['normalized_order_wavelength'],
                         telluric.state['normalized_order_flux'],
                         vega_wavelength,
                         telluric.state['vega_normalized_flux'],
                         telluric.state['deconvolution_window'],
-                        verbose=True)
+                        qa_fileinfo=fileinfo,
+                        qa_show=setup.state['qa_show'],
+                        verbose=setup.state['verbose'])
+
 
         
-
-
-
-    
-    
 def get_modeinfo(mode:str):
 
     """
@@ -914,12 +918,10 @@ def load_kernels():
 
     
 
-
+    if telluric.state['method'] == 'deconvolution':    
     
-#    if telluric.state['mode_info']['method'] == 'deconvolution':
 
-#        print('hi')
-        
+        print('hi')
     
 
         
@@ -927,7 +929,7 @@ def load_kernels():
     
 
     
-    if telluric.state['mode_info']['method'] == 'ip':
+    if telluric.state['method'] == 'ip':
 
     
         for i in range(telluric.state['standard_norders']):
