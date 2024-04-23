@@ -7,8 +7,8 @@ import logging
 
 from pyspextool import config as setup
 from pyspextool.combine import config as combine
-from pyspextool.io.check import *
-from pyspextool.io.files import *
+from pyspextool.io.check import check_path, check_parameter
+from pyspextool.io.files import make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.io.fitsheader import average_header_info
 from pyspextool.io.fitsheader import get_header_info
@@ -17,6 +17,7 @@ from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
 from pyspextool.plot.plot_spectra import plot_spectra
 
+logger = logging.getLogger("pyspextool")
 
 
 def combine_spectra(files, output_name, input_path=None, output_path=None,
@@ -133,7 +134,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     check_parameter('combine_spectra', 'output_path', output_path,
                     ['NoneType', 'str'])    
-    
+
     check_parameter('combine_spectra', 'scale_spectra', scale_spectra, 'bool')
 
     check_parameter('combine_spectra', 'scale_order', scale_order,
@@ -164,11 +165,10 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     check_parameter('combine_spectra', 'verbose', verbose, ['NoneType', 'bool'])
 
-
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
-        
+
     if qa_write is None:
 
         qa_write = setup.state['qa_write']
@@ -182,13 +182,12 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
-        
+
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
 
-        
     # Get user paths if need be.
-        
+
     if input_path is None:
 
         input_path = setup.state['proc_path']
@@ -199,7 +198,7 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     check_path(input_path)
     check_path(output_path)    
-        
+
     #
     # Store user inputs
     #
@@ -249,13 +248,13 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
 
     combine.state['input_files'] = input_files
     combine.state['nfiles'] = len(input_files)
-    
+
     #
     # Read the files
     #
 
     logging.info(' Combining Spectra\n-----------------\nLoading spectra...')
-        
+
     load_allorders()
 
     # Do the qa plotting
@@ -265,14 +264,14 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
         plot_allorders(figure_size=qa_showsize, title='raw')
 
     if combine.load['qa_write']:
-        
+
         qafileinfo = {'figsize': (11,8.5),
                       'filepath': setup.state['qa_path'],
                       'filename': combine.load['output_name'],
                       'extension': setup.state['qa_extension']}
 
         plot_allorders(file_info=qafileinfo, suffix='_raw', title='raw')
-            
+
     #
     # Scale the spectra
     #
@@ -286,14 +285,14 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
     #
     # Do the qa plotting
     #
-    
+
     if combine.load['qa_show']:
 
         plot_allorders(figure_size=qa_showsize, title='Scaled',
                        plot_scale_range=True)
 
     if combine.load['qa_write']:
-        
+
         qafileinfo = {'figsize': (11,8.5),
                       'filepath': setup.state['qa_path'],
                       'filename': combine.load['output_name'],
@@ -303,11 +302,11 @@ def combine_spectra(files, output_name, input_path=None, output_path=None,
                        plot_scale_range=True, title='Scaled')
 
     #
-    # Combine them 
+    # Combine them
     #
 
     logging.info(' Combining spectra...')
-        
+
     combine_allorders()
 
     #
@@ -331,11 +330,11 @@ def combine_allorders():
     None
 
     """
-    
+
     #
     # Create output arrays
     #
-    
+
     intensity = np.full_like(combine.state['wavelengths'], np.nan)
     uncertainty = np.full_like(combine.state['wavelengths'], np.nan)
     bitmask = np.full_like(combine.state['wavelengths'], 0)
@@ -346,55 +345,52 @@ def combine_allorders():
 
     sigma = combine.load['robust_sigma']
     statistic = combine.load['statistic'].replace(" ", "")
-    
-    for i in range(combine.state['final_napertures']):
 
+    for i in range(combine.state['final_napertures']):
 
         for j in range(combine.state['norders']):
 
             data = combine.state['intensities'][i,j,:,:]
             var = combine.state['uncertainties'][i,j,:,:]**2
 
-            
             # First do the data
 
             if statistic == 'robustweightedmean':
 
                 result = math.mean_data_stack(data, robust=sigma,
                                               weights=1/var, stderr=True)
-                
+
             elif statistic == 'robustmean':
 
                 result = math.mean_data_stack(data, robust=sigma, stderr=True)
-            
+
             elif statistic == 'weightedmean':
-                
+
                 result = math.mean_data_stack(data,weights=1/var, stderr=True)
-        
+
             elif statistic == 'mean':
 
                 result = math.mean_data_stack(data,stderr=True)
-                
+
             elif statistic == 'median':                        
-                
+
                 result = math.median_data_stack(data,stderr=True)
-                
+
             else:
 
                 message=combine.load['statistic']+ ' is an unknown `statitics`.'
                 raise ValueError(message)
 
-
             mean = result[0]
             unc = result[1]
 
             # Now do the mask
-            
+
             array = combine.state['bitmasks'][i,j,:,:]
             mask = math.combine_flag_stack(array)
-        
+
             # Store the results
-                    
+
             intensity[i,j,:] = mean
             uncertainty[i,j,:] = unc
             bitmask[i,j,:] = mask
@@ -402,12 +398,12 @@ def combine_allorders():
     #
     # Store all the data
     #
-            
+
     combine.state['intensity'] = intensity
     combine.state['uncertainty'] = uncertainty
     combine.state['bitmask'] = bitmask
 
-        
+
 def load_allorders():
 
     """
@@ -428,7 +424,7 @@ def load_allorders():
     #
 
     first_spectra, info = read_spectra_fits(combine.state['input_files'][0])
-    
+
     combine.state['npixels'] = np.size(first_spectra[0,0,:])
     combine.state['module'] = info['module']    
     combine.state['orders'] = info['orders']
@@ -443,37 +439,34 @@ def load_allorders():
 
     # Start with the module that created the data
 
-
     if combine.state['module'] == 'extract':
 
         # Now check whether we are combining apertures.
         # 1 file means yes, >1 files means no.
-        
+
         if combine.state['nfiles'] == 1:
 
             # Single file means combining all apertures
-            
+
             combine.state['combine_apertures'] = True
             combine.state['combine_type'] = 'twoaperture'
 
         else:
 
             # Multiple file means combining on aperture by aperture basis
-            
+
             combine.state['combine_apertures'] = False
-            combine.state['combine_type'] = 'standard'
-        
+            combine.state["combine_type"] = "standard"
 
     elif combine.state['module'] == 'telluric':
 
         combine.state['combine_apertures'] = False
         combine.state['combine_type'] = 'telluric'
-                
+
     else:
 
         message = 'Unknown module.'
         raise ValueError(message)
-
 
     #
     #  Compute various values and build the various arrays and lists.
@@ -498,7 +491,7 @@ def load_allorders():
 
     shape = (combine.state['final_napertures'], combine.state['norders'],
              combine.state['npixels'])
-             
+
     wavelengths = np.full(shape, np.nan)
 
     shape = (combine.state['final_napertures'], combine.state['norders'],
@@ -507,13 +500,13 @@ def load_allorders():
     intensities = np.full(shape, np.nan)
     uncertainties = np.full(shape, np.nan)
     bitmasks = np.full(shape, 0, dtype=np.int8)
-        
+
     #
     # Now start the loop over each file
     #
 
     headers = []
-    
+
     keywords  = setup.state['combine_keywords']
 
     for i in range(combine.state['nfiles']):
@@ -555,14 +548,14 @@ def load_allorders():
                     bitmasks[0,j,k,:] = np.nan_to_num(spectra[idx,3,:]).astype(np.int8)
 
     # Load into memory
-                    
+
     combine.state['headers'] = headers
     combine.state['wavelengths'] = wavelengths
     combine.state['intensities'] = intensities
     combine.state['uncertainties'] = uncertainties
     combine.state['bitmasks'] = bitmasks
 
-    
+
 def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
                    suffix=None, title=None):
 
@@ -583,7 +576,7 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
     if file_info is not None:
 
         figure_size = file_info['figsize']
-    
+
     #
     # Copy for ease of use
     #
@@ -592,7 +585,7 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
     intensity = combine.state['intensities']
     uncertainty = combine.state['uncertainties']
     bitmask = combine.state['bitmasks']
-    
+
     #
     # Get the ranges
     #
@@ -604,12 +597,12 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
     uncertainty_ranges = np.empty((combine.state['norders'], 2))        
 
     # Do the loop
-    
+
     for i in range(combine.state['norders']):
 
         wavelength_ranges[i,:] = np.array([np.nanmin(wavelength[0,i]),
                                            np.nanmax(wavelength[0,i])])
-        
+
         intensity_ranges[i,:] = get_stack_range(intensity[0,i], savgol=True,
                                                 frac=0.05)
 
@@ -617,23 +610,22 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
                                                 frac=0.05)        
 
     # Find the minimum and maximum values
-        
+
     array = [intensity_ranges, uncertainty_ranges]
     intensity_range = [np.min(array), np.max(array)]
 
     # Create the figure
-    
+
     figure = pl.figure(figsize=figure_size)
     ax = figure.add_axes([0.125, 0.11, 0.775, 0.77])
     ax.plot([np.nan], [np.nan])
     ax.set_xlim(wavelength_range)
     ax.set_ylim(intensity_range)
     ax.set_xlabel(combine.state['xlabel'])
-#    ax.set_ylabel(ylabel)
+    #    ax.set_ylabel(ylabel)
 
     axis_to_data = ax.transAxes + ax.transData.inverted()
     data_to_axis = axis_to_data.inverted()
-    
 
     for i in range(combine.state['norders']):
 
@@ -661,33 +653,29 @@ def plot_allorders(file_info=None, figure_size=None, plot_scale_range=False,
     if title is not None:
 
         ax.set_title(title, pad=20.0)
-    
+
     if plot_scale_range is True:
 
         ax.axvline(x=combine.state['scale_range'][0],color='0',ls='--')
         ax.axvline(x=combine.state['scale_range'][1],color='0',ls='--')        
 
-    
     if file_info is not None:
-
 
         qafileinfo = {'figsize': (11,8.5),
                       'filepath': setup.state['qa_path'],
                       'filename': combine.load['output_name'],
                       'extension': setup.state['qa_extension']}
 
-        
-        
         pl.savefig(os.path.join(file_info['filepath'],
                                 file_info['filename']+suffix+\
                                 file_info['extension']))
         pl.close()
-                                
+
     else:
 
         pl.show()
         pl.close()
-                    
+
 
 def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
@@ -706,7 +694,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
     #
     # First determine which order we are using to scale
     #
-    
+
     if scale_order is None:
 
         # Do it ourselves.  Pick the middle-most order.
@@ -716,7 +704,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
     else:
 
         # Let the user choose, but make sure it is an order we have.
-        
+
         z = combine.state['orders'] == scale_order
         if np.sum(z) == 0:
 
@@ -724,7 +712,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
             raise ValueError(message)
 
     # Store the results
-        
+
     combine.state['scale_order'] = scale_order
 
     #
@@ -732,12 +720,12 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
     if scale_range is None:
 
-        # Determine the wavelenth range ourselves.  
+        # Determine the wavelenth range ourselves.
 
         z_order = combine.state['orders'] == combine.state['scale_order']    
 
         # Grab the zeroth aperture wavelength array.
-        
+
         wave = np.squeeze(combine.state['wavelengths'][0, z_order, :])
 
         min_wave = np.nanmin(wave)
@@ -755,20 +743,20 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         # Let the user choose, but make sure it falls in range.
 
         combine.state['scale_range'] = combine.load['scale_range']
-        
-    #                    
+
+    #
     # Determine which order we are using to determine the scale factors
     #
-        
+
     z_order = np.where(combine.state['orders'] == combine.state['scale_order'])
 
-    # 
+    #
     # Loop over each aperture and order
     #
 
     scales = np.empty((combine.state['final_napertures'],
                        combine.state['nspectra']))
-    
+
     for i in range(combine.state['final_napertures']):
 
         # Determine which pixels we are using for the scaling
@@ -778,14 +766,14 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
 
         z_wave = np.where((wave > combine.state['scale_range'][0]) &
                           (wave < combine.state['scale_range'][1]))
-            
+
         # Get scale factors
 
         junk, junk, scale = math.scale_data_stack(intensity[:, z_wave[0]],
                                                    None)
 
         scales[i,:] = scale
-        
+
         # Now scale each order
 
         shape = np.shape(intensity)                
@@ -795,7 +783,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
         scale_array = np.tile(np.reshape(scale, reshape_info), tile_info)
 #        print(scale_array)
         #        scale_array = np.absolute(scale_array)
-        
+
         for j in range(combine.state['norders']):
 
             np.multiply(combine.state['intensities'][i,j,:,:], scale_array,
@@ -806,7 +794,7 @@ def scale_allorders(scale_order, scale_range, scale_range_fraction):
                         out=combine.state['uncertainties'][i,j,:,:])
 
     combine.state['scales'] = scales
-    
+
 
 def write_file(verbose=False):
 

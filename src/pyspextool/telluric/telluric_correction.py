@@ -110,7 +110,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
     qa_block : {False, True}, optional
         Set to make the plot block access to the command line, e.g. pl.ioff().
-    
+
     verbose : {None, True, False}
         Set to True/False to override config.state['verbose'] in the 
         pyspextool config file.  
@@ -166,7 +166,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
     check_parameter('telluric_correction', 'qa_block', qa_block,
                     ['NoneType', 'bool'])
-    
+
     check_parameter('telluric_correction', 'verbose', verbose,
                     ['NoneType', 'bool'])
 
@@ -175,7 +175,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     #
     # Check the qa and verbose variables and set to system default if need be.
     #
-        
+
     if qa_write is None:
 
         qa_write = setup.state['qa_write']
@@ -187,25 +187,24 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     if qa_block is None:
 
         qa_block = setup.state['qa_block']
-        
+
     if verbose is None:
         verbose = setup.state['verbose']
 
     if overwrite is None:
         overwrite = setup.state['overwrite']
-        
+
 
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
-        
+
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-
     # Get user paths if need be.
-        
+
     if input_path is None:
 
         input_path = setup.state['proc_path']
@@ -221,7 +220,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     check_path(input_path)
     check_path(output_path)
     check_path(qa_path)        
-        
+
     #
     # Store user inputs
     #
@@ -503,8 +502,8 @@ def get_kernel():
     #
     # Only run if the method is deconvolution
     #
-    
-    if telluric.state['method'] == 'deconvolution':    
+
+    if telluric.state['method'] == 'deconvolution':
 
         #
         # Get QA set up
@@ -527,7 +526,7 @@ def get_kernel():
         vega_wavelength *= (1+telluric.state['object_redshift'])
 
         # Do the deconvolution
-        
+
         deconvolve_line(telluric.state['normalized_order_wavelength'],
                         telluric.state['normalized_order_flux'],
                         vega_wavelength,
@@ -538,7 +537,7 @@ def get_kernel():
                         verbose=setup.state['verbose'])
 
 
-        
+
 def get_modeinfo(mode:str):
 
     """
@@ -784,7 +783,7 @@ def load_data():
 
         message = 'The standard has more than one aperture.'
         raise ValueError(message)
-    
+
     intersection = np.intersect1d(object_info['orders'],
                                   standard_info['orders'])
 
@@ -857,10 +856,8 @@ def load_data():
     ip_coefficients = np.squeeze(np.array((c0[z],c1[z],c2[z])))
 
     telluric.state['ip_coefficients'] = ip_coefficients
-    
 
-        
-                                                   
+
 def load_vega():
 
     """
@@ -931,24 +928,28 @@ def load_kernels():
     """
 
     instrument_profiles = []
-
     
 
-    if telluric.state['method'] == 'deconvolution':    
-    
+    if telluric.state['method'] == 'deconvolution':
+
 
         print('hi')
-    
 
-        
 
-    
 
-    
+
+
+
+
     if telluric.state['method'] == 'ip':
+    #    if telluric.state['mode_info']['method'] == 'deconvolution':
+    #        print('hi')
+
+    if telluric.state['mode_info']['method'] == 'ip':
 
     
         for i in range(telluric.state['standard_norders']):
+
 
             # Get the min/max wavelengths of the data
         
@@ -1012,8 +1013,9 @@ def normalize_order():
 
     """
 
-    logging.info(f" Normalizing order "+\
-                 str(telluric.state['normalized_order'])+"...")
+    logging.info(f" Normalizing order "+ str(telluric.state['normalized_order'])+"...")
+
+
     
     # Find the order given the modeinfo file
 
@@ -1047,7 +1049,7 @@ def normalize_order():
     #
     # Normalize the order
     #
-    
+
     nspectrum,plotnum = normalize_continuum(wavelength, flux, windows,
                                             degree, robust=robust,
                                             latex_xlabel=xlabel,
@@ -1056,7 +1058,7 @@ def normalize_order():
     #
     # Store the results
     #
-    
+
     telluric.state['normalized_order_wavelength'] = wavelength
     telluric.state['normalized_order_flux'] = nspectrum
     telluric.state['normalization_plotnum'] = plotnum
