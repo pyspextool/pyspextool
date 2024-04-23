@@ -38,8 +38,9 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
                         output_path:typing.Optional[str]=None,
                         qa_path:typing.Optional[str]=None,
                         qa_show:typing.Optional[bool]=None,
-                        qa_showscale:float=1.0,
+                        qa_show_scale:float=1.0,
                         qa_write:typing.Optional[bool]=None,
+                        qa_block:typing.Optional[bool]=None,
                         verbose:typing.Optional[bool]=None,
                         overwrite:bool=True):
 
@@ -98,7 +99,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         pyspextool config file.  If set to True, quality assurance 
         plots will be interactively generated.
 
-    qa_showscale : tuple, default=(10, 6)
+    qa_show_scale : tuple, default=(10, 6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
         pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
@@ -107,6 +108,9 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         pyspextool config file.  If set to True, quality assurance 
         plots will be written to disk.
 
+    qa_block : {False, True}, optional
+        Set to make the plot block access to the command line, e.g. pl.ioff().
+    
     verbose : {None, True, False}
         Set to True/False to override config.state['verbose'] in the 
         pyspextool config file.  
@@ -154,12 +158,15 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     check_parameter('telluric_correction', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('telluric_correction', 'qa_showscale', qa_showscale,
+    check_parameter('telluric_correction', 'qa_show_scale', qa_show_scale,
                     'float')
     
     check_parameter('telluric_correction', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
+    check_parameter('telluric_correction', 'qa_block', qa_block,
+                    ['NoneType', 'bool'])
+    
     check_parameter('telluric_correction', 'verbose', verbose,
                     ['NoneType', 'bool'])
 
@@ -177,8 +184,16 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
         qa_show = setup.state['qa_show']
 
+    if qa_block is None:
+
+        qa_block = setup.state['qa_block']
+        
     if verbose is None:
         verbose = setup.state['verbose']
+
+    if overwrite is None:
+        overwrite = setup.state['overwrite']
+        
 
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
@@ -222,8 +237,9 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     telluric.load['output_path'] = output_path
     telluric.load['qa_path'] = qa_path      
     telluric.load['qa_show'] = qa_show
-    telluric.load['qa_showscale'] = qa_showscale
+    telluric.load['qa_show_scale'] = qa_show_scale
     telluric.load['qa_write'] = qa_write
+    telluric.load['qa_block'] = qa_block
     telluric.load['verbose'] = verbose
     telluric.load['overwrite'] = overwrite
 
@@ -255,7 +271,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         # Determine the radial velocity
         #
 
-#        get_radialvelocity()
+        get_radialvelocity()
         
         #
         # Get the convolution kernel
@@ -998,8 +1014,6 @@ def normalize_order():
 
     logging.info(f" Normalizing order "+\
                  str(telluric.state['normalized_order'])+"...")
-
-
     
     # Find the order given the modeinfo file
 
@@ -1007,7 +1021,6 @@ def normalize_order():
                        telluric.state['normalized_order'])
 
     # Store values in shorter variable names for ease
-
     
     wavelength = np.squeeze(telluric.state['standard_spectra'][z_order,0,:])
     flux = np.squeeze(telluric.state['standard_spectra'][z_order,1,:])
@@ -1031,15 +1044,18 @@ def normalize_order():
 
         fileinfo = None
 
+    #
     # Normalize the order
-        
+    #
+    
     nspectrum,plotnum = normalize_continuum(wavelength, flux, windows,
                                             degree, robust=robust,
                                             latex_xlabel=xlabel,
                                             qa_show=telluric.load['qa_show'],
                                             qa_fileinfo=fileinfo)
-
+    #
     # Store the results
+    #
     
     telluric.state['normalized_order_wavelength'] = wavelength
     telluric.state['normalized_order_flux'] = nspectrum

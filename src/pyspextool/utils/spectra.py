@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as pl
+from matplotlib.ticker import (AutoMinorLocator)
 import typing
 import os
 import scipy
@@ -397,7 +398,7 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
 
     check_parameter('normalize_continuum', 'latex_xlabel', latex_xlabel, 'str')
 
-    check_parameter('normalize_continuum', 'block', block, 'bool')    
+    check_parameter('normalize_continuum', 'qa_block', qa_block, 'bool')    
 
     
     #
@@ -474,7 +475,7 @@ def normalize_continuum(wavelength:npt.ArrayLike, flux:npt.ArrayLike,
 
         # This is to the screen
 
-        if block is True:
+        if qa_block is True:
 
             pl.ioff()
 
@@ -518,8 +519,8 @@ def plot_normalization(wavelength:npt.ArrayLike,
                        figure_size:tuple,
                        plot_number:typing.Optional[float]=None,
                        latex_xlabel:str='Wavelength',
-                       file_info:typing.Optional[str]=None,
-                       block:bool=False):
+                       file_info:typing.Optional[dict]=None,
+                       qa_block:bool=False):
 
     
     """
@@ -536,15 +537,70 @@ def plot_normalization(wavelength:npt.ArrayLike,
     continuum : ndarray
         A (nwave,) array of the fitted continuum values.
 
-    zranges : ndarray
+    zregions : ndarray
         A (nwave,) True/False array where pixels used in the fit are True.
+
+    figure_size : tuple
+        A (2,) tuple giving the figure size
+    
+    plot_number : None or int
+        The plot number to be passed back in to update the same plot.
+        Useful if you are doing to-screen plotting.
+
+    latex_xlabel : str
+        A sting giving the label for the x axis.
+
+    file_info : None or dict
+
+        `'figsize'` : tuple
+            A (2,) tuple giving the figure size.
+
+        `'filepath'` : str
+            A string giving the write path.
+    
+        `'filename'` : str
+            The root of the file.
+
+        `'extension'` : str
+            The file extension.
+
+        The result is os.path.join(qa_fileinfo['filepath'],
+                                   qa_fileinfo['filename'] + \
+                                   qa_fileinfo['extension'])
+    
+    qa_block : {False, True}, optional
+        Set to make the plot block access to the command line, e.g. pl.ioff().
 
     Returns
     -------
-    Nothing
+    None
 
     """
 
+    #
+    # Check the parameters
+    #
+
+    check_parameter('plot_normalization', 'wavelength', wavelength, 'ndarray')
+
+    check_parameter('plot_normalization', 'intensity', intensity, 'ndarray')
+    
+    check_parameter('plot_normalization', 'continuum', continuum, 'ndarray')
+
+    check_parameter('plot_normalization', 'zregions', zregions, 'ndarray')
+
+    check_parameter('plot_normalization', 'figure_size', figure_size, 'tuple')
+
+    check_parameter('plot_normalization', 'plot_number', plot_number,
+                    ['NoneType','int'])
+
+    check_parameter('plot_normalization', 'latex_xlabel', latex_xlabel, 'str')
+    
+    check_parameter('plot_normalization', 'file_info', file_info,
+                    ['NoneType','dict'])
+    
+    check_parameter('plot_normalization', 'qa_block', qa_block, 'bool')
+    
     #
     # Make the two-panel figure
     #
@@ -576,8 +632,13 @@ def plot_normalization(wavelength:npt.ArrayLike,
     axes1.step(wavelength, intensity, 'black')
     axes1.set_ylim(ymin = yrange[0], ymax=yrange[1])
     axes1.set_xlim(xmin = xrange[0], xmax=xrange[1])    
-    axes1.set_ylabel('Intensity')    
+    axes1.set_ylabel('Intensity')
 
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(which='both', direction='in')
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())    
+
+    
     # Now plot the fitted pixels in red
     
     tmp = np.copy(intensity)
@@ -605,6 +666,10 @@ def plot_normalization(wavelength:npt.ArrayLike,
     axes2.set_xlim(xmin = xrange[0], xmax=xrange[1])    
     axes2.set_xlabel(latex_xlabel)
     axes2.set_ylabel('Normalized Intensity')    
+
+    axes2.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes2.tick_params(which='both', direction='in')
+    axes2.yaxis.set_minor_locator(AutoMinorLocator())    
     
     # Plot the fitted pixels in red
     
@@ -614,12 +679,26 @@ def plot_normalization(wavelength:npt.ArrayLike,
     axes2.step(wavelength, tmp, 'red')
     axes2.axhline(y=1, linestyle='--', color='green')
 
+    #
+    # Get the plot number and return the results
+    #
+    
+    plot_number = pl.gcf().number
+    return plot_number
+
+    
 
 
-
-def plot_model_xcorrelate(wavelength, object_flux, model_flux, lag,
-                          xcorrelation, fit, offset, velocity, redshift,
-                          plot_size):
+def plot_model_xcorrelate(wavelength:npt.ArrayLike,
+                          object_flux:npt.ArrayLike,
+                          model_flux:npt.ArrayLike,
+                          lag:npt.ArrayLike,
+                          xcorrelation:npt.ArrayLike,
+                          fit:npt.ArrayLike,
+                          offset:float,
+                          velocity:float,
+                          redshift:float,
+                          plot_size:tuple):
 
 
     """
@@ -649,6 +728,11 @@ def plot_model_xcorrelate(wavelength, object_flux, model_flux, lag,
     axes1.step(wavelength, model_flux, 'r')
     axes1.set(xlabel='Wavelength ($\mu$m)', ylabel='Relative Intensity')
 
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(which='both', direction='in')
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())    
+
+    
     axes1.text(0.95, 0.2, 'data', color='#1f77b4', ha='right',
                 transform=axes1.transAxes)
 
@@ -665,6 +749,11 @@ def plot_model_xcorrelate(wavelength, object_flux, model_flux, lag,
     axes2.step(lag, fit['fit'], 'r')
     axes2.set(xlabel='lag (pixels)', ylabel='Relative Intensity')
 
+    axes2.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes2.tick_params(which='both', direction='in')
+    axes2.yaxis.set_minor_locator(AutoMinorLocator())    
+
+    
     axes2.text(0.05, 0.9, 'X Correlation', color='#1f77b4', ha='left',
                 transform=axes2.transAxes)
 
