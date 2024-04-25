@@ -203,7 +203,9 @@ class runBatch():
 			par = batch.readDriver(driver_file)
 
 # stop if there are no science or calibration files
-			if 'OBS_SET' not in list(par.keys()):
+#			print(par)
+#			if 'OBS_SET' not in list(par.keys()):
+			if 'OBS_SET' not in [x[:7] for x in list(par.keys())]:
 				print('No science files listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
 				return
 			if 'CAL_SETS' not in list(par.keys()):
