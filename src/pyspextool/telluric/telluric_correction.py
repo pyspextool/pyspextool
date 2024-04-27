@@ -30,15 +30,18 @@ from pyspextool.utils.for_print import for_print
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def telluric_correction(object_file:str, standard:str, standard_file:str,
-                        output_name:str, fluxdensity_units:str='W m-2 um-1',
+def telluric_correction(object_file:str,
+                        standard_name:str,
+                        standard_file:str,
+                        output_name:str,
+                        fluxdensity_units:str='W m-2 um-1',
                         reflectance:bool=False,
                         standard_data:typing.Optional[dict]=None,
                         input_path:typing.Optional[str]=None,
                         output_path:typing.Optional[str]=None,
                         qa_path:typing.Optional[str]=None,
                         qa_show:typing.Optional[bool]=None,
-                        qa_show_scale:float=1.0,
+                        qashow_scale:float=1.0,
                         qa_write:typing.Optional[bool]=None,
                         qa_block:typing.Optional[bool]=None,
                         verbose:typing.Optional[bool]=None,
@@ -52,7 +55,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     object_file : str 
         The name of the FITS file containing the object star spectra.
 
-    standard : str 
+    standard_name : str 
         The name of the standard star
 
     standard_file : str 
@@ -99,7 +102,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         pyspextool config file.  If set to True, quality assurance 
         plots will be interactively generated.
 
-    qa_show_scale : tuple, default=(10, 6)
+    qashow_scale : tuple, default=(10, 6)
         A (2,) tuple giving the plot size that is passed to matplotlib as,
         pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
@@ -131,7 +134,8 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
     check_parameter('telluric_correction', 'object_file', object_file, 'str')
 
-    check_parameter('telluric_correction', 'standard', standard, 'str')
+    check_parameter('telluric_correction', 'standard_name', standard_name,
+                    'str')
     
     check_parameter('telluric_correction', 'standard_file', standard_file,
                     'str')
@@ -158,8 +162,8 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     check_parameter('telluric_correction', 'qa_show', qa_show,
                     ['NoneType', 'bool'])
 
-    check_parameter('telluric_correction', 'qa_show_scale', qa_show_scale,
-                    'float')
+    check_parameter('telluric_correction', 'qashow_scale', qashow_scale,
+                    ['float','int'])
     
     check_parameter('telluric_correction', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
@@ -226,7 +230,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     #
 
     telluric.load['object_file'] = object_file
-    telluric.load['standard'] = standard
+    telluric.load['standard_name'] = standard_name
     telluric.load['standard_file'] = standard_file
     telluric.load['standard_data'] = standard_data    
     telluric.load['output_name'] = output_name
@@ -236,7 +240,7 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     telluric.load['output_path'] = output_path
     telluric.load['qa_path'] = qa_path      
     telluric.load['qa_show'] = qa_show
-    telluric.load['qa_show_scale'] = qa_show_scale
+    telluric.load['qashow_scale'] = qashow_scale
     telluric.load['qa_write'] = qa_write
     telluric.load['qa_block'] = qa_block
     telluric.load['verbose'] = verbose
@@ -258,25 +262,26 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         #
         # Load the Vega model
         #
-        
-        load_vega()
 
+        load_vega()
+        
         #
         # Normalize the order with the RV/deconvolution line
 
         normalize_order()
-
+    
         #
         # Determine the radial velocity
         #
 
-        get_radialvelocity()
+#        get_radialvelocity()
         
         #
         # Get the convolution kernel
         #
 
 #        get_kernel()
+        return
 
         
         #
@@ -503,39 +508,73 @@ def get_kernel():
     # Only run if the method is deconvolution
     #
 
-    if telluric.state['method'] == 'deconvolution':
+    if telluric.state['method'] == 'ip':
 
-        #
-        # Get QA set up
-        #
+        return
+
+    #
+    # Get QA set up
+    #
+
+    xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]
+    title = telluric.state['mode']+' Order '+\
+        str(telluric.state['normalized_order'])
+    normalization_range = [np.min(telluric.state['normalization_windows']),
+                           np.max(telluric.state['normalization_windows'])]
+
+
+
+
+    if telluric.load['qa_show'] is True:
+
+        # Build the qashow_info dictionary.
+
+        qashow_info = {'plot_number':setup.plotwindows['telluric_deconvolution'],
+                       'figure_scale':telluric.load['qashow_scale'],
+                       'normalization_wavelength_range':normalization_range,
+                       'xlabel':xlabel,
+                       'title':title,
+                       'block':telluric.load['qa_block']}
+
+    else:
+
+        qashow_info = None
+
+    if telluric.load['qa_write'] is True:
+
+        # Build the qafile_info dictionary.        
+
+        qafile_info = {'filepath':telluric.load['qa_path'],
+                       'filename':telluric.load['output_name']+'_deconv',
+                       'extension':setup.state['qa_extension'],
+                       'normalization_wavelength_range':normalization_range,
+                       'title':title,
+                       'xlabel':xlabel}
+    else:
+
+        qafile_info = None
+
+    #    
+    # Do the deconvolution
+    #
+    
+    plotnum = deconvolve_line(telluric.state['normalized_order_wavelength'],
+                              telluric.state['normalized_order_flux'],
+                              telluric.state['vega_wavelength_rvshifted'],
+                              telluric.state['vega_normalized_flux'],
+                              telluric.state['deconvolution_window'],
+                              telluric.load['verbose'],
+                              qafile_info=qafile_info,
+                              qashow_info=qashow_info,
+                              verbose=setup.state['verbose'])
+
+    # Did we show it?
+
+    if telluric.load['qa_show'] is True:
+        setup.plotwindows['telluric_deconvolution'] = plotnum
         
-        if telluric.load['qa_write'] is True:
 
-            fileinfo = {'figsize':(10,6),
-                        'filepath':telluric.load['qa_path'],
-                        'filename':telluric.load['output_name']+'_deconvolve',
-                        'extension':setup.state['qa_extension']}
-        
-        else:
-
-            fileinfo = None
-        
-        # Scale the vega wavelengths for the radial velocity
-
-        vega_wavelength = telluric.state['vega_wavelength']
-        vega_wavelength *= (1+telluric.state['object_redshift'])
-
-        # Do the deconvolution
-
-        deconvolve_line(telluric.state['normalized_order_wavelength'],
-                        telluric.state['normalized_order_flux'],
-                        vega_wavelength,
-                        telluric.state['vega_normalized_flux'],
-                        telluric.state['deconvolution_window'],
-                        qa_fileinfo=fileinfo,
-                        qa_show=setup.state['qa_show'],
-                        verbose=setup.state['verbose'])
-
+    
 
 
 def get_modeinfo(mode:str):
@@ -653,35 +692,70 @@ def get_radialvelocity():
     # Get QA set up
     #
 
-    if telluric.load['qa_write'] is True:
+    xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]    
+    title = telluric.state['standard_name']+', '+\
+        telluric.state['mode']+' Order '+\
+        str(telluric.state['normalized_order'])
 
-        fileinfo = {'figsize':(10,6),
-                    'filepath':telluric.load['qa_path'],
-                    'filename':telluric.load['output_name']+'_rv',
-                    'extension':setup.state['qa_extension']}
-        
+
+    if telluric.load['qa_show'] is True:
+
+        # Build the qashow_info dictionary.
+
+        qashow_info = {'plot_number':setup.plotwindows['telluric_rv'],
+                       'figure_scale':telluric.load['qashow_scale'],
+                       'block':telluric.load['qa_block'],
+                       'xlabel':xlabel,
+                       'title':title}
+
     else:
 
-        fileinfo = None
-        
+        qashow_info = None
+
+    if telluric.load['qa_write'] is True:
+
+        # Build the qafile_info dictionary.        
+
+        qafile_info = {'filepath':telluric.load['qa_path'],
+                       'filename':telluric.load['output_name']+'_rv',
+                       'extension':setup.state['qa_extension'],
+                       'xlabel':xlabel}
+
+    else:
+
+        qafile_info = None
+
     # Compute the RV
         
-    rv, z = model_xcorrelate(telluric.state['normalized_order_wavelength'],
-                             telluric.state['normalized_order_flux'],
-                             telluric.state['vega_wavelength'],
-                             telluric.state['vega_normalized_flux'],
+    rv, z, num= model_xcorrelate(telluric.state['normalized_order_wavelength'],
+                                telluric.state['normalized_order_flux'],
+                                telluric.state['vega_wavelength'],
+                                telluric.state['vega_normalized_flux'],
                              telluric.state['radialvelocity_window'][0].item(),
                              telluric.state['radialvelocity_window'][1].item(),
-                             qa_show=setup.state['qa_show'],
-                             qa_fileinfo=fileinfo, block=True)
-        
+                                qashow_info=qashow_info,
+                                qafile_info=qafile_info)
+
+    logging.info(f" RV = "+'{:g}'.format(float('{:.4g}'.format(rv)))+" km s-1")
+
+    #
     # Store the results
+    #
     
     telluric.state['object_rv'] = rv
     telluric.state['object_redshift'] = z
 
+    telluric.state['vega_wavelength_rvshifted'] = \
+        telluric.state['vega_wavelength']*(1+z)
 
-    
+    # Did we show it?
+
+    if telluric.load['qa_show'] is True:
+
+        setup.plotwindows['telluric_rv'] = num
+
+        
+        
 def load_data():
 
     """
@@ -702,7 +776,6 @@ def load_data():
     #
 
     logging.info(f" Telluric Correction\n-------------------------\n")
-
     logging.info(f" Loading the data...")
             
     # Object first
@@ -738,10 +811,11 @@ def load_data():
     
         # Get SIMBAD information of the standard
 
-        logging.info(f' Querying SIMBAD for standard star information...')
+        if telluric.load['verbose'] is True:
+            logging.info(f' Querying SIMBAD for standard star information...')
         
         Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
-        table = Simbad.query_object(telluric.load['standard'])
+        table = Simbad.query_object(telluric.load['standard_name'])
 
         if isinstance(table,Table):
             standard_name = table['MAIN_ID'][0]
@@ -751,7 +825,6 @@ def load_data():
 
     else:
 
-        standard_name = standard
         standard_sptype = standard_data['sptype']
         standard_vmag = standard_data['bmag']
         standard_bmag = standard_data['vmag']
@@ -772,7 +845,7 @@ def load_data():
             '"sptype", "bmag", and "vmag"'.format(standard)
 
         
-        raise ValueError(message)
+        raise pySpextoolError(message)
 
     #
     # Let's do some checks to ensure 1) the standard has only one aperture and
@@ -782,7 +855,7 @@ def load_data():
     if standard_info['napertures'] != 1:
 
         message = 'The standard has more than one aperture.'
-        raise ValueError(message)
+        raise pySpextoolError(message)
 
     intersection = np.intersect1d(object_info['orders'],
                                   standard_info['orders'])
@@ -790,7 +863,7 @@ def load_data():
     if np.size(intersection) != object_info['norders']:
 
         message = 'The standard lacks an order the object has.'
-        raise ValueError(message)
+        raise pySpextoolError(message)
 
     #
     # Store the results
@@ -874,6 +947,7 @@ def load_vega():
     """
 
     logging.info(f' Loading Vega model...')
+
     #
     # Determine which Vega model to use and load
     #
@@ -942,11 +1016,6 @@ def load_kernels():
 
 
     if telluric.state['method'] == 'ip':
-    #    if telluric.state['mode_info']['method'] == 'deconvolution':
-    #        print('hi')
-
-    if telluric.state['mode_info']['method'] == 'ip':
-
     
         for i in range(telluric.state['standard_norders']):
 
@@ -1013,9 +1082,16 @@ def normalize_order():
 
     """
 
-    logging.info(f" Normalizing order "+ str(telluric.state['normalized_order'])+"...")
+    #
+    # log the operation
+    #
+    
+    logging.info(f" Normalizing continuum in order "+\
+                 str(telluric.state['normalized_order'])+"...")
 
-
+    #
+    # Get set up for the normalization
+    #
     
     # Find the order given the modeinfo file
 
@@ -1030,43 +1106,62 @@ def normalize_order():
     degree = telluric.state['normalization_degree']    
     robust = {'threshold':5, 'epsilon':0.1}
     xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]
-
+    title = telluric.state['standard_name']+', '+\
+        telluric.state['mode']+' Order '+\
+    str(telluric.state['normalized_order'])+', degree='+str(degree)
+    
     #
     # Get QA set up
     #
+    
+    if telluric.load['qa_show'] is True:
+
+        # Build the qashow_info dictionary.
+
+        qashow_info = {'plot_number':setup.plotwindows['telluric_normalize'],
+                       'plot_scale':telluric.load['qashow_scale'],
+                       'block':telluric.load['qa_block'],
+                       'plot_xlabel':xlabel,
+                       'plot_title':title}
+
+    else:
+
+        qashow_info = None
 
     if telluric.load['qa_write'] is True:
 
-        fileinfo = {'figsize':(10,6),
-                    'filepath':telluric.load['qa_path'],
-                    'filename':telluric.load['output_name']+'_normalize',
-                    'extension':setup.state['qa_extension']}
-        
+        # Build the qafile_info dictionary.        
+
+        qafile_info = {'filepath':telluric.load['qa_path'],
+                       'filename':telluric.load['output_name']+'_normalize',
+                       'extension':setup.state['qa_extension'],
+                       'plot_xlabel':xlabel,
+                       'plot_title':title}
+
     else:
 
-        fileinfo = None
+        qafile_info = None
 
-    #
+        
     # Normalize the order
-    #
+        
+    nspectrum, plotnum = normalize_continuum(wavelength, flux, windows,
+                                             degree, robust=robust,
+                                             qashow_info=qashow_info,
+                                             qafile_info=qafile_info)
 
-    nspectrum,plotnum = normalize_continuum(wavelength, flux, windows,
-                                            degree, robust=robust,
-                                            latex_xlabel=xlabel,
-                                            qa_show=telluric.load['qa_show'],
-                                            qa_fileinfo=fileinfo)
     #
     # Store the results
     #
 
     telluric.state['normalized_order_wavelength'] = wavelength
     telluric.state['normalized_order_flux'] = nspectrum
-    telluric.state['normalization_plotnum'] = plotnum
-    
 
+    # Did we show it?
 
-    
+    if telluric.load['qa_show'] is True:
 
+        setup.plotwindows['telluric_normalize'] = plotnum
     
                 
 

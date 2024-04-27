@@ -1,30 +1,31 @@
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as pl
+from matplotlib.ticker import (AutoMinorLocator)
 
 import logging
 from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
 from scipy.special import erf
 import typing
+import os
 
 from pyspextool.utils.for_print import for_print
 from pyspextool.io.check import check_parameter
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.utils.math import moments
+from pyspextool.plot.limits import get_spec_range
 
 
 def deconvolve_line(data_wavelength:npt.ArrayLike,
-                    data_normalized_flux:npt.ArrayLike,
+                    data_fluxdensity:npt.ArrayLike,
                     model_wavelength:npt.ArrayLike,
-                    model_normalized_flux:npt.ArrayLike,
+                    model_fluxdensity:npt.ArrayLike,
                     line_wavelength_range:npt.ArrayLike,
                     tapered_window_factor:int|float=10,
-                    verbose:bool=False, qa_show:bool=False,
-                    qa_showscale:float=1.0,
-                    qa_block:bool=False,
-                    qa_fileinfo:typing.Optional[dict]=None,
-                    qa_wavelength_units:str='$\mu$m'):
+                    verbose:bool=False,
+                    qashow_info:typing.Optional[dict]=None,
+                    qafile_info:typing.Optional[dict]=None):
 
     """
     To deconvolve an absorption line using a model spetrum.
@@ -35,22 +36,18 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     data_wavelength : ndarray
         A (nwave1,) array of wavelengths for the object.
 
-    data_normalized_flux : ndarray
+    data_fluxdensity : ndarray
         A (nwave1,) array of continuum-normalized flux densities for the object
 
     model_wavelength : ndarray
         A (nwave2,) array of wavelengths for the model. 
 
-    model_normalized_flux : ndarray
+    model_fluxdensity : ndarray
         A (nwave12,) array of continuum-normalized flux densities for the model
 
     line_wavelength_range : ndarray
         A (2,) array of of wavelengths giving the range over which to do the 
         deconvolution.
-
-    qa_showscale : tuple, default=(10, 6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_showsize)) for the interactive plot.
     
 
     Returns
@@ -68,17 +65,17 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Check Parameters
     #
 
-    check_parameter('deconvolve_line', 'data_wavelength',
-                    data_wavelength, 'ndarray', 1)
+    check_parameter('deconvolve_line', 'data_wavelength', data_wavelength,
+                    'ndarray', 1)
 
-    check_parameter('deconvolve_line', 'data_normalized_flux',
-                    data_normalized_flux, 'ndarray', 1)    
+    check_parameter('deconvolve_line', 'data_fluxdensity', data_fluxdensity,
+                    'ndarray', 1)    
 
-    check_parameter('deconvolve_line', 'model_wavelength',
-                    model_wavelength, 'ndarray', 1)
+    check_parameter('deconvolve_line', 'model_wavelength', model_wavelength,
+                    'ndarray', 1)
 
-    check_parameter('deconvolve_line', 'model_normalized_flux',
-                    model_normalized_flux, 'ndarray', 1)    
+    check_parameter('deconvolve_line', 'model_fluxdensity', model_fluxdensity,
+                    'ndarray', 1)    
 
     check_parameter('deconvolve_line', 'line_wavelength_range',
                     line_wavelength_range, 'ndarray', 1)    
@@ -126,9 +123,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Clip the line out of the data
 
     data_line_wavelength = data_wavelength[zdata]
-    data_normalized_line_flux = data_normalized_flux[zdata]        
+    data_line_fluxdensity = data_fluxdensity[zdata]
     model_line_wavelength = model_wavelength[zmodel]
-    model_normalized_line_flux = model_normalized_flux[zmodel]    
+    model_line_fluxdensity = model_fluxdensity[zmodel]    
     
     ndata = np.size(data_line_wavelength)
     nmodel = np.size(model_line_wavelength)
@@ -137,7 +134,7 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Fit absorption line
     #
     
-    r = fit_peak1d(model_line_wavelength, model_normalized_line_flux, nparms=4,
+    r = fit_peak1d(model_line_wavelength, model_line_fluxdensity, nparms=4,
                    negative=True)
     line_wavelength = r['parms'][1]
 
@@ -159,8 +156,8 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Determine EWs of the absorption features and set the scale factor
     #
 
-    data_ew = data_step*(np.sum(1.0-data_normalized_line_flux))
-    model_ew = model_step*(np.sum(1.0-model_normalized_line_flux))    
+    data_ew = data_step*(np.sum(1.0-data_line_fluxdensity))
+    model_ew = model_step*(np.sum(1.0-model_line_fluxdensity))    
     scale_ew = data_ew/model_ew
 
     logging.info(' Model Line EW = '+str(model_ew))
@@ -171,24 +168,25 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Zero the spectra and scale the model
     #
 
-    data_zeroed_line_flux = data_normalized_line_flux-1
-    model_zeroed_scaled_line_flux = (model_normalized_line_flux-1)*scale_ew
+    data_zeroed_line_fluxdensity = data_line_fluxdensity-1
+    model_zeroed_scaled_line_fluxdensity = (model_line_fluxdensity-1)*\
+        scale_ew
     
     #
     # Interpolate the data to the model wavelength grid.  I set fill_value
     # To match the default behavior or interpol in IDL.
     #
 
-    f = interp1d(data_line_wavelength, data_zeroed_line_flux,
+    f = interp1d(data_line_wavelength, data_zeroed_line_fluxdensity,
                  bounds_error=False, fill_value="extrapolate")
-    rdata_zeroed_line_flux = f(model_line_wavelength)
+    rdata_zeroed_line_fluxdensity = f(model_line_wavelength)
 
     #
     # Perform the deconvolution
     #
 
-    fft_rdata = fft(rdata_zeroed_line_flux)
-    fft_model = fft(model_zeroed_scaled_line_flux)
+    fft_rdata = fft(rdata_zeroed_line_fluxdensity)
+    fft_model = fft(model_zeroed_scaled_line_fluxdensity)
     fft_kernel = fft_rdata/fft_model
 
     #
@@ -250,23 +248,24 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                      (model_wavelength <= data_wavelength_range[1]))[0]
     
 
-    input = (model_normalized_flux[zconvolve]-1)*scale_ew
-    model_zeroed_scaled_convolved_flux = np.convolve(input, kernel,mode='same')
+    input = (model_fluxdensity[zconvolve]-1)*scale_ew
+    model_zeroed_scaled_convolved_fluxdensity = np.convolve(input, kernel,
+                                                            mode='same')
 
     # Interpolate the convolved model onto data_line_wavelength
     
     f = interp1d(model_wavelength[zconvolve],
-                 model_zeroed_scaled_convolved_flux,
+                 model_zeroed_scaled_convolved_fluxdensity,
                  bounds_error=False, fill_value="extrapolate")
-    rmodel_zeroed_scaled_convolved_line_flux = f(data_line_wavelength)
+    rmodel_zeroed_scaled_convolved_line_fluxdensity = f(data_line_wavelength)
     
     # Compute the statistics
 
-    ratio = (data_zeroed_line_flux+1)/\
-        (rmodel_zeroed_scaled_convolved_line_flux+1)
-    maximum_deviation = np.max(np.abs(ratio-1))
+    line_fluxdensity_ratio = (data_zeroed_line_fluxdensity+1)/\
+        (rmodel_zeroed_scaled_convolved_line_fluxdensity+1)
+    maximum_deviation = np.max(np.abs(line_fluxdensity_ratio-1))
 
-    results = moments(ratio)
+    results = moments(line_fluxdensity_ratio)
     rms_deviation = results['stddev']
 
     logging.info(' RMS deviation '+str(rms_deviation))        
@@ -278,9 +277,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
 
     # Interpolate the model onto data_line_wavelength
     
-    f = interp1d(model_wavelength, model_normalized_flux-1,
-                 bounds_error=False, fill_value="extrapolate")
-    rmodel_zeroed_line_flux = f(data_line_wavelength)
+    f = interp1d(model_wavelength, model_fluxdensity-1, bounds_error=False,
+                 fill_value="extrapolate")
+    rmodel_zeroed_line_fluxdensity = f(data_line_wavelength)
 
     
     # Resample kernel onto data wavelengths
@@ -290,55 +289,85 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     rkernel = f(data_line_wavelength)
 
     dict = {'kernel':rkernel, 'wavelengths':data_line_wavelength,
-            'data':data_zeroed_line_flux, 'model':rmodel_zeroed_line_flux,
-            'convolved_model':rmodel_zeroed_scaled_convolved_line_flux,
-            'residuals':ratio-1,'maximum_deviation':maximum_deviation,
+            'data':data_zeroed_line_fluxdensity,
+            'model':rmodel_zeroed_line_fluxdensity,
+            'convolved_model':rmodel_zeroed_scaled_convolved_line_fluxdensity,
+            'residuals':line_fluxdensity_ratio-1,
+            'maximum_deviation':maximum_deviation,
             'rms_deviation':rms_deviation}
 
     #
-    # Create the QA plot
+    # Make the QA plot
     #
 
-    figure_size = (6*qa_showscale,4*qa_showscale)
-
+    figure_size = (6,10)
     
-    if qa_show is True:
+    if qashow_info is not None:
 
-        # This is to the screen
+        scaled_figure_size = (figure_size[0]*qashow_info['figure_scale'],
+                              figure_size[1]*qashow_info['figure_scale'])
 
-        if qa_block is True:
+        
+        if qashow_info['block'] is True:
 
-            pl.ioff()
+            x = 1
 
         else:
 
             pl.ion()
 
-        plot_number = plot_deconvolve_line(data_line_wavelength,
-                                           data_zeroed_line_flux,
-                                           rmodel_zeroed_line_flux,
-                                rmodel_zeroed_scaled_convolved_line_flux,
-                                           ratio,
-                                           qa_wavelength_units,
-                                           rms_deviation,
-                                           maximum_deviation,
-                                           figure_size)
-
-
-
+            
+        plotnum = plot_deconvolve_line(data_wavelength,
+                                       data_fluxdensity,
+                                qashow_info['normalization_wavelength_range'],
+                                       line_wavelength_range,
+                                       data_line_wavelength,
+                                       data_zeroed_line_fluxdensity,
+                                       rmodel_zeroed_line_fluxdensity,
+                                rmodel_zeroed_scaled_convolved_line_fluxdensity,
+                                       line_fluxdensity_ratio,
+                                       rms_deviation,
+                                       maximum_deviation,
+                                       scaled_figure_size,
+                                       plot_number=qashow_info['plot_number'],
+                                       xlabel=qashow_info['xlabel'],
+                                       title=qashow_info['title'])
+                                
 
             
-#        plot_number = plot_normalization(wavelength,
-#                                         flux,
-#                                         continuum,
-#                                         zregions,
-#                                         (10*qa_show_scale, 6*qa_show_scale),
-#                                         latex_xlabel=latex_xlabel)
-#        pl.show()
-        pl.pause(1)
+        pl.show()
+        if qashow_info['block'] is False:
+            pl.pause(1)
+
+        
+    if qafile_info is not None:
+
+        plot_deconvolve_line(data_wavelength,
+                             data_fluxdensity,
+                             qashow_info['normalization_wavelength_range'],
+                             line_wavelength_range,
+                             data_line_wavelength,
+                             data_zeroed_line_fluxdensity,
+                             rmodel_zeroed_line_fluxdensity,
+                             rmodel_zeroed_scaled_convolved_line_fluxdensity,
+                             line_fluxdensity_ratio,
+                             rms_deviation,
+                             maximum_deviation,
+                             scaled_figure_size,
+                             plot_number=qashow_info['plot_number'],
+                             xlabel=qashow_info['xlabel'],
+                             title=qashow_info['title'])
+        
+
+        pl.savefig(os.path.join(qafile_info['filepath'],
+                                qafile_info['filename'] + \
+                                qafile_info['extension']))
+        pl.close()
 
 
-    
+        plotnum = None
+
+    return plotnum
 
 
 
@@ -347,65 +376,6 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
 
 
 
-
-
-
-
-
-
-    
-    # Create the resampled Vega model just for show
-
-          
-#    fig = pl.figure()
-#    axes1 = fig.add_subplot(111)
-#
-#    xrange = [np.min(data_line_wavelength),np.max(data_line_wavelength)]
-#    pl.xlim(xrange)
-#    pl.ylim([-0.4,0.05])
-#    
-#    axes1.step(data_line_wavelength, data_zeroed_line_flux,color='black',
-#               where='mid')
-#    axes1.step(data_line_wavelength, rmodel_zeroed_scaled_convolved_line_flux,
-#               color='green', where='mid')
-#    axes1.step(data_line_wavelength,ratio-1,color='blue', where='mid')
-#    axes1.axhline(y=0.01,color='magenta',linestyle='dotted')
-#    axes1.axhline(y=-0.01,color='magenta',linestyle='dotted')   
-#
-#    axes1.set(xlabel='Wavelength ('+qa_wavelength_units+')',
-#              ylabel='Residual Intensity')
-#    
-#    axes1.step(data_line_wavelength, rmodel_zeroed_line_flux,color='red',
-#               where='mid')
-#
-##    axes1.step(model_wavelength, model_normalized_flux-1,color='red',
-##               where='mid')
-#
-#
-#    
-#    axes1.text(0.02, 0.2, 'Max Deviation = '+"{:.4f}".format(maximum_deviation),
-#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
-#
-#    axes1.text(0.02, 0.15, 'RMS Deviation = '+"{:.4f}".format(rms_deviation),
-#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
-#
-#
-#    axes1.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
-#               transform=axes1.transAxes)
-#
-#    axes1.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
-#               transform=axes1.transAxes)
-#
-#    axes1.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
-#               va='bottom', transform=axes1.transAxes)
-#
-#    axes1.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
-#               va='bottom', transform=axes1.transAxes)
-#    
-#    pl.show()
-#    
-#    
-#    logging.info(' Maximum deviation '+str(maximum_deviation))
 
 
 
@@ -463,15 +433,22 @@ def make_instrument_profile(x:npt.ArrayLike, parameters:npt.ArrayLike):
 
 
 
-def plot_deconvolve_line(wavelength:npt.ArrayLike,
-                         data_flux:npt.ArrayLike,
-                         model_flux:npt.ArrayLike,
-                         model_convolved_flux:npt.ArrayLike,
-                         ratio:npt.ArrayLike,
-                         wavelength_unit:str,
+def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
+                         data_fluxdensity:npt.ArrayLike,
+                         normalization_wavelength_range:npt.ArrayLike,
+                         line_wavelength_range:npt.ArrayLike,
+                         line_wavelength:npt.ArrayLike,
+                         line_data_fluxdensity:npt.ArrayLike,
+                         line_model_fluxdensity:npt.ArrayLike,
+                         line_model_convolved_fluxdensity:npt.ArrayLike,
+                         line_fluxdensity_ratio:npt.ArrayLike,
                          rms_deviation:float,
                          maximum_deviation:float,
-                         figure_size:tuple):
+                         figure_size:tuple,
+                         plot_number:typing.Optional[int]=None,
+                         xlabel:typing.Optional[str]=None,
+                         title:typing.Optional[str]=None):
+
 
     """
     To plot the results of the deconvolution.
@@ -512,53 +489,132 @@ def plot_deconvolve_line(wavelength:npt.ArrayLike,
 
     """
 
+
+    #
+    # Do the first figure showing the normalized spectrum and the line region
+    # chosen for the deconvolution
+    
     fig = pl.figure(num=plot_number, figsize=figure_size)
-    axes1 = fig.add_subplot(111)
+    axes1 = fig.add_subplot(211)
 
-    xrange = [np.min(data_line_wavelength),np.max(data_line_wavelength)]
+    # Get the xrange based on 'line_wavelength_range'
+    
+    delta = normalization_wavelength_range[1]-normalization_wavelength_range[0]
+    xrange = [normalization_wavelength_range[0]-delta*0.1,
+              normalization_wavelength_range[1]+delta*0.1]
+
     pl.xlim(xrange)
-    pl.ylim([-0.4,0.05])
-    
-    axes1.step(wavelength, data_flux,color='black', where='mid')
-    axes1.step(wavelength, model_flux, color='green', where='mid')
-    axes1.step(wavelength,ratio-1,color='blue', where='mid')
-    axes1.axhline(y=0.01,color='magenta',linestyle='dotted')
-    axes1.axhline(y=-0.01,color='magenta',linestyle='dotted')   
 
-    axes1.set(xlabel='Wavelength ('+wavelength_unit+')',
-              ylabel='Residual Intensity')
+    # Get the yrange based on te data in that wavelength range
     
-#    axes1.step(wavelength, rmodel_zeroed_line_flux,color='red',
-#               where='mid')
-#
-##    axes1.step(model_wavelength, model_normalized_flux-1,color='red',
-##               where='mid')
-#
-#
-#    
-#    axes1.text(0.02, 0.2, 'Max Deviation = '+"{:.4f}".format(maximum_deviation),
-#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
-#
-#    axes1.text(0.02, 0.15, 'RMS Deviation = '+"{:.4f}".format(rms_deviation),
-#               ha='left', va='bottom', transform=axes1.transAxes, color='black')
-#
-#
-#    axes1.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
-#               transform=axes1.transAxes)
-#
-#    axes1.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
-#               transform=axes1.transAxes)
-#
-#    axes1.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
-#               va='bottom', transform=axes1.transAxes)
-#
-#    axes1.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
-#               va='bottom', transform=axes1.transAxes)
-#    
-#    pl.show()
-#    
-#    
+    zleft = (data_wavelength > normalization_wavelength_range[0])
+    zright = (data_wavelength < normalization_wavelength_range[1])
+        
+    zselection = np.logical_and(zleft,zright)
 
+    yrange = get_spec_range(data_fluxdensity[zselection], frac=0.1)    
+    
+    pl.ylim(yrange)
+ 
+    # Plot the spectrum
+    
+    axes1.step(data_wavelength, data_fluxdensity,color='black', where='mid')
+
+    # Plot the normalization level and line region
+    
+    axes1.axvline(x=line_wavelength_range[0],color='red',linestyle='dotted')
+    axes1.axvline(x=line_wavelength_range[1],color='red',linestyle='dotted')
+    axes1.hlines(y=1,color='green',xmin=normalization_wavelength_range[0],
+                  xmax=normalization_wavelength_range[1],linestyle='dashed')
+
+    # Deal with the tickmarks
+    
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in')
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())
+
+    # Label axes
+    
+    axes1.set_title(title)   
+    axes1.set_ylabel('Normalized Flux Density')
+    
+    #
+    # Do the second figure showing the convolution results
+    #
+    
+    axes2 = fig.add_subplot(212)
+
+    # Get the xrange 
+    
+    xrange = [np.min(line_wavelength),np.max(line_wavelength)]
+    pl.xlim(xrange)
+
+    # Get the yrange based on all three spectra to be plotted.
+    
+    yrange = get_spec_range(line_data_fluxdensity, line_model_fluxdensity,
+                            line_fluxdensity_ratio-1, frac=0.1)    
+    
+    pl.ylim(yrange)    
+
+    # Plot the data 
+    
+    axes2.step(line_wavelength, line_data_fluxdensity,color='black',
+               where='mid')
+    axes2.step(line_wavelength, line_model_fluxdensity, color='green',
+               where='mid')
+    axes2.step(line_wavelength,line_fluxdensity_ratio-1,color='blue',
+               where='mid')
+    axes2.step(line_wavelength, line_model_convolved_fluxdensity,color='red',
+               where='mid')
+
+    
+    # Plot the rms limit lines of 0.01.
+    
+    axes2.axhline(y=0.01,color='magenta',linestyle='dotted')
+    axes2.axhline(y=-0.01,color='magenta',linestyle='dotted')
+
+    # Deal with the tickmarks
+    
+    axes2.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes2.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in')
+    axes2.yaxis.set_minor_locator(AutoMinorLocator())
+    
+    # Label the axes
+    
+    axes2.set(xlabel=xlabel, ylabel='Residual Normalized Flux Density')
+    axes2.set_xlabel(xlabel)    
+
+    # Add all the information texts
+        
+    axes2.text(0.02, 0.2, 'Max Deviation = '+"{:.4f}".format(maximum_deviation),
+               ha='left', va='bottom', transform=axes2.transAxes, color='black')
+
+    axes2.text(0.02, 0.15, 'RMS Deviation = '+"{:.4f}".format(rms_deviation),
+               ha='left', va='bottom', transform=axes2.transAxes, color='black')
+
+
+    axes2.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
+               transform=axes2.transAxes)
+
+    axes2.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
+               transform=axes2.transAxes)
+
+    axes2.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
+               va='bottom', transform=axes2.transAxes)
+
+    axes2.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
+               va='bottom', transform=axes2.transAxes)
+    
+
+    #
+    # Get the plot number and return the results
+    #
+    
+    plot_number = pl.gcf().number
+
+    return plot_number
 
 
 

@@ -26,3 +26,8 @@ state = {
     "verbose": True,
     "version": "1beta",
 }
+
+
+plotwindows = {'telluric_deconvolution':None,
+               'telluric_normalize':None,
+               'telluric_rv':None}
