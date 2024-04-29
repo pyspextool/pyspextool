@@ -486,7 +486,7 @@ def processFolder(folder,verbose=False):
 # program and PI info (based on code by Evan Watson)
 # NOTE: in this realization we're assuming its the same program and PI for the entire folder
 # this overrules what is header
-	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE, usecols=['MJD START','MJD END','PROGRAM','PI'], index_col='MJD START')
+	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE, usecols=['MJD START','MJD END','PROGRAM','PI'])
 	mjd = dp['MJD'].iloc[1]
 	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
 	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
