@@ -189,7 +189,7 @@ IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 
 # observing schedule
-OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule (1).csv')
+OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
 
 ##################################
 ####### BASIC TEST OF CODE #######
