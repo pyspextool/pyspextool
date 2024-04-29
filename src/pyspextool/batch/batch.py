@@ -189,7 +189,7 @@ IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 
 # observing schedule
-OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule_compact.csv')
+OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule (1).csv')
 
 ##################################
 ####### BASIC TEST OF CODE #######
@@ -486,8 +486,8 @@ def processFolder(folder,verbose=False):
 # program and PI info (based on code by Evan Watson)
 # NOTE: in this realization we're assuming its the same program and PI for the entire folder
 # this overrules what is header
-	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE)
-	mjd = dp['MJD'].iloc[int(len(dp)/2)]
+	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE, usecols=['MJD START','MJD END','PROGRAM','PI'], index_col='MJD START')
+	mjd = dp['MJD'].iloc[1]
 	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
 	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
 	if len(obs_sch)>0:
