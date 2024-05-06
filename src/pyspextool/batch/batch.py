@@ -128,13 +128,13 @@ OBSERVATION_PARAMETERS_REQUIRED = {
 	'TARGET_WAVECAL_FILE': 'wavecal.fits',
 	'STD_REDUCTION_MODE': 'A-B',
 	'STD_NAME': 'standard',
+	'STD_SPT': '',
+	'STD_B': -99,
+	'STD_V': -99.,
 	'STD_PREFIX': 'spc',
 	'STD_FILES': '1-2',
 	'STD_FLAT_FILE': 'flat.fits',
 	'STD_WAVECAL_FILE': 'wavecal.fits',
-	# 'STD_SPT': '',
-	# 'STD_B': -99,
-	# 'STD_V': -99.,
 	}
 
 # these are optional parameters for target-calibration sequences
@@ -176,10 +176,12 @@ SIMBAD_COLS = {
 	'SIMBAD_TYPE': 'sp_type',
 	'SIMBAD_BMAG': 'B',
 	'SIMBAD_VMAG': 'V',
+	'SIMBAD_GMAG': 'G',
 	'SIMBAD_JMAG': 'J',
 	'SIMBAD_HMAG': 'H',
 	'SIMBAD_KMAG': 'K',
 }
+SIMBAD_EXCLUDE = ['Planet','Galaxy','QSO','Cluster*','Association','Stream','MouvGroup','GlobCluster','OpenCluster','BrightestCG','RadioG','LowSurfBrghtG','BlueCompactG','StarburstG','StarburstG','EmissionG','AGN','Seyfert','Seyfert1','Seyfert2','LINER','InteractingG','PairG','GroupG','Compact_Gr_G','ClG','protoClG','SuperClG','Void','Transient','HI','Maser','gammaBurst','PartofG','Unknown','Region']
 SIMBAD_RADIUS = 30*u.arcsecond
 
 # legacy download constants
@@ -923,9 +925,11 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 					t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
 					t_match.sort(['angDist'])
 					if len(t_match)>0:
+						for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['main_type']==x))
+					if len(t_match)>0:
 						for x in list(SIMBAD_COLS.keys()):
 							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
-	except: print('WARNING: Unable to match targets to SIMBAD via XMatch; check internet connection')
+	except: print('WARNING: There was a problem in trying to match targets to SIMBAD via XMatch; check internet connection')
 
 # add on a NOTES column
 	dpout['NOTES'] = ['']*len(dpout)
@@ -1263,7 +1267,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 
 # loop over names
 	f.write('\n# Science observations')
-	f.write('\n#\tMode\tTarget Type\tTarget Sub\tTarget Name\tTarget Prefix\tTarget Files\tTarget Flat\tTarget Wavecal\tStd Sub\tStd Name\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
+	f.write('\n#\tMode\tTarget Type\tTarget Sub\tTarget Name\tTarget Prefix\tTarget Files\tTarget Flat\tTarget Wavecal\tStd Sub\tStd Name\tStd SpT\tStd B\tStd V\tStd Prefix\tStd Files\tStd Flat\tStd Wavecal\tOptions (key=value)\n'.zfill(len(OBSERVATION_SET_KEYWORD)))
 	for n in tnames:
 		dps = dpc[dpc['TARGET_NAME']==n]
 		dps = dps[dps['TARGET_TYPE']=='target']
@@ -1306,6 +1310,9 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']+dpflux['DIFF3']
 				fref = dpflux['FILE NUMBER'].iloc[np.argmin(dpflux['DIFF'])]
 				tname = str(dpflux['TARGET_NAME'].iloc[np.argmin(dpflux['DIFF'])])
+				tspt = str(dpflux['SIMBAD_TYPE'].iloc[np.argmin(dpflux['DIFF'])])
+				tbmag = str(dpflux['SIMBAD_BMAG'].iloc[np.argmin(dpflux['DIFF'])])
+				tvmag = str(dpflux['SIMBAD_VMAG'].iloc[np.argmin(dpflux['DIFF'])])
 				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
 				fnum = np.array(dpfluxs['FILE NUMBER'])
 				if len(fnum)<2: 
@@ -1316,7 +1323,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 						ical = np.argmin(np.abs(cnum1-np.median(dpfluxs['FILE NUMBER'])))
 #						ical = np.argmin(np.abs(np.array(dpcals['FILE NUMBER'])-np.median(dpfluxs['FILE NUMBER'])))
 						cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
-					line+='\tA-B\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),numberList(fnum),cs,cs)
+					line+='\tA-B\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(tname,tspt,tbmag,tvmag,str(dpfluxs['PREFIX'].iloc[0]),numberList(fnum),cs,cs)
 
 					# if len(fnum)==2: 
 					# 	line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
@@ -1945,7 +1952,19 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 # NOTE: CURRENTLY LEAVING OF STANDARD INFORMATION - COULD BE EXTRACTED FROM LOG
-			standard_data = None
+#### FIX THIS
+
+		# `"sptype"` : str
+		#	 The standard star spectral type.
+
+		# `"bmag"` : int or float
+		#	 The standard star B-band magnitude
+
+		# `"vmag"` : int or float
+		#	 The standard star V-band magnitude.
+
+			standard_data = {'sptype': spar['STD_SPT'],'bmag': spar['STD_B'],'vmag': spar['STD_V']}
+			print(standard_data)
 
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
