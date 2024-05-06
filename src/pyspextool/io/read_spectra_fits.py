@@ -93,18 +93,18 @@ def read_spectra_fits(file):
     val = header['ORDERS'].split(',')
     orders = np.array([int(x) for x in val])
 
-    dispersions = np.empty(dictionary['norders'])
+#    dispersions = np.empty(dictionary['norders'])
 
-    for i in range(dictionary['norders']):
+#    for i in range(dictionary['norders']):
 
-        key = 'OR'+str(orders[i]).zfill(3)+'_DP'
-        dispersions[i] = header[key]
+#        key = 'OR'+str(orders[i]).zfill(3)+'_DP'
+#        dispersions[i] = header[key]
 
     
 
     add = {'orders': orders,
            'napertures': header['NAPS'],
-           'dispersions':dispersions,
+#           'dispersions':dispersions,
            'xunits': header['XUNITS'],
            'yunits': header['YUNITS'],
            'lxunits': header['LXUNITS'],

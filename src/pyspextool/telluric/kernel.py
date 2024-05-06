@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as pl
+import matplotlib
 from matplotlib.ticker import (AutoMinorLocator)
 
 import logging
@@ -304,19 +305,16 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     
     if qashow_info is not None:
 
-        scaled_figure_size = (figure_size[0]*qashow_info['figure_scale'],
-                              figure_size[1]*qashow_info['figure_scale'])
 
         
         if qashow_info['block'] is True:
 
-            x = 1
+            pl.ioff()
 
         else:
 
             pl.ion()
 
-            
         plotnum = plot_deconvolve_line(data_wavelength,
                                        data_fluxdensity,
                                 qashow_info['normalization_wavelength_range'],
@@ -328,10 +326,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                                        line_fluxdensity_ratio,
                                        rms_deviation,
                                        maximum_deviation,
-                                       scaled_figure_size,
-                                       plot_number=qashow_info['plot_number'],
-                                       xlabel=qashow_info['xlabel'],
-                                       title=qashow_info['title'])
+                                       plot_scale=qashow_info['figure_scale'],
+                                       plot_xlabel=qashow_info['plot_xlabel'],
+                                       plot_title=qashow_info['plot_title'])
                                 
 
             
@@ -353,10 +350,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                              line_fluxdensity_ratio,
                              rms_deviation,
                              maximum_deviation,
-                             scaled_figure_size,
                              plot_number=qashow_info['plot_number'],
-                             xlabel=qashow_info['xlabel'],
-                             title=qashow_info['title'])
+                             plot_xlabel=qashow_info['plot_xlabel'],
+                             plot_title=qashow_info['plot_title'])
         
 
         pl.savefig(os.path.join(qafile_info['filepath'],
@@ -368,15 +364,6 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
         plotnum = None
 
     return plotnum
-
-
-
-
-
-
-
-
-
 
 
     
@@ -433,8 +420,8 @@ def make_instrument_profile(x:npt.ArrayLike, parameters:npt.ArrayLike):
 
 
 
-def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
-                         data_fluxdensity:npt.ArrayLike,
+def plot_deconvolve_line(order_wavelength:npt.ArrayLike,
+                         order_fluxdensity:npt.ArrayLike,
                          normalization_wavelength_range:npt.ArrayLike,
                          line_wavelength_range:npt.ArrayLike,
                          line_wavelength:npt.ArrayLike,
@@ -444,57 +431,155 @@ def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
                          line_fluxdensity_ratio:npt.ArrayLike,
                          rms_deviation:float,
                          maximum_deviation:float,
-                         figure_size:tuple,
+                         plot_scale:typing.Optional[int]=1.0,
                          plot_number:typing.Optional[int]=None,
-                         xlabel:typing.Optional[str]=None,
-                         title:typing.Optional[str]=None):
+                         plot_xlabel:typing.Optional[str]=None,
+                         plot_title:typing.Optional[str]=None):
 
 
     """
     To plot the results of the deconvolution.
 
+    Creates a vertical two-panel plot.  The upper panel shows the normalized
+    spectrum and the region over which the deconvolution was done and the
+    lower plot shows the results of the deconvolution process.
+
     Parameters
     ----------
-    wavelength : ndarray
-        A (nwave,) array of wavelengths.
+    order_wavelength : ndarray
+        A (nwave1,) array of wavelengths.
 
-    data_flux : ndarray
-        A (nwave,) array of zeroed data "intensities".
-
-    model_flux : ndarray
-        A (nwave,) array of zeroed model "intensities".
+    order_fluxdensity : ndarray
+        A (nwave1,) array of data continuum-normalized flux densities.
     
-    model_convolved_flux : ndarray
-        A (nwave,) array of zeroed convolved model "intensities".
+    normalization_wavelength_range : ndarray
+        A (2,) array giving the wavelength range over which the normalization
+        of the continuum was done.
 
-    ratio : ndarray
-        A (nwave,) array of the ratio of the non-zeroed data_flux and
-        model_convolved_flux
-    
-    wavelength_unit : str
-        A str giving the units of wavelengths.
+    line_wavelength_range : ndarray
+        A (2,) array giving the wavelength range over which the line was
+    deconvolved.
 
+    line_wavelength : ndarray
+        A (nwave2,) array of wavelengths used in the deconvolution
+        
+    line_data_fluxdensity : ndarray
+        A (nwave2,) array of data continuum-normalized, continuum-subtracted
+        flux densities.
+
+    line_model_fluxdensity : ndarray
+        A (nwave2,) array of model continuum-normalized, continuum-subtracted
+        flux densities.
+
+    line_model_convolved_fluxdensity : ndarray
+        A (nwave2,) array of model continuum-normalized, continuum-subtracted,
+        convolved flux densities.
+
+    line_fluxdensity_ratio : ndarray
+        A (nwave2,) array of the ratio of line_data_fluxdensity and
+        line_model_convolved_fluxdensity.
+      
     rms_deviation: float
-        A float giving the rms deviation of the residual.
+        A float giving the rms deviation of line_fluxdensity_ratio.
     
     maximum_deviation : float
-        A float giving  giving the maximum deviation of the residual.
+        A float giving giving the maximum deviation of line_fluxdensity_ratio.
 
-    figure_size : tuple
+    plot_scale : float or int, default is 1
+        A scale factor by which to increase the QA plots size.
 
+    plot_number : int, default is None
+        The plot number to pass to pl.figure.
     
+    plot_xtitle : string, default is None
+        A string giving the xtitle to pass directly to matplotlib.
+
+    plot_title : string, default is None
+        A string giving the title to pass directly to matplotlib.
+
+       
     Returns
     -------
-    Nothing
+    int
+    The plot number
 
     """
 
-
     #
-    # Do the first figure showing the normalized spectrum and the line region
-    # chosen for the deconvolution
+    # Check the parameters
+    #
+    
+    check_parameter('plot_deconvolve_line', 'order_wavelength',
+                    order_wavelength, 'ndarray', 1)
+
+    check_parameter('plot_deconvolve_line', 'order_fluxdensity',
+                    order_fluxdensity, 'ndarray', 1)
+
+    check_parameter('plot_deconvolve_line',
+                    'normalization_wavelength_range',
+                    normalization_wavelength_range, ['ndarray','list'])
+
+    check_parameter('plot_deconvolve_line', 'line_wavelength_range',
+                    line_wavelength_range, 'ndarray', 1)
+    
+    check_parameter('plot_deconvolve_line', 'line_wavelength',
+                    line_wavelength, 'ndarray',1)
+
+    check_parameter('plot_deconvolve_line', 'line_data_fluxdensity',
+                    line_data_fluxdensity, 'ndarray',1)
+
+    check_parameter('plot_deconvolve_line', 'line_model_fluxdensity',
+                    line_model_fluxdensity, 'ndarray',1)
+    
+    check_parameter('plot_deconvolve_line', 'line_model_convolved_fluxdensity',
+                    line_model_convolved_fluxdensity, 'ndarray',1)
+
+    check_parameter('plot_deconvolve_line', 'line_fluxdensity_ratio',
+                    line_fluxdensity_ratio, 'ndarray',1)
+
+    check_parameter('plot_deconvolve_line', 'plot_scale', plot_scale,
+                    ['float','int'])
+
+    check_parameter('plot_deconvolve_line', 'plot_number', plot_number,
+                    ['int','NoneType'])
+        
+    check_parameter('plot_deconvolve_line', 'plot_xlabel', plot_xlabel,
+                    ['str','NoneType'])
+
+    check_parameter('plot_deconvolve_line', 'plot_title', plot_title,
+                    ['str','NoneType'])
+
+    
+    #
+    # Set up the plot
+    #
+
+    figure_size = (6,9)
+    scaled_figure_size = (figure_size[0]*plot_scale,
+                          figure_size[1]*plot_scale)
+    
+    font_size = 12
+    scaled_font_size = font_size*plot_scale
+    
+    # Set the fonts
+
+    font = {'family' : 'helvetica',
+            'weight' : 'normal',
+            'size'   : scaled_font_size}
+
+    matplotlib.rc('font', **font)
     
     fig = pl.figure(num=plot_number, figsize=figure_size)
+    pl.subplots_adjust(left=0.15,
+                    bottom=0.1, 
+                    right=0.95, 
+                    top=0.9, 
+                    hspace=0.2)
+
+    #
+    # Do the top plot
+    #
+    
     axes1 = fig.add_subplot(211)
 
     # Get the xrange based on 'line_wavelength_range'
@@ -507,18 +592,18 @@ def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
 
     # Get the yrange based on te data in that wavelength range
     
-    zleft = (data_wavelength > normalization_wavelength_range[0])
-    zright = (data_wavelength < normalization_wavelength_range[1])
+    zleft = (order_wavelength > normalization_wavelength_range[0])
+    zright = (order_wavelength < normalization_wavelength_range[1])
         
     zselection = np.logical_and(zleft,zright)
 
-    yrange = get_spec_range(data_fluxdensity[zselection], frac=0.1)    
+    yrange = get_spec_range(order_fluxdensity[zselection], frac=0.1)    
     
     pl.ylim(yrange)
  
     # Plot the spectrum
     
-    axes1.step(data_wavelength, data_fluxdensity,color='black', where='mid')
+    axes1.step(order_wavelength, order_fluxdensity,color='black', where='mid')
 
     # Plot the normalization level and line region
     
@@ -528,15 +613,17 @@ def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
                   xmax=normalization_wavelength_range[1],linestyle='dashed')
 
     # Deal with the tickmarks
-    
+
     axes1.xaxis.set_minor_locator(AutoMinorLocator())    
     axes1.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in')
+                      which='both', direction='in', width=1.5)
+    axes1.tick_params(which='minor', length=3)
+    axes1.tick_params(which='major', length=5)
     axes1.yaxis.set_minor_locator(AutoMinorLocator())
 
     # Label axes
     
-    axes1.set_title(title)   
+    axes1.set_title(plot_title)   
     axes1.set_ylabel('Normalized Flux Density')
     
     #
@@ -575,16 +662,19 @@ def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
     axes2.axhline(y=-0.01,color='magenta',linestyle='dotted')
 
     # Deal with the tickmarks
-    
+
+    # Deal with the tickmarks
+
     axes2.xaxis.set_minor_locator(AutoMinorLocator())    
     axes2.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in')
+                      which='both', direction='in', width=1.5)
+    axes2.tick_params(which='minor', length=3)
+    axes2.tick_params(which='major', length=5)
     axes2.yaxis.set_minor_locator(AutoMinorLocator())
     
     # Label the axes
     
-    axes2.set(xlabel=xlabel, ylabel='Residual Normalized Flux Density')
-    axes2.set_xlabel(xlabel)    
+    axes2.set(xlabel=plot_xlabel, ylabel='Residual Normalized Flux Density')
 
     # Add all the information texts
         
@@ -598,10 +688,10 @@ def plot_deconvolve_line(data_wavelength:npt.ArrayLike,
     axes2.text(0.95, 0.3, 'A0 V', color='black', ha='right', va='bottom',
                transform=axes2.transAxes)
 
-    axes2.text(0.95, 0.25, 'Vega', color='red', ha='right', va='bottom',
+    axes2.text(0.95, 0.25, 'Vega', color='green', ha='right', va='bottom',
                transform=axes2.transAxes)
 
-    axes2.text(0.95, 0.2, 'Scaled & Convolved Vega', color='green', ha='right',
+    axes2.text(0.95, 0.2, 'Scaled & Convolved Vega', color='red', ha='right',
                va='bottom', transform=axes2.transAxes)
 
     axes2.text(0.95, 0.15, 'Residuals', color='blue', ha='right',

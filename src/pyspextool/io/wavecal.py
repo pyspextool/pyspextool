@@ -385,7 +385,7 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
             fit = poly_fit_1d(wavecal[z],wgrid,1)
             dispersions[i] = fit['coeffs'][1]
-
+            
             # Now store the results
                         
             wavecal[z] = wgrid

@@ -274,13 +274,13 @@ def telluric_correction(object_file:str,
         # Determine the radial velocity
         #
 
-#        get_radialvelocity()
+        get_radialvelocity()
         
         #
         # Get the convolution kernel
         #
 
-#        get_kernel()
+        get_kernel()
         return
 
         
@@ -527,13 +527,14 @@ def get_kernel():
 
     if telluric.load['qa_show'] is True:
 
+        print('hi1')
         # Build the qashow_info dictionary.
 
         qashow_info = {'plot_number':setup.plotwindows['telluric_deconvolution'],
                        'figure_scale':telluric.load['qashow_scale'],
                        'normalization_wavelength_range':normalization_range,
-                       'xlabel':xlabel,
-                       'title':title,
+                       'plot_xlabel':xlabel,
+                       'plot_title':title,
                        'block':telluric.load['qa_block']}
 
     else:
@@ -563,7 +564,6 @@ def get_kernel():
                               telluric.state['vega_wavelength_rvshifted'],
                               telluric.state['vega_normalized_flux'],
                               telluric.state['deconvolution_window'],
-                              telluric.load['verbose'],
                               qafile_info=qafile_info,
                               qashow_info=qashow_info,
                               verbose=setup.state['verbose'])
@@ -703,10 +703,10 @@ def get_radialvelocity():
         # Build the qashow_info dictionary.
 
         qashow_info = {'plot_number':setup.plotwindows['telluric_rv'],
-                       'figure_scale':telluric.load['qashow_scale'],
+                       'plot_scale':telluric.load['qashow_scale'],
                        'block':telluric.load['qa_block'],
-                       'xlabel':xlabel,
-                       'title':title}
+                       'plot_xlabel':xlabel,
+                       'plot_title':title}
 
     else:
 
@@ -719,7 +719,8 @@ def get_radialvelocity():
         qafile_info = {'filepath':telluric.load['qa_path'],
                        'filename':telluric.load['output_name']+'_rv',
                        'extension':setup.state['qa_extension'],
-                       'xlabel':xlabel}
+                       'plot_xlabel':xlabel,
+                       'plot_title':title}
 
     else:
 
@@ -733,6 +734,7 @@ def get_radialvelocity():
                                 telluric.state['vega_normalized_flux'],
                              telluric.state['radialvelocity_window'][0].item(),
                              telluric.state['radialvelocity_window'][1].item(),
+                            resolving_power=telluric.state['resolving_power'],
                                 qashow_info=qashow_info,
                                 qafile_info=qafile_info)
 
@@ -879,6 +881,7 @@ def load_data():
     telluric.state['object_info'] = object_info    
     telluric.state['object_hdrinfo'] = object_hdrinfo
     telluric.state['mode'] = standard_hdrinfo['MODE'][0]
+    telluric.state['resolving_power'] = standard_hdrinfo['RP'][0]
     
     #
     # Get other information from the headers

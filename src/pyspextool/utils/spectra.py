@@ -16,9 +16,9 @@ from pyspextool.plot.limits import get_spec_range
 from pyspextool.utils.arrays import find_index
 
 def model_xcorrelate(object_wavelength:npt.ArrayLike,
-                     object_nflux:npt.ArrayLike,
+                     object_fluxdensity:npt.ArrayLike,
                      model_wavelength:npt.ArrayLike,
-                     model_nflux:npt.ArrayLike,
+                     model_fluxdensity:npt.ArrayLike,
                      minimum_wavelength:typing.Optional[float]=None,
                      maximum_wavelength:typing.Optional[float]=None,
                      resolving_power:typing.Optional[float]=None,
@@ -34,13 +34,13 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     object_wavelength : ndarray
         A (nwave1,) array of wavelengths for the object in microns.
 
-    object_nflux : ndarray
+    object_fluxdensity : ndarray
         A (nwave1,) array of continuum-normalized flux densities for the object.
 
     model_wavelength : ndarray
         A (nwave2,) array of wavelengths for a model in microns.
 
-    model_nflux : ndarray
+    model_fluxdensity : ndarray
         A (nwave2,) array of continuum-normalized flux densities for a model.
 
     minimum_wavelength : int or float, default=None
@@ -53,27 +53,23 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
         The resolving power of the observations.  A not-perfect attempt to 
         convolve the model to the same resolving power is then made.
 
-        The result is os.path.join(qa_fileinfo['filepath'],
-                                   qa_fileinfo['filename'] + \
-                                   qa_fileinfo['extension'])
-
     qashow_info : None or dict
 
         `'plot_number'` : int
             The plot number to be passed back in to update the same plot.
             Useful if you are doing to-screen plotting.
     
-        `'figure_scale'` : float or int
+        `'plot_scale'` : float or int
             A scale factor to increase the size of the plot.  
 
         `'block'`: {False, True}, optional
             Set to make the plot block access to the command line, e.g.
             pl.ioff().
 
-        `'xlabel'` : str, optional
+        `'plot_xlabel'` : str, optional
             A latex string giving the xlabel.
 
-        `'title'` : str, optional
+        `'plot_title'` : str, optional
             A latex string giving the title of the plot.
 
         
@@ -88,16 +84,24 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
             The file extension.  Must be compatible with the savefig
             function of matplotlib.
 
-        The result is os.path.join(qa_fileinfo['filepath'],
-                                   qa_fileinfo['filename'] + \
-                                   qa_fileinfo['extension'])
+        `'plot_xlabel'` : str, optional
+            A latex string giving the xlabel.
+
+        `'plot_title'` : str, optional
+            A latex string giving the title of the plot.
+
+    
     
     Returns
     -------
     ndarray
-        The velocity shift of the model relative to the data in km s-1.  
+        The velocity shift of the data relative to the model in km s-1.  
 
-        
+    Any resulting QA plot is written to disk as,
+    os.path.join(qa_fileinfo['filepath'],qa_fileinfo['filename'] + \
+                 qa_fileinfo['extension'])
+
+           
     """
 
     #
@@ -107,14 +111,14 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     check_parameter('model_xcorrelate', 'object_wavelength', object_wavelength,
                     'ndarray', 1)
 
-    check_parameter('model_xcorrelate', 'object_nflux', object_nflux, 'ndarray',
-                    1)
+    check_parameter('model_xcorrelate', 'object_fluxdensity',
+                    object_fluxdensity, 'ndarray', 1)
 
     check_parameter('model_xcorrelate', 'model_wavelength', model_wavelength,
                     'ndarray', 1)
 
-    check_parameter('model_xcorrelate', 'model_nflux', model_nflux, 'ndarray',
-                    1)
+    check_parameter('model_xcorrelate', 'model_nflux', model_fluxdensity,
+                    'ndarray', 1)
 
     check_parameter('model_xcorrelate', 'minimum_wavelength',
                     minimum_wavelength, ['NoneType', 'int', 'float'])
@@ -137,10 +141,10 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
 
     cspeed = 2.99792458E5 # km/s
 
-    # subtract the continuum
+    # zero the continuum
 
-    model_zflux = model_nflux - 1
-    object_zflux = object_nflux-1
+    model_zflux = model_fluxdensity - 1
+    object_zflux = object_fluxdensity-1
 
     #
     # Now get the wavelength range over which to do the x-correlation
@@ -263,14 +267,8 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     # Make the QA plot
     #
 
-    figure_size = (6,10)
-    
     if qashow_info is not None:
 
-        scaled_figure_size = (figure_size[0]*qashow_info['figure_scale'],
-                              figure_size[1]*qashow_info['figure_scale'])
-
-        
         if qashow_info['block'] is True:
 
             pl.ioff()
@@ -284,12 +282,12 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
                                         model_resampled_zflux,
                                         lag, xcor, fit['fit'],
                                         offset_pixels, velocity_shift,
-                                        redshift, scaled_figure_size,
-                                        xlabel=qashow_info['xlabel'],
-                                        title=qashow_info['title'],
-                                        plot_number=qashow_info['plot_number'])
-
-                       
+                                        redshift,
+                                        plot_scale=qashow_info['plot_scale'],
+                                        plot_number=qashow_info['plot_number'],
+                                        plot_xlabel=qashow_info['plot_xlabel'],
+                                        plot_title=qashow_info['plot_title'])
+                               
         pl.show()
         if qashow_info['block'] is False:
             pl.pause(1)
@@ -301,7 +299,8 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
                               model_resampled_zflux,
                               lag, xcor, fit['fit'], offset_pixels,
                               velocity_shift, redshift,
-                              scaled_figure_size)
+                              plot_xlabel=qashow_info['plot_xlabel'],
+                              plot_title=qashow_info['plot_title'])
                 
         pl.savefig(os.path.join(qafile_info['filepath'],
                                 qafile_info['filename'] + \
@@ -309,7 +308,6 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
         pl.close()
 
         plotnum = None
-
 
         
     return velocity_shift, redshift, plotnum
@@ -360,7 +358,6 @@ def normalize_continuum(wavelength:npt.ArrayLike,
                            new_stddev
 
     qashow_info : None or dict
-
         `'plot_number'` : int
             The plot number.  Useful if you are doing to-screen plotting
             because you can plot to the same window multiple times.
@@ -378,7 +375,7 @@ def normalize_continuum(wavelength:npt.ArrayLike,
         `'plot_title'` : str, optional
             A latex string giving the title of the plot.
         
-    qafile_info : dict, optional
+    qafile_info : dict, optional    
         `"filepath"` : str
             The directory to write the QA figure.
 
@@ -723,6 +720,7 @@ def plot_normalization(wavelength:npt.ArrayLike,
                       which='both', direction='in', width=1.5)
     axes2.tick_params(which='minor', length=3)
     axes2.tick_params(which='major', length=5)
+    axes2.yaxis.set_minor_locator(AutoMinorLocator())    
     
     # Plot the fitted pixels in red
     
@@ -755,12 +753,10 @@ def plot_model_xcorrelate(wavelength:npt.ArrayLike,
                           offset:float,
                           velocity:float,
                           redshift:float,
-                          figure_size:tuple,
-                          xlabel:typing.Optional[str]=None,                    
-                          title:typing.Optional[str]=None,
-                          plot_number:typing.Optional[int]=None):
-
-
+                          plot_scale:float=1.0,
+                          plot_number:typing.Optional[int]=None,
+                          plot_xlabel:typing.Optional[str]=None,
+                          plot_title:typing.Optional[str]=None):
     """
     To create a plot for the cross correlation in device independent way
 
@@ -830,66 +826,115 @@ def plot_model_xcorrelate(wavelength:npt.ArrayLike,
     check_parameter('plot_model_xcorrelate', 'velocity', velocity,
                     ['float','float64'])
 
-    check_parameter('plot_model_xcorrelate', 'figure_size', figure_size,
-                    'tuple')
+#    check_parameter('plot_model_xcorrelate', 'figure_size', figure_size,
+#                    'tuple')
 
     
     #
     # Make the figure
     #
+
+    figure_size = (6,9)
+    scaled_figure_size = (figure_size[0]*plot_scale,
+                          figure_size[1]*plot_scale)
     
-    fig = pl.figure(num=plot_number, figsize=figure_size)
+    font_size = 12
+    scaled_font_size = font_size*plot_scale
+    
+    # Set the fonts
+
+    font = {'family' : 'helvetica',
+            'weight' : 'normal',
+            'size'   : scaled_font_size}
+
+    matplotlib.rc('font', **font)
+    
+    fig = pl.figure(num=plot_number, figsize=scaled_figure_size)
+    pl.subplots_adjust(left=0.1,
+                    bottom=0.1, 
+                    right=0.95, 
+                    top=0.9, 
+                       hspace=0.2)
+
 
     # Create the spectral plot
 
-    yrange = get_spec_range(object_flux, model_flux, frac=0.1)
-    
-    axes1 = fig.add_subplot(211)
-    axes1.margins(x=0)
-    axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes1.step(wavelength, object_flux, 'black')
-    axes1.step(wavelength, model_flux, 'r')
-    axes1.set(xlabel=xlabel, ylabel='Relative Intensity',title=title)
-
-    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
-    axes1.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in')
-    axes1.yaxis.set_minor_locator(AutoMinorLocator())    
-
-    
-    axes1.text(0.95, 0.2, 'data', color='#1f77b4', ha='right',
-                transform=axes1.transAxes)
-
-    axes1.text(0.95, 0.1, 'Model', color='r', ha='right',
-              transform=axes1.transAxes)
-    
     # Create the cross correlation plot
 
     yrange = get_spec_range(xcorrelation, fit, frac=0.1)
     
-    axes2 = fig.add_subplot(212)    
+    axes1 = fig.add_subplot(211)    
+    axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
+    axes1.step(lag, xcorrelation, 'black')
+    axes1.step(lag, fit, 'r')
+    axes1.set(xlabel='lag (pixels)')
+    axes1.set_title(plot_title)    
+
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in', width=1.5)
+    axes1.tick_params(which='minor', length=3)
+    axes1.tick_params(which='major', length=5)
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())
+
+    axes1.axvline(x=0,color='black',linestyle='dotted')
+    
+    
+    axes1.text(0.05, 0.9, 'X Correlation', color='black', ha='left',
+                transform=axes1.transAxes)
+
+    axes1.text(0.05, 0.8, 'Fit', color='r', ha='left',
+              transform=axes1.transAxes)
+
+    axes1.text(0.95, 0.9, 'Offset='+'%+.2f' % offset+' pixels',
+               color='black', ha='right', transform=axes1.transAxes)
+
+    axes1.text(0.95, 0.8, 'Velocity='+'%+.2f' % velocity+' km s$^{-1}$',
+               color='black', ha='right', transform=axes1.transAxes)    
+
+    # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes1.spines[axis].set_linewidth(1.5)
+
+
+    # Show the data, spectrum, and shifted spectrum
+
+    
+    yrange = get_spec_range(object_flux, model_flux, frac=0.1)
+    
+    axes2 = fig.add_subplot(212)
+    axes2.margins(x=0)
     axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes2.step(lag, xcorrelation, 'black')
-    axes2.step(lag, fit, 'r')
-    axes2.set(xlabel='lag (pixels)', ylabel='Relative Intensity')
+    axes2.step(wavelength, object_flux, 'black', label='spectrum')
+    axes2.step(wavelength, model_flux, 'r',linestyle='dashed',
+               label='Model (0 km s$^{-1}$)')
+    axes2.step(wavelength*(1+redshift), model_flux, 'r',
+               label='Model (%+.2f' % velocity+' km s$^{-1}$)')  
+    axes2.set(xlabel=plot_xlabel, ylabel='Relative Flux Density')
 
     axes2.xaxis.set_minor_locator(AutoMinorLocator())    
     axes2.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in')
+                      which='both', direction='in', width=1.5)
+    axes2.tick_params(which='minor', length=3)
+    axes2.tick_params(which='major', length=5)
     axes2.yaxis.set_minor_locator(AutoMinorLocator())    
 
+
+
+    axes2.legend(bbox_to_anchor=(0.5,0.1),
+                 ncols=1,
+#                 mode='expand',
+                 frameon=False,
+                 loc='lower left',
+                 handlelength=1)
+
+
+    # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes1.spines[axis].set_linewidth(1.5)
+
     
-    axes2.text(0.05, 0.9, 'X Correlation', color='black', ha='left',
-                transform=axes2.transAxes)
-
-    axes2.text(0.05, 0.8, 'Fit', color='r', ha='left',
-              transform=axes2.transAxes)
-
-    axes2.text(0.95, 0.9, 'Offset='+'%.2f' % offset+' pixels',
-               color='black', ha='right', transform=axes2.transAxes)
-
-    axes2.text(0.95, 0.8, 'Velocity='+'%.2f' % velocity+' km s$^{-1}$',
-               color='black', ha='right', transform=axes2.transAxes)    
+        
     
     #
     # Get the plot number and return the results
