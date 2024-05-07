@@ -26,6 +26,7 @@ from pyspextool.utils.spectra import model_xcorrelate
 from pyspextool.telluric.kernel import make_instrument_profile
 from pyspextool.telluric.kernel import deconvolve_line
 from pyspextool.utils.for_print import for_print
+from pyspextool.fit.polyfit import poly_fit_1d
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -43,6 +44,7 @@ def telluric_correction(object_file:str,
                         qa_show:typing.Optional[bool]=None,
                         qashow_scale:float=1.0,
                         qa_write:typing.Optional[bool]=None,
+                        qawrite_extension:typing.Optional[str]=None,
                         qa_block:typing.Optional[bool]=None,
                         verbose:typing.Optional[bool]=None,
                         overwrite:bool=True):
@@ -111,6 +113,10 @@ def telluric_correction(object_file:str,
         pyspextool config file.  If set to True, quality assurance 
         plots will be written to disk.
 
+    qawrite_extension : {None, '.pdf', '.png'}
+        If qa_write is True, set this to override config.state['qa_extension']
+        in the pyspextool config file.
+    
     qa_block : {False, True}, optional
         Set to make the plot block access to the command line, e.g. pl.ioff().
 
@@ -168,6 +174,9 @@ def telluric_correction(object_file:str,
     check_parameter('telluric_correction', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
+    check_parameter('telluric_correction', 'qawrite_extension',
+                    qawrite_extension, ['NoneType', 'str'])
+    
     check_parameter('telluric_correction', 'qa_block', qa_block,
                     ['NoneType', 'bool'])
 
@@ -198,7 +207,9 @@ def telluric_correction(object_file:str,
     if overwrite is None:
         overwrite = setup.state['overwrite']
 
-
+    if qawrite_extension is None:
+        qawrite_extension = setup.state['qa_extension']
+    
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
@@ -242,6 +253,7 @@ def telluric_correction(object_file:str,
     telluric.load['qa_show'] = qa_show
     telluric.load['qashow_scale'] = qashow_scale
     telluric.load['qa_write'] = qa_write
+    telluric.load['qawrite_extension'] = qawrite_extension
     telluric.load['qa_block'] = qa_block
     telluric.load['verbose'] = verbose
     telluric.load['overwrite'] = overwrite
@@ -251,7 +263,7 @@ def telluric_correction(object_file:str,
     #
     
     load_data()
-    
+
     #
     # Start the process, first checking whether we are correcting a
     # solar system object or not.
@@ -275,7 +287,8 @@ def telluric_correction(object_file:str,
         #
 
         get_radialvelocity()
-        
+        return
+    
         #
         # Get the convolution kernel
         #
@@ -547,7 +560,7 @@ def get_kernel():
 
         qafile_info = {'filepath':telluric.load['qa_path'],
                        'filename':telluric.load['output_name']+'_deconv',
-                       'extension':setup.state['qa_extension'],
+                       'extension':telluric.load['qawrite_extension'],
                        'normalization_wavelength_range':normalization_range,
                        'title':title,
                        'xlabel':xlabel}
@@ -718,7 +731,7 @@ def get_radialvelocity():
 
         qafile_info = {'filepath':telluric.load['qa_path'],
                        'filename':telluric.load['output_name']+'_rv',
-                       'extension':setup.state['qa_extension'],
+                       'extension':telluric.load['qawrite_extension'],
                        'plot_xlabel':xlabel,
                        'plot_title':title}
 
@@ -737,6 +750,7 @@ def get_radialvelocity():
                             resolving_power=telluric.state['resolving_power'],
                                 qashow_info=qashow_info,
                                 qafile_info=qafile_info)
+
 
     logging.info(f" RV = "+'{:g}'.format(float('{:.4g}'.format(rv)))+" km s-1")
 
@@ -806,7 +820,7 @@ def load_data():
 
     
     #
-    # Get standard star information
+    # Get standard star information from the user or SIMBAD
     #
 
     if telluric.load['standard_data'] is None:
@@ -870,7 +884,7 @@ def load_data():
     #
     # Store the results
     #
-
+    
     telluric.state['standard_spectra'] = standard_spectra
     telluric.state['standard_info'] = standard_info
     telluric.state['standard_hdrinfo'] = standard_hdrinfo
@@ -893,15 +907,26 @@ def load_data():
     telluric.state['object_orders'] = object_info['orders']
     telluric.state['standard_orders'] = standard_info['orders']
 
-    telluric.state['standard_dispersions'] = standard_info['dispersions']
+    #
+    # Compute the dispersions for each order (may go away eventually once you
+    # implement mikeline_convolve.
+    #
+ 
+    pixels = np.arange(len(telluric.state['standard_spectra'][0,0,:]))
+    dispersions = np.empty(telluric.state['standard_norders'])            
+    
+    for i in range(telluric.state['object_norders']):
 
-    telluric.state['standard_fwhm'] = standard_info['dispersions']*\
-        standard_info['slitw_pix']
+        fit = poly_fit_1d(pixels,telluric.state['standard_spectra'][i,0,:],1)
+        dispersions[i] = fit['coeffs'][1]
+               
+    telluric.state['standard_dispersions'] = dispersions
+    telluric.state['standard_fwhm'] = dispersions*standard_info['slitw_pix']
             
     #
     # Finally, get the mode info and store pertinent information
     #
-    
+
     mode_info = get_modeinfo(telluric.state['mode'])
     
     telluric.state['method'] = mode_info['method']
@@ -934,6 +959,7 @@ def load_data():
     telluric.state['ip_coefficients'] = ip_coefficients
 
 
+    
 def load_vega():
 
     """
@@ -989,7 +1015,6 @@ def load_vega():
 
     
 
-    
 def load_kernels():
 
 
@@ -1137,7 +1162,7 @@ def normalize_order():
 
         qafile_info = {'filepath':telluric.load['qa_path'],
                        'filename':telluric.load['output_name']+'_normalize',
-                       'extension':setup.state['qa_extension'],
+                       'extension':telluric.load['qawrite_extension'],
                        'plot_xlabel':xlabel,
                        'plot_title':title}
 

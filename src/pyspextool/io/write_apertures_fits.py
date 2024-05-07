@@ -187,12 +187,12 @@ def write_apertures_fits(spectra, xranges, aimage, sky, flat, naps, orders,
                          ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (wavecalinfo['wavetype'], ' Wavelength type')
 
-        for i in range(norders):
+#        for i in range(norders):
 
-            name = 'OR' + str(orders[i]).zfill(3) + '_DP'
-            comment = ' Fitted dispersion (um pix-1) for order ' + \
-                str(orders[i]).zfill(3)
-            hdr[name] = (wavecalinfo['dispersions'][i], comment)
+#            name = 'OR' + str(orders[i]).zfill(3) + '_DP'
+#            comment = ' Fitted dispersion (um pix-1) for order ' + \
+#                str(orders[i]).zfill(3)
+#            hdr[name] = (wavecalinfo['dispersions'][i], comment)
 
     else:
 

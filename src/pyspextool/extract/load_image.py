@@ -333,7 +333,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
             wavecal = wavecalinfo['wavecal']
             spatcal = wavecalinfo['spatcal']
             indices = wavecalinfo['rectindices']
-            dispersions = wavecalinfo['dispersions']            
+#            dispersions = wavecalinfo['dispersions']            
             
             #
             # Get the atmospheric transmission 
@@ -376,7 +376,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
                                                             flatinfo['xranges'],
                                                         flatinfo['slith_arc'])
 
-            dispersions = None
+#            dispersions = None
             atmosphere  = None
 
             xunits = 'pixel'
@@ -388,7 +388,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         extract.state['wavecal'] = wavecal
         extract.state['spatcal'] = spatcal
         extract.state['rectindices'] = indices
-        extract.state['dispersions'] = dispersions
+#        extract.state['dispersions'] = dispersions
         extract.state['atmosphere'] = atmosphere
         extract.state['xunits'] = xunits
         extract.state['latex_xunits'] = latex_xunits

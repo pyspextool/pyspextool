@@ -366,7 +366,7 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Generate the wavelengths
 
-    dispersions = np.empty(norders)            
+#    dispersions = np.empty(norders)            
     if xdinfo is None:
 
         # This is the pure 1D case.
@@ -383,8 +383,8 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
             # Get dispersion
 
-            fit = poly_fit_1d(wavecal[z],wgrid,1)
-            dispersions[i] = fit['coeffs'][1]
+#            fit = poly_fit_1d(wavecal[z],wgrid,1)
+#            dispersions[i] = fit['coeffs'][1]
             
             # Now store the results
                         
@@ -411,8 +411,8 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
             # Get the dispersion
 
-            fit = poly_fit_1d(wavecal[z],wgrid,1)
-            dispersions[i] = fit['coeffs'][1]
+#            fit = poly_fit_1d(wavecal[z],wgrid,1)
+#            dispersions[i] = fit['coeffs'][1]
 
             # Now store the results
                         
@@ -452,11 +452,11 @@ def write_wavecal_1d(ncols, nrows, orders, edgecoeffs, xranges, coeffs,
 
     # Write the dispersion
 
-    for i in range(norders):
-        name = 'OR' + str(orders[i]).zfill(3) + '_DP'
-        comment = ' Fitted dispersion (um pix-1) for order ' + \
-            str(orders[i]).zfill(3)
-        hdr[name] = (dispersions[i], comment)
+#    for i in range(norders):
+#        name = 'OR' + str(orders[i]).zfill(3) + '_DP'
+#        comment = ' Fitted dispersion (um pix-1) for order ' + \
+#            str(orders[i]).zfill(3)
+#        hdr[name] = (dispersions[i], comment)
 
     # Write the coefficients
 
@@ -603,7 +603,7 @@ def read_wavecal_fits(fullpath:str, rotate:bool=True):
     xranges = np.empty([hdr['NORDERS'], 2], dtype=int)
     coeffs = np.empty(ncoeffs, dtype=float)
     covar = np.empty([ncoeffs, ncoeffs], dtype=float)
-    dispersions = np.empty(hdr['NORDERS'], dtype=float)
+#    dispersions = np.empty(hdr['NORDERS'], dtype=float)
 
     for i in range(hdr['NORDERS']):
 
@@ -611,12 +611,12 @@ def read_wavecal_fits(fullpath:str, rotate:bool=True):
         xranges[i, :] = [int(x) for x in hdr[name].split(',')]
 
 
-        name = 'OR' + str(orders[i]).zfill(3) + '_DP'
-        dispersions[i] = hdr[name]
+#        name = 'OR' + str(orders[i]).zfill(3) + '_DP'
+#        dispersions[i] = hdr[name]
 
 
     wavecalinfo.update({'xranges':xranges})
-    wavecalinfo.update({'dispersions':dispersions})                           
+#    wavecalinfo.update({'dispersions':dispersions})                           
                            
                            
     for i in range(ncoeffs):

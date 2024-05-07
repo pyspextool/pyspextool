@@ -134,7 +134,7 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     
     check_parameter('model_xcorrelate', 'qafile_info', qafile_info,
                     ['NoneType', 'dict'])
-    
+
     #
     # Get set up
     #
@@ -171,8 +171,12 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     # Now check to make sure the object has fewer pixels than the model
     #
 
-    nobject = np.size(object_wavelength)
+    z = np.logical_and((object_wavelength > minimum_wavelength),
+                       (object_wavelength < maximum_wavelength))
 
+    nobject = np.sum(z)
+
+    
     z = np.logical_and((model_wavelength > minimum_wavelength),
                        (model_wavelength < maximum_wavelength))
 
