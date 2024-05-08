@@ -49,11 +49,60 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     line_wavelength_range : ndarray
         A (2,) array of of wavelengths giving the range over which to do the 
         deconvolution.
-    
 
+    tapered_window_factor : float, default=10
+
+    verbose : {None, True, False}
+        Set to True/False to override config.state['verbose'] in the 
+        pyspextool config file.
+
+    qashow_info : None or dict
+        `'plot_number'` : int
+            The plot number.  Useful if you are doing to-screen plotting
+            because you can plot to the same window multiple times.
+    
+        `'plot_scale'` : float or int
+            A scale factor to increase the size of the plot over the default.
+
+        `'block'`: {False, True}, optional
+            Set to make the plot block access to the command line, e.g.
+            pl.ioff().
+
+        `'plot_xlabel'` : str, optional
+            A latex string giving the xlabel.
+
+        `'plot_title'` : str, optional
+            A latex string giving the title of the plot.
+        
+    qafile_info : dict, optional    
+        `"filepath"` : str
+            The directory to write the QA figure.
+
+        `"filename"` : str
+            The name of the file, sans suffix/extension.
+
+        `"extension"` : str
+            The file extension.  Must be compatible with the savefig
+            function of matplotlib.
+
+        `'plot_xlabel'` : str, optional
+            A latex string giving the xlabel.
+
+        `'plot_title'` : str, optional
+            A latex string giving the title of the plot.
+      
     Returns
     -------
+    dict
+        `"object_pixels"` : ndarray
+            The pixels associated with the kernel in data space
 
+        `"kernel"` : ndarray
+            The kernel
+
+        `"plot_number"` : int or NoneType
+            The plot number if qashow_info is passed.
+            
     Notes
     ----- 
     The units of `data_wavelength`, `model_wavelength`, and 
@@ -81,6 +130,20 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     check_parameter('deconvolve_line', 'line_wavelength_range',
                     line_wavelength_range, 'ndarray', 1)    
 
+    check_parameter('deconvolve_line', 'tapered_window_factor',
+                    tapered_window_factor, ['float','int'])
+
+    check_parameter('deconvolve_line', 'verbose', verbose,
+                    ['NoneType', 'bool'])
+
+    check_parameter('deconvolve_line', 'qashow_info', qashow_info,
+                    ['NoneType', 'dict'])
+    
+    check_parameter('deconvolve_line', 'qafile_info', qafile_info,
+                    ['NoneType', 'dict'])
+
+
+    
     #
     # Check verbose
     #
@@ -233,17 +296,32 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     kernel = np.roll(kernel, nmodel//2)
     kernel /= np.sum(kernel)
 
-#    f = open("kernel_python.dat","w+")
-#    for i in range(len(kernel)):
-#        f.write(str(kernel[i])+'\n')
-
-#    f.close()
         
-#    return
+    #
+    # Build the dictionary for return
+    #
+
+    # Get the kernel, which is in integer model pixels into data pixels
+        
+    model_pixels = np.arange(len(kernel))
+
+    r = fit_peak1d(model_pixels,kernel, nparms=3, positive=True)
+
+    r['parms'][1]
+
+    object_relative_pixels = (model_pixels-r['parms'][1])*model_step/data_step
+
+    # Create the dictionary for later return
+    
+    dict = {'object_pixels':object_relative_pixels,
+            'kernel': kernel}
     
     #
+    # Now start the plotting process
+    #    
+    
     # Convolve the model over the data_wavelength range
-    #
+    
     
     zconvolve = np.where((model_wavelength >= data_wavelength_range[0]) &
                      (model_wavelength <= data_wavelength_range[1]))[0]
@@ -282,27 +360,13 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                  fill_value="extrapolate")
     rmodel_zeroed_line_fluxdensity = f(data_line_wavelength)
 
-    
-    # Resample kernel onto data wavelengths
-
-    f = interp1d(model_line_wavelength ,kernel, bounds_error=False,
-                 fill_value=0.0)
-    rkernel = f(data_line_wavelength)
-
-    dict = {'kernel':rkernel, 'wavelengths':data_line_wavelength,
-            'data':data_zeroed_line_fluxdensity,
-            'model':rmodel_zeroed_line_fluxdensity,
-            'convolved_model':rmodel_zeroed_scaled_convolved_line_fluxdensity,
-            'residuals':line_fluxdensity_ratio-1,
-            'maximum_deviation':maximum_deviation,
-            'rms_deviation':rms_deviation}
-
     #
     # Make the QA plot
     #
 
     figure_size = (6,10)
-    
+    plotnum = None    
+
     if qashow_info is not None:
 
 
@@ -361,9 +425,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
         pl.close()
 
 
-        plotnum = None
-
-    return plotnum
+    dict['plot_number'] = plotnum
+            
+    return dict
 
 
     
@@ -420,6 +484,142 @@ def make_instrument_profile(x:npt.ArrayLike, parameters:npt.ArrayLike):
 
 
 
+def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
+                           standard_fluxdensity:npt.ArrayLike,
+                           standard_uncertainty:npt.ArrayLike,
+                           standard_rv:float,
+                           standard_vmag:float,
+                           standard_bmag:float,
+                           vega_wavelength:npt.ArrayLike,
+                           vega_fluxdensity:npt.ArrayLike,
+                           vega_continuum:npt.ArrayLike,
+                           vega_fitted_continuum:npt.ArrayLike,
+                           kernel:npt.ArrayLike):
+
+    """
+    To create a telluric correction spectrum
+    
+
+    Parameters
+    ----------
+    standard_wavelength : ndarray
+        A (nwave1,) array of data wavelengths.
+
+    standard_fluxdensity : ndarray
+        A (nwave1,) array of data flux densities.
+
+    standard_uncertainty : ndarray
+        A (nwave1,) array of data uncertainties.
+
+    standard_rv : float, int
+        The radial velocities of the standard star in km s-1.
+
+    standard_bmag : float, int
+        The B-band magnitude of the standard star.
+
+    standard_vmag : float, int
+        The V-band magnitude of the standard star.
+    
+    vega_wavelength : ndarray
+        A (nwave2,) array of Vega-model wavelengths.
+
+    vega_fluxdensity : ndarray
+        A (nwave2,) array of Vega-model flux densities.
+
+    vega_continuum : ndarray
+        A (nwave2,) array of Vega-continuum flux densities.
+
+    vega_fitted_continuum : ndarray
+        A (nwave2,) array of Vega-fitted-continuum flux densities.
+
+    kernel : ndarray
+        An array of of kernel values.
+
+    
+    """
+
+    #
+    # Check the parameters
+    #
+    
+    check_parameter('make_telluric_spectrum', 'standard_wavelength',
+                    standard_wavelength, 'ndarray', 1)
+
+    check_parameter('make_telluric_spectrum', 'standard_fluxdensity',
+                    standard_fluxdensity, 'ndarray', 1)
+
+    check_parameter('make_telluric_spectrum', 'standard_uncertainty',
+                    standard_uncertainty, 'ndarray', 1)
+
+    check_parameter('make_telluric_spectrum', 'standard_bmag',
+                    standard_bmag, ['float','int'])
+
+    check_parameter('make_telluric_spectrum', 'standard_vmag',
+                    standard_vmag, ['float','int'])
+
+    check_parameter('make_telluric_spectrum', 'standard_rv',
+                    standard_rv, ['float64','float','int'])
+    
+    check_parameter('make_telluric_spectrum', 'vega_wavelength',
+                    vega_wavelength, 'ndarray', 1)
+
+    check_parameter('make_telluric_spectrum', 'vega_fluxdensity',
+                    vega_fluxdensity, 'ndarray', 1)
+    
+    check_parameter('make_telluric_spectrum', 'vega_continuum',
+                    vega_continuum, 'ndarray', 1)
+
+    check_parameter('make_telluric_spectrum', 'vega_fitted_continuum',
+                    vega_fitted_continuum, 'ndarray', 1)
+
+    check_parameter('make_telluric_spectrum', 'kernel', kernel, 'ndarray', 1)
+
+    #
+    # Determine the range over which to convolved the Vega model
+    #
+
+    # Get the pixels that exactly cover the order
+    
+    min = np.nanmin(standard_wavelength)
+    max = np.nanmax(standard_wavelength)
+    
+    zleft = np.where(vega_wavelength > min)
+    zleft_idx = zleft[0][0]
+    
+    zright = np.where(vega_wavelength < max)
+    zright_idx = zright[0][-1]
+
+    # Now figure out how may you have to add to both sides to account for
+    # the width of the kernel
+
+    nadd = np.ceil(len(kernel)/2.)
+
+    z_idx = np.arange(zleft_idx-nadd,zright_idx+nadd+1,dtype=int)
+
+    
+    convolved_norm_fluxdensity = np.convolve(vega_fluxdensity[z_idx]/\
+                                             vega_continuum[z_idx]-1,
+                                             kernel, mode='same')+1
+
+    convolved_norm_continuum = np.convolve(vega_continuum[z_idx]/\
+                                           vega_fitted_continuum[z_idx]-1,
+                                           kernel, mode='same')+1
+
+    convolved_norm_continuum *= vega_fitted_continuum[z_idx]
+    
+    convolved_fluxdensity = convolved_norm_fluxdensity*convolved_norm_continuum
+
+    pl.plot(vega_wavelength[z_idx],vega_fluxdensity[z_idx])
+    pl.plot(vega_wavelength[z_idx],convolved_fluxdensity,color='red')
+    pl.show()
+
+
+    return 1
+
+
+
+
+    
 def plot_deconvolve_line(order_wavelength:npt.ArrayLike,
                          order_fluxdensity:npt.ArrayLike,
                          normalization_wavelength_range:npt.ArrayLike,
@@ -694,7 +894,7 @@ def plot_deconvolve_line(order_wavelength:npt.ArrayLike,
     axes2.text(0.95, 0.2, 'Scaled & Convolved Vega', color='red', ha='right',
                va='bottom', transform=axes2.transAxes)
 
-    axes2.text(0.95, 0.15, 'Residuals', color='blue', ha='right',
+    axes2.text(0.95, 0.15, 'Ratio', color='blue', ha='right',
                va='bottom', transform=axes2.transAxes)
     
 
@@ -704,7 +904,7 @@ def plot_deconvolve_line(order_wavelength:npt.ArrayLike,
     
     plot_number = pl.gcf().number
 
-    return plot_number
+    return dict
 
 
 

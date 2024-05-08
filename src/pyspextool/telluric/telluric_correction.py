@@ -23,8 +23,9 @@ from pyspextool.utils.split_text import split_text
 from pyspextool.utils import units
 from pyspextool.utils.spectra import normalize_continuum
 from pyspextool.utils.spectra import model_xcorrelate
-from pyspextool.telluric.kernel import make_instrument_profile
-from pyspextool.telluric.kernel import deconvolve_line
+from pyspextool.telluric.telluric_utils import make_instrument_profile
+from pyspextool.telluric.telluric_utils import deconvolve_line
+from pyspextool.telluric.telluric_utils import make_telluric_spectrum
 from pyspextool.utils.for_print import for_print
 from pyspextool.fit.polyfit import poly_fit_1d
 
@@ -287,23 +288,24 @@ def telluric_correction(object_file:str,
         #
 
         get_radialvelocity()
-        return
     
         #
         # Get the convolution kernel
         #
 
         get_kernel()
-        return
-
         
         #
         # Load the kernels for each order
         #
 
-#        load_kernels()
+        load_kernels()
 
-        
+        #
+        # Make the telluric correction spectra
+        #
+
+        make_telluric_spectra()
         
 
         
@@ -540,7 +542,6 @@ def get_kernel():
 
     if telluric.load['qa_show'] is True:
 
-        print('hi1')
         # Build the qashow_info dictionary.
 
         qashow_info = {'plot_number':setup.plotwindows['telluric_deconvolution'],
@@ -572,23 +573,28 @@ def get_kernel():
     # Do the deconvolution
     #
     
-    plotnum = deconvolve_line(telluric.state['normalized_order_wavelength'],
-                              telluric.state['normalized_order_flux'],
-                              telluric.state['vega_wavelength_rvshifted'],
-                              telluric.state['vega_normalized_flux'],
-                              telluric.state['deconvolution_window'],
-                              qafile_info=qafile_info,
-                              qashow_info=qashow_info,
-                              verbose=setup.state['verbose'])
-
+    result = deconvolve_line(telluric.state['normalized_order_wavelength'],
+                             telluric.state['normalized_order_flux'],
+                             telluric.state['vega_wavelength_rvshifted'],
+                             telluric.state['vega_normalized_fluxdensity'],
+                             telluric.state['deconvolution_window'],
+                             qafile_info=qafile_info,
+                             qashow_info=qashow_info,
+                             verbose=setup.state['verbose'])
+    
     # Did we show it?
 
     if telluric.load['qa_show'] is True:
-        setup.plotwindows['telluric_deconvolution'] = plotnum
-        
+        setup.plotwindows['telluric_deconvolution'] = result['plot_number']
+
+    #
+    # Store the result
+    #
+
+    telluric.state['kernel'] = result['kernel']
+    telluric.state['pixels_kernel'] = result['object_pixels']    
 
     
-
 
 def get_modeinfo(mode:str):
 
@@ -744,7 +750,7 @@ def get_radialvelocity():
     rv, z, num= model_xcorrelate(telluric.state['normalized_order_wavelength'],
                                 telluric.state['normalized_order_flux'],
                                 telluric.state['vega_wavelength'],
-                                telluric.state['vega_normalized_flux'],
+                                telluric.state['vega_normalized_fluxdensity'],
                              telluric.state['radialvelocity_window'][0].item(),
                              telluric.state['radialvelocity_window'][1].item(),
                             resolving_power=telluric.state['resolving_power'],
@@ -758,8 +764,8 @@ def get_radialvelocity():
     # Store the results
     #
     
-    telluric.state['object_rv'] = rv
-    telluric.state['object_redshift'] = z
+    telluric.state['standard_rv'] = rv
+    telluric.state['standard_redshift'] = z
 
     telluric.state['vega_wavelength_rvshifted'] = \
         telluric.state['vega_wavelength']*(1+z)
@@ -836,14 +842,15 @@ def load_data():
         if isinstance(table,Table):
             standard_name = table['MAIN_ID'][0]
             standard_sptype = table['SP_TYPE'][0]
-            standard_vmag = table['FLUX_V'][0]
-            standard_bmag = table['FLUX_B'][0]         
+            standard_vmag = float(table['FLUX_V'][0])
+            standard_bmag = float(table['FLUX_B'][0])
 
     else:
 
         standard_sptype = standard_data['sptype']
-        standard_vmag = standard_data['bmag']
-        standard_bmag = standard_data['vmag']
+        standard_vmag = float(standard_data['bmag'])
+        standard_bmag = float(standard_data['vmag'])
+
 
     #
     # error check standard information - what do we do if there is no
@@ -896,7 +903,7 @@ def load_data():
     telluric.state['object_hdrinfo'] = object_hdrinfo
     telluric.state['mode'] = standard_hdrinfo['MODE'][0]
     telluric.state['resolving_power'] = standard_hdrinfo['RP'][0]
-    
+
     #
     # Get other information from the headers
     #
@@ -908,21 +915,34 @@ def load_data():
     telluric.state['standard_orders'] = standard_info['orders']
 
     #
-    # Compute the dispersions for each order (may go away eventually once you
-    # implement mikeline_convolve.
+    # Compute the minimum and maximum wavelengths and dispersions for each
+    # order (This may go away eventually once you implement mikeline_convolve).
     #
- 
+       
     pixels = np.arange(len(telluric.state['standard_spectra'][0,0,:]))
     dispersions = np.empty(telluric.state['standard_norders'])            
+    wavelength_ranges = []
     
-    for i in range(telluric.state['object_norders']):
+    for i in range(telluric.state['standard_norders']):
 
+        # Do min max first
+
+        min = np.nanmin(telluric.state['standard_spectra'][i,0,:])
+        max = np.nanmax(telluric.state['standard_spectra'][i,0,:])
+
+        wavelength_ranges.append(np.array([min,max]))
+
+        # Now do the dispersion
+                
         fit = poly_fit_1d(pixels,telluric.state['standard_spectra'][i,0,:],1)
         dispersions[i] = fit['coeffs'][1]
-               
+
+    # Store the results
+
+    telluric.state['standard_wavelengthranges'] = wavelength_ranges
     telluric.state['standard_dispersions'] = dispersions
     telluric.state['standard_fwhm'] = dispersions*standard_info['slitw_pix']
-            
+
     #
     # Finally, get the mode info and store pertinent information
     #
@@ -1008,40 +1028,86 @@ def load_vega():
     # Store the results
 
     telluric.state['vega_wavelength'] = vega_wavelength
-    telluric.state['vega_flux'] = vega_flux
+    telluric.state['vega_fluxdensity'] = vega_flux
     telluric.state['vega_continuum'] = vega_continuum
     telluric.state['vega_fitted_continuum'] = vega_fitted_continuum
-    telluric.state['vega_normalized_flux'] = vega_flux/vega_fitted_continuum
+    telluric.state['vega_normalized_fluxdensity'] = vega_flux/vega_fitted_continuum
 
+    #
+    # Compute the dispersions over the order wavelengths
+    #
+
+    dispersions = np.empty(telluric.state['standard_norders'])            
+    for i in range(telluric.state['standard_norders']):
+
+        zleft = (vega_wavelength > \
+                 telluric.state['standard_wavelengthranges'][i][0])
+        zright = (vega_wavelength < \
+                  telluric.state['standard_wavelengthranges'][i][1])
+        
+        zselection = np.logical_and(zleft,zright)
+
+        pixels = np.arange(np.sum(zselection))
+        
+        fit = poly_fit_1d(pixels,vega_wavelength[zselection],1)
+        dispersions[i] = fit['coeffs'][1]
+
+    telluric.state['vega_dispersions'] = dispersions
     
 
 def load_kernels():
 
 
     """
-    To calculate the convolution kernel
+    To calculate the convolution kernel for each order 
 
     Parameters
     ----------
+    None
 
     Returns
     -------
+    None
     
     """
 
-    instrument_profiles = []
+    kernels = []
     
 
     if telluric.state['method'] == 'deconvolution':
 
+        for i in range(telluric.state['standard_norders']):
 
-        print('hi')
+            # Generate data wavelengths based on the kernel pixels
+            
+            data_wavelengths = telluric.state['pixels_kernel']*\
+                telluric.state['standard_dispersions'][i]
 
+            # Now generate model wavelengths
 
+            min = np.min(data_wavelengths)
+            max = np.max(data_wavelengths)
+            
+            delta = max-min
 
+            npixels = int(delta/telluric.state['vega_dispersions'][i])
+            
+            # enforce oddity
+            
+            if npixels % 2 == 0: npixels += 1
 
+            vega_wavelengths = np.arange(-npixels//2+1,npixels//2+1)*\
+                telluric.state['vega_dispersions'][i]
 
+            # Interpolate the data kernel onto the vega wavelegths
 
+            rkernel= linear_interp1d(data_wavelengths, telluric.state['kernel'],
+                                     vega_wavelengths)
+            
+            znan = np.isnan(rkernel)
+            rkernel[znan] = 0.0
+
+            kernels.append(rkernel)
 
     if telluric.state['method'] == 'ip':
     
@@ -1085,16 +1151,63 @@ def load_kernels():
             
             p = make_instrument_profile(x,telluric.state['ip_coefficients'])
             
-            instrument_profiles.append(p)
+            kernels.append(p)
 
             
     # Store the results
         
-    telluric.state['convolution_kernels'] = instrument_profiles
+    telluric.state['kernels'] = kernels
     
 
 
-                
+def make_telluric_spectra():
+
+    """
+    To make the telluric correction spectra 
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None - Loads data into the config state variable.
+
+    """
+
+    for i in range(telluric.state['object_norders']):    
+
+        standard_wavelength = telluric.state['standard_spectra'][i,0,:]
+        standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
+        standard_uncertainty = telluric.state['standard_spectra'][i,2,:]
+        standard_bmag = telluric.state['standard_bmag']
+        standard_vmag = telluric.state['standard_vmag']
+        standard_rv = telluric.state['standard_rv']                
+              
+        vega_wavelength = telluric.state['vega_wavelength']
+        vega_fluxdensity = telluric.state['vega_fluxdensity']
+        vega_continuum = telluric.state['vega_continuum']
+        vega_fitted_continuum = telluric.state['vega_fitted_continuum']
+        kernel = telluric.state['kernels'][i]
+        
+        result = make_telluric_spectrum(standard_wavelength,
+                                        standard_fluxdensity,
+                                        standard_uncertainty,
+                                        standard_rv,
+                                        standard_bmag,
+                                        standard_vmag,
+                                        vega_wavelength,
+                                        vega_fluxdensity,
+                                        vega_continuum,
+                                        vega_fitted_continuum,
+                                        kernel)
+        
+
+
+        
+
+    
+    
 def normalize_order():
 
     """

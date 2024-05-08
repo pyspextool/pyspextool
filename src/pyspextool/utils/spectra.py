@@ -271,6 +271,8 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
     # Make the QA plot
     #
 
+    plotnum = None
+
     if qashow_info is not None:
 
         if qashow_info['block'] is True:
@@ -310,8 +312,6 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
                                 qafile_info['filename'] + \
                                 qafile_info['extension']))
         pl.close()
-
-        plotnum = None
 
         
     return velocity_shift, redshift, plotnum
@@ -507,6 +507,7 @@ def normalize_continuum(wavelength:npt.ArrayLike,
     #
 
     figure_size = (9,6)
+    plotnum = None
     
     if qashow_info is not None:
         
@@ -546,8 +547,6 @@ def normalize_continuum(wavelength:npt.ArrayLike,
                                 qafile_info['filename'] + \
                                 qafile_info['extension']))
         pl.close()
-
-        plotnum = None
 
     return normalized_fluxdensity, plotnum
 
