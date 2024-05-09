@@ -37,6 +37,7 @@ def telluric_correction(object_file:str,
                         standard_file:str,
                         output_name:str,
                         fluxdensity_units:str='W m-2 um-1',
+                        use_instrument_profile:bool=False,
                         reflectance:bool=False,
                         standard_data:typing.Optional[dict]=None,
                         input_path:typing.Optional[str]=None,
@@ -70,7 +71,10 @@ def telluric_correction(object_file:str,
     fluxdensity_units : {'W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 
                          'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'}
         The flux density units of the output.  
-        
+
+    use_instrument_profile : {False, True}
+        Set to True to force use of the insrument profile.
+    
     refelectence : {False, True} 
         Set to simply divide by the standard and return a relative 
         reflectance spectrum.
@@ -152,6 +156,9 @@ def telluric_correction(object_file:str,
     check_parameter('telluric_correction', 'fluxdensity_units',
                     fluxdensity_units, 'str')    
 
+    check_parameter('telluric_correction', 'use_instrument_profile',
+                    use_instrument_profile, 'bool')    
+    
     check_parameter('telluric_correction', 'reflectance', reflectance, 'bool')
     
     check_parameter('telluric_correction', 'standard_data', standard_data,
@@ -258,6 +265,7 @@ def telluric_correction(object_file:str,
     telluric.load['qa_block'] = qa_block
     telluric.load['verbose'] = verbose
     telluric.load['overwrite'] = overwrite
+    telluric.load['use_instrument_profile'] = use_instrument_profile
 
     #
     # Load the data
@@ -306,6 +314,13 @@ def telluric_correction(object_file:str,
         #
 
         make_telluric_spectra()
+
+        #
+        # Correct the data for telluric absorption and flux calibrate
+        #
+
+        correct_spectra()
+
         
 
         
@@ -478,6 +493,51 @@ def telluric_correction(object_file:str,
 
 def correct_spectra():
 
+    """
+    Corrects the object spectra with the telluric correction spectra
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+
+    """
+
+    logging.info(f" Correcting spectra... ")    
+
+
+    #
+    # Start the loop over object order number
+    #
+        
+    for i in range(telluric.state['object_norders']):
+
+        # Find the order
+
+        z_order = np.where(telluric.state['object_orders'][i] == \
+                           telluric.state['standard_orders'])
+
+       # Now loop over the apertures
+        
+        for j in range(telluric.state['object_napertures']):
+
+            k =z_order[0][0]*telluric.state['object_napertures']+j
+#            
+#            # Interpolate the standard and bit mask onto the object
+#                
+#            rspectrum, runc = linear_interp1d(standard_spectra[z,0,:],
+#                                              standard_spectra[z,1,:],
+#                                              object_spectra[k,0,:],
+#                                              input_u=standard_spectra[z,2,:])
+#
+
+    
+    
+
+    
     x = 1
 
     # Convert to the users requested units
@@ -527,6 +587,8 @@ def get_kernel():
 
         return
 
+    logging.info(f" Deconvolving line... ")
+            
     #
     # Get QA set up
     #
@@ -758,7 +820,8 @@ def get_radialvelocity():
                                 qafile_info=qafile_info)
 
 
-    logging.info(f" RV = "+'{:g}'.format(float('{:.4g}'.format(rv)))+" km s-1")
+    logging.info(f" Radial velocity = "+\
+                 '{:g}'.format(float('{:.4g}'.format(rv)))+" km s-1")
 
     #
     # Store the results
@@ -909,6 +972,7 @@ def load_data():
     #
 
     telluric.state['object_norders'] = object_info['norders']
+    telluric.state['object_napertures'] = object_info['napertures']    
     telluric.state['standard_norders'] = standard_info['norders']
 
     telluric.state['object_orders'] = object_info['orders']
@@ -948,7 +1012,7 @@ def load_data():
     #
 
     mode_info = get_modeinfo(telluric.state['mode'])
-    
+
     telluric.state['method'] = mode_info['method']
     telluric.state['model'] = mode_info['model']
     telluric.state['normalized_order'] = mode_info['order']
@@ -956,7 +1020,13 @@ def load_data():
     telluric.state['normalization_degree'] = mode_info['normalization_degree']
     telluric.state['radialvelocity_window'] = mode_info['radialvelocity_window']
     telluric.state['deconvolution_window'] = mode_info['deconvolution_window']
-           
+
+    # Override type if requested
+
+    if telluric.load['use_instrument_profile'] is True:
+
+        telluric.state['method'] = 'ip'    
+    
     #
     # Load the instrument profile parameters
     #
@@ -1071,6 +1141,8 @@ def load_kernels():
     
     """
 
+    logging.info(f' Loading the convolution kernels...')
+    
     kernels = []
     
 
@@ -1175,8 +1247,12 @@ def make_telluric_spectra():
 
     """
 
+    logging.info(f' Making telluric correction spectra...')
+    
     for i in range(telluric.state['object_norders']):    
 
+        telluric_spectra = telluric.state['standard_spectra']
+        
         standard_wavelength = telluric.state['standard_spectra'][i,0,:]
         standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
         standard_uncertainty = telluric.state['standard_spectra'][i,2,:]
@@ -1201,9 +1277,24 @@ def make_telluric_spectra():
                                         vega_continuum,
                                         vega_fitted_continuum,
                                         kernel)
+
+        #
+        # Change units to those requested by users
+        #
+
+        
+
+        
+        telluric_spectra[i,1,:] = result[0]
+        telluric_spectra[i,2,:] = result[1]
         
 
 
+    #
+    # Store the results
+    #
+
+    telluric.state['standard_spectra'] = telluric_spectra
         
 
     

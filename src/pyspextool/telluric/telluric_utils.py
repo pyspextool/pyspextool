@@ -10,12 +10,15 @@ from scipy.interpolate import interp1d
 from scipy.special import erf
 import typing
 import os
+from dust_extinction.parameter_averages import G23
+import astropy.units as u
 
 from pyspextool.utils.for_print import for_print
 from pyspextool.io.check import check_parameter
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.utils.math import moments
 from pyspextool.plot.limits import get_spec_range
+from pyspextool.utils.interpolate import linear_interp1d
 
 
 def deconvolve_line(data_wavelength:npt.ArrayLike,
@@ -535,7 +538,16 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
     kernel : ndarray
         An array of of kernel values.
 
-    
+    Returns
+    -------
+    ndarray
+
+        The telluric correction spectrum.
+
+    ndarray
+
+        The uncertainty on the telluric correction spectrum.
+         
     """
 
     #
@@ -596,7 +608,6 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
 
     z_idx = np.arange(zleft_idx-nadd,zright_idx+nadd+1,dtype=int)
 
-    
     convolved_norm_fluxdensity = np.convolve(vega_fluxdensity[z_idx]/\
                                              vega_continuum[z_idx]-1,
                                              kernel, mode='same')+1
@@ -605,21 +616,64 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
                                            vega_fitted_continuum[z_idx]-1,
                                            kernel, mode='same')+1
 
-    convolved_norm_continuum *= vega_fitted_continuum[z_idx]
+
+    convolved_continuum = convolved_norm_continuum*vega_fitted_continuum[z_idx]
     
-    convolved_fluxdensity = convolved_norm_fluxdensity*convolved_norm_continuum
 
-    pl.plot(vega_wavelength[z_idx],vega_fluxdensity[z_idx])
-    pl.plot(vega_wavelength[z_idx],convolved_fluxdensity,color='red')
-    pl.show()
+    convolved_fluxdensity = convolved_norm_fluxdensity*convolved_continuum
 
+    #
+    # Shift to the radial velocity of the standard
+    #
 
-    return 1
+    shifted_vega_wavelength = vega_wavelength*(1+standard_rv/2.99792458e5)
 
+    #
+    # Interpolate onto the wavelength grid of the standard
+    #
 
+    convolved_fluxdensity = linear_interp1d(shifted_vega_wavelength[z_idx],
+                                            convolved_fluxdensity,
+                                            standard_wavelength)
 
+    #
+    # Redden the model to match that of the standard
+    #
 
+    vega_vmag = 0.03
+    vega_bminv = 0.0
     
+    ebminv = (standard_bmag-standard_vmag - vega_bminv)
+    ebminv = np.max([ebminv,0])
+
+    # Load the extinction package and extinguish
+    
+    ext = G23(Rv=3.1)
+    
+    convolved_fluxdensity *= ext.extinguish(standard_wavelength*1e4*u.AA, \
+                                            Ebv=ebminv)
+    
+    #
+    # Scale the Vega model to the observed magnitude of the standard
+    #
+
+    scale = 10.**(-0.4*(standard_vmag-vega_vmag))
+    convolved_fluxdensity *= scale
+
+    #
+    # Calculate the ratio:  model/standard
+    #
+
+    telluric_spectrum = convolved_fluxdensity/standard_fluxdensity
+    telluric_spectrum_unc = np.sqrt(telluric_spectrum**2 * \
+                                    standard_uncertainty**2)
+    
+    
+    return telluric_spectrum, telluric_spectrum_unc
+
+
+
+
 def plot_deconvolve_line(order_wavelength:npt.ArrayLike,
                          order_fluxdensity:npt.ArrayLike,
                          normalization_wavelength_range:npt.ArrayLike,
