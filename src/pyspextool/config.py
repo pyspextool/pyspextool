@@ -10,6 +10,7 @@ state = {
     "lincormax": 0,
     "linearity_info": 0,
     "nint": 4,
+    "overwrite":True,
     "package_path": "",
     "proc_path": "",
     "pyspextool_keywords": "",
@@ -18,9 +19,15 @@ state = {
     "qa_extensions": [".pdf", ".png", None],
     "qa_write": True,
     "qa_show": False,
+    "qa_block":False,
     "raw_path": "",
     "suffix": "",
     "telluric_keywords": "",
     "verbose": True,
     "version": "1beta",
 }
+
+
+plotwindows = {'telluric_deconvolution':None,
+               'telluric_normalize':None,
+               'telluric_rv':None}

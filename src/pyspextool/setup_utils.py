@@ -11,6 +11,9 @@ from importlib.resources import files  # Python 3.10+
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
+class pySpextoolError(Exception):
+    pass
+
 
 def pyspextool_setup(
     instrument=setup.state["instruments"][0],

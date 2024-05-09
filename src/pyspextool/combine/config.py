@@ -15,7 +15,9 @@ state = {'headers':1,
          'uncertainties':1,
          'bitmask':1,
          'bitmasks':1,
-         'scales':1}         
+         'scales':1,
+         'xlabel':'',
+         'xunits':''}         
 
 load = {'files':1, 'output_name':1, 'input_path':1, 'output_path':1,
         'scale_spectra':1, 'scale_order':1, 'scale_range':1,

@@ -1,4 +1,7 @@
 import re
+import fnmatch
+
+from pyspextool.io.check import check_parameter
 from pyspextool.utils import coords
 from pyspextool.utils.add_entry import add_entry
 
@@ -273,64 +276,93 @@ def get_header_info(hdr, keywords=None, ignore_missing_keywords=False):
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('get_header_info', 'hdr', hdr, 'Header')
+
+    check_parameter('get_header_info', 'keywords', keywords,
+                    ['list','NoneType'])
+
+    check_parameter('get_header_info', 'ignore_missing_keywords',
+                    ignore_missing_keywords, 'bool')    
+
+    #
+    # Get setup
+    #
+    
+    # Must do comments and history separately, so they can be at the end
+    # in order
+
+    docomment = False
+    dohistory = False
+    
     # Open an empty dict
 
     hdrinfo = {}
 
-    # Must do comments and history separately, so they can be at the end
-    # in order
+    # Grab the headers' keywords
 
-    docomment = 0
-    dohistory = 0
+    header_keywords = list(hdr.keys())
 
-    # Check to see whether the users passed a set of keywords to grab.
-
+    # Does the user pass a list of keywords?  
+    
     if keywords is not None:
 
-        # Fill in element with the keyword name and then a list of the
-        # value and comment 
+        # Loop over each keyword passed by the user.
 
         for keyword in keywords:
 
-            # We need to check to see if the request has a wild card.
-
-            m = re.search('[*]', '[' + keyword + ']')
+            # Do the basic checks
             
-            if m:
+            if keyword == '':
+                continue
+            
+            if keyword == 'COMMENT':
+                docomment = True
+                continue
 
-                for eight in list(hdr.keys()):
+            if keyword == 'HISTORY':
+                dohistory = True
+                continue
 
-                    n = re.search(keyword[0:-1], eight)                    
-                    if n:
+            # Now start the search of that keyword against the header
 
-                        # Test if it exits
+            matches = []
+            for header_keyword in header_keywords:
 
-                        test = keyword in hdr
-                        if test is True:
-                
-                            hdrinfo[eight] = [hdr[eight], hdr.comments[eight]]
-
-            else:
-
-                if keyword == 'COMMENT':
-                    docomment = 1
-                    continue
-
-                if keyword == 'HISTORY':
-                    dohistory = 1
-                    continue
-
-                # Test if it exits
-
-                test = keyword in hdr
+                test = fnmatch.fnmatch(header_keyword, keyword)
                 if test is True:
-                
-                    hdrinfo[keyword] = [hdr[keyword], hdr.comments[keyword]]
 
+                    matches.append(header_keyword)
+
+            # Does it find any?
+                    
+            if len(matches) == 0:
+
+                # It does not.  Now proceed as the user requests.
+                
+                if ignore_missing_keywords is False:
+
+                    hdrinfo[keyword] = [None,'']
+
+            else: 
+
+                # It does.  Store the results
+                
+                for match in matches:
+
+                    hdrinfo[match] = [hdr[match], hdr.comments[match]]
+                
     else:
 
-        for name in list(hdr.keys()):
+        # Just store each keyword in the header
+        
+        for name in header_keywords:
 
+            # Do basic tests
+            
             if name == '':
                 continue
             
@@ -342,11 +374,15 @@ def get_header_info(hdr, keywords=None, ignore_missing_keywords=False):
                 dohistory = 1
                 continue
 
+            # Store the value
+            
             hdrinfo[name] = [hdr[name], hdr.comments[name]]
 
-            # Now do the comments if need be
-
-    if docomment:
+    #        
+    # Now do the history and comments if need be
+    #
+    
+    if docomment is True:
 
         comments = []
         for line in hdr['COMMENT']:
@@ -356,7 +392,7 @@ def get_header_info(hdr, keywords=None, ignore_missing_keywords=False):
 
     # Now do the history if need be
 
-    if dohistory:
+    if dohistory is True:
 
         history = []
         for line in hdr['HISTORY']:
