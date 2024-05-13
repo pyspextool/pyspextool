@@ -18,16 +18,16 @@ def test_make_flat():
                         cal_path='tests/test_data/uspex-prism/cals/',
                         proc_path='tests/test_data/uspex-prism/proc/',
                         verbose=True, qa_show=False, qa_write=True,
-                        qa_extension='.png')
+                        qa_extension='.pdf')
     
     ps.extract.make_flat(['sbd.2022B046.221019.flat.','15-19'],'flat15-19',
                           verbose=True)
 
     fits_files = glob.glob(os.path.join('tests/test_data/uspex-prism/cals/',
-                                        "flat15-19.fits"))
+                                        "flat*.fits"))
 
     png_files = glob.glob(os.path.join('tests/test_data/uspex-prism/qa/',
-                                       "*.png"))    
+                                       "flat*.pdf"))    
 
     assert len(fits_files) == 1
     assert len(png_files) == 2

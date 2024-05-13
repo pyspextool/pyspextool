@@ -54,10 +54,13 @@ def test_writeLog():
 
 
 def test_writeReadDriver():
-	driver_file = os.path.join(tfold, "proc/driver_drivertest.txt")
+	logfile = os.path.join(tfold, "qa", "log_test.csv")
+	driver_file = os.path.join(tfold, "proc/driver_test.txt")
 
 # process files and generate a driver file
 	dp = processFolder(os.path.join(tfold, "data/"))
+	writeLog(dp,logfile)
+	dp = pandas.read_csv(logfile)
 	writeDriver(dp,driver_file,data_folder=os.path.join(tfold, "data"),check=False,create_folders=False,verbose=False)
 	assert os.path.exists(driver_file)
 
@@ -69,6 +72,7 @@ def test_writeReadDriver():
 
 # CLEANUP
 # remove generated files
+	os.remove(logfile)
 	os.remove(driver_file)
 
 
