@@ -118,7 +118,7 @@ class runBatch():
 			if args['quiet']==False: print('\n\nFinished IRTF Legacy archive file organization\n\n')
 			return
 
-# organize legacy data?
+# organize irsa data?
 		if args['organize_irsa']==True:
 			batch.organizeIRSA(base_folder,verbose=(not args['quiet']),overwrite=args['overwrite'],makecopy=True)
 			if args['quiet']==False: print('\n\nFinished IRTF IRSA archive file organization\n\n')

@@ -19,6 +19,7 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 from astropy.table import Table
 from astroquery.xmatch import XMatch
+from astroquery.simbad import Simbad
 from astropy.utils.exceptions import AstropyWarning
 import astropy.units as u
 import copy
@@ -39,12 +40,13 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 May 6'
+VERSION = '2024 May 13'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 
 XMatch.TIMEOUT = 180 # time out for XMatch search
+Simbad.TIMEOUT = 60
 MOVING_MAXSEP = 15 # max separation for fixed target in arcsec
 MOVING_MAXRATE = 10 # max moving rate for fixed target in arcsec/hr
 INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
@@ -170,17 +172,32 @@ QA_PARAMETERS = {
 }
 
 # columns to grab from SIMBAD
+# SIMBAD_COLS = {
+# 	'SIMBAD_SEP': 'angDist',
+# 	'SIMBAD_NAME': 'main_id',
+# 	'SIMBAD_TYPE': 'sp_type',
+# 	'SIMBAD_BMAG': 'Bmag',
+# 	'SIMBAD_VMAG': 'Vmag',
+# 	'SIMBAD_GMAG': 'Gmag',
+# 	'SIMBAD_JMAG': 'Jmag',
+# 	'SIMBAD_HMAG': 'Hmag',
+# 	'SIMBAD_KMAG': 'Kmag',
+# }
+
+# SIMBAD COLS - first value is the votable name, second value is the returned name
 SIMBAD_COLS = {
-	'SIMBAD_SEP': 'angDist',
-	'SIMBAD_NAME': 'main_id',
-	'SIMBAD_TYPE': 'sp_type',
-	'SIMBAD_BMAG': 'B',
-	'SIMBAD_VMAG': 'V',
-	'SIMBAD_GMAG': 'G',
-	'SIMBAD_JMAG': 'J',
-	'SIMBAD_HMAG': 'H',
-	'SIMBAD_KMAG': 'K',
+#	'SIMBAD_SEP': 'SEP',
+	'SIMBAD_NAME': ['main_id','MAIN_ID'],
+	'SIMBAD_TYPE': ['sptype','SP_TYPE'],
+	'SIMBAD_CLASS': ['otype','OTYPE'],
+	'SIMBAD_BMAG': ['fluxdata(B)','FLUX_B'],
+	'SIMBAD_VMAG': ['fluxdata(V)','FLUX_V'],
+	'SIMBAD_GMAG': ['fluxdata(G)','FLUX_G'],
+	'SIMBAD_JMAG': ['fluxdata(J)','FLUX_J'],
+	'SIMBAD_HMAG': ['fluxdata(H)','FLUX_H'],
+	'SIMBAD_KMAG': ['fluxdata(K)','FLUX_K'],
 }
+
 SIMBAD_EXCLUDE = ['Planet','Galaxy','QSO','Cluster*','Association','Stream','MouvGroup','GlobCluster','OpenCluster','BrightestCG','RadioG','LowSurfBrghtG','BlueCompactG','StarburstG','StarburstG','EmissionG','AGN','Seyfert','Seyfert1','Seyfert2','LINER','InteractingG','PairG','GroupG','Compact_Gr_G','ClG','protoClG','SuperClG','Void','Transient','HI','Maser','gammaBurst','PartofG','Unknown','Region']
 SIMBAD_RADIUS = 30*u.arcsecond
 
@@ -242,10 +259,11 @@ def test(verbose=True):
 	testdatafold = DIR+"/../../../tests/test_data/"
 	instrumentdatafold = DIR+"/../instrument_data/"
 	reductiondatafold = DIR+"/../data/"
-	test_instruments = ["spex-prism", "spex-SXD"]
-	tfold = os.path.join(testdatafold, "spex-prism")
+	test_instruments = ['spex-prism', 'spex-SXD','uspex-prism','uspex-SXD']
 	rawfold = os.path.join(testdatafold, "raw/")
 	procfold = os.path.join(testdatafold, "processed/")
+	log_test_file = 'log_test.csv'
+	driver_test_file = 'driver_test.txt'
 
 # make sure code can find main instrument data files
 	if verbose==True: print('...checking that code can find instrument data')
@@ -257,7 +275,7 @@ def test(verbose=True):
 		assert os.path.exists(testfile), 'could not find bad pixel mask file {}, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
 		fstat = os.stat(testfile)
 		assert fstat.st_size > 1000000, 'file {} is too small, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
-	if verbose==True: print('\tPASS')
+		if verbose==True: print('\t{}: PASS'.format(x))
 
 # make sure code can find main reduction data files
 	if verbose==True: print('...checking that code can find reduction data')
@@ -274,61 +292,72 @@ def test(verbose=True):
 		assert fstat.st_size > 1000000, 'Vega spectrum file {} is too small, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
 	if verbose==True: print('\tPASS')
 
-
 # make sure code can find test data
-	if verbose==True: print('...checking that code can find test data')
+	if verbose==True: print('...checking that code can find and process test data')
 	assert os.path.exists(testdatafold), 'Could not find test data folder {}'.format(testdatafold)
 	for inst in test_instruments:
-		assert os.path.exists(os.path.join(testdatafold, inst)), 'Could not find test data folder {}'.format(os.path.join(testdatafold, inst))
+		tfold = os.path.join(testdatafold, inst)
+		assert os.path.exists(tfold), 'Could not find test data folder {}'.format(os.path.join(testdatafold, inst))
 		for fold in REDUCTION_FOLDERS:
-			assert os.path.exists(os.path.join(testdatafold, inst, fold)), 'Could not find test data folder {}'.format(os.path.join(testdatafold, inst, fold))
-	dfiles = glob.glob(os.path.join(tfold, "data/*.fits"))
-	assert len(dfiles) > 0, 'no data files found in {}'.format(os.path.join(tfold, "data/*.fits"))
-	if verbose==True: print('\tPASS')
-
-	if verbose==True: print('...checking that code can process data files')
-	result = processFolder(os.path.join(tfold, "data/"),verbose=False)
-	assert isinstance(result, pd.core.frame.DataFrame), 'Could not process data folder {}'.format(os.path.join(tfold, "data/"))
-	assert len(result) > 0, 'no data files found in {}'.format(os.path.join(tfold, "data/"))
-	for x in list(HEADER_DATA.keys()):
-		assert x in list(result.columns), 'Could not find required header data {} in log file {}'.format(x,logfile)
-	if verbose==True: print('\tPASS')
+			assert os.path.exists(os.path.join(tfold, fold)), 'Could not find test data folder {}'.format(os.path.join(testdatafold, inst, fold))
+		dfiles = glob.glob(os.path.join(tfold, "data/*.fits"))
+		assert len(dfiles) > 0, 'no data files found in {}'.format(os.path.join(tfold, "data/*.fits"))
+		result = processFolder(os.path.join(tfold, "data/"),verbose=False)
+		assert isinstance(result, pd.core.frame.DataFrame), 'Could not process data folder {}'.format(os.path.join(tfold, "data/"))
+		assert len(result) > 0, 'no data files found in {}'.format(os.path.join(tfold, "data/"))
+		for x in list(HEADER_DATA.keys()):
+			assert x in list(result.columns), 'Could not find required header data {} in data files in {}'.format(x,os.path.join(tfold, "data/"))
+		if verbose==True: print('\t{}: PASS'.format(inst))
+#	if verbose==True: print('\tPASS')
 
 # process files and generate a test log
 	if verbose==True: print('...checking that code can generate log')
-	logfile = os.path.join(tfold, "qa", "log_test.csv")
-	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
-	writeLog(dp,logfile,verbose=False)
-	assert os.path.exists(logfile), 'Could not find log file {} after creation'.format(driver_file)
-	dp = pd.read_csv(logfile)
-	assert isinstance(dp, pd.core.frame.DataFrame), 'Log file parameter error: not a pandas dataframe for log file {}'.format(log_file)
-	assert len(dp)>0
-	for x in LOG_PARAMETERS['COLUMNS']:
-		assert x in list(dp.columns), 'Could not find required column {} in log file {}'.format(x,logfile)
-	if verbose==True: print('\tPASS')
+	for inst in test_instruments:
+		tfold = os.path.join(testdatafold, inst)
+		logfile = os.path.join(tfold, "qa", log_test_file)
+		dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
+		writeLog(dp,logfile,verbose=False)
+		assert os.path.exists(logfile), 'Could not find log file {} after creation'.format(driver_file)
+		dp = pd.read_csv(logfile)
+		assert isinstance(dp, pd.core.frame.DataFrame), 'Log file parameter error: not a pandas dataframe for log file {}'.format(log_file)
+		assert len(dp)>0
+		for x in LOG_PARAMETERS['COLUMNS']:
+			assert x in list(dp.columns), 'Could not find required column {} in log file {}'.format(x,logfile)
+		for x in SIMBAD_COLS:
+			assert x in list(dp.columns), 'Could not find required SIMBAD column {} in log file {}'.format(x,logfile)
+		if verbose==True: print('\t{}: PASS'.format(inst))
 
 # CLEANUP
 # remove generated files
 
 # process files and generate a driver file
 	if verbose==True: print('...checking that code can generate driver')
-	driver_file = os.path.join(tfold, "proc/driver_drivertest.txt")
-	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
-	writeDriver(dp,driver_file,data_folder=os.path.join(tfold, "data"),check=False,create_folders=False,verbose=False)
-	assert os.path.exists(driver_file), 'Could not find driver file {} after creation'.format(driver_file)
+	for inst in test_instruments:
+		tfold = os.path.join(testdatafold, inst)
+		logfile = os.path.join(tfold, "qa", log_test_file)
+		driver_file = os.path.join(tfold, "proc", driver_test_file)
+#	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
+		dp = pd.read_csv(logfile)
+		writeDriver(dp,driver_file,data_folder=os.path.join(tfold, "data"),check=False,create_folders=False,verbose=False)
+		assert os.path.exists(driver_file), 'Could not find driver file {} after creation'.format(driver_file)
 
 # read in existing driver in test folder and check
-	par = readDriver(driver_file,verbose=False)
-	assert isinstance(par, dict), 'Driver file parameter error: not a dictionary for driver file {}'.format(driver_file)
-	for x in BATCH_PARAMETERS:
-		assert x in list(par.keys()), 'Could not find required parameter {} in driver file {}'.format(x,driver_file)
-	if verbose==True: print('\tPASS')
+		par = readDriver(driver_file,verbose=False)
+		assert isinstance(par, dict), 'Driver file parameter error: not a dictionary for driver file {}'.format(driver_file)
+		for x in BATCH_PARAMETERS:
+			assert x in list(par.keys()), 'Could not find required parameter {} in driver file {}'.format(x,driver_file)
+		if verbose==True: print('\t{}: PASS'.format(inst))
 
 # CLEANUP
 # remove generated files
-	os.remove(logfile)
-	os.remove(driver_file)
-	if verbose==True: print('*** Batch reduction tests have all passed - happy reducing! ***\n')
+	if verbose==True: print('...cleaning up')
+	for inst in test_instruments:
+		tfold = os.path.join(testdatafold, inst)
+		logfile = os.path.join(tfold, "qa", log_test_file)
+		os.remove(logfile)
+		driver_file = os.path.join(tfold, "proc", driver_test_file)
+		os.remove(driver_file)
+	if verbose==True: print('\n*** Batch reduction tests have all passed - happy reducing! ***\n')
 
 	return
 
@@ -909,11 +938,13 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 						dpout['TARGET_NAME'].iloc[i] = ('J{}{}'.format((dpout['RA'].iloc[i])[:6],(dpout['DEC'].iloc[i])[:6])).replace('J+','J').replace(':','')
 				if verbose==True: print('Replaced target names with coordinate short names')
 
-# add in SIMBAD information
-# try statement to catch cases where xmatch is not accessible
+# add in SIMBAD information using astroquery.simbad
+# try statement to catch cases where simbad is not accessible
+	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 	try:
+		sb = Simbad()
+		for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
 		if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
-			for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 			dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
 			tnames = list(set(list(dpouts['TARGET_NAME'])))
 			tnames = [str(x) for x in tnames]
@@ -921,15 +952,25 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 				dpsel = dpout[dpout['TARGET_NAME']==tnm]
 				if len(dpsel)>0:
 					src_coord = SkyCoord(dpsel['RA'].iloc[0]+' '+dpsel['DEC'].iloc[0],unit=(u.hourangle, u.deg))
-					t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
-					t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
-					t_match.sort(['angDist'])
+					t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
 					if len(t_match)>0:
-						for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['main_type']==x))
+						for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['OTYPE']==x))
 					if len(t_match)>0:
+						t_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(t_match['RA'][lp]),str(t_match['DEC'][lp]),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(t_match))]
+						t_match.sort(['SIMBAD_SEP'])
 						for x in list(SIMBAD_COLS.keys()):
-							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
-	except: print('WARNING: There was a problem in trying to match targets to SIMBAD via XMatch; check internet connection')
+							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x][1]][0]
+				# t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
+				# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
+				# t_match.sort(['angDist'])
+				# if len(t_match)>0:
+				# 	for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['main_type']==x))
+				# print(t_match[0])
+				# print(t_match.columns)
+				# if len(t_match)>0:
+				# 	for x in list(SIMBAD_COLS.keys()):
+				# 		dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
+	except: print('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 
 # add on a NOTES column
 	dpout['NOTES'] = ['']*len(dpout)
@@ -1963,8 +2004,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		# `"vmag"` : int or float
 		#	 The standard star V-band magnitude.
 
-			standard_data = {'sptype': spar['STD_SPT'],'bmag': spar['STD_B'],'vmag': spar['STD_V']}
-			print(standard_data)
+			standard_data = {'sptype': spar['STD_SPT'],'bmag': float(spar['STD_B']),'vmag': float(spar['STD_V'])}
+#			print(standard_data)
 
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
