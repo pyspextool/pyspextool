@@ -10,5 +10,6 @@ dependencies:
   - pandas
   - pip
   - scipy
+  - specutils
   - pip:
     - git-lfs
