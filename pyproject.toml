@@ -18,7 +18,8 @@ dependencies = [
     "pandas",
     "importlib_resources; python_version < '3.9'",
     "git-lfs",
-    "astroquery"
+    "astroquery",
+    "specutils"
 ]
 
 [tool.setuptools]
