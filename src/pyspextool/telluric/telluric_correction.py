@@ -252,9 +252,10 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
         # Get SIMBAD information of the standard
 
         logging.info(f'Querying SIMBAD for standard star information...')
-
-        Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
+        Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)', 'flux(R)', 'flux(G)')
         table = Simbad.query_object(standard)
+
+#### NOTE FOR FUTURE - NEED TO CHANGE TO SEARCH BY COORDINATE WITH REJECTION OF SOME SIMBAD TYPES
 
         if isinstance(table,Table):
             standard_name = table['MAIN_ID'][0]
@@ -262,12 +263,30 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
             standard_vmag = table['FLUX_V'][0]
             standard_bmag = table['FLUX_B'][0]         
 
+##### TEMPORARY FIX WHEN THERE IS NO V MAGNITUDE RETURNED
+            if str(table['FLUX_V'][0])=='--':
+                if str(table['FLUX_G'][0])!='--':
+                    logging.info(f'WARNING: missing V magnitude, replacing with G magnitude')
+                    standard_vmag = table['FLUX_G'][0]
+                elif str(table['FLUX_R'][0])!='--':
+                    logging.info(f'WARNING: missing V magnitude, replacing with R magnitude')
+                    standard_vmag = table['FLUX_R'][0]
+                else:
+                    logging.info(f'WARNING: missing V magnitude, replacing with B magnitude')
+                    standard_vmag = standard_bmag
+
     else:
 
         standard_name = standard
         standard_sptype = standard_data['sptype']
-        standard_vmag = standard_data['bmag']
-        standard_bmag = standard_data['vmag']
+        standard_vmag = standard_data['vmag']
+        standard_bmag = standard_data['bmag']
+
+##### TEMPORARY FIX WHEN THERE IS NO V MAGNITUDE
+    if str(standard_vmag)=='--' or str(standard_vmag)=='0.0':
+        logging.info(f'WARNING: missing V magnitude, replacing with B magnitude')
+        standard_vmag = standard_bmag
+
 
     # error check standard information - what do we do if there is no standard data?
     try:
