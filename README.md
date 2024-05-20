@@ -13,24 +13,19 @@ Python code to reduce data obtained with the SpeX spectrograph.
    cd pyspextool/
    ```
 
-4) Make a `pyspextool` conda environment and install necessary dependencies
+4) Make a `pyspextool` conda environment and install necessary dependencies, including Python 3.11.
    ```
    conda env create -f environment.yml
    ```
 5) Activate the new environment
    ```
-   conda activate pyspextool
+   conda activate pyspextool_3.11
    ```
 6) Install the package
    ```
    pip install -e ./
    ```
 
-<!--  This should be done by the conda environment
-1) [Install git-lfs](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) 
-The calibration files stored in the `data/` and `instruments/` directories
-are stored using [Github Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files). Git-lfs must be installed before using this package.
--->
 
 
 <!---
