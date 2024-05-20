@@ -2,14 +2,19 @@ import glob
 import os
 import pyspextool as ps
 
+basefold = "tests/test_data/"
+rawfold = os.path.join(basefold, "raw/")
+procfold = os.path.join(basefold, "processed/")
+test_instruments = ["spex-prism", "spex-SXD","uspex-prism", "uspex-SXD"]
 
 def test_make_wavecal():
 
+    inst = 'uspex-prism'
     ps.pyspextool_setup(
-        raw_path="tests/test_data/raw/uspex-prism/data/",
-        qa_path="tests/test_data/raw/uspex-prism/qa/",
-        cal_path="tests/test_data/raw/uspex-prism/cals/",
-        proc_path="tests/test_data/raw/uspex-prism/proc/",
+        raw_path=os.path.join(rawfold,inst,'data'),
+        qa_path=os.path.join(rawfold,inst,'qa'),
+        cal_path=os.path.join(rawfold,inst,'cals'),
+        proc_path=os.path.join(rawfold,inst,'proc'),
         verbose=True,
         qa_show=False,
         qa_write=True,
@@ -27,11 +32,9 @@ def test_make_wavecal():
         use_stored_solution=False,
     )
 
-    fits_files = glob.glob(os.path.join('tests/test_data/uspex-prism/cals/',
-                                        "wavecal*.fits"))
+    fits_files = glob.glob(os.path.join(rawfold,inst,'cals',"wavecal*.fits"))
 
-    png_files = glob.glob(os.path.join('tests/test_data/uspex-prism/qa/',
-                                       "wavecal*.png"))    
+    png_files = glob.glob(os.path.join(rawfold,inst,'qa',"wavecal*.png"))    
 
     assert len(fits_files) == 1
     assert len(png_files) == 2
