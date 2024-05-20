@@ -3,6 +3,7 @@ channels:
   - http://ssb.stsci.edu/astroconda
   - conda-forge
 dependencies:
+  - python=3.10
   - astropy
   - astroquery
   - matplotlib
