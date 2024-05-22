@@ -105,7 +105,7 @@ def linear_interp1d(input_x, input_y, output_x, input_u=None, leave_nans=False):
 
             z_input_u_nonan = ~np.isnan(input_u)            
             np.multiply(z_input_nonan,z_input_u_nonan, out=z_input_nonan)
-
+    
     input_x = input_x[z_input_nonan]
     input_y = input_y[z_input_nonan]
 

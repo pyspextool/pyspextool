@@ -209,7 +209,8 @@ def average_header_info(hdrs, pair=False):
                         [vals[0], 'Start airmass'])
 
     hdrinfo = add_entry(hdrinfo, 'SRT_AM', 'after', 'AVE_AM',
-                        [fmt.format(sum(vals) / nfiles), 'Average airmass'])
+                        [float(fmt.format(sum(vals) / nfiles)),
+                         'Average airmass'])
 
     hdrinfo = add_entry(hdrinfo, 'AVE_AM', 'after', 'END_AM',
                         [vals[-1], 'End airmass'])

@@ -494,7 +494,9 @@ def get_ranges(spectra, ytype, fraction=0.05):
             array2 = spectra[i, 2, :]
             sg_array2 = robust_savgol(x_values, array2, 11)['fit']            
                     
-            yranges[i, :] = get_spec_range(sg_array1, sg_array2, frac=fraction)                                                
+            yranges[i, :] = get_spec_range(sg_array1, sg_array2,
+                                           frac=fraction)
+            
     return wranges, yranges
     
     

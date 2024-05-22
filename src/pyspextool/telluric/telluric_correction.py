@@ -8,6 +8,7 @@ import logging
 from astropy.io import fits
 import typing
 import matplotlib.pyplot as pl
+import copy
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
@@ -28,6 +29,8 @@ from pyspextool.telluric.telluric_utils import deconvolve_line
 from pyspextool.telluric.telluric_utils import make_telluric_spectrum
 from pyspextool.utils.for_print import for_print
 from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.utils.units import convert_fluxdensity
+from pyspextool.utils.units import get_latex_fluxdensity
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -42,6 +45,8 @@ def telluric_correction(object_file:str,
                         standard_data:typing.Optional[dict]=None,
                         input_path:typing.Optional[str]=None,
                         output_path:typing.Optional[str]=None,
+                        write_vegamodel:bool=False,
+                        write_telluric:bool=True,                        
                         qa_path:typing.Optional[str]=None,
                         qa_show:typing.Optional[bool]=None,
                         qashow_scale:float=1.0,
@@ -100,6 +105,12 @@ def telluric_correction(object_file:str,
         An optional output path.  Otherwise the default is the proc/
         directory.
 
+    write_vegamodel : {False, True}
+        Set to True to write the modified Vega model to disk.
+
+    write_telluric : {False, True}
+        Set to True to write the telluric correction spectrum to disk.
+    
     qa_path : str or None
         An optional qa path.  Otherwise the default is the qa/
         directory.
@@ -170,6 +181,12 @@ def telluric_correction(object_file:str,
     check_parameter('telluric_correction', 'output_path', output_path,
                     ['NoneType', 'str'])
 
+    check_parameter('telluric_correction', 'write_vegamodel', write_vegamodel,
+                    'bool')
+
+    check_parameter('telluric_correction', 'write_telluric', write_telluric,
+                    'bool')
+        
     check_parameter('telluric_correction', 'qa_path', qa_path,
                     ['NoneType', 'str'])            
 
@@ -257,6 +274,8 @@ def telluric_correction(object_file:str,
     telluric.load['reflectance'] = reflectance
     telluric.load['input_path'] = input_path
     telluric.load['output_path'] = output_path
+    telluric.load['write_vegamodel'] = write_vegamodel
+    telluric.load['write_telluric'] = write_telluric
     telluric.load['qa_path'] = qa_path      
     telluric.load['qa_show'] = qa_show
     telluric.load['qashow_scale'] = qashow_scale
@@ -285,18 +304,20 @@ def telluric_correction(object_file:str,
         #
 
         load_vega()
-        
+
+
         #
         # Normalize the order with the RV/deconvolution line
 
         normalize_order()
-    
+
         #
         # Determine the radial velocity
         #
 
         get_radialvelocity()
     
+        
         #
         # Get the convolution kernel
         #
@@ -308,7 +329,7 @@ def telluric_correction(object_file:str,
         #
 
         load_kernels()
-
+        
         #
         # Make the telluric correction spectra
         #
@@ -321,6 +342,13 @@ def telluric_correction(object_file:str,
 
         correct_spectra()
 
+        #
+        # Write files to disk
+        #
+
+        write_files()
+
+        
         
 
         
@@ -508,11 +536,8 @@ def correct_spectra():
 
     logging.info(f" Correcting spectra... ")    
 
-
-    #
-    # Start the loop over object order number
-    #
-        
+    corrected_spectra = copy.deepcopy(telluric.state['telluric_spectra'])
+    
     for i in range(telluric.state['object_norders']):
 
         # Find the order
@@ -524,46 +549,44 @@ def correct_spectra():
         
         for j in range(telluric.state['object_napertures']):
 
-            k =z_order[0][0]*telluric.state['object_napertures']+j
-#            
-#            # Interpolate the standard and bit mask onto the object
-#                
-#            rspectrum, runc = linear_interp1d(standard_spectra[z,0,:],
-#                                              standard_spectra[z,1,:],
-#                                              object_spectra[k,0,:],
-#                                              input_u=standard_spectra[z,2,:])
-#
+            k =i*telluric.state['object_napertures']+j
+            
+            # Interpolate the correction spectrum and correct
 
-    
-    
+            tc_w= np.squeeze(telluric.state['telluric_spectra'][z_order,0,:])
+            tc_f = np.squeeze(telluric.state['telluric_spectra'][z_order,1,:])
+            tc_u = np.squeeze(telluric.state['telluric_spectra'][z_order,2,:]) 
+            tc_m = np.squeeze(telluric.state['telluric_spectra'][z_order,3,:])
+            
+            obj_w = telluric.state['object_spectra'][k,0,:]
+            obj_f = telluric.state['object_spectra'][k,1,:]
+            obj_u = telluric.state['object_spectra'][k,2,:]
+            obj_m = telluric.state['object_spectra'][k,3,:]
 
-    
-    x = 1
+            
+            rtc_f, rtc_u = linear_interp1d(tc_w, tc_f, obj_w, input_u=tc_u)
 
-    # Convert to the users requested units
-    
-#    vega_flux = units.convert_fluxdensity(vega_wavelength, vega_flux,
-#                                          'um', 'erg s-1 cm-2 A-1',
-#                                          telluric.load['fluxdensity_units']) 
-#    
-#    # Set the units
-#        
-#    yunits = telluric.load['fluxdensity_units']
-#    latex_yunits, latex_ylabel = \
-#        units.get_latex_fluxdensity(telluric.load['fluxdensity_units'])
-#
-#    
-#    telluric.state['yunits'] = yunits
-#    telluric.state['latex_yunits'] = latex_yunits
-#    telluric.state['latex_ylabel'] = latex_ylabel
-    
+            corrected_flux = obj_f*rtc_f
 
+            corrected_var = obj_f**2 * rtc_f**2 + rtc_f**2 * obj_u**2
 
-    
+            # Interpolate the masks and combine
+
+            mask = linear_bitmask_interp1d(tc_w, tc_m.astype(np.uint8), obj_w)
+
+            stack = np.stack((obj_m.astype(np.uint8),mask))
+            corrected_mask = combine_flag_stack(stack)
+
+            # Store the results
+
+            corrected_spectra[k,1,:] = corrected_flux
+            corrected_spectra[k,2,:] = np.sqrt(corrected_var)
+            corrected_spectra[k,3,:] = corrected_mask            
 
 
+    telluric.state['corrected_spectra'] = corrected_spectra
 
-
+            
 def get_kernel():
 
     """
@@ -625,8 +648,8 @@ def get_kernel():
                        'filename':telluric.load['output_name']+'_deconv',
                        'extension':telluric.load['qawrite_extension'],
                        'normalization_wavelength_range':normalization_range,
-                       'title':title,
-                       'xlabel':xlabel}
+                       'plot_title':title,
+                       'plot_xlabel':xlabel}
     else:
 
         qafile_info = None
@@ -654,7 +677,9 @@ def get_kernel():
     #
 
     telluric.state['kernel'] = result['kernel']
-    telluric.state['pixels_kernel'] = result['object_pixels']    
+    telluric.state['pixels_kernel'] = result['object_pixels']
+    telluric.state['rms_deviation'] = result['rms_deviation']
+    telluric.state['max_deviation'] = result['max_deviation']    
 
     
 
@@ -773,7 +798,7 @@ def get_radialvelocity():
     # Get QA set up
     #
 
-    xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]    
+    xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]
     title = telluric.state['standard_name']+', '+\
         telluric.state['mode']+' Order '+\
         str(telluric.state['normalized_order'])
@@ -860,6 +885,8 @@ def load_data():
     # Load the files into memory
     #
 
+
+    
     logging.info(f" Telluric Correction\n-------------------------\n")
     logging.info(f" Loading the data...")
             
@@ -954,13 +981,15 @@ def load_data():
     #
     # Store the results
     #
-    
+
     telluric.state['standard_spectra'] = standard_spectra
     telluric.state['standard_info'] = standard_info
     telluric.state['standard_hdrinfo'] = standard_hdrinfo
     telluric.state['standard_name'] = standard_name
     telluric.state['standard_vmag'] = standard_vmag
-    telluric.state['standard_bmag'] = standard_bmag    
+    telluric.state['standard_bmag'] = standard_bmag
+    telluric.state['delta_airmass'] = object_hdrinfo['AVE_AM'][0]-\
+        standard_hdrinfo['AVE_AM'][0] 
     telluric.state['object_spectra'] = object_spectra
     telluric.state['object_info'] = object_info    
     telluric.state['object_hdrinfo'] = object_hdrinfo
@@ -1048,8 +1077,14 @@ def load_data():
 
     telluric.state['ip_coefficients'] = ip_coefficients
 
+    #
+    # Clear out variables
+    #
 
-    
+    telluric.state['rms_deviation'] = np.nan
+    telluric.state['max_deviation'] = np.nan    
+
+
 def load_vega():
 
     """
@@ -1248,18 +1283,23 @@ def make_telluric_spectra():
     """
 
     logging.info(f' Making telluric correction spectra...')
+
+
+    telluric_spectra = copy.deepcopy(telluric.state['standard_spectra'])
+    vega_spectra = copy.deepcopy(telluric.state['standard_spectra'])
+    vega_spectra[:,2,:] = np.nan
+    vega_spectra[:,3,:] = 0
     
     for i in range(telluric.state['object_norders']):    
-
-        telluric_spectra = telluric.state['standard_spectra']
         
         standard_wavelength = telluric.state['standard_spectra'][i,0,:]
         standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
         standard_uncertainty = telluric.state['standard_spectra'][i,2,:]
+
         standard_bmag = telluric.state['standard_bmag']
         standard_vmag = telluric.state['standard_vmag']
         standard_rv = telluric.state['standard_rv']                
-              
+
         vega_wavelength = telluric.state['vega_wavelength']
         vega_fluxdensity = telluric.state['vega_fluxdensity']
         vega_continuum = telluric.state['vega_continuum']
@@ -1278,23 +1318,39 @@ def make_telluric_spectra():
                                         vega_fitted_continuum,
                                         kernel)
 
+        
         #
-        # Change units to those requested by users
+        # Change units to those requested by the user
         #
 
-        
+        flux = convert_fluxdensity(standard_wavelength,
+                                   result[0],'um','erg s-1 cm-2 A-1',
+                                   telluric.load['fluxdensity_units'])
+
+        unc = convert_fluxdensity(standard_wavelength,
+                                  result[1],'um','erg s-1 cm-2 A-1',
+                                  telluric.load['fluxdensity_units'])
+
+        vega = convert_fluxdensity(standard_wavelength,
+                                   result[2],'um','erg s-1 cm-2 A-1',
+                                  telluric.load['fluxdensity_units'])
+
+        # Updates labels
 
         
-        telluric_spectra[i,1,:] = result[0]
-        telluric_spectra[i,2,:] = result[1]
+
+
         
-
-
+        telluric_spectra[i,1,:] = flux
+        telluric_spectra[i,2,:] = unc
+        vega_spectra[i,1,:] = vega
+        
     #
     # Store the results
     #
 
-    telluric.state['standard_spectra'] = telluric_spectra
+    telluric.state['telluric_spectra'] = telluric_spectra
+    telluric.state['vega_spectra'] = vega_spectra    
         
 
     
@@ -1394,16 +1450,155 @@ def normalize_order():
     if telluric.load['qa_show'] is True:
 
         setup.plotwindows['telluric_normalize'] = plotnum
+
+
+
+        
+def write_files():
+
+    """
+    To write FITS files to disk.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+
+    """
+
+    if telluric.load['write_vegamodel'] is True:
+
+        x = 1
+
+    if telluric.load['write_telluric'] is True:
+
+        x = 1
+
+    #
+    # Write the corrected spectra to disk
+    #
     
+    # Rename header for ease of reading
+            
+    hdr = telluric.state['object_hdrinfo']
                 
+    # Store the history
+
+    old_history = hdr['HISTORY']
+
+    # remove it from the avehdr
+
+    hdr.pop('HISTORY')
+
+    #
+    # Add things to the header
+    #
+
+    hdr['MODULE'][0] = 'telluric'
+
+    hdr['FILENAME'][0] = telluric.load['output_name']+'.fits'
+
+    hdr['OBJFILE'] = [telluric.load['object_file'], ' Object file']
+
+    hdr['A0VStd'] = [telluric.load['standard_name'],' Telluric A0 V Standard']
+
+    hdr['A0V_Bmag'] = [telluric.state['standard_bmag'],' Telluric A0 V B mag']
+
+    hdr['A0V_Vmag'] = [telluric.state['standard_vmag'],' Telluric A0 V V mag']
+
+    hdr['A0V_RV'] =  [telluric.state['standard_rv'],
+                      ' A0 V radial velocity (km s-1)']
+
+    hdr['delta_AM'] = [telluric.state['delta_airmass'],\
+                       ' Average airmass difference']    
+
+    hdr['TCMETH'] = [telluric.state['method'],' Telluric correction method']
+
+    hdr['TCMAXDEV'] = [telluric.state['max_deviation'],
+                       'The maxmimum % deviation of Vega-data']
+
+    hdr['TCRMSDEV'] = [telluric.state['rms_deviation'],
+                       'The RMS deviation of Vega-data']
+
+    units = telluric.load['fluxdensity_units']
+    hdr['YUNITS'][0] = units
+
+    hdr['LYLABEL'][0] = get_latex_fluxdensity(units)[1]
 
 
+    
+    #
+    # Create the header
+    #
 
+    # Create the basic headers
 
-                
+    phdu = fits.PrimaryHDU()
+    newhdr = phdu.header
 
+    # Add our keywords
+    
+    keys = list(hdr.keys())
+    
+    for i in range(len(keys)):
 
+        if keys[i] == 'COMMENT':
 
+            junk = 1
+
+        else:
+
+            newhdr[keys[i]] = (hdr[keys[i]][0], hdr[keys[i]][1])
+    
+    # Do the history
+
+    for hist in old_history:
+
+        newhdr['HISTORY'] = hist
+
+    #
+    # Write the file out
+    #
+
+    full_path = os.path.join(telluric.load['output_path'],
+                             telluric.load['output_name']+'.fits')
+    
+    fits.writeto(full_path, telluric.state['corrected_spectra'], newhdr,
+                 overwrite=telluric.load['overwrite'])
+
+    #
+    # Do the QA plotting
+    #
+
+    if telluric.load['qa_show'] is True:
+
+        plot_spectra(full_path, ytype='flux and uncertainty',
+                     line_width=0.5,
+                     title=os.path.basename(full_path))
+
+        
+    if telluric.load['qa_write'] is True:
+
+        qafileinfo = {'figsize': (6*telluric.load['qashow_scale'],
+                                  4*telluric.load['qashow_scale']),
+                      'filepath': setup.state['qa_path'],
+                      'filename': telluric.load['output_name'],
+                      'extension': setup.state['qa_extension']}
+
+        plot_spectra(full_path, ytype='flux and uncertainty',
+                     line_width=0.5,
+                     title=os.path.basename(full_path), file_info=qafileinfo)
+        
+#        logging.info(' Wrote file '+telluric.load['output_name']+\
+#                     setup.state['qa_extension']+' to disk.')    
+#
+#    
+#
+#
+#    logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')    
 
 
 

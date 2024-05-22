@@ -297,7 +297,7 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
         pl.show()
         if qashow_info['block'] is False:
             pl.pause(1)
-        
+
     if qafile_info is not None:
 
         plot_model_xcorrelate(lnlambda_wavelengths,
@@ -305,8 +305,8 @@ def model_xcorrelate(object_wavelength:npt.ArrayLike,
                               model_resampled_zflux,
                               lag, xcor, fit['fit'], offset_pixels,
                               velocity_shift, redshift,
-                              plot_xlabel=qashow_info['plot_xlabel'],
-                              plot_title=qashow_info['plot_title'])
+                              plot_xlabel=qafile_info['plot_xlabel'],
+                              plot_title=qafile_info['plot_title'])
                 
         pl.savefig(os.path.join(qafile_info['filepath'],
                                 qafile_info['filename'] + \

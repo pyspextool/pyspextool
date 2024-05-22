@@ -13,7 +13,6 @@ import os
 from dust_extinction.parameter_averages import G23
 import astropy.units as u
 
-from pyspextool.utils.for_print import for_print
 from pyspextool.io.check import check_parameter
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.utils.math import moments
@@ -350,6 +349,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     results = moments(line_fluxdensity_ratio)
     rms_deviation = results['stddev']
 
+    dict['rms_deviation'] = rms_deviation
+    dict['max_deviation'] = maximum_deviation    
+
     logging.info(' RMS deviation '+str(rms_deviation))        
     logging.info(' Maximum deviation '+str(maximum_deviation))    
 
@@ -408,7 +410,7 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
 
         plot_deconvolve_line(data_wavelength,
                              data_fluxdensity,
-                             qashow_info['normalization_wavelength_range'],
+                             qafile_info['normalization_wavelength_range'],
                              line_wavelength_range,
                              data_line_wavelength,
                              data_zeroed_line_fluxdensity,
@@ -417,9 +419,8 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                              line_fluxdensity_ratio,
                              rms_deviation,
                              maximum_deviation,
-                             plot_number=qashow_info['plot_number'],
-                             plot_xlabel=qashow_info['plot_xlabel'],
-                             plot_title=qashow_info['plot_title'])
+                             plot_xlabel=qafile_info['plot_xlabel'],
+                             plot_title=qafile_info['plot_title'])
         
 
         pl.savefig(os.path.join(qafile_info['filepath'],
@@ -547,7 +548,12 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
     ndarray
 
         The uncertainty on the telluric correction spectrum.
-         
+
+    ndarray
+
+        The modified Vega model spectrum.
+
+    
     """
 
     #
@@ -669,7 +675,7 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
                                     standard_uncertainty**2)
     
     
-    return telluric_spectrum, telluric_spectrum_unc
+    return telluric_spectrum, telluric_spectrum_unc, convolved_fluxdensity
 
 
 
