@@ -198,7 +198,7 @@ SIMBAD_COLS = {
 	'SIMBAD_KMAG': ['fluxdata(K)','FLUX_K'],
 }
 
-SIMBAD_EXCLUDE = ['Planet','Galaxy','QSO','Cluster*','Association','Stream','MouvGroup','GlobCluster','OpenCluster','BrightestCG','RadioG','LowSurfBrghtG','BlueCompactG','StarburstG','StarburstG','EmissionG','AGN','Seyfert','Seyfert1','Seyfert2','LINER','InteractingG','PairG','GroupG','Compact_Gr_G','ClG','protoClG','SuperClG','Void','Transient','HI','Maser','gammaBurst','PartofG','Unknown','Region']
+SIMBAD_EXCLUDE = ['Planet','Galaxy','QSO','Cluster*','Association','Stream','MouvGroup','GlobCluster','OpenCluster','BrightestCG','RadioG','LowSurfBrghtG','BlueCompactG','StarburstG','StarburstG','EmissionG','AGN','Seyfert','Seyfert1','Seyfert2','LINER','InteractingG','PairG','GroupG','Compact_Gr_G','ClG','protoClG','SuperClG','Void','Transient','HI','Maser','gammaBurst','PartofG','Unknown','Region','**']
 SIMBAD_RADIUS = 30*u.arcsecond
 
 # legacy download constants
