@@ -40,7 +40,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 May 13'
+VERSION = '2024 May 24'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -953,22 +953,23 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 				if len(dpsel)>0:
 					src_coord = SkyCoord(dpsel['RA'].iloc[0]+' '+dpsel['DEC'].iloc[0],unit=(u.hourangle, u.deg))
 					t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
-					if len(t_match)>0:
-						for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['OTYPE']==x))
-					if len(t_match)>0:
-						t_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(t_match['RA'][lp]),str(t_match['DEC'][lp]),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(t_match))]
-						t_match.sort(['SIMBAD_SEP'])
-						for x in list(SIMBAD_COLS.keys()):
-							dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x][1]][0]
+					if isinstance(t_match,type(None))==False:
+						if len(t_match)>0:
+							for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['OTYPE']==x))
+						if len(t_match)>0:
+							t_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(t_match['RA'][lp]),str(t_match['DEC'][lp]),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(t_match))]
+							t_match.sort(['SIMBAD_SEP'])
+							for x in list(SIMBAD_COLS.keys()):
+								dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x][1]][0]
 				# t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
-				# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
-				# t_match.sort(['angDist'])
-				# if len(t_match)>0:
-				# 	for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['main_type']==x))
-				# print(t_match[0])
-				# print(t_match.columns)
-				# if len(t_match)>0:
-				# 	for x in list(SIMBAD_COLS.keys()):
+			# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
+			# t_match.sort(['angDist'])
+			# if len(t_match)>0:
+			# 	for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['main_type']==x))
+			# print(t_match[0])
+			# print(t_match.columns)
+			# if len(t_match)>0:
+			# 	for x in list(SIMBAD_COLS.keys()):
 				# 		dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
 	except: print('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 

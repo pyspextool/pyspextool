@@ -19,7 +19,6 @@ from pyspextool.batch.batch import (
 
 
 basefold = "tests/test_data/"
-
 rawfold = os.path.join(basefold, "raw/")
 procfold = os.path.join(basefold, "processed/")
 test_instruments = ["spex-prism", "spex-SXD","uspex-prism", "uspex-SXD"]
