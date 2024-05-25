@@ -614,19 +614,19 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
 
     z_idx = np.arange(zleft_idx-nadd,zright_idx+nadd+1,dtype=int)
 
-    convolved_norm_fluxdensity = np.convolve(vega_fluxdensity[z_idx]/\
-                                             vega_continuum[z_idx]-1,
-                                             kernel, mode='same')+1
+    # Do the convolution
 
-    convolved_norm_continuum = np.convolve(vega_continuum[z_idx]/\
-                                           vega_fitted_continuum[z_idx]-1,
-                                           kernel, mode='same')+1
+    con_norm_vega_fd = np.convolve(vega_fluxdensity[z_idx]/\
+                                   vega_continuum[z_idx]-1,
+                                   kernel, mode='same')+1
 
-
-    convolved_continuum = convolved_norm_continuum*vega_fitted_continuum[z_idx]
+    con_norm_vega_cont = np.convolve(vega_continuum[z_idx]/\
+                                     vega_fitted_continuum[z_idx]-1,
+                                     kernel, mode='same')+1
     
+    con_vega_cont = con_norm_vega_cont*vega_fitted_continuum[z_idx]
 
-    convolved_fluxdensity = convolved_norm_fluxdensity*convolved_continuum
+    con_vega_fd = con_norm_vega_fd*con_vega_cont
 
     #
     # Shift to the radial velocity of the standard
@@ -638,10 +638,9 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
     # Interpolate onto the wavelength grid of the standard
     #
 
-    convolved_fluxdensity = linear_interp1d(shifted_vega_wavelength[z_idx],
-                                            convolved_fluxdensity,
-                                            standard_wavelength)
-
+    r_con_vega_fd = linear_interp1d(shifted_vega_wavelength[z_idx],
+                                    con_vega_fd, standard_wavelength)
+    
     #
     # Redden the model to match that of the standard
     #
@@ -656,26 +655,27 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
     
     ext = G23(Rv=3.1)
     
-    convolved_fluxdensity *= ext.extinguish(standard_wavelength*1e4*u.AA, \
-                                            Ebv=ebminv)
+    r_con_vega_fd *= ext.extinguish(standard_wavelength*1e4*u.AA,Ebv=ebminv)
     
     #
     # Scale the Vega model to the observed magnitude of the standard
     #
 
     scale = 10.**(-0.4*(standard_vmag-vega_vmag))
-    convolved_fluxdensity *= scale
+    r_con_vega_fd *= scale
 
     #
     # Calculate the ratio:  model/standard
     #
 
-    telluric_spectrum = convolved_fluxdensity/standard_fluxdensity
-    telluric_spectrum_unc = np.sqrt(telluric_spectrum**2 * \
-                                    standard_uncertainty**2)
+    telluric_spectrum = r_con_vega_fd/standard_fluxdensity
+    
+    telluric_spectrum_var = (r_con_vega_fd/standard_fluxdensity**2)**2 * \
+                                    standard_uncertainty**2
+    telluric_spectrum_unc = np.sqrt(telluric_spectrum_var)
     
     
-    return telluric_spectrum, telluric_spectrum_unc, convolved_fluxdensity
+    return telluric_spectrum, telluric_spectrum_unc, r_con_vega_fd
 
 
 

@@ -536,7 +536,7 @@ def correct_spectra():
 
     logging.info(f" Correcting spectra... ")    
 
-    corrected_spectra = copy.deepcopy(telluric.state['telluric_spectra'])
+    corrected_spectra = copy.deepcopy(telluric.state['object_spectra'])
     
     for i in range(telluric.state['object_norders']):
 
@@ -551,7 +551,7 @@ def correct_spectra():
 
             k =i*telluric.state['object_napertures']+j
             
-            # Interpolate the correction spectrum and correct
+            # Interpolate the correction spectrum 
 
             tc_w= np.squeeze(telluric.state['telluric_spectra'][z_order,0,:])
             tc_f = np.squeeze(telluric.state['telluric_spectra'][z_order,1,:])
@@ -566,9 +566,11 @@ def correct_spectra():
             
             rtc_f, rtc_u = linear_interp1d(tc_w, tc_f, obj_w, input_u=tc_u)
 
+            # Do the correction
+            
             corrected_flux = obj_f*rtc_f
 
-            corrected_var = obj_f**2 * rtc_f**2 + rtc_f**2 * obj_u**2
+            corrected_var = obj_f**2 * rtc_u**2 + rtc_f**2 * obj_u**2
 
             # Interpolate the masks and combine
 
@@ -1317,7 +1319,6 @@ def make_telluric_spectra():
                                         vega_continuum,
                                         vega_fitted_continuum,
                                         kernel)
-
         
         #
         # Change units to those requested by the user
@@ -1475,6 +1476,27 @@ def write_files():
 
     if telluric.load['write_telluric'] is True:
 
+        hdr = telluric.state['standard_hdrinfo']
+        
+        # Create the basic headers
+
+        phdu = fits.PrimaryHDU()
+        newhdr = phdu.header
+
+        newhdr['ORDERS'] = (hdr['ORDERS'][0],hdr['ORDERS'][1])
+        newhdr['NORDERS'] = (hdr['NORDERS'][0], hdr['NORDERS'][1])
+        newhdr['NAPS'] = (hdr['NAPS'][0], hdr['NAPS'][1])
+
+        full_path = os.path.join(telluric.load['output_path'],
+                                 telluric.load['output_name']+'_telluric.fits')
+    
+        fits.writeto(full_path, telluric.state['telluric_spectra'], newhdr,
+                 overwrite=telluric.load['overwrite'])
+
+        
+
+
+
         x = 1
 
     #
@@ -1501,27 +1523,34 @@ def write_files():
 
     hdr['FILENAME'][0] = telluric.load['output_name']+'.fits'
 
-    hdr['OBJFILE'] = [telluric.load['object_file'], ' Object file']
+    hdr['OBJFILE'] = [telluric.load['object_file'],
+                      'Telluric object input file']
 
-    hdr['A0VStd'] = [telluric.load['standard_name'],' Telluric A0 V Standard']
+    hdr['STDFILE'] = [telluric.load['standard_file'],
+                      'Telluric standard input file']
 
-    hdr['A0V_Bmag'] = [telluric.state['standard_bmag'],' Telluric A0 V B mag']
+    hdr['A0V_STD'] = [telluric.load['standard_name'],'Telluric A0 V Standard']
 
-    hdr['A0V_Vmag'] = [telluric.state['standard_vmag'],' Telluric A0 V V mag']
 
-    hdr['A0V_RV'] =  [telluric.state['standard_rv'],
-                      ' A0 V radial velocity (km s-1)']
+    hdr['A0V_Bmag'] = [float('{:.3f}'.format(telluric.state['standard_bmag'])),
+                       'Telluric A0 V B mag']
 
-    hdr['delta_AM'] = [telluric.state['delta_airmass'],\
-                       ' Average airmass difference']    
+    hdr['A0V_Vmag'] = [float('{:.3f}'.format(telluric.state['standard_vmag'])),
+                       'Telluric A0 V V mag']
 
-    hdr['TCMETH'] = [telluric.state['method'],' Telluric correction method']
+    hdr['A0V_RV'] =  [float('{:.2f}'.format(telluric.state['standard_rv'])),
+                      'Telluric A0 V radial velocity (km s-1)']
 
-    hdr['TCMAXDEV'] = [telluric.state['max_deviation'],
-                       'The maxmimum % deviation of Vega-data']
+    hdr['delta_AM'] = [float('{:.2f}'.format(telluric.state['delta_airmass'])),\
+                       'Telluric Average airmass difference']    
 
-    hdr['TCRMSDEV'] = [telluric.state['rms_deviation'],
-                       'The RMS deviation of Vega-data']
+    hdr['TCMETH'] = [telluric.state['method'],'Telluric method']
+
+    hdr['TCMAXDEV'] = [float('{:.5f}'.format(telluric.state['max_deviation'])),
+                       'Telluric maxmimum % deviation of Vega-data']
+
+    hdr['TCRMSDEV'] = [float('{:.5f}'.format(telluric.state['rms_deviation'])),
+                       'Telluric RMS deviation of Vega-data']
 
     units = telluric.load['fluxdensity_units']
     hdr['YUNITS'][0] = units
