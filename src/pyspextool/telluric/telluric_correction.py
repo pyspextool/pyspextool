@@ -9,8 +9,11 @@ from astropy.io import fits
 import typing
 import matplotlib.pyplot as pl
 import copy
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from pyspextool import config as setup
+from pyspextool.setup_utils import pySpextoolError
 from pyspextool.telluric import config as telluric
 from pyspextool.io.check import *
 from pyspextool.io.files import *
@@ -36,13 +39,12 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def telluric_correction(object_file:str,
-                        standard_name:str,
                         standard_file:str,
+                        standard_info:list | str | dict,
                         output_name:str,
                         fluxdensity_units:str='W m-2 um-1',
                         use_instrument_profile:bool=False,
                         reflectance:bool=False,
-                        standard_data:typing.Optional[dict]=None,
                         input_path:typing.Optional[str]=None,
                         output_path:typing.Optional[str]=None,
                         write_vegamodel:bool=False,
@@ -64,12 +66,33 @@ def telluric_correction(object_file:str,
     object_file : str 
         The name of the FITS file containing the object star spectra.
 
-    standard_name : str 
-        The name of the standard star
-
     standard_file : str 
         The name of the FITS file containing the standard star spectra.
 
+    standard_info : str, list, dict
+        If a string is passed, it is assumed to be the name of the standard.
+        SIMBAD is queried for the spectral type and B- and V-band magnitudes.
+
+        If a list is passed, it is assumed to contain the coordinates of the
+        standard.  standard_info[0] = RA, standard_info[1] = Dec.  Each element
+        is a string which gives the sexigesimal coordidates, separated by a
+        blank space, :, or hms, dms.  SIMBAD is then queried for the id,
+        spectral type, and B- and V-band magnitudes.
+
+        If a dict is passed, it is assumed to contain the standard information.
+
+        `"id"` : str
+            The name of the standard.
+    
+        `"sptype"` : str
+            The standard star spectral type.
+
+        `"bmag"` : int or float
+            The standard star B-band magnitude
+
+        `"vmag"` : int or float
+            The standard star V-band magnitude.
+      
     output_name : str
         The output file name sans the suffix.
 
@@ -156,12 +179,12 @@ def telluric_correction(object_file:str,
 
     check_parameter('telluric_correction', 'object_file', object_file, 'str')
 
-    check_parameter('telluric_correction', 'standard_name', standard_name,
-                    'str')
-    
     check_parameter('telluric_correction', 'standard_file', standard_file,
                     'str')
 
+    check_parameter('telluric_correction', 'standard_info', standard_info,
+                    ['str','list','dict'])
+        
     check_parameter('telluric_correction', 'output_name', output_name, 'str')
 
     check_parameter('telluric_correction', 'fluxdensity_units',
@@ -172,9 +195,6 @@ def telluric_correction(object_file:str,
     
     check_parameter('telluric_correction', 'reflectance', reflectance, 'bool')
     
-    check_parameter('telluric_correction', 'standard_data', standard_data,
-                    ['dict', 'NoneType'])    
-
     check_parameter('telluric_correction', 'input_path', input_path,
                     ['NoneType', 'str'])
 
@@ -260,15 +280,14 @@ def telluric_correction(object_file:str,
     check_path(input_path)
     check_path(output_path)
     check_path(qa_path)        
-
+       
     #
     # Store user inputs
     #
 
     telluric.load['object_file'] = object_file
-    telluric.load['standard_name'] = standard_name
     telluric.load['standard_file'] = standard_file
-    telluric.load['standard_data'] = standard_data    
+    telluric.load['standard_info'] = standard_info    
     telluric.load['output_name'] = output_name
     telluric.load['fluxdensity_units'] = fluxdensity_units
     telluric.load['reflectance'] = reflectance
@@ -289,7 +308,7 @@ def telluric_correction(object_file:str,
     #
     # Load the data
     #
-    
+
     load_data()
 
     #
@@ -329,196 +348,35 @@ def telluric_correction(object_file:str,
         #
 
         load_kernels()
+
+    else:
+
+        # Set things to that need to be set.
         
-        #
-        # Make the telluric correction spectra
-        #
-
-        make_telluric_spectra()
-
-        #
-        # Correct the data for telluric absorption and flux calibrate
-        #
-
-        correct_spectra()
-
-        #
-        # Write files to disk
-        #
-
-        write_files()
-
-        
-        
-
-        
-
+        telluric.state['standard_rv'] = 0
+        telluric.state['max_deviation'] = 0
+        telluric.state['rms_deviation'] = 0
             
+    #
+    # Make the telluric correction spectra
+    #
+        
+    make_telluric_spectra()
+
+    #
+    # Correct the data for telluric absorption and flux calibrate
+    #
+    
+    correct_spectra()
+
+    #
+    # Write files to disk
+    #
+    
+    write_files()
+
 
     
-#        kernel_info = get_kernel(np.squeeze(standard_spectra[z,0,:]),
-#                                 np.squeeze(standard_spectra[z,1,:]),
-#                                 standard_info['resolvingpower'],
-#                                 vega_wavelength, vega_flux, vega_continuum,
-#                                 mode_info['normalization_windows'],
-#                                 mode_info['polynomial_degree'],
-#                                 mode_info['rv_range'])
-#                    
-#    else:
-#
-#        yunits = ''
-#        lyunits = ''
-#        lylabel = 'ratio'
-#          
-#
-#    return
-#        
-#    #
-#    # Start the loop over object order number
-#    #
-#
-#    for i in range(object_info['norders']):
-#
-#        # Find the order
-#        
-#        z = np.where(object_info['orders'][i] == standard_info['orders'])
-#
-#        # Now loop over the apertures
-#        
-#        for j in range(object_info['napertures']):
-#
-#            k =z[0][0]*object_info['napertures']+j
-#            
-#            # Interpolate the standard and bit mask onto the object
-#                
-#            rspectrum, runc = linear_interp1d(standard_spectra[z,0,:],
-#                                              standard_spectra[z,1,:],
-#                                              object_spectra[k,0,:],
-#                                              input_u=standard_spectra[z,2,:])
-#
-#            if reflectance is False:
-#
-#                rvega = linear_interp1d(vega_wavelength, vega_flux,
-#                                        object_spectra[k,0,:])
-#
-#                correction = rvega/rspectrum
-#                correction_unc =  rvega/rspectrum**2 * runc               
-#                
-#
-#            else:
-#
-#                correction = 1/rspectrum
-#                correction_unc = 1/rspectrum**2 * runc
-#                
-#            
-#            # Do the correction and error propagation
-#
-#            value = object_spectra[k,1,:] * correction
-#
-#            var = object_spectra[k,1,:]**2 * correction_unc**2 + \
-#                  correction**2 * object_spectra[k,2,:]**2
-#            
-#            object_spectra[k,1,:] = value
-#            object_spectra[k,2,:] = np.sqrt(var)
-#
-#            # Combine the masks
-#
-#            mask = linear_bitmask_interp1d(standard_spectra[z,0,:],
-#                                 standard_spectra[z,3,:].astype(np.uint8),
-#                                           object_spectra[k,0,:])
-#
-#
-#            stack = np.stack((object_spectra[k,3,:].astype(np.uint8),mask))
-#            mask = combine_flag_stack(stack)
-#
-#            object_spectra[k,3,:] = mask
-#
-#    #
-#    # Write the file to disk
-#    #
-#
-#    # Update the object hdrinfo 
-#
-#    object_hdrinfo['MODULE'][0] = 'telluric'
-#    object_hdrinfo['FILENAME'][0] = output_name+'.fits'
-#    object_hdrinfo['YUNITS'][0] = yunits
-#    object_hdrinfo['LYUNITS'][0] = lyunits
-#    object_hdrinfo['LYLABEL'][0] = lylabel
-#
-#    object_hdrinfo['OBJFILE'] = (object_file, ' Object file name')
-#    object_hdrinfo['STANDARD'] = (standard_name, ' Standard')
-#    object_hdrinfo['STDSPTYP'] = (standard_sptype, ' Standard spectral type')
-#    object_hdrinfo['STDBMAG'] = (standard_bmag, ' Standard spectral B mag')
-#    object_hdrinfo['STDVMAG'] = (standard_vmag, ' Standard spectral V mag')    
-#    object_hdrinfo['STDFILE'] = (standard_file, ' Standard file name')        
-#
-#    # Store the history
-#
-#    old_history = object_hdrinfo['HISTORY']
-#    
-#    # remove it from the avehdr
-#
-#    object_hdrinfo.pop('HISTORY')
-#    
-#    # Create a new header
-#
-#    phdu = fits.PrimaryHDU()
-#    hdr = phdu.header
-#
-#    # Add our keywords
-#    
-#    keys = list(object_hdrinfo.keys())
-#    
-#    for i in range(len(keys)):
-#
-#        if keys[i] == 'COMMENT':
-#
-#            junk = 1
-#
-#        else:
-#
-#            hdr[keys[i]] = (object_hdrinfo[keys[i]][0],
-#                            object_hdrinfo[keys[i]][1])
-#
-#    history = split_text(old_history, length=65)            
-#
-#    for hist in history:
-#
-#        hdr['HISTORY'] = hist
-#
-#    output_fullpath = os.path.join(output_path, output_name+'.fits')
-#    
-#    fits.writeto(output_fullpath, object_spectra, hdr, overwrite=overwrite)
-#
-#    #
-#    # Plot the results
-#    #
-#
-##    if telluric.load['qa_show'] is True:
-##
-##        number = plot_spectra(output_fullpath, title=output_name+'.fits',
-##                              plot_size=qa_showsize,
-##                              plot_number=telluric.state['spectra_plotnum'])
-##        telluric.state['spectra_plotnum'] = number
-##                    
-##    if telluric.load['qa_write'] is True:
-##
-##        qafileinfo = {'figsize': telluric.load['qa_showsize'],
-##                      'filepath': telluric.load['qa_path'],
-##                      'filename': telluric.load['output_name'],
-##                      'extension': setup.state['qa_extension']}
-##
-##        plot_spectra(output_fullpath, file_info=qafileinfo)
-#
-#    #
-#    # Update the user
-#    #
-#
-#    message = ' Wrote '+os.path.basename(output_fullpath)+' to disk.'
-#    logging.info(message)
-#
-#
-
 def correct_spectra():
 
     """
@@ -902,7 +760,7 @@ def load_data():
     header = fits.getheader(fullpath)
 
     object_hdrinfo = get_header_info(header,
-                                    keywords=setup.state['telluric_keywords'])
+                                     keywords=setup.state['telluric_keywords'])
 
     # Now the standard
 
@@ -921,7 +779,11 @@ def load_data():
     # Get standard star information from the user or SIMBAD
     #
 
-    if telluric.load['standard_data'] is None:
+    if isinstance(telluric.load['standard_info'], str):
+
+        # user has passed the name of the standard
+
+        telluric.load['standard_name'] = telluric.load['standard_info']
     
         # Get SIMBAD information of the standard
 
@@ -936,32 +798,56 @@ def load_data():
             standard_sptype = table['SP_TYPE'][0]
             standard_vmag = float(table['FLUX_V'][0])
             standard_bmag = float(table['FLUX_B'][0])
-
-    else:
-
-        standard_sptype = standard_data['sptype']
-        standard_vmag = float(standard_data['bmag'])
-        standard_bmag = float(standard_data['vmag'])
-
-
-    #
-    # error check standard information - what do we do if there is no
-    # standard data?
-    #
+            
+        else:
+            
+            message = 'Standard name "{}"" was not found in SIMBAD; provide '\
+                'the correct name, correct coordinates, or a dictionary '\
+                'containing keys "id", "sptype", "bmag", '\
+                'and "vmag".'.format(telluric.load['standard_name'])
+            
+            raise pySpextoolError(message)
+        
+    if isinstance(telluric.load['standard_info'], list):
     
-    try:
-        type(standard_name)
+        # user has passed the coordinates of the standard
 
-    except:
+        if telluric.load['verbose'] is True:
+            logging.info(f' Querying SIMBAD for standard star information...')
         
-        message = 'Standard name "{}"" was not found in SIMBAD; provided '\
-            'correct name or provide the optional standard_data keyword with '\
-            'a dictionary containing keys '\
-            '"sptype", "bmag", and "vmag"'.format(standard)
+        Simbad.add_votable_fields('id','sptype', 'flux(B)', 'flux(V)')
 
+        c = SkyCoord(telluric.load['standard_info'][0],
+                     telluric.load['standard_info'][1],
+                     unit=(u.hourangle, u.deg))
         
-        raise pySpextoolError(message)
 
+        table = Simbad.query_region(c,radius='0d1m0s')
+
+        if isinstance(table,Table):
+            standard_name = table['MAIN_ID'][0]
+            standard_sptype = table['SP_TYPE'][0]
+            standard_vmag = float(table['FLUX_V'][0])
+            standard_bmag = float(table['FLUX_B'][0])
+            
+        else:
+            
+            message = 'Standard coordiantes "{}"" were not found in SIMBAD; '\
+                'provide the correct name, correct coordinates, or a '\
+                'dictionary containing keys "id", "sptype", "bmag", '\
+                'and "vmag".'.format(telluric.load['standard_info'])
+            
+            raise pySpextoolError(message)
+
+    if isinstance(telluric.load['standard_info'], dict):
+
+        # user has passed the standard information        
+
+        standard_name = telluric.load['standard_info']['id']
+        standard_sptype = telluric.load['standard_info']['sptype']
+        standard_vmag = float(telluric.load['standard_info']['bmag'])
+        standard_bmag = float(telluric.load['standard_info']['vmag'])
+         
     #
     # Let's do some checks to ensure 1) the standard has only one aperture and
     # 2) the standard has the orders required.
@@ -1288,74 +1174,93 @@ def make_telluric_spectra():
 
 
     telluric_spectra = copy.deepcopy(telluric.state['standard_spectra'])
-    vega_spectra = copy.deepcopy(telluric.state['standard_spectra'])
-    vega_spectra[:,2,:] = np.nan
-    vega_spectra[:,3,:] = 0
+
     
-    for i in range(telluric.state['object_norders']):    
-        
-        standard_wavelength = telluric.state['standard_spectra'][i,0,:]
-        standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
-        standard_uncertainty = telluric.state['standard_spectra'][i,2,:]
+    if telluric.load['reflectance'] is False:
 
-        standard_bmag = telluric.state['standard_bmag']
-        standard_vmag = telluric.state['standard_vmag']
-        standard_rv = telluric.state['standard_rv']                
-
-        vega_wavelength = telluric.state['vega_wavelength']
-        vega_fluxdensity = telluric.state['vega_fluxdensity']
-        vega_continuum = telluric.state['vega_continuum']
-        vega_fitted_continuum = telluric.state['vega_fitted_continuum']
-        kernel = telluric.state['kernels'][i]
+        vega_spectra = copy.deepcopy(telluric.state['standard_spectra'])
+        vega_spectra[:,2,:] = np.nan
+        vega_spectra[:,3,:] = 0
         
-        result = make_telluric_spectrum(standard_wavelength,
-                                        standard_fluxdensity,
-                                        standard_uncertainty,
-                                        standard_rv,
-                                        standard_bmag,
-                                        standard_vmag,
-                                        vega_wavelength,
-                                        vega_fluxdensity,
-                                        vega_continuum,
-                                        vega_fitted_continuum,
-                                        kernel)
-        
+        for i in range(telluric.state['object_norders']):    
+            
+            standard_wavelength = telluric.state['standard_spectra'][i,0,:]
+            standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
+            standard_uncertainty = telluric.state['standard_spectra'][i,2,:]
+            
+            standard_bmag = telluric.state['standard_bmag']
+            standard_vmag = telluric.state['standard_vmag']
+            standard_rv = telluric.state['standard_rv']                
+            
+            vega_wavelength = telluric.state['vega_wavelength']
+            vega_fluxdensity = telluric.state['vega_fluxdensity']
+            vega_continuum = telluric.state['vega_continuum']
+            vega_fitted_continuum = telluric.state['vega_fitted_continuum']
+            kernel = telluric.state['kernels'][i]
+            
+            result = make_telluric_spectrum(standard_wavelength,
+                                            standard_fluxdensity,
+                                            standard_uncertainty,
+                                            standard_rv,
+                                            standard_bmag,
+                                            standard_vmag,
+                                            vega_wavelength,
+                                            vega_fluxdensity,
+                                            vega_continuum,
+                                            vega_fitted_continuum,
+                                            kernel)
+            
+            #
+            # Change units to those requested by the user
+            #
+            
+            flux = convert_fluxdensity(standard_wavelength,
+                                       result[0],'um','erg s-1 cm-2 A-1',
+                                       telluric.load['fluxdensity_units'])
+            
+            unc = convert_fluxdensity(standard_wavelength,
+                                      result[1],'um','erg s-1 cm-2 A-1',
+                                      telluric.load['fluxdensity_units'])
+            
+            vega = convert_fluxdensity(standard_wavelength,
+                                       result[2],'um','erg s-1 cm-2 A-1',
+                                       telluric.load['fluxdensity_units'])
+            
+            # Updates labels
+            
+            telluric_spectra[i,1,:] = flux
+            telluric_spectra[i,2,:] = unc
+            vega_spectra[i,1,:] = vega
+            
         #
-        # Change units to those requested by the user
+        # Store the results
         #
 
-        flux = convert_fluxdensity(standard_wavelength,
-                                   result[0],'um','erg s-1 cm-2 A-1',
-                                   telluric.load['fluxdensity_units'])
+        telluric.state['telluric_spectra'] = telluric_spectra
+        telluric.state['vega_spectra'] = vega_spectra    
 
-        unc = convert_fluxdensity(standard_wavelength,
-                                  result[1],'um','erg s-1 cm-2 A-1',
-                                  telluric.load['fluxdensity_units'])
 
-        vega = convert_fluxdensity(standard_wavelength,
-                                   result[2],'um','erg s-1 cm-2 A-1',
-                                  telluric.load['fluxdensity_units'])
+    else:
 
-        # Updates labels
+        for i in range(telluric.state['object_norders']):    
+            
+            standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
+            standard_uncertainty = telluric.state['standard_spectra'][i,2,:]
+
+        
+            telluric_spectra[i,1,:] = 1/standard_fluxdensity
+            telluric_spectra[i,2,:] = 1/standard_fluxdensity**2 * \
+                standard_uncertainty
+            
+        #
+        # Store the results
+        #
+
+        telluric.state['telluric_spectra'] = telluric_spectra
 
         
 
-
-        
-        telluric_spectra[i,1,:] = flux
-        telluric_spectra[i,2,:] = unc
-        vega_spectra[i,1,:] = vega
-        
-    #
-    # Store the results
-    #
-
-    telluric.state['telluric_spectra'] = telluric_spectra
-    telluric.state['vega_spectra'] = vega_spectra    
-        
-
-    
-    
+     
 def normalize_order():
 
     """
@@ -1492,13 +1397,7 @@ def write_files():
     
         fits.writeto(full_path, telluric.state['telluric_spectra'], newhdr,
                  overwrite=telluric.load['overwrite'])
-
-        
-
-
-
-        x = 1
-
+    
     #
     # Write the corrected spectra to disk
     #
@@ -1579,7 +1478,7 @@ def write_files():
             junk = 1
 
         else:
-
+            print(keys[i])
             newhdr[keys[i]] = (hdr[keys[i]][0], hdr[keys[i]][1])
     
     # Do the history
