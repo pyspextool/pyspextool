@@ -203,7 +203,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
                 dimens_str = [str(x) for x in dimens]
                 
-                message = 'Parameter `'+str(parameter_name)+'` of ' + \
+                message = 'Parameter `'+str(parameter_name)+'` of function ' + \
                 caller_name+' has dimension '+str(dimen)+ \
                 '.  Acceptable dimension are '+', '.join(dimens_str)+'.'
 
@@ -212,7 +212,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
     else:
         
-        message = 'Parameter `'+str(parameter_name)+'` of '+ \
+        message = 'Parameter `'+str(parameter_name)+'` of function '+ \
           caller_name+' has type '+parameter_type+'.  Acceptable types are '+ \
           ', '.join(types)+'.'
 
@@ -226,7 +226,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
             values_str = ['`'+str(x)+'`' for x in possible_values]
 
-            message = 'Parameter `'+str(parameter_name)+'` of '+ \
+            message = 'Parameter `'+str(parameter_name)+'` of function '+ \
               caller_name+' has a value of `'+str(parameter)+ \
               '`.  Acceptable values are, '+', '.join(values_str)+'.'            
             raise ValueError(message)
