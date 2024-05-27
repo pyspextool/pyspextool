@@ -71,7 +71,7 @@ def average_header_info(hdrs, pair=False):
 
         # Convert back to sexigesimal
 
-        avetime = coords.sixty(ave, colons={'dec': 2, 'plus': 1})
+        avetime = coords.sixty(ave, colons={'dec': 2, 'plus': 0})
         avedate = dates[0]
 
     elif ndays == 2:
@@ -180,14 +180,14 @@ def average_header_info(hdrs, pair=False):
     # Add the new keywords
 
     hdrinfo = add_entry(hdrinfo, 'MJD', 'after', 'SRT_MJD',
-                        [vals[0], 'Start modified Julian date'])
+                        [vals[0], 'Start Modified Julian Date'])
 
     hdrinfo = add_entry(hdrinfo, 'SRT_MJD', 'after', 'AVE_MJD',
-                        [fmt.format(sum(vals) / nfiles),
-                        'Average modified Julian date'])
+                        [float(fmt.format(sum(vals) / nfiles)),
+                        'Average Modified Julian Date'])
 
     hdrinfo = add_entry(hdrinfo, 'AVE_MJD', 'after', 'END_MJD',
-                        [vals[-1], 'End airmass'])
+                        [vals[-1], 'End Modified Julian Date'])
 
     # Remove the current keyword
 

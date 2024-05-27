@@ -891,17 +891,17 @@ def write_file(verbose=False):
 
     avehdr['NAPS'][0] = combine.state['final_napertures']
 
-    avehdr['NFLCOMB'] = [combine.state['nfiles'],
-                         ' Number of spectra files combined']
+    avehdr['CMB_NFL'] = [combine.state['nfiles'],
+                          'Number of spectra files combined']
 
-    avehdr['NAPCOMB'] = [napertures_combined,
-                         ' Number of apertures combined']
+    avehdr['CMB_NAP'] = [napertures_combined,
+                          'Number of apertures combined']
 
-    avehdr['COMBSTAT'] = [combine.load['statistic'],
-                         ' Combination statistic']
+    avehdr['CMB_STAT'] = [combine.load['statistic'],
+                          'Combination statistic']
 
-    avehdr['RBTHRESH'] = [combine.load['robust_sigma'],
-                         ' Robust threshold (if used)']            
+    avehdr['CMB_THSH'] = [combine.load['robust_sigma'],
+                         'Robust threshold (if used)']            
 
         
     #
