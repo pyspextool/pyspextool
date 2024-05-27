@@ -188,7 +188,10 @@ def telluric_correction(object_file:str,
     check_parameter('telluric_correction', 'output_name', output_name, 'str')
 
     check_parameter('telluric_correction', 'fluxdensity_units',
-                    fluxdensity_units, 'str')    
+                    fluxdensity_units, 'str',
+                    possible_values=['W m-2 um-1', 'erg s-1 cm-2 A-1',
+                                     'W m-2 Hz-1', 'ergs s-1 cm-2 Hz-1',
+                                     'Jy', 'mJy', 'uJy'])    
 
     check_parameter('telluric_correction', 'use_instrument_profile',
                     use_instrument_profile, 'bool')    
@@ -1182,7 +1185,7 @@ def make_telluric_spectra():
         vega_spectra[:,2,:] = np.nan
         vega_spectra[:,3,:] = 0
         
-        for i in range(telluric.state['object_norders']):    
+        for i in range(telluric.state['standard_norders']):    
             
             standard_wavelength = telluric.state['standard_spectra'][i,0,:]
             standard_fluxdensity = telluric.state['standard_spectra'][i,1,:]
@@ -1375,28 +1378,87 @@ def write_files():
 
     """
 
-    if telluric.load['write_vegamodel'] is True:
-
-        x = 1
-
+#    if telluric.load['write_vegamodel'] is True:
+#
+#        x = 1
+#
     if telluric.load['write_telluric'] is True:
 
         hdr = telluric.state['standard_hdrinfo']
+
+        # Store the history
+
+        old_history = hdr['HISTORY']
+
+        # remove it from the avehdr
+
+        hdr.pop('HISTORY')
+
+        # Add things to it
+        
+        hdr['MODULE'][0] = 'telluric'
+        
+        hdr['FILENAME'][0] = telluric.load['output_name']+'_telluric.fits'
+        
+        hdr['STDFILE'] = [telluric.load['standard_file'],
+                          'Telluric standard input file']
+        
+        hdr['STD_ID'] = [telluric.load['standard_name'],'Telluric standard']
+
+        f = '{:.3f}'
+        hdr['STD_BMAG'] = [float(f.format(telluric.state['standard_bmag'])),
+                           'Telluric standard B mag']
+
+        hdr['STD_VMAG'] = [float(f.format(telluric.state['standard_vmag'])),
+                       'Telluric standard V mag']
+
+        # Deal with the units and plot labels
+    
+        units = telluric.load['fluxdensity_units']+' / DN s-1'
+        hdr['YUNITS'][0] = units
+
+        lylabel = get_latex_fluxdensity(telluric.load['fluxdensity_units'])[0]
+
+        hdr['LYLABEL'][0] = 'Ratio ('+lylabel+' / DN s$^{-1}$)'
         
         # Create the basic headers
 
         phdu = fits.PrimaryHDU()
         newhdr = phdu.header
 
-        newhdr['ORDERS'] = (hdr['ORDERS'][0],hdr['ORDERS'][1])
-        newhdr['NORDERS'] = (hdr['NORDERS'][0], hdr['NORDERS'][1])
-        newhdr['NAPS'] = (hdr['NAPS'][0], hdr['NAPS'][1])
+        # Add our keywords
+    
+        keys = list(hdr.keys())
+    
+        for i in range(len(keys)):
+            
+            if keys[i] == 'COMMENT':
+                
+                junk = 1
+                
+            else:
+                
+                newhdr[keys[i]] = (hdr[keys[i]][0], hdr[keys[i]][1])
+                
+        # Do the history
+        
+        for hist in old_history:
+
+            newhdr['HISTORY'] = hist
+
+        #
+        # Write the file out
+        #
 
         full_path = os.path.join(telluric.load['output_path'],
                                  telluric.load['output_name']+'_telluric.fits')
     
+
         fits.writeto(full_path, telluric.state['telluric_spectra'], newhdr,
                  overwrite=telluric.load['overwrite'])
+        
+        logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+        
     
     #
     # Write the corrected spectra to disk
@@ -1422,41 +1484,41 @@ def write_files():
 
     hdr['FILENAME'][0] = telluric.load['output_name']+'.fits'
 
-    hdr['OBJFILE'] = [telluric.load['object_file'],
+    hdr['TC_OFILE'] = [telluric.load['object_file'],
                       'Telluric object input file']
 
-    hdr['STDFILE'] = [telluric.load['standard_file'],
+    hdr['TC_SFILE'] = [telluric.load['standard_file'],
                       'Telluric standard input file']
 
-    hdr['A0V_STD'] = [telluric.load['standard_name'],'Telluric A0 V Standard']
+    hdr['TC_STDID'] = [telluric.load['standard_name'],'Telluric standard']
 
 
-    hdr['A0V_Bmag'] = [float('{:.3f}'.format(telluric.state['standard_bmag'])),
-                       'Telluric A0 V B mag']
+    hdr['TC_STDB'] = [float('{:.3f}'.format(telluric.state['standard_bmag'])),
+                       'Telluric standard B mag']
 
-    hdr['A0V_Vmag'] = [float('{:.3f}'.format(telluric.state['standard_vmag'])),
-                       'Telluric A0 V V mag']
+    hdr['TC_STDV'] = [float('{:.3f}'.format(telluric.state['standard_vmag'])),
+                       'Telluric standard V mag']
 
-    hdr['A0V_RV'] =  [float('{:.2f}'.format(telluric.state['standard_rv'])),
-                      'Telluric A0 V radial velocity (km s-1)']
+    hdr['TC_STDRV'] =  [float('{:.2f}'.format(telluric.state['standard_rv'])),
+                      'Telluric standard radial velocity (km s-1)']
 
-    hdr['delta_AM'] = [float('{:.2f}'.format(telluric.state['delta_airmass'])),\
+    hdr['TC_dAM'] = [float('{:.2f}'.format(telluric.state['delta_airmass'])),\
                        'Telluric Average airmass difference']    
 
-    hdr['TCMETH'] = [telluric.state['method'],'Telluric method']
+    hdr['TC_METH'] = [telluric.state['method'],'Telluric method']
 
-    hdr['TCMAXDEV'] = [float('{:.5f}'.format(telluric.state['max_deviation'])),
+    hdr['TC_MXDEV'] = [float('{:.5f}'.format(telluric.state['max_deviation'])),
                        'Telluric maxmimum % deviation of Vega-data']
 
-    hdr['TCRMSDEV'] = [float('{:.5f}'.format(telluric.state['rms_deviation'])),
+    hdr['TC_RMS'] = [float('{:.5f}'.format(telluric.state['rms_deviation'])),
                        'Telluric RMS deviation of Vega-data']
 
+    # Deal with the units and plot labels
+    
     units = telluric.load['fluxdensity_units']
     hdr['YUNITS'][0] = units
 
     hdr['LYLABEL'][0] = get_latex_fluxdensity(units)[1]
-
-
     
     #
     # Create the header
@@ -1478,7 +1540,7 @@ def write_files():
             junk = 1
 
         else:
-            print(keys[i])
+
             newhdr[keys[i]] = (hdr[keys[i]][0], hdr[keys[i]][1])
     
     # Do the history
@@ -1497,6 +1559,8 @@ def write_files():
     fits.writeto(full_path, telluric.state['corrected_spectra'], newhdr,
                  overwrite=telluric.load['overwrite'])
 
+    logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+        
     #
     # Do the QA plotting
     #
@@ -1517,17 +1581,9 @@ def write_files():
                       'extension': setup.state['qa_extension']}
 
         plot_spectra(full_path, ytype='flux and uncertainty',
-                     line_width=0.5,
+                     line_width=0.5,colors=['green','black'],
                      title=os.path.basename(full_path), file_info=qafileinfo)
         
-#        logging.info(' Wrote file '+telluric.load['output_name']+\
-#                     setup.state['qa_extension']+' to disk.')    
-#
-#    
-#
-#
-#    logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')    
-
 
 
 
