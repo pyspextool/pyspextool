@@ -423,10 +423,9 @@ def correct_spectra():
             obj_f = telluric.state['object_spectra'][k,1,:]
             obj_u = telluric.state['object_spectra'][k,2,:]
             obj_m = telluric.state['object_spectra'][k,3,:]
-
             
             rtc_f, rtc_u = linear_interp1d(tc_w, tc_f, obj_w, input_u=tc_u)
-
+            
             # Do the correction
             
             corrected_flux = obj_f*rtc_f
@@ -444,12 +443,14 @@ def correct_spectra():
 
             corrected_spectra[k,1,:] = corrected_flux
             corrected_spectra[k,2,:] = np.sqrt(corrected_var)
-            corrected_spectra[k,3,:] = corrected_mask            
+            corrected_spectra[k,3,:] = corrected_mask
 
-
+    # Store all the corrected_spectra
+            
     telluric.state['corrected_spectra'] = corrected_spectra
 
-            
+
+    
 def get_kernel():
 
     """
@@ -1007,27 +1008,17 @@ def load_vega():
     vega_flux = data['flux density']
     vega_continuum = data['continuum flux density']
     vega_fitted_continuum = data['fitted continuum flux density']
-
     
     hdul.close()
-       
-    # Scale it by the vband magnitude
-    
-    vega_vmagnitude = 0.03
-    vega_bminv = 0.00
-    scale = 10.0**(-0.4*(telluric.state['standard_vmag']-vega_vmagnitude))
-    vega_flux /= scale
-    vega_continuum /= scale
-    vega_fitted_continuum /= scale        
-    
-        
+            
     # Store the results
 
     telluric.state['vega_wavelength'] = vega_wavelength
     telluric.state['vega_fluxdensity'] = vega_flux
     telluric.state['vega_continuum'] = vega_continuum
     telluric.state['vega_fitted_continuum'] = vega_fitted_continuum
-    telluric.state['vega_normalized_fluxdensity'] = vega_flux/vega_fitted_continuum
+    telluric.state['vega_normalized_fluxdensity'] = vega_flux/\
+        vega_fitted_continuum
 
     #
     # Compute the dispersions over the order wavelengths
@@ -1216,6 +1207,10 @@ def make_telluric_spectra():
             #
             # Change units to those requested by the user
             #
+
+            flux = result[0]
+            unc = result[1]
+            vega = result[2]
             
             flux = convert_fluxdensity(standard_wavelength,
                                        result[0],'um','erg s-1 cm-2 A-1',
@@ -1518,7 +1513,10 @@ def write_files():
     units = telluric.load['fluxdensity_units']
     hdr['YUNITS'][0] = units
 
-    hdr['LYLABEL'][0] = get_latex_fluxdensity(units)[1]
+    latex = get_latex_fluxdensity(units) 
+
+    hdr['LYUNITS'][0] = latex[0]    
+    hdr['LYLABEL'][0] = latex[1]
     
     #
     # Create the header
@@ -1580,7 +1578,8 @@ def write_files():
                       'filename': telluric.load['output_name'],
                       'extension': setup.state['qa_extension']}
 
-        plot_spectra(full_path, ytype='flux and uncertainty',
+        plot_spectra(full_path, ytype='uncertainty',
+                     order_numbers=False,
                      line_width=0.5,colors=['green','black'],
                      title=os.path.basename(full_path), file_info=qafileinfo)
         
