@@ -136,7 +136,7 @@ def linear_interp1d(input_x, input_y, output_x, input_u=None, leave_nans=False):
 
     if input_u is not None:
 
-        result = nonan_interp1d(input_x, input_u, x, variance=True)    
+        result = nonan_interp1d(input_x, input_u**2, x, variance=True)    
         
         output_v = np.full_like(output_x, np.nan)
         output_v[z_output_nonan] = result
