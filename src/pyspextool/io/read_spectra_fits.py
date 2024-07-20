@@ -67,9 +67,16 @@ def read_spectra_fits(file):
 
     spectra = hdul[0].data
     header = hdul[0].header
-
     hdul.close()
 
+    #
+    # Adjust if it is an old Spextool file
+    #
+
+    if np.ndim(spectra) == 2:
+
+        spectra = np.expand_dims(spectra, 0)
+    
     #
     # Check to see if it is a pySpextool  FITS file.
     #

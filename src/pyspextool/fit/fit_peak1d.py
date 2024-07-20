@@ -8,23 +8,23 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
               negative=False, nan=True, ignore_optimizewarning=False):
 
     """
-    To fit 1D data with either a Gaussian or Lorentzian function.
+    To fit 1D data with either a Gaussian/Lorentzian+polynomial function.
 
 
     At the moment, very basic.  Will add complexity as necessary.
     
     Parameters
     ----------
-    x : array-like
+    x : ndarray
         (nx,) array of independent variables.
 
-    y : array-like
+    y : ndarray
         (ny,) array of dependent variables.
 
     type: {'gaussian','lorentzian'}, optional
         The type of fit.
 
-    nparms : {4,3,5}, optional 
+    nparms : {4,3,5,6,7,8}, optional 
         The number of parameters.  See Notes.
 
     p0 : array-like, optional
@@ -74,23 +74,15 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
     P[0]         Peak Value               Peak Value    
     p[1]        Peak Centroid           Peak Centroid  
     p[2]       Gaussian Sigma               HWHM%      
-    p[3]         + p[3]    *               + p[3]   *   
-    p[4]         + p[4]*x  *               + p[4]*x *   
-    p[5]                                           
-
+    p[3]         + p[3]                    + p[3]      
+    p[4]         + p[4]*x                  + p[4]*x    
+    p[5]         + p[5]*x**2               + p[5]*x**2
+    p[6]           ....                      ....
+                                         
     Notes: 
           % Half-width at half maximum
           * Optional depending on NTERMS
     
-    Examples
-    --------
-    later
-
-    
-    Modification History
-    --------------------
-    2022-07-01 - Written by M. Cushing, University of Toledo.
-    Based on IDL Craig Markwardt mpfitpeak.pro 
 
     """
 
@@ -106,18 +98,17 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
         p0 = cmest(x, y, positive=positive, negative=negative, nan=nan)
 
         if nparms == 3:
-            p0 = p0[0:3]
 
+            p0 = p0[0:3]
+            
         elif nparms == 4:
+
             p0 = p0
 
-        elif nparms == 5:
-            p0 = np.append(p0, 0)
-
-        else:
-            exception = 'fitpeak1d: possible nparms values are 3, 4,or 5.'
-            raise Exception(exception)
-            
+        else:  
+        
+            p0 = np.append(p0, np.full(nparms-4,0.0))
+                    
     else:
 
         p0 = np.array(p0)
@@ -222,12 +213,6 @@ def lorentz1d(x, amp, mean, hwhm, *args):
     distribute modified or unmodified copies is granted, provided
     this copyright and disclaimer are included unchanged.
 
-    Examples
-    --------
-
-    Modification History
-    --------------------
-    2022-06-29 - Written by M. Cushing, University of Toledo.
 
     """
 
@@ -236,9 +221,16 @@ def lorentz1d(x, amp, mean, hwhm, *args):
     # Deal with the baseline
         
     nargs = len(args)
-    bl = args[0] if nargs >= 1 else 0
-    if nargs == 2:
-        bl = bl + args[1]*x
+
+    bl = 0
+    for i, coeff in enumerate(args):
+        bl += coeff * x**i
+
+    
+
+#    bl = args[0] if nargs >= 1 else 0
+#    if nargs == 2:
+#        bl = bl + args[1]*x
 
     #   Compute the values and return 
 
@@ -291,13 +283,6 @@ def gauss1d(x, amp, mean, sigma, *args):
     warranty whatsoever.  Permission to use, copy, modify, and
     distribute modified or unmodified copies is granted, provided
     this copyright and disclaimer are included unchanged.
-
-    Examples
-    --------
-
-    Modification History
-    --------------------
-    2022-06-29 - Written by M. Cushing, University of Toledo.
 
     """
 
@@ -368,14 +353,6 @@ def cmest(x, y, nan=False, positive=False, negative=False):
     If neither positive nor negative are True, then the largest
     magnitude peak is identified.
 
-
-    Examples
-    --------
-    later
-
-    Modification History
-    --------------------
-    2022-07-01 - Written by M. Cushing, University of Toledo.
 
     """
 

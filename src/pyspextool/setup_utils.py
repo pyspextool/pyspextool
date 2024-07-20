@@ -11,21 +11,20 @@ from importlib.resources import files  # Python 3.10+
 
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
-class pySpextoolError(Exception):
-    pass
-
 
 def pyspextool_setup(
     instrument=setup.state["instruments"][0],
-    raw_path: str = None,
-    cal_path: str = None,
-    proc_path: str = None,
-    verbose: bool = False,
-    qa_show: bool = None,
-    qa_write: bool = None,
-    qa_path: str = None,
-    qa_extension: str = None,
-):
+    raw_path:str=None,
+    cal_path:str=None,
+    proc_path:str=None,
+    qa_path:str=None,
+    verbose:bool=False,
+    qa_show:bool=False,
+    qa_scale:float=1.0,
+    qa_block:bool=False,
+    qa_write:bool=False,
+    qa_extension:str=None):
+
     """
     Set the pyspextool instrument, paths, and quality assurance settings
 
@@ -49,27 +48,32 @@ def pyspextool_setup(
         The path to where the processed files will be written.
         Default: current working directory
 
+    qa_path : str, optional
+        If qa_write is True, this is the path where the files will be written.
+        Default: current working directory
+    
     verbose : bool, default = True
         verbose = True sets the logging level to DEBUG
             Lots of information will be printed to the screen.
         verbose = False sets the logging level to INFO
             Only important information will be printed to the screen.
 
-    qa_show : {True, False}, optional
+    qa_show : {False, True}, optional
         True: Display the quality assurance plots to the screen.
         False: Do not display the quality assurance plots to the screen.
-        Default: False
 
+    qa_scale : float, default=1.0
+        A scale factor that resizes the plots shown on the screen by a factor
+        of 'qashow_scale`. 
+    
+    qa_block : {False, True}
+        Set to True to stop the workflow after each plot is shown.
+    
     qa_write : {True, False}, optional
         True: Save the quality assurance plots to disk.
         False: Do not save the quality assurance plots to disk.
         Set the path with `qa_path`.
         Set extension with `qa_extension`.
-        Default: True
-
-    qa_path : str, optional
-        If qa_write is True, this is the path where the files will be written.
-        Default: current working directory
 
     qa_extension : {'pdf', 'png'}, optional
         if qa_write is True, this is the file extension used for the files.
@@ -81,39 +85,35 @@ def pyspextool_setup(
     None
 
     """
+
     # Set up verbose scale and logging
 
     if verbose is True:
         logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
+
     elif verbose is False:
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
     logging.info(f"Verbose set to {setup.state['verbose']}")
+
     # Set the instrument
 
     if instrument is not None:
         set_instrument(instrument)
 
     logging.info(f"Instrument set to {setup.state['instrument']}")
+
     # Set the paths
 
-    paths = {
-        "raw_path": raw_path,
-        "cal_path": cal_path,
-        "proc_path": proc_path,
-    }
-
-    set_paths(paths)
+    set_paths(raw_path, cal_path, proc_path, qa_path)
 
     logging.info("Paths set")
 
     # Set the quality assurance settings
 
-    set_qa_state(
-        qa_show=qa_show, qa_write=qa_write, qa_path=qa_path, qa_extension=qa_extension
-    )
+    set_qa_state(qa_show, qa_scale, qa_block, qa_write, qa_extension)
 
     logging.info("QA settings set")
 
@@ -140,7 +140,8 @@ def pyspextool_setup(
     return  # setup.state
 
 
-def set_paths(paths: dict = None):
+def set_paths(raw_path, cal_path, proc_path, qa_path):
+
     """
     Set the pyspextool paths
 
@@ -155,7 +156,9 @@ def set_paths(paths: dict = None):
     proc_path : str, optional
         The path to the processed directory.
 
-
+    qa_path : str, optional
+        The path to the quality assurance plots directory.
+  
     Returns
     -------
     None
@@ -166,57 +169,74 @@ def set_paths(paths: dict = None):
     # Check parameters
     #
 
-    check_parameter(
-        "set_parameters", "raw_path", paths["raw_path"], ["str", "NoneType"]
-    )
+    check_parameter("set_parameters", "raw_path", raw_path,
+                    ['NoneType', "str"])
 
-    check_parameter(
-        "set_parameters", "cal_path", paths["cal_path"], ["str", "NoneType"]
-    )
-
-    check_parameter(
-        "set_parameters", "proc_path", paths["proc_path"], ["str", "NoneType"]
-    )
-
-    # Should only use the current working directory
-    # if the user has not defined the paths
-    cwd = os.path.abspath(os.getcwd())
-
-    # #
-    # Modify the paths based on the user requests.
+    check_parameter("set_parameters", "cal_path", cal_path, 
+                    ['NoneType', "str"])
+                    
+    check_parameter("set_parameters", "proc_path", proc_path, 
+                    ['NoneType', "str"])
+                    
+    check_parameter("set_parameters", "qa_path", qa_path, 
+                    ['NoneType', "str"])
+                    
+    #
+    # Load the paths
     #
 
-    if paths["raw_path"] is not None:
-        paths["raw_path"] = check_path(paths["raw_path"], make_absolute=True)
-        setup.state["raw_path"] = paths["raw_path"]
-        logging.debug(f"Set raw_path to {paths['raw_path']}")
+    # Get the current working directory in case it is needed.
+    
+    cwd = os.path.abspath(os.getcwd())
+    
+    # Modify the paths based on the user requests.
+    
+    if raw_path is not None:
+
+        raw_path = check_path(raw_path, make_absolute=True)
+        setup.state["raw_path"] = raw_path
+        logging.debug(f"Set raw_path to {raw_path}")
+
     else:
+
         setup.state["raw_path"] = cwd
 
-    if paths["cal_path"] is not None:
-        try:
-            paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
-            logging.debug(f"Set cal_path to {paths['cal_path']}")
-        except ValueError as e:
-            # os.mkdir(paths["cal_path"])
-            # paths["cal_path"] = check_path(paths["cal_path"], make_absolute=True)
-            logging.error(f"Can't verify cal_path directory {paths['cal_path']}")
-            raise (e)
+    if cal_path is not None:
 
-        setup.state["cal_path"] = paths["cal_path"]
+        cal_path = check_path(cal_path, make_absolute=True)
+        setup.state["cal_path"] = cal_path
+        logging.debug(f"Set cal_path to {cal_path}")
+
     else:
+
         setup.state["cal_path"] = cwd
+                                        
+    if proc_path is not None:
 
-    if paths["proc_path"] is not None:
-        paths["proc_path"] = check_path(paths["proc_path"], make_absolute=True)
-        setup.state["proc_path"] = paths["proc_path"]
+        proc_path = check_path(proc_path, make_absolute=True)
+        setup.state["proc_path"] = proc_path
+        logging.debug(f"Set proc_path to {proc_path}")
+                                        
     else:
+
         setup.state["proc_path"] = cwd
 
+    if qa_path is not None:
+
+        qa_path = check_path(qa_path, make_absolute=True)
+        setup.state["qa_path"] = qa_path
+        logging.debug(f"Set qa_path to {qa_path}")
+                                        
+    else:
+
+        setup.state["qa_path"] = cwd
+
+        
     return
 
 
 def set_instrument(instrument_name: str):
+
     """
     Set the instrument.
 
@@ -241,13 +261,8 @@ def set_instrument(instrument_name: str):
     # Check parameter and store results
     #
 
-    check_parameter(
-        "set_instrument",
-        "instrument_name",
-        instrument_name,
-        "str",
-        possible_values=["spex", "uspex"],
-    )
+    check_parameter("set_instrument", "instrument_name", instrument_name,
+                    "str", possible_values=["spex", "uspex"])
 
     setup.state["instrument"] = instrument_name
 
@@ -262,8 +277,9 @@ def set_instrument(instrument_name: str):
     #
 
     instrument_data_path = os.path.join(
-        setup.state["package_path"], "instrument_data", instrument_name + "_dir"
-    )
+        setup.state["package_path"], "instrument_data",
+        instrument_name + "_dir")
+
     data_path = os.path.join(setup.state["package_path"], "data")
 
     check_path(instrument_data_path)
@@ -275,7 +291,8 @@ def set_instrument(instrument_name: str):
     # Now get the instrument file and load
     #
 
-    instrument_info_file = os.path.join(instrument_data_path, instrument_name + ".dat")
+    instrument_info_file = os.path.join(instrument_data_path,
+                                        instrument_name + ".dat")
 
     check_file(instrument_info_file)
 
@@ -335,28 +352,36 @@ def set_instrument(instrument_name: str):
     return
 
 
-def set_qa_state(
-    qa_show: bool = None,
-    qa_write: bool = None,
-    qa_path: str = None,
-    qa_extension: str = None,
-):
+def set_qa_state(qa_show:bool,
+                 qa_scale:float,
+                 qa_block:bool,
+                 qa_write:bool,
+                 qa_extension:str,):
+
     """
-    qa_show : {True, False}, optional
+    To set the quality assurance plot settings.
+    
+    
+    Parameters
+    ----------
+    
+    qa_show : {False, True}
         True: Display the quality assurance plots to the screen.
         False: Do not display the quality assurance plots to the screen.
-        Default: False
 
-    qa_write : {True, False}, optional
+    qashow_scale : float, default=1.0
+        A scale factor that resizes the plots shown on the screen by a factor
+        of 'qashow_scale`. 
+
+    qashow_block : {False, True}
+        Set to True to stop the workflow after each plot is shown.
+    
+    qa_write : {True, False}
         True: Save the quality assurance plots to disk.
         False: Do not save the quality assurance plots to disk.
         Set the path with `qa_path`.
         Set extension with `qa_extension`.
         Default: True
-
-    qa_path : str, optional
-        If qa_write is True, this is the path where the files will be written.
-        Default: current working directory
 
     qa_extension : {'pdf', 'png'}, optional
         if qa_write is True, this is the file extension used for the files.
@@ -368,63 +393,54 @@ def set_qa_state(
     None
 
     """
-    check_parameter(
-        "set_parameters",
-        "qa_extension",
-        qa_extension,
-        ["NoneType", "str"],
-        possible_values=setup.state["qa_extensions"],
-    )
-
-    check_parameter("set_parameters", "qa_show", qa_show, ["NoneType", "bool"])
-
-    check_parameter("set_parameters", "qa_write", qa_write, ["NoneType", "bool"])
-
-    cwd = os.path.abspath(os.getcwd())
-
-    if qa_path is not None:
-        try:
-            qa_path = check_path(qa_path, make_absolute=True)
-            logging.debug(f"Set qa_path to {qa_path}")
-        except ValueError as e:
-            # os.mkdir(qa_path)
-            # check_path(qa_path, make_absolute=True)
-            logging.error(f"Can't verify qa_path directory {qa_path}")
-            raise (e)
-
-        setup.state["qa_path"] = qa_path
-    else:
-        setup.state["qa_path"] = cwd
-
-    # Set the qa extension filetype
-
-    setup.state["qa_extension"] = qa_extension
 
     #
-    # Check defaults
+    # Check parameters
     #
+    
+    check_parameter("set_qa_state", "qa_show", qa_show, ["NoneType", "bool"])
 
-    if qa_show is not None:
-        setup.state["qa_show"] = qa_show
+    check_parameter("set_qa_state", "qa_scale", qa_scale, 'float')
+    
+    check_parameter("set_qa_state", "qa_block", qa_block, ["NoneType", "bool"])
+    
+    check_parameter("set_qa_state", "qa_write", qa_write, ["NoneType", "bool"])
 
-    if qa_write is not None:
-        setup.state["qa_write"] = qa_write
+    check_parameter("set_qa_state", "qa_extensioan", qa_extension,
+        ["NoneType", "str"], possible_values=setup.state["qa_extensions"])
+
+    #
+    # Set the values
+    #
+    
+    setup.state["qa_show"] = qa_show
+
+    setup.state["qa_block"] = qa_block
+
+    setup.state["qa_scale"] = qa_scale
+
+    setup.state["qa_write"] = qa_write
 
     if qa_extension is not None:
+
         setup.state["qa_extension"] = qa_extension
 
     else:
+
         setup.state["qa_extension"] = setup.state["qa_extensions"][0]
 
-    msg = f"""
-    QA Setup
-    ----------------
-    QA Show: {setup.state['qa_show']}
-
-    QA Write: {setup.state['qa_write']}
-    QA Path: {setup.state['qa_path']}
-    QA Extension: {setup.state['qa_extension']}
-    """
-    logging.debug(msg)
+#
+#
+#
+#    msg = f"""
+#    QA Setup
+#    ----------------
+#    QA Show: {setup.state['qa_show']}
+#
+#    QA Write: {setup.state['qa_write']}
+#    QA Path: {setup.state['qa_path']}
+#    QA Extension: {setup.state['qa_extension']}
+#    """
+#    logging.debug(msg)
 
     return
