@@ -19,7 +19,8 @@ dependencies = [
     "importlib_resources; python_version < '3.9'",
     "git-lfs",
     "astroquery",
-    "specutils"
+    "specutils",
+    "dust_extinction",
 ]
 
 [tool.setuptools]
