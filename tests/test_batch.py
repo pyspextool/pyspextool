@@ -108,9 +108,9 @@ def test_writeReadDriver():
 # 	 pass
 
 
-@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
+#@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
 def test_batchReduce_spex_prism():
-	base_folder = "./tests/test_data/spex-prism/"
+	base_folder = os.path.abspath('tests/test_data/raw/spex-prism/')
 
 	# first, make sure proc and cal folders _do not have_ FITS files
 	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
@@ -122,8 +122,8 @@ def test_batchReduce_spex_prism():
 
 	# generate driver file
 	driver_file = os.path.join(base_folder, "proc/driver_test.txt")
-	# dp = processFolder(os.path.join(base_folder, "data"),verbose=False)
-	# writeDriver(dp,driver_file,data_folder=os.path.join(base_folder, "data"),check=False,create_folders=False,verbose=False)
+	dp = processFolder(os.path.join(base_folder, "data"),verbose=False)
+	writeDriver(dp,driver_file,data_folder=os.path.join(base_folder, "data"),check=False,create_folders=False,verbose=False)
 
 	par = readDriver(driver_file)
 	batchReduce(par,verbose=True)
