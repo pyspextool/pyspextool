@@ -352,11 +352,11 @@ def set_instrument(instrument_name: str):
     return
 
 
-def set_qa_state(qa_show:bool,
-                 qa_scale:float,
-                 qa_block:bool,
-                 qa_write:bool,
-                 qa_extension:str,):
+def set_qa_state(qa_show:bool=False,
+                 qa_scale:float=1.0,
+                 qa_block:bool=True,
+                 qa_write:bool=True,
+                 qa_extension:str='.pdf',):
 
     """
     To set the quality assurance plot settings.
