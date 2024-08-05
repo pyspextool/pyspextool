@@ -9,6 +9,7 @@ from pyspextool.io.check import check_parameter, check_file
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 
 
+
 def plot_spectra(file, plot_size=(10, 6), ytype='flux', aperture=None,
                  title=None, colors='green', line_width=0.5,
                  yrange_buffer=0.05, order_numbers=True, file_info=None,
@@ -493,7 +494,9 @@ def get_ranges(spectra, ytype, fraction=0.05):
             array2 = spectra[i, 2, :]
             sg_array2 = robust_savgol(x_values, array2, 11)['fit']            
                     
-            yranges[i, :] = get_spec_range(sg_array1, sg_array2, frac=fraction)                                                
+            yranges[i, :] = get_spec_range(sg_array1, sg_array2,
+                                           frac=fraction)
+            
     return wranges, yranges
     
     

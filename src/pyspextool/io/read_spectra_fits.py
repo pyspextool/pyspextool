@@ -31,6 +31,8 @@ def read_spectra_fits(file):
                 `'norders'` : int
                 
                 `'orders'` : ndarray
+
+                `'dispersions'` : ndarray
                 
                 `'xunits'` : str
                 
@@ -65,9 +67,16 @@ def read_spectra_fits(file):
 
     spectra = hdul[0].data
     header = hdul[0].header
-
     hdul.close()
 
+    #
+    # Adjust if it is an old Spextool file
+    #
+
+    if np.ndim(spectra) == 2:
+
+        spectra = np.expand_dims(spectra, 0)
+    
     #
     # Check to see if it is a pySpextool  FITS file.
     #
@@ -91,8 +100,18 @@ def read_spectra_fits(file):
     val = header['ORDERS'].split(',')
     orders = np.array([int(x) for x in val])
 
+#    dispersions = np.empty(dictionary['norders'])
+
+#    for i in range(dictionary['norders']):
+
+#        key = 'OR'+str(orders[i]).zfill(3)+'_DP'
+#        dispersions[i] = header[key]
+
+    
+
     add = {'orders': orders,
            'napertures': header['NAPS'],
+#           'dispersions':dispersions,
            'xunits': header['XUNITS'],
            'yunits': header['YUNITS'],
            'lxunits': header['LXUNITS'],
@@ -103,7 +122,7 @@ def read_spectra_fits(file):
            'slith_arc': header['SLTH_ARC'],
            'slitw_pix': header['SLTW_PIX'],
            'slitw_arc': header['SLTW_ARC'],
-           #            'resolvingpower':header['RP'],
+           'resolvingpower':header['RP'],
            'module': header['MODULE'],
            'history': header['HISTORY']}
 

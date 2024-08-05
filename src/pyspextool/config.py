@@ -10,6 +10,7 @@ state = {
     "lincormax": 0,
     "linearity_info": 0,
     "nint": 4,
+    "overwrite":True,
     "package_path": "",
     "proc_path": "",
     "pyspextool_keywords": "",
@@ -18,9 +19,17 @@ state = {
     "qa_extensions": [".pdf", ".png", None],
     "qa_write": True,
     "qa_show": False,
+    "qa_block":False,
+    "qashow_block":False,    
     "raw_path": "",
     "suffix": "",
     "telluric_keywords": "",
+    "units":['W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'],
     "verbose": True,
     "version": "1beta",
 }
+
+
+plotwindows = {'telluric_deconvolution':None,
+               'telluric_normalize':None,
+               'telluric_rv':None}
