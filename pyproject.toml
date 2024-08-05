@@ -20,7 +20,7 @@ dependencies = [
     "git-lfs",
     "astroquery",
     "specutils",
-    "dust_extinction"
+    "dust_extinction",
 ]
 
 [tool.setuptools]

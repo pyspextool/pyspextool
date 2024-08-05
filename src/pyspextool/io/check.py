@@ -1,6 +1,11 @@
 import numpy as np
 import os
 import glob
+import logging
+
+from pyspextool import config as setup
+from pyspextool.pyspextoolerror import pySpextoolError
+
 
 
 def check_path(path, make_absolute=False):
@@ -128,7 +133,7 @@ def check_file(files):
 
 
 def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
-                    possible_values=None):
+                    possible_values=None, list_types=None):
 
     """
     check_parameter
@@ -203,7 +208,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
                 dimens_str = [str(x) for x in dimens]
                 
-                message = 'Parameter `'+str(parameter_name)+'` of ' + \
+                message = 'Parameter `'+str(parameter_name)+'` of function ' + \
                 caller_name+' has dimension '+str(dimen)+ \
                 '.  Acceptable dimension are '+', '.join(dimens_str)+'.'
 
@@ -212,7 +217,7 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
     else:
         
-        message = 'Parameter `'+str(parameter_name)+'` of '+ \
+        message = 'Parameter `'+str(parameter_name)+'` of function '+ \
           caller_name+' has type '+parameter_type+'.  Acceptable types are '+ \
           ', '.join(types)+'.'
 
@@ -226,10 +231,28 @@ def check_parameter(caller_name, parameter_name, parameter, types, *dimens,
 
             values_str = ['`'+str(x)+'`' for x in possible_values]
 
-            message = 'Parameter `'+str(parameter_name)+'` of '+ \
+            message = 'Parameter `'+str(parameter_name)+'` of function '+ \
               caller_name+' has a value of `'+str(parameter)+ \
               '`.  Acceptable values are, '+', '.join(values_str)+'.'            
             raise ValueError(message)
+
+    if list_types is not None:
+
+        if parameter_type == 'list':
+
+            for i in range(len(list_types)):
+
+                if type(parameter[i]).__name__ != list_types[i]:
+
+                    message = 'Parameter `'+str(parameter_name) + \
+                        '['+str(i)+']` of function ' + \
+                    caller_name+' has type ' + \
+                    type(parameter[i]).__name__+ \
+                    '.  Acceptable type is '+list_types[i]+'.'
+
+                    raise ValueError(message)
+                    return False
+
 
     return True
 
@@ -406,3 +429,102 @@ def check_range(values, value_range, test, variable_name=None):
 
             raise ValueError(message)                
 
+
+def check_keywords(**kwargs):
+
+    keywords = list(kwargs.keys())
+
+    output = {}
+    
+    for keyword in keywords:
+        
+        value = kwargs.get(keyword)
+
+        if keyword == 'verbose':
+            
+            if value is None:
+
+                if setup.state["verbose"] is True:
+                    logging.getLogger().setLevel(logging.INFO)
+                    output['verbose'] = True
+                    
+                if setup.state["verbose"] is False:
+                    logging.getLogger().setLevel(logging.ERROR)
+                    output['verbose'] = False
+                    
+            if value is True:
+                logging.getLogger().setLevel(logging.INFO)
+                output['verbose'] = True
+                
+            if value is False:
+                logging.getLogger().setLevel(logging.ERROR)
+                output['verbose'] = False
+                
+        elif keyword == 'qa_show':
+
+            if value is None:
+        
+                qa_show = setup.state['qa_show']
+
+            else:
+
+                qa_show = value
+
+            output['qa_show'] = qa_show
+
+        elif keyword == 'qa_scale':
+
+            if value is None:
+        
+                qa_scale = setup.state['qa_scale']
+
+            else:
+
+                qa_scale = value
+
+            output['qa_scale'] = qa_scale
+
+        elif keyword == 'qa_block':
+
+            if value is None:
+        
+                qa_block = setup.state['qa_block']
+
+            else:
+
+                qa_block = value
+
+            output['qa_block'] = qa_block                
+
+        elif keyword == 'qa_write':
+
+            if value is None:
+        
+                qa_write = setup.state['qa_write']
+
+            else:
+
+                qa_write = value
+
+            output['qa_write'] = qa_write
+
+        elif keyword == 'overwrite':
+
+            if value is None:
+        
+                overwite = setup.state['overwrite']
+
+            else:
+
+                overwrite = value
+
+            output['overwrite'] = overwrite
+
+        else:
+
+            message = "Keyword '"+keyword+"'"+" is unknown."
+            raise pySpextoolError(message)
+            
+    return output
+
+        
