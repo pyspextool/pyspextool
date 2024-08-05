@@ -246,7 +246,7 @@ def make_wavecal(files, flat_file, output_name, extension='.fits*',
 
     # Create wavecal and spatcal images
 
-    wavecal_pixels, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
+    wavecal_pixels, spatcal, indices = simulate_wavecal_1dxd(flatinfo['ncols'],
                                                     flatinfo['nrows'],
                                                     flatinfo['edgecoeffs'],
                                                     flatinfo['xranges'],

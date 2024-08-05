@@ -1,72 +1,62 @@
-import os
-import numpy as np
-from astropy.io import fits
-from astroquery.simbad import Simbad
-from astropy.table.table import Table
 import logging
-from astropy.io import fits
-import typing
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
-from pyspextool.io.check import *
-from pyspextool.io.files import *
-from pyspextool.io.fitsheader import get_header_info
-from pyspextool.io.read_spectra_fits import read_spectra_fits
-from pyspextool.plot.plot_spectra import plot_spectra
-from pyspextool.utils.interpolate import linear_interp1d
-from pyspextool.utils.interpolate import linear_bitmask_interp1d
-from pyspextool.utils.math import combine_flag_stack
-from pyspextool.utils.split_text import split_text
-from pyspextool.utils import units
-
-from pyspextool.utils.for_print import for_print
+from pyspextool.pyspextoolerror import pySpextoolError
+from pyspextool.io.check import check_parameter, check_keywords
+from pyspextool.telluric.load_spectra import load_spectra
+from pyspextool.telluric.prepare_line import prepare_line
+from pyspextool.telluric.get_radialvelocity import get_radialvelocity
+from pyspextool.telluric.get_kernels import get_kernels
+from pyspextool.telluric.make_telluric_spectra import make_telluric_spectra
+from pyspextool.telluric.correct_spectra import correct_spectra
+from pyspextool.telluric.write_spectra import write_spectra
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def telluric_correction(object_file:str, standard:str, standard_file:str,
-                        output_name:str, fluxdensity_units:str='W m-2 um-1',
+def telluric_correction(object_file:str,
+                        standard_file:str,
+                        standard_info:list | str | dict,
+                        output_filename:str,
+                        output_units:str='W m-2 um-1',
                         reflectance:bool=False,
-                        standard_data:typing.Optional[dict]=None,
-                        input_path:typing.Optional[str]=None,
-                        output_path:typing.Optional[str]=None,
-                        qa_path:typing.Optional[str]=None,
-                        qa_show:typing.Optional[bool]=None,
-                        qa_showsize:tuple=(10, 6),
-                        qa_write:typing.Optional[bool]=None,
-                        verbose:typing.Optional[bool]=None,
-                        overwrite:bool=True):
-
+                        verbose:bool=None,
+                        overwrite:bool=True,
+                        write_telluric_spectra:bool=True,
+                        write_model_spectra:bool=False,                        
+                        qa_show:bool=None,
+                        qa_scale:float=None,
+                        qa_write:bool=None,
+                        qa_block:bool=None):
+                        
     """
     To correct spectra for telluric absorption and flux calibrate
 
     Parameters
     ----------
     object_file : str 
-        The name of the FITS file containing the object star spectra.
-
-    standard : str 
-        The name of the standard star
+        The name of the pySpextool FITS file containing the object spectra.
 
     standard_file : str 
-        The name of the FITS file containing the standard star spectra.
+        The name of the pySpextool FITS file containing the standard star
+        spectra.
 
-    output_name : str
-        The output file name sans the suffix.
+    standard_info : str, list, dict
+        If a string is passed, it is assumed to be the name of the standard.
+        SIMBAD is queried for the spectral type and B- and V-band magnitudes.
 
-    fluxdensity_units : {'W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 
-                         'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'}
-        The flux density units of the output.  
-        
-    refelectence : {False, True} 
-        Set to simply divide by the standard and return a relative 
-        reflectance spectrum.
+        If a list is passed, it is assumed to contain the coordinates of the
+        standard.  standard_info[0] = RA, standard_info[1] = Dec.  Each element
+        is a string which gives the sexigesimal coordidates, separated by a
+        blank space, :, or hms, dms.  SIMBAD is then queried for the id,
+        spectral type, and B- and V-band magnitudes.
 
-    standard_data: dict or None
-        An optional dictionary giving the standard star information.  If given, 
-        the program will not query SIMBAD for the information.
+        If a dict is passed, it is assumed to contain the standard information.
 
+        `"id"` : str
+            The name of the standard.
+    
         `"sptype"` : str
             The standard star spectral type.
 
@@ -75,32 +65,42 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
 
         `"vmag"` : int or float
             The standard star V-band magnitude.
-
-    input_path : str or None
-        An optional path with the data.  Otherwise the default is the proc/
-        directory.
-
-    output_path : str or None
-        An optional output path.  Otherwise the default is the proc/
-        directory.
-
-    qa_path : str or None
-        An optional qa path.  Otherwise the default is the qa/
-        directory.
+      
+    output_filename : str
+        The output file name sans the suffix, e.g. 'Wolf359'.
 
     qa_show : {None, True, False}
-        Set to True/False to override config.state['qa_show'] in the 
-        pyspextool config file.  If set to True, quality assurance 
-        plots will be interactively generated.
-
-    qa_showsize : tuple, default=(10, 6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_showsize)) for the interactive plot.
+        Set to True to show a QA plot to the screen.
+        Set to False to not show a QA plot to the screen.
+        Set to None to default to setup.state['qa_show'].
 
     qa_write : {None, True, False}
-        Set to True/False to override config.state['qa_write'] in the 
-        pyspextool config file.  If set to True, quality assurance 
-        plots will be written to disk.
+        Set to True to write a QA plot to disk
+        Set to False to not write a QA plot to disk.
+        Set to None to default to setup.state['qa_write'].
+    
+    qa_block : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+  
+    output_units : {'W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 
+                    'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'}
+        The flux density units of the output.
+
+        If reflectance=True, this has no effect.
+
+    refelectence : {False, True} 
+        Set to simply divide by the standard and return a relative 
+        reflectance spectrum.
+
+
+    write_model_spectra : {False, True}
+        Set to True to write the modified Vega model to disk.
+
+    write_telluric_spectra : {False, True}
+        Set to True to write the telluric correction spectrum to disk.
+    
 
     verbose : {None, True, False}
         Set to True/False to override config.state['verbose'] in the 
@@ -112,431 +112,153 @@ def telluric_correction(object_file:str, standard:str, standard_file:str,
     Returns
     -------
     None
-        Writes a pyspextool FITS file to disk.
+        Writes pyspextool FITS file to disk.
 
     """
-
+    
     #
-    # Check the parameters
-    #
-
-    check_parameter('basic_tellcor', 'object_file', object_file, 'str')
-
-    check_parameter('basic_tellcor', 'standard', standard, 'str')
-
-    check_parameter('basic_tellcor', 'standard_file', standard_file, 'str')
-
-    check_parameter('basic_tellcor', 'output_name', output_name, 'str')
-
-    check_parameter('basic_tellcor', 'fluxdensity_units', fluxdensity_units,
-                    'str')    
-
-    check_parameter('basic_tellcor', 'reflectance', reflectance, 'bool')    
-
-    check_parameter('basic_tellcor', 'standard_data', standard_data,
-                    ['dict', 'NoneType'])    
-
-    check_parameter('basic_tellcor', 'input_path', input_path,
-                    ['NoneType', 'str'])
-
-    check_parameter('basic_tellcor', 'output_path', output_path,
-                    ['NoneType', 'str'])
-
-    check_parameter('basic_tellcor', 'qa_path', qa_path, ['NoneType', 'str'])            
-    check_parameter('basic_tellcor', 'qa_show', qa_show, ['NoneType', 'bool'])
-
-    check_parameter('basic_tellcor', 'qa_showsize', qa_showsize, 'tuple')    
-
-    check_parameter('basic_tellcor', 'qa_write', qa_write, ['NoneType', 'bool'])
-
-    check_parameter('basic_tellcor', 'verbose', verbose, ['NoneType', 'bool'])
-
-    check_parameter('basic_tellcor', 'overwrite', overwrite, 'bool')    
-
-    #
-    # Check the qa and verbose variables and set to system default if need be.
+    # Check the parameters and keywords
     #
 
-    if qa_write is None:
+    check_parameter('telluric_correction', 'object_file', object_file, 'str')
 
-        qa_write = setup.state['qa_write']
+    check_parameter('telluric_correction', 'standard_file', standard_file,
+                    'str')
 
-    if qa_show is None:
+    check_parameter('telluric_correction', 'standard_info', standard_info,
+                    ['str','list','dict'])
+        
+    check_parameter('telluric_correction', 'output_filename', output_filename,
+                    'str')
 
-        qa_show = setup.state['qa_show']
+    check_parameter('telluric_correction', 'reflectance', reflectance, 'bool')
 
-    if verbose is None:
-        verbose = setup.state['verbose']
+    check_parameter('telluric_correction', 'write_telluric_spectra',
+                    write_telluric_spectra, 'bool')
 
-    if verbose is True:
-        logging.getLogger().setLevel(logging.INFO)
-        setup.state["verbose"] = True
+    check_parameter('telluric_correction', 'write_model_spectra',
+                    write_model_spectra, 'bool')
+    
+    check_parameter('telluric_correction', 'output_units', output_units, 'str')
+        
+    check_parameter('telluric_correction', 'qa_show', qa_show,
+                    ['NoneType', 'bool'])
 
-    elif verbose is False:
-        logging.getLogger().setLevel(logging.ERROR)
-        setup.state["verbose"] = False
+    check_parameter('telluric_correction', 'qa_scale', qa_scale,
+                    ['NoneType', 'int','float'])
 
-    # Get user paths if need be.
+    check_parameter('telluric_correction', 'qa_block', qa_block,
+                    ['NoneType', 'bool'])
 
-    if input_path is None:
+    check_parameter('telluric_correction', 'qa_write', qa_write,
+                    ['NoneType', 'bool'])
 
-        input_path = setup.state['proc_path']
+    check_parameter('telluric_correction', 'verbose', verbose,
+                    ['NoneType', 'bool'])
 
-    if output_path is None:
+    check_parameter('telluric_correction', 'overwrite', overwrite, 'bool')    
 
-        output_path = setup.state['proc_path']
-
-    if qa_path is None:
-
-        qa_path = setup.state['qa_path']                
-
-    check_path(input_path)
-    check_path(output_path)
-    check_path(qa_path)        
-
-    #
-    # Store user inputs
-    #
-
-    telluric.load['object_file'] = object_file
-    telluric.load['standard'] = standard
-    telluric.load['standard_file'] = standard_file
-    telluric.load['output_name'] = output_name
-    telluric.load['fluxdensity_units'] = fluxdensity_units
-    telluric.load['reflectance'] = reflectance
-    telluric.load['input_path'] = input_path
-    telluric.load['output_path'] = output_path
-    telluric.load['qa_path'] = qa_path      
-    telluric.load['qa_show'] = qa_show
-    telluric.load['qa_showsize'] = qa_showsize
-    telluric.load['qa_write'] = qa_write
-    telluric.load['verbose'] = verbose
-    telluric.load['overwrite'] = overwrite
+    keywords = check_keywords(verbose=verbose, qa_show=qa_show,
+                              qa_scale=qa_scale, qa_block=qa_block,
+                              qa_write=qa_write)
 
     #
-    # Load the files into memory
+    # Load the spectra
     #
 
-    logging.info(f" Telluric Correction\n-------------------------\n")
+    load_spectra(object_file,
+                 standard_file,
+                 standard_info,
+                 output_filename,  
+                 reflectance=reflectance,
+                 verbose=keywords['verbose'])
 
-    logging.info(f" Loading the data...")
-
-    # Object first
-
-    fullpath = make_full_path(input_path, object_file, exist=True)
-
-    object_spectra, object_info = read_spectra_fits(fullpath)
-
-    header = fits.getheader(fullpath)
-
-    object_hdrinfo = get_header_info(header,
-                                    keywords=setup.state['telluric_keywords'])
-
-    # Now the standard
-
-    fullpath = make_full_path(input_path, standard_file, exist=True)
-
-    standard_spectra, standard_info = read_spectra_fits(fullpath)
-
-    header = fits.getheader(fullpath)
-
-    standard_hdrinfo = get_header_info(header,
-                                    keywords=setup.state['telluric_keywords'])
 
     #
-    # Get standard star information
-    #
-
-    if standard_data is None:
-
-        # Get SIMBAD information of the standard
-
-        logging.info(f'Querying SIMBAD for standard star information...')
-        Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)', 'flux(R)', 'flux(G)')
-        table = Simbad.query_object(standard)
-
-#### NOTE FOR FUTURE - NEED TO CHANGE TO SEARCH BY COORDINATE WITH REJECTION OF SOME SIMBAD TYPES
-
-        if isinstance(table,Table):
-            standard_name = table['MAIN_ID'][0]
-            standard_sptype = table['SP_TYPE'][0]
-            standard_vmag = table['FLUX_V'][0]
-            standard_bmag = table['FLUX_B'][0]         
-
-##### TEMPORARY FIX WHEN THERE IS NO V MAGNITUDE RETURNED
-            if str(table['FLUX_V'][0])=='--':
-                if str(table['FLUX_G'][0])!='--':
-                    logging.info(f'WARNING: missing V magnitude, replacing with G magnitude')
-                    standard_vmag = table['FLUX_G'][0]
-                elif str(table['FLUX_R'][0])!='--':
-                    logging.info(f'WARNING: missing V magnitude, replacing with R magnitude')
-                    standard_vmag = table['FLUX_R'][0]
-                else:
-                    logging.info(f'WARNING: missing V magnitude, replacing with B magnitude')
-                    standard_vmag = standard_bmag
-
-    else:
-
-        standard_name = standard
-        standard_sptype = standard_data['sptype']
-        standard_vmag = standard_data['vmag']
-        standard_bmag = standard_data['bmag']
-
-##### TEMPORARY FIX WHEN THERE IS NO V MAGNITUDE
-    if str(standard_vmag)=='--' or str(standard_vmag)=='0.0':
-        logging.info(f'WARNING: missing V magnitude, replacing with B magnitude')
-        standard_vmag = standard_bmag
-
-
-    # error check standard information - what do we do if there is no standard data?
-    try:
-        type(standard_name)
-    except:
-        raise ValueError('Standard name "{}"" was not found in SIMBAD; provided correct name or provide the optional standard_data keyword with a dictionary containing keys "sptype", "bmag", and "vmag"'.format(standard))
-
-    #
-    # Let's do some checks to ensure 1) the standard has only one aperture and
-    # 2) the standard has the orders required.
-    #
-
-    if standard_info['napertures'] != 1:
-
-        message = 'The standard has more than one aperture.'
-        raise ValueError(message)
-
-    intersection = np.intersect1d(object_info['orders'],
-                                  standard_info['orders'])
-
-    if np.size(intersection) != object_info['norders']:
-
-        message = 'The standard lacks an order the object has.'
-        raise ValueError(message)
-
-    #
-    # Now figure out which Vega model to use and load if need be
+    # Are we doing a solar system object?
     #
 
     if reflectance is False:
 
-        # model = get_modeinfo(standard_hdrinfo['MODE'][0])
+        # Nope.  So do the full correction.
 
-        # file = os.path.join(setup.state['package_path'],'Vega'+model+'.fits')
+    
+        #
+        # Prepare line
+        #
 
-        hdul = fits.open(setup.state['package_path']+'/data/Vega5000.fits') 
-        data = hdul[1].data
+        if telluric.state['normalization_order'] != None:
+    
+            prepare_line(telluric.state['normalization_order'],
+                         telluric.state['normalization_window'],
+                         telluric.state['normalization_fittype'],
+                         telluric.state['normalization_degree'],
+                         verbose=keywords['verbose'],
+                         qa_show=keywords['qa_show'],
+                         qa_scale=keywords['qa_scale'],
+                         qa_block=keywords['qa_block'],
+                         qa_write=keywords['qa_write'])
 
-        vega_wavelength = data['wavelength']
-        vega_flux = data['flux density']
-        vega_continuum = data['continuum flux density']
-        vega_fitted_continuum = data['fitted continuum flux density']
 
-        hdul.close()
+        #
+        # Measure radial velocity
+        #
 
-        # Scale it by the vband magnitude
+        if telluric.state['radialvelocity_nfwhm'] != None:    
 
-        vega_vmagnitude = 0.03
-        vega_bminv = 0.00
-        scale = 10.0**(-0.4*(standard_vmag-vega_vmagnitude))
-        vega_flux /= scale
+            get_radialvelocity(telluric.state['radialvelocity_nfwhm'],
+                               verbose=keywords['verbose'],
+                               qa_show=keywords['qa_show'],
+                               qa_scale=keywords['qa_scale'],
+                               qa_block=keywords['qa_block'],
+                               qa_write=keywords['qa_write'])
 
-        # Convert to the users requested units
+    
+        #
+        # Get kernels
+        #
 
-        vega_flux = units.convert_fluxdensity(vega_wavelength, vega_flux,
-                                              'um', 'erg s-1 cm-2 A-1',
-                                              fluxdensity_units) 
-
-        # Set the units
-
-        yunits = fluxdensity_units
-        lyunits, lylabel = units.get_latex_fluxdensity(fluxdensity_units)
-
-    else:
-
-        yunits = ''
-        lyunits = ''
-        lylabel = 'ratio'
-
-    #
-    # Start the loop over object order number
-    #
-
-    for i in range(object_info['norders']):
-
-        # Find the order
-
-        z = np.where(object_info['orders'][i] == standard_info['orders'])
-
-        # Now loop over the apertures
-
-        for j in range(object_info['napertures']):
-
-            k =z[0][0]*object_info['napertures']+j
-
-            # Interpolate the standard and bit mask onto the object
-
-            rspectrum, runc = linear_interp1d(standard_spectra[z,0,:],
-                                              standard_spectra[z,1,:],
-                                              object_spectra[k,0,:],
-                                              input_u=standard_spectra[z,2,:])
-
-            if reflectance is False:
-
-                rvega = linear_interp1d(vega_wavelength, vega_flux,
-                                        object_spectra[k,0,:])
-
-                correction = rvega/rspectrum
-                correction_unc =  rvega/rspectrum**2 * runc               
-
-            else:
-
-                correction = 1/rspectrum
-                correction_unc = 1/rspectrum**2 * runc
-
-            # Do the correction and error propagation
-
-            value = object_spectra[k,1,:] * correction
-
-            var = object_spectra[k,1,:]**2 * correction_unc**2 + \
-                  correction**2 * object_spectra[k,2,:]**2
-
-            object_spectra[k,1,:] = value
-            object_spectra[k,2,:] = np.sqrt(var)
-
-            # Combine the masks
-
-            mask = linear_bitmask_interp1d(standard_spectra[z,0,:],
-                                 standard_spectra[z,3,:].astype(np.uint8),
-                                           object_spectra[k,0,:])
-
-            stack = np.stack((object_spectra[k,3,:].astype(np.uint8),mask))
-            mask = combine_flag_stack(stack)
-
-            object_spectra[k,3,:] = mask
-
-    #
-    # Write the file to disk
-    #
-
-    # Update the object hdrinfo
-
-    object_hdrinfo['MODULE'][0] = 'telluric'
-    object_hdrinfo['FILENAME'][0] = output_name+'.fits'
-    object_hdrinfo['YUNITS'][0] = yunits
-    object_hdrinfo['LYUNITS'][0] = lyunits
-    object_hdrinfo['LYLABEL'][0] = lylabel
-
-    object_hdrinfo['OBJFILE'] = (object_file, ' Object file name')
-    object_hdrinfo['STANDARD'] = (standard_name, ' Standard')
-    object_hdrinfo['STDSPTYP'] = (standard_sptype, ' Standard spectral type')
-    object_hdrinfo['STDBMAG'] = (standard_bmag, ' Standard spectral B mag')
-    object_hdrinfo['STDVMAG'] = (standard_vmag, ' Standard spectral V mag')    
-    object_hdrinfo['STDFILE'] = (standard_file, ' Standard file name')        
-
-    # Store the history
-
-    old_history = object_hdrinfo['HISTORY']
-
-    # remove it from the avehdr
-
-    object_hdrinfo.pop('HISTORY')
-
-    # Create a new header
-
-    phdu = fits.PrimaryHDU()
-    hdr = phdu.header
-
-    # Add our keywords
-
-    keys = list(object_hdrinfo.keys())
-
-    for i in range(len(keys)):
-
-        if keys[i] == 'COMMENT':
-
-            junk = 1
-
+        if telluric.state['deconvolution_nfwhm'] != None:
+    
+            get_kernels(telluric.state['deconvolution_nfwhm'],
+                        verbose=keywords['verbose'],
+                        qa_show=keywords['qa_show'],
+                        qa_scale=keywords['qa_scale'],
+                        qa_block=keywords['qa_block'],
+                        qa_write=keywords['qa_write'])
+            
         else:
 
-            hdr[keys[i]] = (object_hdrinfo[keys[i]][0],
-                            object_hdrinfo[keys[i]][1])
-
-    history = split_text(old_history, length=65)            
-
-    for hist in history:
-
-        hdr['HISTORY'] = hist
-
-    output_fullpath = os.path.join(output_path, output_name+'.fits')
-
-    fits.writeto(output_fullpath, object_spectra, hdr, overwrite=overwrite)
+            get_kernels(verbose=keywords['verbose'],
+                        qa_show=keywords['qa_show'],
+                        qa_scale=keywords['qa_scale'],
+                        qa_block=keywords['qa_block'],
+                        qa_write=keywords['qa_write'])
+        
 
     #
-    # Plot the results
+    # Construct the telluric correction spectra
     #
 
-    if telluric.load['qa_show'] is True:
-
-        number = plot_spectra(output_fullpath, title=output_name+'.fits',
-                              plot_size=qa_showsize,
-                              plot_number=telluric.state['spectra_plotnum'])
-        telluric.state['spectra_plotnum'] = number
-
-    if telluric.load['qa_write'] is True:
-
-        qafileinfo = {'figsize': telluric.load['qa_showsize'],
-                      'filepath': telluric.load['qa_path'],
-                      'filename': telluric.load['output_name'],
-                      'extension': setup.state['qa_extension']}
-
-        plot_spectra(output_fullpath, file_info=qafileinfo)
+    make_telluric_spectra(intensity_unit=output_units)
 
     #
-    # Update the user
+    # Correct the spectra for telluric absorption and flux calibrate
     #
 
-    message = ' Wrote '+os.path.basename(output_fullpath)+' to disk.'
-    logging.info(message)
+    correct_spectra()
 
+    #
+    # Write the corrected spectra to disk
+    #
 
-def get_modeinfo(mode):
-
-    """
-    Reads the telluric_modeinfo file and returns values for a given mode.
-
-    Parameters
-    ----------
-    mode : str
-        The instrument mode
-
-    Returns
-    -------
+    write_spectra(write_model_spectra=write_model_spectra,
+                  write_telluric_spectra=write_telluric_spectra,
+                  verbose=keywords['verbose'],
+                  qa_show=keywords['qa_show'],
+                  qa_scale=keywords['qa_scale'],
+                  qa_block=keywords['qa_block'],
+                  qa_write=keywords['qa_write'],
+                  overwrite=overwrite)
     
-
-    """
-
-    #
-    # Check parameters
-    #
-
-    check_parameter('get_modeinfo', 'mode', mode, 'str')
-
-    # Get the file name and read it
-
-    file = os.path.join(setup.state['instrument_path'],'telluric_modeinfo.dat')
-
-    modes, vega_models = np.loadtxt(file, comments='#', unpack=True,
-                                    delimiter='|', dtype='str')
-
-    # Convert to list and compress strings
-
-    modes = list(modes)
-    vega_models = list(vega_models)
-
-    modes = np.array([m.strip() for m in modes])
-    vega_models = np.array([m.strip() for m in vega_models]    )
-
-    # Find the matching mode and return results
-
-    z = modes == mode
-
-    return vega_models[z][0]
+    

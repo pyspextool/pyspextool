@@ -184,7 +184,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     full_flat_name = os.path.join(setup.state['cal_path'], flat_name)
     check_file(full_flat_name)
 
-    if len(wavecal_name) != 0:
+    if isinstance(wavecal_name, str):
 
         dowavecal = True
         full_wavecal_name = os.path.join(setup.state['cal_path'], wavecal_name)
@@ -332,7 +332,9 @@ def load_image(files, flat_name, wavecal_name, *output_files,
             wavecalinfo = read_wavecal_fits(full_wavecal_name, rotate=True)
             wavecal = wavecalinfo['wavecal']
             spatcal = wavecalinfo['spatcal']
-
+            indices = wavecalinfo['rectindices']
+#            dispersions = wavecalinfo['dispersions']            
+            
             #
             # Get the atmospheric transmission 
             #
@@ -357,22 +359,41 @@ def load_image(files, flat_name, wavecal_name, *output_files,
             # Load that file
 
             array = fits.getdata(np.array(fullpath)[z][0])
-            extract.state['atmosphere'] = {'wavelength':array[0, :],
-                                           'transmission':array[1, :]}
+            atmosphere = {'wavelength':array[0, :], 'transmission':array[1, :]}
+
+            # Get units
+
+            xunits = 'um'
+            latex_xunits = '$\mu$m'
+            latex_xlabel = 'Wavelength ($\mu$m)'
+            
             
         else:
 
-            wavecal, spatcal = simulate_wavecal_1dxd(flatinfo['ncols'],
-                                                     flatinfo['nrows'],
-                                                     flatinfo['edgecoeffs'],
-                                                     flatinfo['xranges'],
-                                                     flatinfo['slith_arc'])
-            extract.state['atmosphere'] = None
+            wavecal, spatcal, indices = simulate_wavecal_1dxd(flatinfo['ncols'],
+                                                             flatinfo['nrows'],
+                                                        flatinfo['edgecoeffs'],
+                                                            flatinfo['xranges'],
+                                                        flatinfo['slith_arc'])
+
+#            dispersions = None
+            atmosphere  = None
+
+            xunits = 'pixel'
+            latex_xunits = 'pixel'
+            latex_xlabel = 'Wavelength (pixel)'
+
+            
 
         extract.state['wavecal'] = wavecal
         extract.state['spatcal'] = spatcal
-        extract.state['rectindices'] = wavecalinfo['rectindices']
-
+        extract.state['rectindices'] = indices
+#        extract.state['dispersions'] = dispersions
+        extract.state['atmosphere'] = atmosphere
+        extract.state['xunits'] = xunits
+        extract.state['latex_xunits'] = latex_xunits
+        extract.state['latex_xlabel'] = latex_xlabel
+        
     #
     # Load the data
     #
@@ -483,7 +504,7 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     indices = extract.state['rectindices']
     for i in range(extract.state['norders']):
         order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'])
-
+        
         # Now get the wavelength solution to tack on
 
         bot = np.ceil(poly_1d(indices[i]['x'],
