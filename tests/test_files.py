@@ -1,7 +1,7 @@
 from os.path import join
 from pyspextool.io import files
 from pyspextool.io.files import check_file, extract_filestring, make_full_path
-#from pyspextool.io.convert_fits import convert_to_fits, spectrum_isplottable
+from pyspextool.io.convert_fits import convert_to_fits, spectrum_isplottable
 import pytest
 from os.path import exists
 
@@ -80,7 +80,7 @@ def test_make_full_path():
     ],
 )
 
-@pytest.mark.skip(reason='version history with python makes file conversion a problem')
+
 def test_convert_to_fits(file, output_path, out_file):
     convert_to_fits(file, output_path=output_path)
     assert exists(join(output_path, out_file)) is True
