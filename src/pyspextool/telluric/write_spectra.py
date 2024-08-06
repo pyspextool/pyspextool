@@ -161,10 +161,11 @@ def write_spectra(write_model_spectra:bool=False,
                                  telluric.load['output_filename']+\
                                  '_vega.fits')    
 
-        fits.writeto(full_path, telluric.state['vega_spectra'], newhdr,
+        if os.path.exists(full_path)==False or keywords['overwrite']==True:
+            fits.writeto(full_path, telluric.state['vega_spectra'], newhdr,
                  overwrite=keywords['overwrite'])
         
-        logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+            logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
 
 
     
@@ -239,10 +240,11 @@ def write_spectra(write_model_spectra:bool=False,
                                  telluric.load['output_filename']+\
                                  '_telluric.fits')    
 
-        fits.writeto(full_path, telluric.state['telluric_spectra'], newhdr,
-                 overwrite=keywords['overwrite'])
-        
-        logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+        if os.path.exists(full_path)==False or keywords['overwrite']==True:
+            fits.writeto(full_path, telluric.state['telluric_spectra'], newhdr,
+                     overwrite=keywords['overwrite'])
+            
+            logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
         
     
     #
@@ -345,10 +347,11 @@ def write_spectra(write_model_spectra:bool=False,
     full_path = os.path.join(setup.state['proc_path'],
                              telluric.load['output_filename']+'.fits')
     
-    fits.writeto(full_path, telluric.state['corrected_spectra'], newhdr,
-                 overwrite=keywords['overwrite'])
+    if os.path.exists(full_path)==False or keywords['overwrite']==True:
+        fits.writeto(full_path, telluric.state['corrected_spectra'], newhdr,
+                     overwrite=keywords['overwrite'])
 
-    logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+        logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
         
     #
     # Do the QA plotting

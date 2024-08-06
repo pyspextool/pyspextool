@@ -225,7 +225,7 @@ def load_data():
     
     """
 
-    logging.info(f" Loading the data...")
+    logging.info(" Loading the files {} and {}...".format(telluric.load['object_file'],telluric.load['standard_file']))
             
     # Object first
     
@@ -276,8 +276,8 @@ def load_data():
     telluric.state['standard_spectra'] = standard_spectra
     telluric.state['standard_info'] = standard_info
     telluric.state['standard_hdrinfo'] = standard_hdrinfo
-    telluric.state['delta_airmass'] = object_hdrinfo['AVE_AM'][0]-\
-        standard_hdrinfo['AVE_AM'][0] 
+    telluric.state['delta_airmass'] = float(object_hdrinfo['AVE_AM'][0])-\
+        float(standard_hdrinfo['AVE_AM'][0]) 
     telluric.state['object_spectra'] = object_spectra
     telluric.state['object_info'] = object_info    
     telluric.state['object_hdrinfo'] = object_hdrinfo
