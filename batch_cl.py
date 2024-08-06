@@ -54,6 +54,8 @@ class runBatch():
 			required=False, help='set to rebuild the driver file from the log')
 		parser.add_argument('--reduce-only', action='store_true',default=False,
 			required=False, help='set to just reduce (no log or driver generation)')
+		parser.add_argument('--rereduce', action='store_true',default=False,
+			required=False, help='set to just re-reduce (no log, driver, or calibrations generation, overwrite prior extractions)')
 		parser.add_argument('--qa-only', action='store_true',default=False,
 			required=False, help='set to just generate QA page')
 		# parser.add_argument('--base', action='store_true',default=False,
@@ -218,6 +220,7 @@ class runBatch():
 			if args['no_combine']==True: par['COMBINE']=False
 			if args['no_fluxtell']==True: par['FLUXTELL']=False
 			if args['no_stitch']==True: par['STITCH']=False
+			if args['rereduce']==True: par['REREDUCE']=True
 			if args['overwrite']==True: par['OVERWRITE']=False
 
 			if args['quiet']==False: print('\n\nReducing spectra\n\n')
