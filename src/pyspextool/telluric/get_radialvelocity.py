@@ -7,6 +7,7 @@ from pyspextool.telluric import config as telluric
 from pyspextool.io.check import check_parameter, check_keywords
 from pyspextool.utils.arrays import find_index
 from pyspextool.telluric.core import measure_linerv
+from pyspextool.pyspextoolerror import pySpextoolError
 
 def get_radialvelocity(fwhm_scale:float,
                        resolving_power:bool | float |int =None, 

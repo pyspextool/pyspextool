@@ -364,8 +364,8 @@ def load_image(files, flat_name, wavecal_name, *output_files,
             # Get units
 
             xunits = 'um'
-            latex_xunits = '$\mu$m'
-            latex_xlabel = 'Wavelength ($\mu$m)'
+            latex_xunits = r'$\mu$m'
+            latex_xlabel = r'Wavelength ($\mu$m)'
             
             
         else:

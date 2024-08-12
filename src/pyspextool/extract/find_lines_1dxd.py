@@ -229,8 +229,8 @@ def find_lines_1dxd(spectra, orders, line_info, pix_thresh, qafileinfo=None,
             
             yrange = get_spec_range(y,frac=0.1)
 
-            title = 'Order '+str(line_info['order'][i])+': $\lambda$='+\
-                line_info['wavelength'][i]+' $\mu$m'
+            title = 'Order '+str(line_info['order'][i])+r': $\lambda$='+\
+                line_info['wavelength'][i]+r' $\mu$m'
             
             axes1.step(x, y, 'black')
             axes1.set_title(title)            

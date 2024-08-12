@@ -223,7 +223,7 @@ def do_1dxdplot(figsize, residuals, residual_orders, residual_columns, orders,
         axes1.plot(residual_orders[zbad], residuals[zbad], 's',
                    markersize=13, markerfacecolor='none', color='black')
                 
-        axes1.set(xlabel='Order Number', ylabel='Data-Fit ($\mathrm{\AA}$)')
+        axes1.set(xlabel='Order Number', ylabel=r'Data-Fit ($\mathrm{\AA}$)')
                 
         axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
                 
@@ -239,17 +239,17 @@ def do_1dxdplot(figsize, residuals, residual_orders, residual_columns, orders,
                    markersize=13, markerfacecolor='none', color='black')
                 
         axes2.set(xlabel='Column (pixels)',
-                  ylabel='Data-Fit ($\mathrm{\AA}$)')
+                  ylabel=r'Data-Fit ($\mathrm{\AA}$)')
                 
         axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
                 
         # Label the fit
                 
-        label = '$\lambda$ degree=' + str(dispersion_degree) + \
+        label = r'$\lambda$ degree=' + str(dispersion_degree) + \
                 '\n order degree=' + str(order_degree) + \
                 '\n RMS=' + "{:#.3g}".format(rms * 1e4) + \
-                ' $\mathrm{\AA}$\n n$_\mathrm{tot}$=' + str(ntot) + \
-                ', n$_\mathrm{bad}$=' + str(nbad)
+                r' $\mathrm{\AA}$\n n$_\mathrm{tot}$=' + str(ntot) + \
+                r', n$_\mathrm{bad}$=' + str(nbad)
                   
         axes1.text(0.02, 0.95, label, color='black', ha='left',
                    va='top', multialignment='left', transform=axes1.transAxes)
@@ -290,17 +290,17 @@ def do_1dplot(figsize, residuals, residual_columns, goodbad, rms,
         axes1.plot(residual_columns[zbad], residuals[zbad], 's',
                    markersize=13, markerfacecolor='none', color='black')
                 
-        axes1.set(xlabel='Column (pixels)', ylabel='Residual ($\mathrm{\AA}$)')
+        axes1.set(xlabel='Column (pixels)', ylabel=r'Residual ($\mathrm{\AA}$)')
                 
         axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
 
             
     # Label the fit
                 
-    label = '$\lambda$ degree=' + str(dispersion_degree) + \
+    label = r'$\lambda$ degree=' + str(dispersion_degree) + \
             '\n RMS=' + "{:#.3g}".format(rms * 1e4) + \
-            ' $\mathrm{\AA}$\n n$_\mathrm{tot}$=' + str(ntot) + \
-            ', n$_\mathrm{bad}$=' + str(nbad)
+            r' $\mathrm{\AA}$\n n$_\mathrm{tot}$=' + str(ntot) + \
+            r', n$_\mathrm{bad}$=' + str(nbad)
                   
     axes1.text(0.02, 0.95, label, color='black', ha='left',
                va='top', multialignment='left', transform=axes1.transAxes)
