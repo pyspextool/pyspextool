@@ -1375,9 +1375,13 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']+dpflux['DIFF3']
 				fref = dpflux.loc[np.argmin(dpflux['DIFF']),'FILE NUMBER']
 				tname = str(dpflux.loc[np.argmin(dpflux['DIFF']),'TARGET_NAME'])
-				tspt =  str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_TYPE'])
-				tbmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_BMAG'])
-				tvmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_VMAG'])
+# temporary fix while sorting out why this doesn't work in testing				
+				if 'SIMBAD_TYPE' in list(dpflux.keys()): tspt =  str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_TYPE'])
+				else: tspt = ''
+				if 'SIMBAD_BMAG' in list(dpflux.keys()): tbmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_BMAG'])
+				else: tbmag = numpy.nan
+				if 'SIMBAD_VMAG' in list(dpflux.keys()): tvmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_VMAG'])
+				else: tbmag = numpy.nan
 				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
 				dpfluxs.reset_index(inplace=True)
 				fnum = np.array(dpfluxs['FILE NUMBER'])
