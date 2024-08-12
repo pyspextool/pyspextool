@@ -1379,9 +1379,9 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				if 'SIMBAD_TYPE' in list(dpflux.keys()): tspt =  str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_TYPE'])
 				else: tspt = ''
 				if 'SIMBAD_BMAG' in list(dpflux.keys()): tbmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_BMAG'])
-				else: tbmag = numpy.nan
+				else: tbmag = np.nan
 				if 'SIMBAD_VMAG' in list(dpflux.keys()): tvmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_VMAG'])
-				else: tbmag = numpy.nan
+				else: tbmag = np.nan
 				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
 				dpfluxs.reset_index(inplace=True)
 				fnum = np.array(dpfluxs['FILE NUMBER'])
