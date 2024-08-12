@@ -1379,9 +1379,9 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				if 'SIMBAD_TYPE' in list(dpflux.keys()): tspt =  str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_TYPE'])
 				else: tspt = ''
 				if 'SIMBAD_BMAG' in list(dpflux.keys()): tbmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_BMAG'])
-				else: tbmag = np.nan
+				else: tbmag = 8.
 				if 'SIMBAD_VMAG' in list(dpflux.keys()): tvmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_VMAG'])
-				else: tbmag = np.nan
+				else: tvmag = 8.
 				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
 				dpfluxs.reset_index(inplace=True)
 				fnum = np.array(dpfluxs['FILE NUMBER'])
@@ -2005,7 +2005,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
-			outfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
+			outfile = '{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
 
 # first check if file is present - skip if not overwriting
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
@@ -2021,7 +2021,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['STD_FILES'])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
-			outfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
+			outfile = '{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
 
 # first check if file is present - skip if not overwriting
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:

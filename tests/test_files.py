@@ -98,7 +98,7 @@ def test_convert_to_fits(file, output_path, out_file):
     ],
 )
 
-@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
+#@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
 def test_spectrum_isplottable(file):
     result = spectrum_isplottable(file, raise_error=True, show_plot=False)
     assert result is True
