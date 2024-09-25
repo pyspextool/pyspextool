@@ -4,7 +4,7 @@ from math import floor
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
-from pyspextool.io.check import check_parameter, check_keywords
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.utils.arrays import find_index
 from pyspextool.telluric.core import measure_linerv
 

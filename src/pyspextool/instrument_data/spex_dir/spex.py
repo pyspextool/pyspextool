@@ -492,7 +492,7 @@ def read_fits(files, linearity_info, keywords=None, pair_subtract=False,
         for i in range(0, nimages):
 
             if verbose is True:
-                loop_progress(i, 0, nimages, message='Loading images...')
+                loop_progress(i, 0, nimages)
                 
             a = load_data(files[i*2], linearity_info, keywords=keywords,
                           linearity_coefficients=linearity_coeffs)
@@ -515,7 +515,7 @@ def read_fits(files, linearity_info, keywords=None, pair_subtract=False,
         for i in range(0, nimages):
 
             if verbose is True:
-                loop_progress(i, 0, nimages, message='Loading images...')
+                loop_progress(i, 0, nimages)
             
             a = load_data(files[i], linearity_info, keywords=keywords,
                           linearity_coefficients=linearity_coeffs)

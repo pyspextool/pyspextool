@@ -1,34 +1,52 @@
 import importlib
+import numpy as np
 from astropy.io import fits
+from os.path import join, basename as osbasename, splitext
+import logging
+import glob
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
 
-from pyspextool.extract.simulate_wavecal_1dxd import simulate_wavecal_1dxd
-from pyspextool.extract.rectify_order import rectify_order
-from pyspextool.io.check import *
-from pyspextool.io.files import *
-from pyspextool.io.fitsheader import get_header_info
-from pyspextool.io.flat import read_flat_fits
+from pyspextool.extract.wavecal import simulate_wavecal_1dxd
+from pyspextool.extract.images import rectify_order
+from pyspextool.io.check import check_parameter, check_qakeywords, check_file
+from pyspextool.io.files import files_to_fullpath, extract_filestring
+from pyspextool.io.fitsheader import get_headerinfo
+from pyspextool.extract.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
-from pyspextool.io.wavecal import read_wavecal_fits
+from pyspextool.extract.wavecal import read_wavecal_fits
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.fit.polyfit import poly_1d
+from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def load_image(files, flat_name, wavecal_name, *output_files,
-               reduction_mode='A-B', directory='raw', suffix=None,
-               flat_field=True, linearity_correction=True, verbose=None,
-               do_all_steps=False, qa_show=None, qa_write=None,
-               qa_showsize=(6, 6)):
+def load_image(files:str | list,
+               flat_name:str,
+               wavecal_name:str,
+               *output_filenames:str,
+               output_prefix:str='spectra',
+               output_extension:str='.fits*',
+               reduction_mode='A-B',
+               load_directory='raw',
+               flat_field=True,
+               linearity_correction=True,
+               detector_info:dict=None,
+               write_rectified_orders:bool=False,
+               do_all_steps:bool=False,
+               verbose:bool=None,
+               qa_show:bool=None,
+               qa_showscale:float | int=None,
+               qa_showblock:bool=None,
+               qa_write:bool=None):
+
     """
     To load a (pair-subtracted, sky/dark subrtracted) image into memory.
 
     Parameters
     ----------
-
     files : str or list
         If type is str, then a comma-separated string of full file names, 
         e.g. 'spc00001.a.fits, spc00002.b.fits'.
@@ -40,12 +58,12 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         e.g. ['spc', '1-2']
     
     flat_name : str
-        The full name of a Spextool flat file.
+        The full name of a pySpextool flat file.
 
-    wavecal_name : str or NoneType, optional
-        The full name of a Spextool wavecal file.
-
-    output_files : str or list of str, optional
+    wavecal_name : str or None
+        The full name of a pySpextool wavecal file.
+    
+    *output_files : str or list of str, optional
         A str or list of str of output files names.  Only required if `files` 
         gives file names intead of a prefix and index numbers.
 
@@ -64,23 +82,35 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     linearity_correction : {True, False}, optional
         Set to False to not correct for linearity.
 
-    verbose : {None, True, False}, optional
-        Set to True/False to override config.setup['verbose'].
+    detector_info : dict, deafult None
+        A dictionary with any information that needs to be passed to the
+        instrument specific readfits program.  
+    
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+    
+    qa_show : {None, True, False}
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
+        Set to None to default to setup.state['qa_show'].
 
-    qa_write : {None, True, False}, optional
-        Set to True/False to override config.state['qa_write'] in the 
-        pyspextool config file.  If set to True, quality assurance 
-        plots will be written to disk.
-
-    qa_show : {None, True, False}, optional
-        Set to True/False to override config.state['qa_show'] in the 
-        Pyspextool config file.  If set to True, quality assurance 
-        plots will be interactively generated.
-
-    qa_showsize : tuple, default=(6,6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_showsize)) for the interactive plot.
-
+    qa_write : {None, True, False}
+        Set to True to write a QA plot to disk
+        Set to False to not write a QA plot to disk.
+        Set to None to default to setup.state['qa_write'].
+    
+    qa_showblock : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+    
+    qa_showscale : float or int, default=None
+        The scale factor by which to increase or decrease the default size of
+        the plot window which is (9,6).  This does NOT affect plots written
+        to disk.  Set to None to default to setup.state['qa_scale'].    
+   
     do_all_steps : {False, True}, optional
         Set to True to skip loading the flat and wavecals.
 
@@ -91,210 +121,203 @@ def load_image(files, flat_name, wavecal_name, *output_files,
     """
 
     #
-    # Check the parameters
+    # Check the parameters and QA keywords
     #
-
-    check_parameter('load_image', 'files', files, ['str', 'list'])
-
-    if isinstance(files, list):
-        check_parameter('load_image', 'files[0]', files[0], 'str')
-        check_parameter('load_image', 'files[1]', files[1],
-                        ['str', 'list', 'int'])
+    
+    check_parameter('load_image', 'files', files, ['str', 'list'],
+                    list_types=['str','str'])
 
     check_parameter('load_image', 'flat_name', flat_name, 'str')
 
     check_parameter('load_image', 'wavecal_name', wavecal_name,
                     ['NoneType','str'])
-
-    if len(output_files) != 0:
-        check_parameter('load_image', 'output_files', output_files[0], 'str')                
+    
+    if len(output_filenames) != 0:
+        check_parameter('load_image', 'output_filenames', output_filenames[0],
+                        ['NoneType','str'])
+        
     check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
                     possible_values=['A', 'A-B', 'A-Sky'])
 
-    check_parameter('load_image', 'directory', directory, 'str',
-                    possible_values=['raw', 'cal', 'proc'])
-
-    check_parameter('load_image', 'suffix', suffix, ['str', 'NoneType'])
+    check_parameter('load_image', 'load_directory', load_directory, 'str',
+                    possible_values=['raw', 'proc'])
 
     check_parameter('load_image', 'flat_field', flat_field, 'bool')
 
     check_parameter('load_image', 'linearity_correction',
                     linearity_correction, 'bool')
 
+    check_parameter('load_image', 'detector_info', detector_info,
+                    ['NoneType','dict'])
+    
     check_parameter('load_image', 'verbose', verbose, ['NoneType', 'bool'])
 
     check_parameter('load_image', 'qa_write', qa_write, ['NoneType', 'bool'])
 
     check_parameter('load_image', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_showsize', qa_showsize,
-                    ['NoneType', 'tuple'])
+    check_parameter('load_image', 'qa_showscale', qa_showscale,
+                    ['int', 'float', 'NoneType'])
 
+    check_parameter('load_image', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
+
+    
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)
+
+    # Load the correct "raw" path
+
+    if load_directory == 'raw':
+
+        load_path = setup.state['raw_path']
+        image_type = 'raw'
+        
+    elif load_directory == 'proc':
+
+        load_path = setup.state['proc_path']
+        image_type = 'combined'
+        
     #
-    # Check the qa and verbose variables and set to system default if need be.
-    #
-
-    if qa_write is None:
-        qa_write = setup.state['qa_write']
-
-    if qa_show is None:
-        qa_show = setup.state['qa_show']
-
-    if verbose is None:
-        verbose = setup.state['verbose']
-
-    #
-    # Store user inputs
-    #
-
-    extract.load['doflat'] = flat_field
-    extract.load['dolinearity'] = linearity_correction
-    extract.load['qaplotsize'] = qa_showsize
-    extract.load['flatfile'] = flat_name
-    extract.load['wavecalfile'] = wavecal_name
-    extract.load['qaplot'] = qa_show
-    extract.load['qafile'] = qa_write
-    extract.load['verbose'] = verbose
-
-    # Get the readfits module
-
-    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
-             '_dir.' + setup.state['instrument']
-
-    instr = importlib.import_module(module)
-
-    # Get the path
-
-    if directory == 'raw':
-
-        path = setup.state['raw_path']
-
-    elif directory == 'cal':
-
-        path = setup.state['cal_path']
-
-    elif directory == 'proc':
-
-        path = setup.state['proc_path']
-
-    #
-    # Check for file existence
+    # Check for flat field and wavecal file existence
     #
 
-    full_flat_name = os.path.join(setup.state['cal_path'], flat_name)
+    full_flat_name = join(setup.state['cal_path'], flat_name)
     check_file(full_flat_name)
 
     if isinstance(wavecal_name, str):
 
         dowavecal = True
-        full_wavecal_name = os.path.join(setup.state['cal_path'], wavecal_name)
+        full_wavecal_name = join(setup.state['cal_path'], wavecal_name)
         check_file(full_wavecal_name)
+        extract.state['wavecalfile'] = wavecal_name        
 
     else:
 
         dowavecal = False
-        extract.load['wavecalfile'] = None
-
+        extract.state['wavecalfile'] = None
+        
     #
     # Create the file names
     #
 
-    if isinstance(files, str):
+    results = files_to_fullpath(load_path,
+                                files,
+                                setup.state['nint'],
+                                setup.state['suffix'],
+                                output_extension)
 
-        # You are in FILENAME mode
+    input_files = results[0]
+    file_readmode = results[1]
 
-        extract.state['filereadmode'] = 'filename'
-        files = files.replace(" ", "").split(',')
-        input_files = make_full_path(path, files, exist=True)
-        output_files = make_full_path(setup.state['proc_path'],
-                                      [output_files[0]])
+    check_file(input_files)
 
-    else:
-
-        # You are in INDEX mode
-
-        extract.state['filereadmode'] = 'index'
-
-        prefix = files[0]
-        nums = files[1]
-
-        extract.state['prefix'] = prefix
-
-        # Create the files to read into memory
-
-        indexinfo = {'nint': setup.state['nint'], 'prefix': prefix,
-                     'suffix': setup.state['suffix'], 'extension': '.fits*'}
-
-        input_files = make_full_path(path, nums, indexinfo=indexinfo,
-                                     exist=True)
-
-        # Create the corresponding output file names.
-
-        indexinfo = {'nint': setup.state['nint'],
-                     'prefix': extract.state['output_prefix'],
-                     'suffix': '', 'extension':''}
-
-        output_files = make_full_path(setup.state['proc_path'], nums,
-                                      indexinfo=indexinfo)
-
-    # Got the right number?
+    # Got the right number of files given the reduction mode?
 
     nfiles = len(input_files)
 
     if reduction_mode == 'A' and nfiles != 1:
-        message = 'The A reduction mode requires 1 image.'
-        raise ValueError(message)
+        message = 'The A reduction mode only accepts one image in the '+\
+            'parameter `files`.'
+        raise pySpextoolError(message)
 
     if reduction_mode == 'A-Sky' and nfiles != 1:
-        message = 'The A-Sky reduction mode requires 1 image.'
-        raise ValueError(message)
+        message = 'The A-Sky reduction mode only accepts one image in the '+\
+            'parameter `files`.'
+        raise pySpextoolError(message)
 
     if reduction_mode == 'A-B' and nfiles != 2:
-        message = 'The A-B reduction mode requires 2 images.'
-        raise ValueError(message)
+        message = 'The A-B reduction mode only accepts two images in the '+\
+            'parameter `files`.'
+        raise pySpextoolError(message)
+    
+    # Check to make sure the user passed an output_filename if `file_readmode`
+    # is filename.
+    
+    if file_readmode == 'filename':
 
-        # Do we need to reorder because we are IRTF?
+        if not output_filenames:
+
+            message = 'The parameter `output_filenames` must be given when '+\
+                'the value passed for the parameter `files` is a complete '+\
+                'filename.'
+            raise pySpextoolError(message)
+        
+    # Now create the output filenames
+
+    if file_readmode == 'index':
+
+        files[0] = output_prefix
+        
+        result = files_to_fullpath('',
+                                   files,
+                                   setup.state['nint'],
+                                   '',
+                                   '',
+                                   exist=False)
+
+        output_filenames = result[0]
+
+    else:  # we are in filename readmode
+
+        tmp = output_filenames[0]
+        output_filenames = extract_filestring(tmp, 'filename')
+
+        if nfiles != len(output_filenames):
+
+            message = 'The number of files in the parameter '+\
+                '`output_filenames` does not match the number of files in '+\
+                'the parameter `files`.'
+            raise pySpextoolError(message)
+        
+    # Do we need to reorder because we are IRTF?
 
     if reduction_mode == 'A-B' and setup.state['irtf'] is True:
 
         input_files, indices = reorder_irtf_files(input_files)
-        if extract.state['filereadmode'] == 'index':
 
-            tmp = np.array(output_files)
-            tmp = tmp[indices]
-            output_files = tmp.tolist()
-            
-    extract.state['output_files'] = output_files
-
+        tmp = np.array(output_filenames)
+        tmp = tmp[indices]
+        output_files = tmp.tolist()
+                           
+    extract.state['output_files'] = output_filenames
+    
     # Create the qafilename root
 
     basenames = []
     for file in input_files:
 
-        basename = os.path.basename(file)
-        root = os.path.splitext(basename)
+        basename = osbasename(file)
+        root = splitext(basename)
         if root[1] == '.gz':
-            root = os.path.splitext(root[0])
+            root = splitext(root[0])
 
         basenames.append(root[0])
 
     qafilename = '_'.join(basenames)
     extract.state['qafilename'] = qafilename
-
+    
+    #
+    # Is this call a part of a do_all_steps call?  If so, load just the data
+    #
+    
     if do_all_steps is False:
 
         #
-        # Load the flat field image
+        # Load the flat field image and store important things
         #
 
-        if verbose is True:
-            print('Loading the flat...')
+        logging.info(f' Loading the flat file '+flat_name+'.')
 
         flatinfo = read_flat_fits(full_flat_name)
 
+        extract.state['flat_filename'] = flat_name
         extract.state['reductionmode'] = reduction_mode
         extract.state['flat'] = flatinfo['flat']
-        extract.state['bitmask'] = flatinfo['bitmask']        
+        extract.state['flat_bitmask'] = flatinfo['bitmask']        
         extract.state['ordermask'] = flatinfo['ordermask']
         extract.state['edgecoeffs'] = flatinfo['edgecoeffs']
         extract.state['edgedeg'] = flatinfo['edgedeg']
@@ -311,29 +334,31 @@ def load_image(files, flat_name, wavecal_name, *output_files,
         extract.state['ncols'] = flatinfo['ncols']
         extract.state['nrows'] = flatinfo['nrows']
 
-        # Let's deal with the mode
+        # Let's deal with doorders arrays.
+        # If the mode is the same, do nothing.
+        # If the mode is different, or this is the first load, create doorders
+        # arrays
+        
+#        if extract.state['modename'] != flatinfo['mode']:
 
-        if extract.state['modename'] != flatinfo['mode']:
-            extract.state['modename'] = flatinfo['mode']
-            extract.state['psdoorders'] = \
-                np.ones(flatinfo['norders'], dtype=int)
-            extract.state['xsdoorders'] = \
-                np.ones(flatinfo['norders'], dtype=int)
+        extract.state['modename'] = flatinfo['mode']
+        extract.state['doorders'] = np.ones(flatinfo['norders'], dtype=int)
 
         #
         # Load the wavcal image
         #
-
-        if verbose is True:
-            print('Loading the wavecal...')
-
+        
         if dowavecal is True:
 
-            wavecalinfo = read_wavecal_fits(full_wavecal_name, rotate=True)
+            logging.info(f' Loading the wavecal file '+wavecal_name+'.')
+            
+            wavecalinfo = read_wavecal_fits(full_wavecal_name,
+                                            rotate=True)
+            
             wavecal = wavecalinfo['wavecal']
             spatcal = wavecalinfo['spatcal']
             indices = wavecalinfo['rectindices']
-#            dispersions = wavecalinfo['dispersions']            
+            wavecaltype = wavecalinfo['wctype']
             
             #
             # Get the atmospheric transmission 
@@ -341,11 +366,12 @@ def load_image(files, flat_name, wavecal_name, *output_files,
 
             # First we have to get the possible file names
 
-            fullpath = glob.glob(os.path.join(setup.state['package_path'],
-                                              'data', 'atran*.fits'))
+            fullpath = glob.glob(join(setup.state['package_path'],
+                                      'data', 'atran*.fits'))
+
             # Then strip the paths off
 
-            basenames = [os.path.basename(x) for x in fullpath]
+            basenames = [osbasename(x) for x in fullpath]
 
             # Now get the resolving powers
 
@@ -354,203 +380,284 @@ def load_image(files, flat_name, wavecal_name, *output_files,
             # Find the closest one
 
             deltas = rps - flatinfo['rp']
-            z = deltas == np.min(deltas)
+            z = deltas == np.min(np.abs(deltas))
 
+            logging.info(f' Loading the atmospheric tranmission at R='+\
+                         str(rps[z][0])+'.')
+            
             # Load that file
 
             array = fits.getdata(np.array(fullpath)[z][0])
             atmosphere = {'wavelength':array[0, :], 'transmission':array[1, :]}
-
+            
             # Get units
 
             xunits = 'um'
-            latex_xunits = '$\mu$m'
-            latex_xlabel = 'Wavelength ($\mu$m)'
-            
-            
+            latex_xunits = r'$\mu$m'
+            latex_xlabel = r'Wavelength ($\mu$m)'
+                        
         else:
 
-            wavecal, spatcal, indices = simulate_wavecal_1dxd(flatinfo['ncols'],
-                                                             flatinfo['nrows'],
-                                                        flatinfo['edgecoeffs'],
-                                                            flatinfo['xranges'],
-                                                        flatinfo['slith_arc'])
+            result = simulate_wavecal_1dxd(flatinfo['ncols'],
+                                           flatinfo['nrows'],
+                                           flatinfo['edgecoeffs'],
+                                           flatinfo['xranges'],
+                                           flatinfo['slith_arc'])
 
-#            dispersions = None
+            wavecal = result[0]
+            spatcal = result[1]            
+            indices = result[2]
+
+            for i in range(extract.state['norders']):
+
+                indices[i]['w'] = indices[i]['x']
+                indices[i]['a'] = indices[i]['y']                
+            
             atmosphere  = None
-
             xunits = 'pixel'
             latex_xunits = 'pixel'
             latex_xlabel = 'Wavelength (pixel)'
+            wavecaltype = None
 
-            
+        # Store useful things
 
         extract.state['wavecal'] = wavecal
         extract.state['spatcal'] = spatcal
         extract.state['rectindices'] = indices
-#        extract.state['dispersions'] = dispersions
         extract.state['atmosphere'] = atmosphere
         extract.state['xunits'] = xunits
         extract.state['latex_xunits'] = latex_xunits
         extract.state['latex_xlabel'] = latex_xlabel
+        extract.state['latex_yunits'] = 'DN s$^{-1}$'
+        extract.state['latex_ylabel'] = 'Count Rate (DN s$^{-1}$)'
+        extract.state['latex_ulabel'] = r'$\sigma$ (DN s$^{-1}$)'        
+        extract.state['wavecaltype'] = wavecaltype
         
     #
     # Load the data
     #
-    
-    if verbose is True:
 
-        # Get the file names
+    # Get the readfits module
 
-        list_filenames = []
-        for file in input_files:
-            list_filenames.append(os.path.basename(file))
+    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
+             '_dir.' + setup.state['instrument']
 
-        file_names = ', '
-        file_names = file_names.join(list_filenames)
-
-        if linearity_correction is True:
-
-            message = 'Loading ' + file_names + \
-                      ' and correcting for non-linearity...'
-            print(message)
-
-        else:
-
-            message = 'Loading ' + file_names + \
-              ' and not correcting for non-linearity...'
-            print(message)
+    instr = importlib.import_module(module)
+        
+    # Now go reduction mode by reduction mode
 
     if reduction_mode == 'A':
+        
+        # This could either be a standard A or a combined image.
 
-        if directory == 'raw':
-            img, var, hdrinfo, mask = instr.read_fits(input_files,
-                                                  setup.state['linearity_info'],
-                                            rotate=extract.state['rotation'],
-                                    keywords=setup.state['extract_keywords'],
-                                    linearity_correction=linearity_correction,
-                                                  verbose=verbose)
+        if image_type == 'raw':
 
+            result = instr.read_fits(input_files,
+                                     setup.state['linearity_info'],
+                                     rotate=extract.state['rotation'],
+                                     keywords=setup.state['extract_keywords'],
+                                     linearity_correction=linearity_correction,
+                                     extra=detector_info,
+                                     verbose=qa['verbose'])
+
+            img = result[0]
+            var = result[1]
+            hdrinfo = result[2]
+            linearity_mask = result[3]
+            
         else:
 
-            # Read the data 
+            # This is a combined image so just read in.  
 
             hdul = fits.open(input_files[0])
             hdul[0].verify('silentfix')
 
             hdr = hdul[0].header
 
-            hdrinfo = [get_header_info(hdr)]
+            hdrinfo = [get_headerinfo(hdr)]
            
             img = idl_rotate(hdul[1].data, extract.state['rotation'])
             var = idl_rotate(hdul[2].data, extract.state['rotation'])
-        
+            linearity_mask = idl_rotate(hdul[3].data, extract.state['rotation'])
+            
             hdul.close()
 
     elif reduction_mode == 'A-B':
 
-        img, var, hdrinfo, mask = instr.read_fits(input_files,
-                                              setup.state['linearity_info'],
-                                              pair_subtract=True,
-                                              rotate=extract.state['rotation'],
-                                    keywords=setup.state['extract_keywords'],
-                                    linearity_correction=linearity_correction,
-                                              verbose=verbose)
+        result = instr.read_fits(input_files,
+                                 setup.state['linearity_info'],
+                                 pair_subtract=True,
+                                 rotate=extract.state['rotation'],
+                                 keywords=setup.state['extract_keywords'],
+                                 linearity_correction=linearity_correction,
+                                 extra=detector_info,
+                                 verbose=qa['verbose'])
+
+        img = result[0]
+        var = result[1]
+        hdrinfo = result[2]
+        linearity_mask = result[3]
+        
     else:
 
         print('do later.')
-        
+    
     #
     # Flat field the data
     #
 
     if flat_field is True:
 
-        if verbose is True:
-            print('Flat fielding the image...')
+        logging.info(' Flat fielding the image.')                
 
         np.divide(img, extract.state['flat'], out=img)
         np.divide(var, extract.state['flat'] ** 2, out=var)
-
+        
         # Combine the masks
 
-        mask = combine_flag_stack(np.stack((extract.state['bitmask'],mask)))
-    
+        flag_mask = combine_flag_stack(np.stack((extract.state['flat_bitmask'],
+                                                 linearity_mask)))
+        
     else:
 
-        if verbose is True:
-            print('Image not flat fielded...')
-
+        logging.info(' image not flat field.')
+        flag_mask = linearity_mask
+              
     # Store the results
 
     extract.state['workimage'] = img
     extract.state['varimage'] = var
-    extract.state['maskimage'] = mask    
+    extract.state['maskimage'] = flag_mask    
     extract.state['hdrinfo'] = hdrinfo
-
+ 
     #
     # Rotate the bad pixel mask
     #
 
-    extract.state['bad_pixel_mask'] = \
-        idl_rotate(setup.state['raw_bad_pixel_mask'],
-                   extract.state['rotation'])
+    bad_pixel_mask = idl_rotate(setup.state['raw_bad_pixel_mask'],
+                                extract.state['rotation'])
 
+    extract.state['bad_pixel_mask'] = bad_pixel_mask
+        
     #
     # Rectify the orders
     #
 
+    logging.info(' Rectifying the orders.')                
+    
     rectorders = []
     indices = extract.state['rectindices']
     for i in range(extract.state['norders']):
-        order = rectify_order(img, indices[i]['xidx'], indices[i]['yidx'])
-        
-        # Now get the wavelength solution to tack on
 
-        bot = np.ceil(poly_1d(indices[i]['x'],
-                              extract.state['edgecoeffs'][i, 0, :])).astype(int)
 
-        w = extract.state['wavecal'][bot, np.fix(indices[i]['x']).astype(int)]
+        result = rectify_order(img,
+                               indices[i]['xidx'],
+                               indices[i]['yidx'],
+                               variance=var,
+                               bad_pixel_mask=bad_pixel_mask,
+                               flag_mask=flag_mask)
 
-        order.update({'wavelength': w})
-        order.update({'angle': indices[i]['y']})
+        rectorder = {'wavelengths':indices[i]['w'],
+                     'angles':indices[i]['a'],
+                     'image':result['image'],
+                     'variance':result['variance'],
+                     'badpixel_mask':result['bpmask'],
+                     'flag_mask':result['flagmask']}
 
-        rectorders.append(order)
+        rectorders.append(rectorder)        
+
 
     # Store the results
 
     extract.state['rectorders'] = rectorders
-    
+
+    #        
+    # Make the QA plot
     #
-    # Do the plotting
+
+    orders_plotinfo = {'xranges': extract.state['xranges'],
+                       'edgecoeffs': extract.state['edgecoeffs'],
+                       'orders': extract.state['orders']}
+              
+    if qa['show'] is True:
+        
+        plot_image(img,
+                   mask=linearity_mask,
+                   orders_plotinfo=orders_plotinfo,
+                   figure_size=(setup.plots['square_size'][0]*qa['showscale'],
+                                setup.plots['square_size'][1]*qa['showscale']),
+                   font_size=setup.plots['font_size']*qa['showscale'],
+                   showblock=qa['showblock'],
+                   plot_number=setup.plots['combine_image'])
+            
+    if qa['write'] is True:
+
+        filename = qafilename + '_image' + setup.state['qa_extension']
+        fullpath = join(setup.state['qa_path'],filename)
+
+        plot_image(img,
+                   mask=linearity_mask,
+                   orders_plotinfo=orders_plotinfo,
+                   output_fullpath=fullpath,
+                   figure_size=setup.plots['square_size'],
+                   font_size=setup.plots['font_size'])
+
+    #
+    # Write rectified orders
     #
 
-    order_plotinfo = {'xranges': extract.state['xranges'],
-                      'edgecoeffs': extract.state['edgecoeffs'],
-                      'orders': extract.state['orders']}
+    if write_rectified_orders is True:
 
-    if qa_show is True:
-        number = plot_image(extract.state['workimage'],
-                            orders_plotinfo=order_plotinfo,
-                            plot_size=qa_showsize,
-                            plot_number=extract.state['image_plotnum'])
-        extract.state['image_plotnum'] = number
+        # Get output file name 
+        
+        basename = qafilename+'_rectifiedorders'+'.fits'
+        fullpath = join(setup.state['proc_path'], basename)
+        
+        logging.info(' Writing rectified orders to file '+basename+'.')
 
-    if qa_write is True:
-        qafileinfo = {'figsize': (7, 7),
-                      'filepath': setup.state['qa_path'],
-                      'filename': qafilename + '_image',
-                      'extension': setup.state['qa_extension']}
+        # Create the primary HDU
 
-        plot_image(extract.state['workimage'], orders_plotinfo=order_plotinfo,
-                   file_info=qafileinfo)
+        phdu = fits.PrimaryHDU()
+        hdr = phdu.header
+
+        hdr['MODE'] = (flatinfo['mode'], ' Instrument Mode')
+        hdr['NORDERS'] = (flatinfo['norders'], ' Number of orders identified')
+        orders = ','.join(str(o) for o in flatinfo['orders'])
+        hdr['ORDERS'] = (orders, ' Orders')
+        
+        list_hdu = [phdu]
+        
+        # Loop over each order and create the array of images
+        
+        
+        for i in range(extract.state['norders']):
+
+            ny, nx = np.shape(rectorders[i]['image'])
+        
+            wavemap = np.tile(rectorders[i]['wavelengths'],(ny,1))
+            spatmap = np.rot90(np.tile(rectorders[i]['angles'], (nx, 1)), k=3)
+
+            array = np.full((6, ny,nx), np.nan)
+            array[0,:,:] = wavemap
+            array[1,:,:] = spatmap
+            array[2,:,:] = rectorders[i]['image']
+            array[3,:,:] = rectorders[i]['variance']
+            array[4,:,:] = rectorders[i]['badpixel_mask']
+            array[5,:,:] = rectorders[i]['flag_mask']
+            
+            idx_hdu = fits.ImageHDU(np.float32(array))        
+            list_hdu.append(idx_hdu)
+
+        # Now make the FITS file
+            
+        hdu = fits.HDUList(list_hdu)
+        hdu.writeto(fullpath, overwrite=True)
 
     #
     # Set the done variables
     #
 
     extract.state['load_done'] = True
-    extract.state['type_done'] = False
     extract.state['profiles_done'] = False
     extract.state['apertures_done'] = False
     extract.state['orders_done'] = False

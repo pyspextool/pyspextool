@@ -17,11 +17,10 @@ from pyspextool.io.check import check_parameter
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.utils.math import moments
 from pyspextool.utils.arrays import find_index
-from pyspextool.plot.limits import get_spec_range
+from pyspextool.plot.limits import get_spectra_range
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.utils.interpolate import linear_bitmask_interp1d
 from pyspextool.utils.math import combine_flag_stack
-
 
 def correct_spectrum(object_wavelength:npt.ArrayLike,
                      object_intensity:npt.ArrayLike,
@@ -1227,11 +1226,11 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
     
     if fit is not None:
 
-        yrange = get_spec_range(xcorrelation, fit, frac=0.1)
+        yrange = get_spectra_range(xcorrelation, fit, frac=0.1)
 
     else:
 
-        yrange = get_spec_range(xcorrelation, frac=0.1)        
+        yrange = get_spectra_range(xcorrelation, frac=0.1)        
 
     # Build the figure
         
@@ -1276,7 +1275,7 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
 
     # Get the y range
     
-    yrange = get_spec_range(object_flux, model_flux, frac=0.1)
+    yrange = get_spectra_range(object_flux, model_flux, frac=0.1)
 
     # Build the figure
     
@@ -1450,7 +1449,7 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
 
     # Get the yrange based on the data in that wavelength range
     
-    yrange = get_spec_range(line_data_fluxdensity,
+    yrange = get_spectra_range(line_data_fluxdensity,
                             line_model_fluxdensity,
                             line_model_convolved_fluxdensity,
                             line_fluxdensity_ratio-1, frac=0.1)

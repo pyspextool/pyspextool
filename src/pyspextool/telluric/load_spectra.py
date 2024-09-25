@@ -9,11 +9,11 @@ from astroquery.simbad import Simbad
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
-from pyspextool.io.check import check_parameter, check_keywords
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import make_full_path
-from pyspextool.io.fitsheader import get_header_info
+from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.io.read_spectra_fits import read_spectra_fits
-from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
@@ -236,8 +236,8 @@ def load_data():
 
     header = fits.getheader(fullpath)
 
-    object_hdrinfo = get_header_info(header,
-                                     keywords=setup.state['telluric_keywords'])
+    object_hdrinfo = get_headerinfo(header,
+                                    keywords=setup.state['telluric_keywords'])
 
     # Now the standard
 
@@ -249,7 +249,7 @@ def load_data():
     header = fits.getheader(fullpath)
 
     standard_hdrinfo = \
-        get_header_info(header, keywords=setup.state['telluric_keywords'])
+        get_headerinfo(header, keywords=setup.state['telluric_keywords'])
 
     # Does the standard have only one aperture?
     
@@ -310,7 +310,7 @@ def load_data():
 
         # Now do the dispersion
                 
-        fit = poly_fit_1d(pixels,telluric.state['standard_spectra'][i,0,:],1)
+        fit = polyfit_1d(pixels,telluric.state['standard_spectra'][i,0,:],1)
         dispersions[i] = fit['coeffs'][1]
 
     # Store the results
@@ -389,7 +389,7 @@ def load_vegamodel():
 
         pixels = np.arange(np.sum(zselection))
         
-        fit = poly_fit_1d(pixels,vega_wavelength[zselection],1)
+        fit = polyfit_1d(pixels,vega_wavelength[zselection],1)
         dispersions[i] = fit['coeffs'][1]
 
     telluric.state['vega_dispersions'] = dispersions

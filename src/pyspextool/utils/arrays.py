@@ -2,7 +2,9 @@ import numpy as np
 import re
 
 
-def find_index(x, x_want, ends_to_nan=False):
+def find_index(x,
+               x_want,
+               ends_to_nan=False):
 
     """
     Finds the effective index of a function value in an ordered array.

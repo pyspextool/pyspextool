@@ -3,7 +3,7 @@ import logging
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
 from pyspextool.pyspextoolerror import pySpextoolError
-from pyspextool.io.check import check_parameter, check_keywords
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.telluric.load_spectra import load_spectra
 from pyspextool.telluric.prepare_line import prepare_line
 from pyspextool.telluric.get_radialvelocity import get_radialvelocity

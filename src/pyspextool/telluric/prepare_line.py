@@ -9,10 +9,10 @@ import os
 from pyspextool import config as setup
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.telluric import config as telluric
-from pyspextool.io.check import check_parameter, check_range, check_keywords
+from pyspextool.io.check import check_parameter, check_range, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.fit.polyfit import poly_1d
-from pyspextool.plot.limits import get_spec_range
+from pyspextool.plot.limits import get_spectra_range
 
 def prepare_line(order:int,
                  wavelength_range:npt.ArrayLike,
@@ -380,7 +380,7 @@ def plot_normalization(wavelength:npt.ArrayLike,
 
     # Determine the yrange for spectral plot
     
-    yrange = get_spec_range([intensity, continuum],frac=0.1)
+    yrange = get_spectra_range([intensity, continuum],frac=0.1)
 
     axes1 = fig.add_subplot(211)    
     axes1.step(wavelength, intensity, 'black')
@@ -413,7 +413,7 @@ def plot_normalization(wavelength:npt.ArrayLike,
     # Normalize and get the plot range
     
     normalized = intensity/continuum
-    yrange = get_spec_range(normalized, frac=0.1)
+    yrange = get_spectra_range(normalized, frac=0.1)
     
     axes2 = fig.add_subplot(212)    
     axes2.step(wavelength, normalized, 'black')

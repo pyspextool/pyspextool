@@ -1,8 +1,9 @@
 import numpy as np
 
+from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.check import check_parameter
 
-def reorder_irtf_files(fullpaths):
+def reorder_irtf_files(fullpaths:str | list):
 
     """
     reorder_irtf_files
@@ -43,7 +44,7 @@ def reorder_irtf_files(fullpaths):
     if nfiles % 2 !=0:
 
         message = '`fullpaths` must contain an even number of images.'
-        raise ValueError(message)
+        raise pySpextoolError(message)
 
     #
     # Create index array

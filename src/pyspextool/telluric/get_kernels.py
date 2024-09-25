@@ -4,7 +4,7 @@ import numpy as np
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool import config as setup
 from pyspextool.telluric import config as telluric
-from pyspextool.io.check import check_parameter, check_keywords
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.telluric.core import deconvolve_line
 from pyspextool.telluric.core import make_instrument_profile

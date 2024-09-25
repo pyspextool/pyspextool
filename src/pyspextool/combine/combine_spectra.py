@@ -10,8 +10,7 @@ from pyspextool.combine import config as combine
 from pyspextool.io.check import check_path, check_parameter
 from pyspextool.io.files import make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
-from pyspextool.io.fitsheader import average_header_info
-from pyspextool.io.fitsheader import get_header_info
+from pyspextool.io.fitsheader import get_headerinfo, average_headerinfo
 from pyspextool.plot.limits import get_stack_range
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
@@ -526,7 +525,7 @@ def load_allorders():
 
                 # Grab header keywords and store
 
-                info = get_header_info(header,keywords=keywords)
+                info = get_headerinfo(header,keywords=keywords)
                 headers.append(info)
 
                 # store the data
@@ -859,7 +858,7 @@ def write_file(verbose=False):
     if combine.state['combine_type'] == 'standard':
 
         napertures_combined = 0
-        avehdr = average_header_info(combine.state['headers'])
+        avehdr = average_headerinfo(combine.state['headers'])
 
     elif combine.state['combine_type'] == 'twoaperture':
 
