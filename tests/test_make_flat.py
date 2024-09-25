@@ -31,7 +31,7 @@ def test_make_flat():
         os.path.join("tests/test_data/raw/uspex-prism/cals/", "flat15-19.fits")
     )
 
-    png_files = glob.glob(os.path.join("tests/test_data/raw/uspex-prism/qa/", "*.png"))
+    png_files = glob.glob(os.path.join("tests/test_data/raw/uspex-prism/qa/", "flat*.png"))
 
     assert len(fits_files) == 1
     assert len(png_files) == 2

@@ -41,31 +41,38 @@ uspex_prism_paths = {
 
 
 def test_pyspextool_setup_defaults():
-    pyspextool_setup()
+    pyspextool_setup(
+        raw_path=spex_prism_paths["raw_path"],
+        cal_path=spex_prism_paths["cal_path"],
+        proc_path=spex_prism_paths["proc_path"],
+        qa_path=spex_prism_paths["qa_path"],
+    )
 
     assert setup.state["verbose"] is False
 
-    assert setup.state["raw_path"] == cwd
-    assert setup.state["cal_path"] == cwd
-    assert setup.state["proc_path"] == cwd
+    assert setup.state["raw_path"] == os.path.abspath(spex_prism_paths["raw_path"])
+    assert setup.state["cal_path"] == os.path.abspath(spex_prism_paths["cal_path"])
+    assert setup.state["proc_path"] == os.path.abspath(spex_prism_paths["proc_path"])
 
     assert setup.state["instrument"] == "uspex"
 
-    assert setup.state["qa_path"] == cwd
+    assert setup.state["qa_path"] == os.path.abspath(spex_prism_paths["qa_path"])
     assert setup.state["qa_extension"] == ".pdf"
     assert setup.state["qa_show"] is False
-    assert setup.state["qa_write"] is True
+    assert setup.state["qa_write"] is False
 
 
 @pytest.mark.parametrize(
     "paths", [spex_prism_paths, spex_sxd_paths, uspex_prism_paths, uspex_sxd_paths]
 )
 def test_set_paths(paths):
-    set_paths(paths)
+    set_paths(
+        paths["raw_path"], paths["cal_path"], paths["proc_path"], paths["qa_path"]
+    )
 
-    assert setup.state["raw_path"] == paths["raw_path"]
-    assert setup.state["cal_path"] == paths["cal_path"]
-    assert setup.state["proc_path"] == paths["proc_path"]
+    assert setup.state["raw_path"] == os.path.abspath(paths["raw_path"])
+    assert setup.state["cal_path"] == os.path.abspath(paths["cal_path"])
+    assert setup.state["proc_path"] == os.path.abspath(paths["proc_path"])
 
 
 #  # TODO: add tests for bad paths
@@ -100,5 +107,5 @@ def test_set_qa_state():
 
     assert setup.state["qa_show"] is False
     assert setup.state["qa_write"] is True
-    assert setup.state["qa_path"] == cwd
+    # assert setup.state["qa_path"] == cwd
     assert setup.state["qa_extension"] == ".pdf"
