@@ -28,8 +28,7 @@ def load_image(files:str | list,
                wavecal_name:str,
                *output_filenames:str,
                output_prefix:str='spectra',
-               output_extension:str='.fits*',
-               reduction_mode='A-B',
+               input_extension:str='.fits*',
                load_directory='raw',
                flat_field=True,
                linearity_correction=True,
@@ -66,9 +65,6 @@ def load_image(files:str | list,
     *output_files : str or list of str, optional
         A str or list of str of output files names.  Only required if `files` 
         gives file names intead of a prefix and index numbers.
-
-    reduction_mode : {'A-B', 'A', 'A-Sky'}, optional
-        The image reduction mode.
 
     directory : {'raw', 'cal', 'proc'}, optional
         The directory containing the file(s) to load.
@@ -136,9 +132,6 @@ def load_image(files:str | list,
         check_parameter('load_image', 'output_filenames', output_filenames[0],
                         ['NoneType','str'])
         
-    check_parameter('load_image', 'reduction_mode', reduction_mode, 'str',
-                    possible_values=['A', 'A-B', 'A-Sky'])
-
     check_parameter('load_image', 'load_directory', load_directory, 'str',
                     possible_values=['raw', 'proc'])
 
@@ -208,31 +201,34 @@ def load_image(files:str | list,
                                 files,
                                 setup.state['nint'],
                                 setup.state['suffix'],
-                                output_extension)
+                                input_extension)
 
     input_files = results[0]
     file_readmode = results[1]
 
     check_file(input_files)
 
-    # Got the right number of files given the reduction mode?
+    #
+    # Determine the reduction mode
+    #
 
-    nfiles = len(input_files)
+    nfiles = len(input_files)    
 
-    if reduction_mode == 'A' and nfiles != 1:
-        message = 'The A reduction mode only accepts one image in the '+\
-            'parameter `files`.'
-        raise pySpextoolError(message)
+    if nfiles == 1:
 
-    if reduction_mode == 'A-Sky' and nfiles != 1:
-        message = 'The A-Sky reduction mode only accepts one image in the '+\
-            'parameter `files`.'
-        raise pySpextoolError(message)
+       reduction_mode = 'A'
 
-    if reduction_mode == 'A-B' and nfiles != 2:
-        message = 'The A-B reduction mode only accepts two images in the '+\
-            'parameter `files`.'
-        raise pySpextoolError(message)
+    elif nfiles == 2:
+
+        reduction_mode = 'A-B'
+    
+    else:
+
+        message = 'More than two files cannot be passed.'
+        raise pySpextoolError
+
+    logging.info(f' Setting reduction mode to '+reduction_mode+'.')
+    
     
     # Check to make sure the user passed an output_filename if `file_readmode`
     # is filename.
@@ -510,6 +506,8 @@ def load_image(files:str | list,
 
         logging.info(' Flat fielding the image.')                
 
+        extract.state['flat_fielded'] = True
+        
         np.divide(img, extract.state['flat'], out=img)
         np.divide(var, extract.state['flat'] ** 2, out=var)
         
@@ -521,6 +519,7 @@ def load_image(files:str | list,
     else:
 
         logging.info(' image not flat field.')
+        extract.state['flat_fielded'] = False        
         flag_mask = linearity_mask
               
     # Store the results

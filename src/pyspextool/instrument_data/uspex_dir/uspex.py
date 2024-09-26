@@ -33,7 +33,7 @@ def correct_uspexbias(img:npt.ArrayLike):
     Notes
     -----
     There are 32 amplifiers that talk to 64 columns each.  The median
-    intensity of the 64 reference pixels at the bottom of image are
+    intensity of the 64 reference pixels at the bottom of the image are
     subtracted from all rows in the 64 columns.
 
     """
@@ -49,16 +49,16 @@ def correct_uspexbias(img:npt.ArrayLike):
     #
     
     corrected_image = img.copy()
-    
+
     for i in range(0, 32):
 
         xl = 0+64*i
         xr = xl+63
 
-        med = np.median(img[2044:2047+1, xl:xr+1])
+        med = np.median(img[2044:(2047+1), xl:(xr+1)])    
         corrected_image[:, xl:(xr+1)] = img[:, xl:(xr+1)] - med
 
-    return img    
+    return  corrected_image    
 
 
 def read_fits(files:list,
@@ -417,12 +417,14 @@ def load_uspeximage(file:list,
     #  Correct for amplifier offsets
 
     if correct_bias:
-        
-        img = correct_uspexbias(img)
 
+        img = correct_uspexbias(img)
+        
     #  Determine the linearity correction for the image
 
     if linearity_coeffs is not None:
+
+        linearity_correction = True
         
         cor = image_poly(img, linearity_coeffs)
         cor = np.where(cor == 0, 1, cor)
@@ -446,22 +448,35 @@ def load_uspeximage(file:list,
 
         del cor, img_p, img_s
 
+    else:
+
+        linearity_correction = False
+        
     # Create the actual image.
     # Convert image back to total DN for error propagation
+    #
 
     img = img * divisor
 
+    
     # Compute the variance and the final image
 
     var = np.absolute(img) * crtn / ndrs / (coadds ** 2) / \
           (itime ** 2) / gain + rdvar 
     img = img / divisor / itime
-
+    
     # Collect header information
 
     hdr = get_uspexheader(hdul[0].header,
                           keywords=keywords)
 
+    # Add on the linearity correction and bias drift
+
+    hdr['LINMAX'] = (linearity_info['max'], ' Maximum linear value (DN)')
+    hdr['LINCOR'] = (linearity_correction, ' Linearity correction?')
+    hdr['BIASCOR'] = (correct_bias, ' Bias drift correction?')        
+
+       
     hdul.close()
 
     return [img, var, hdr, bitmask]
@@ -551,6 +566,7 @@ def get_uspexheader(hdr,
     #
     #  Grab require keywords and convert to standard Spextool keywords
     #
+
     
     # Airmass 
 

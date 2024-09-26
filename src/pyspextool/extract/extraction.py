@@ -469,11 +469,11 @@ def extract_1dxd(image:npt.ArrayLike,
                     spectrum_flux[k, j] = np.sum(slit_img[z_aperture]*partial)*\
                                           aperture_signs[k]
 
-                    if xmin+j == 70 and k == 0:
+#                    if xmin+j == 70 and k == 0:
 #
-                        for_print(slit_pix, slit_arc, slit_img, aperture_mask)
+#                        for_print(slit_pix, slit_arc, slit_img, aperture_mask)
 #                        print(slit_img[z_aperture])
-                        print(aperture_positions-1,aperture_positions+1, spectrum_flux[k, j])
+#                        print(aperture_positions-1,aperture_positions+1, spectrum_flux[k, j])
                     
                     spectrum_var = np.sum(slit_var[z_aperture] * partial ** 2)
 
@@ -527,6 +527,7 @@ def write_apertures_fits(spectra,
                          aimage,
                          sky,
                          flat,
+                         flat_fielded,
                          naps,
                          orders,
                          header_info,
@@ -552,7 +553,6 @@ def write_apertures_fits(spectra,
                          xsbginfo=None,
                          optimal_info=None,
                          badpixel_info=None,
-                         lincormax=None,
                          overwrite=True,
                          verbose=True):
 
@@ -639,9 +639,6 @@ def write_apertures_fits(spectra,
     check_parameter('write_apertures_fits', 'wavecalinfo', wavecalinfo,
                     ['dict', 'NoneType'])
 
-    check_parameter('write_apertures_fits', 'lincormax', lincormax,
-                    'NoneType')
-
     check_parameter('write_apertures_fits', 'overwrite', overwrite,
                     'bool')
 
@@ -719,6 +716,7 @@ def write_apertures_fits(spectra,
     hdr['AIMAGE'] = (aimage, ' A image')
     hdr['SKYORDRK'] = (sky, ' Sky or dark image')
     hdr['FLAT'] = (flat, ' Flat field image')
+    hdr['FLFIELD'] = (flat_fielded, ' Flat fielded?')    
 
     if wavecalinfo is not None:
 
@@ -727,27 +725,11 @@ def write_apertures_fits(spectra,
                          ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (wavecalinfo['wavetype'], ' Wavelength type')
 
-#        for i in range(norders):
-
-#            name = 'OR' + str(orders[i]).zfill(3) + '_DP'
-#            comment = ' Fitted dispersion (um pix-1) for order ' + \
-#                str(orders[i]).zfill(3)
-#            hdr[name] = (wavecalinfo['dispersions'][i], comment)
-
     else:
 
         hdr['WAVECAL'] = (None, ' Wavecal file')
         hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (None, ' Wavelength type')
-
-        for i in range(norders):
-
-            name = 'OR' + str(orders[i]).zfill(3) + '_DP'
-            comment = ' Dispersion (pix pix-1) for order ' + \
-                str(orders[i]).zfill(3)
-            hdr[name] = (1.0, comment)
-
-
     
     hdr['NORDERS'] = (norders, ' Number of orders')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders')

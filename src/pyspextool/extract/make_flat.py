@@ -2,6 +2,7 @@ import importlib
 from os.path import join, basename
 import numpy as np
 import logging
+from decimal import *
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -331,9 +332,9 @@ def make_flat(files:list | str,
     # Get the slit widths and resolving power and write to disk
 
     slitw_arc = float(average_header['SLIT'][0][0:3])
-    slitw_pix = slitw_arc / modeinfo['ps']
-
-    resolvingpower = round(modeinfo['rpppix'] / slitw_pix)
+    getcontext().prec = 2
+    slitw_pix = float(Decimal(slitw_arc) / Decimal(modeinfo['ps']))
+    resolvingpower =int(Decimal(modeinfo['rpppix']) / Decimal(slitw_pix))
 
     # Write it to disk.
     
