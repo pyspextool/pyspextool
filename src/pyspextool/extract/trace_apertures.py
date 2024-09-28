@@ -13,7 +13,7 @@ def trace_apertures(fit_degree:int=2,
                     step_size:int=5,
                     summation_width:int=5,
                     centroid_threshold:int=2,
-                    fwhm:int | float=0.8,
+                    seeing_fwhm:int | float=0.8,
                     verbose:bool=None,
                     qa_show:bool=None,
                     qa_showscale:float | int=None,
@@ -41,7 +41,7 @@ def trace_apertures(fit_degree:int=2,
         If (fit-guess) > centroid_threshold to peak identification is found
         to fail.
 
-    fwhm : float, optional, default 0.8
+    seeing_fwhm : float, optional, default 0.8
         The approximate FWHM of the peaks in arcseconds.
 
     Returns
@@ -74,7 +74,8 @@ def trace_apertures(fit_degree:int=2,
     check_parameter('trace_apertures', 'centroid_threshold',
                     centroid_threshold, 'int')
 
-    check_parameter('trace_apertures', 'fwhm', fwhm, ['int','float'])
+    check_parameter('trace_apertures', 'seeing_fwhm', seeing_fwhm,
+                    ['int','float'])
 
     check_parameter('trace_apertures', 'verbose', verbose,
                     ['NoneType', 'bool'])
@@ -130,7 +131,7 @@ def trace_apertures(fit_degree:int=2,
                                     fit_degree=fit_degree,
                                     step_size=step_size,
                                     centroid_threshold=centroid_threshold,
-                                    fwhm=fwhm,
+                                    fwhm=seeing_fwhm,
                                     verbose=qa['verbose'])
         
         tracecoeffs = trace['coeffs']

@@ -5,7 +5,6 @@ from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 from pyspextool.extract.load_image import load_image
-#from pyspextool.extract.set_extraction_type import set_extraction_type
 from pyspextool.extract.make_profiles import make_profiles
 from pyspextool.extract.identify_apertures import identify_apertures
 from pyspextool.extract.select_orders import select_orders

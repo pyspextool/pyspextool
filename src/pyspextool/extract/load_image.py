@@ -11,7 +11,7 @@ from pyspextool.extract import config as extract
 from pyspextool.extract.wavecal import simulate_wavecal_1dxd
 from pyspextool.extract.images import rectify_order
 from pyspextool.io.check import check_parameter, check_qakeywords, check_file
-from pyspextool.io.files import files_to_fullpath, extract_filestring
+from pyspextool.io.files import files_to_fullpath
 from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.extract.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
@@ -26,7 +26,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 def load_image(files:str | list,
                flat_name:str,
                wavecal_name:str,
-               *output_filenames:str,
+               output_filenames:str=None,
                output_prefix:str='spectra',
                input_extension:str='.fits*',
                load_directory='raw',
@@ -62,7 +62,7 @@ def load_image(files:str | list,
     wavecal_name : str or None
         The full name of a pySpextool wavecal file.
     
-    *output_files : str or list of str, optional
+    output_files : str or list of str, optional
         A str or list of str of output files names.  Only required if `files` 
         gives file names intead of a prefix and index numbers.
 
@@ -128,9 +128,8 @@ def load_image(files:str | list,
     check_parameter('load_image', 'wavecal_name', wavecal_name,
                     ['NoneType','str'])
     
-    if len(output_filenames) != 0:
-        check_parameter('load_image', 'output_filenames', output_filenames[0],
-                        ['NoneType','str'])
+    check_parameter('load_image', 'output_filenames', output_filenames,
+                    ['NoneType','str','list'])
         
     check_parameter('load_image', 'load_directory', load_directory, 'str',
                     possible_values=['raw', 'proc'])
@@ -154,7 +153,6 @@ def load_image(files:str | list,
 
     check_parameter('load_image', 'qa_showblock', qa_showblock,
                     ['NoneType', 'bool'])
-
     
     qa = check_qakeywords(verbose=verbose,
                           show=qa_show,
@@ -162,20 +160,8 @@ def load_image(files:str | list,
                           showblock=qa_showblock,
                           write=qa_write)
 
-    # Load the correct "raw" path
-
-    if load_directory == 'raw':
-
-        load_path = setup.state['raw_path']
-        image_type = 'raw'
-        
-    elif load_directory == 'proc':
-
-        load_path = setup.state['proc_path']
-        image_type = 'combined'
-        
     #
-    # Check for flat field and wavecal file existence
+    # Create and ensure that the flat field and wavecal file existence
     #
 
     full_flat_name = join(setup.state['cal_path'], flat_name)
@@ -192,9 +178,24 @@ def load_image(files:str | list,
 
         dowavecal = False
         extract.state['wavecalfile'] = None
+    
+    #
+    # Determine the path in which `files` is located.  
+    #
+    
+    if load_directory == 'raw':
+
+        load_path = setup.state['raw_path']
+        image_type = 'raw'
+        
+    elif load_directory == 'proc':
+
+        load_path = setup.state['proc_path']
+        image_type = 'combined'
+        
         
     #
-    # Create the file names
+    # Create the full input file names
     #
 
     results = files_to_fullpath(load_path,
@@ -208,66 +209,79 @@ def load_image(files:str | list,
 
     check_file(input_files)
 
+    n_inputfiles = len(input_files)    
+    
+    #
+    # Create the full output file names
+    #
+
+    if output_filenames is not None:
+
+        # The user wants to use their own file names
+
+        # Convert to a list if a str
+        
+        if isinstance(output_filenames,str) is True:
+            
+            output_filenames = [output_filenames]
+            
+        # Check to make sure the number of files giveb equals the number of
+        # files we are loading
+            
+        if n_inputfiles != len(output_filenames):
+
+            message = 'The number of files in the keyword '+ \
+                '`output_filenames` does not match the number of files in '+ \
+                'the parameter `files`.'
+            raise pySpextoolError(message)
+
+    else:
+
+        # The user wants them created by us.  Do it differently depending
+        # on what readmode was selected.
+        
+        if file_readmode == 'index':
+        
+            files[0] = output_prefix
+            
+            result = files_to_fullpath('',
+                                       files,
+                                       setup.state['nint'],
+                                       '',
+                                       '',
+                                       exist=False)
+
+            output_filenames = result[0]        
+
+        else:
+
+            output_filenames = []
+            for file in input_files:
+
+                root = splitext(osbasename(file))
+                if root[1] == '.gz':
+                    root = splitext(root[0])
+                    
+                output_filenames.append(output_prefix+'_'+root[0]+'.fits')
+
     #
     # Determine the reduction mode
     #
 
-    nfiles = len(input_files)    
-
-    if nfiles == 1:
+    if n_inputfiles == 1:
 
        reduction_mode = 'A'
 
-    elif nfiles == 2:
+    elif n_inputfiles == 2:
 
         reduction_mode = 'A-B'
     
     else:
 
         message = 'More than two files cannot be passed.'
-        raise pySpextoolError
+        raise pySpextoolError(message)
 
     logging.info(f' Setting reduction mode to '+reduction_mode+'.')
-    
-    
-    # Check to make sure the user passed an output_filename if `file_readmode`
-    # is filename.
-    
-    if file_readmode == 'filename':
-
-        if not output_filenames:
-
-            message = 'The parameter `output_filenames` must be given when '+\
-                'the value passed for the parameter `files` is a complete '+\
-                'filename.'
-            raise pySpextoolError(message)
-        
-    # Now create the output filenames
-
-    if file_readmode == 'index':
-
-        files[0] = output_prefix
-        
-        result = files_to_fullpath('',
-                                   files,
-                                   setup.state['nint'],
-                                   '',
-                                   '',
-                                   exist=False)
-
-        output_filenames = result[0]
-
-    else:  # we are in filename readmode
-
-        tmp = output_filenames[0]
-        output_filenames = extract_filestring(tmp, 'filename')
-
-        if nfiles != len(output_filenames):
-
-            message = 'The number of files in the parameter '+\
-                '`output_filenames` does not match the number of files in '+\
-                'the parameter `files`.'
-            raise pySpextoolError(message)
         
     # Do we need to reorder because we are IRTF?
 

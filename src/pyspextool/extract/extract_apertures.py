@@ -95,7 +95,7 @@ def extract_apertures(fix_badpixels:bool=True,
                     'bool')    
 
     check_parameter('extract_apertures', 'badpixel_thresh', badpixel_thresh,
-                    ['int', 'float'])    
+                   ['int', 'float'])    
     
     check_parameter('extract_apertures', 'verbose', verbose,
                     ['NoneType', 'bool'])
@@ -187,7 +187,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
     message = ' Optimal ' if optimal_extraction is True else ' Sum '
     
-    message = message+(' Extracting '+str(naps)+' apertures in '+ \
+    message = message+(' extracting '+str(naps)+' apertures in '+ \
                        str(norders)+' orders')
 
     if extract.state['bg_annulus'] is not None or \
@@ -236,8 +236,9 @@ def extract_apertures(fix_badpixels:bool=True,
 
     # Grab things all modes need
 
-    xranges = extract.state['xranges'][extract.state['doorders']]
-    apertures = extract.state['aperture_positions'][extract.state['doorders']]
+    z = extract.state['doorders'] == 1    
+    xranges = extract.state['xranges'][z]
+    apertures = extract.state['aperture_positions'][z,:]
     norders = np.sum(z)
     
     # Now go mode by mode
@@ -254,7 +255,7 @@ def extract_apertures(fix_badpixels:bool=True,
         bbeam_fullpath = None
         
         # Write ther results
-
+        
         write_apertures_fits(spectra,
                              xranges,
                              aimage,
@@ -281,6 +282,9 @@ def extract_apertures(fix_badpixels:bool=True,
                              extract.state['latex_ulabel'],                  
                              setup.state['version'],
                              abeam_fullpath,
+                             bg_annulus=extract.state['bg_annulus'],
+                             bg_regions=extract.state['bg_regions'],
+                             bg_fitdegree=extract.state['bg_fitdegree'],
                              wavecalinfo=wavecalinfo,
                              optimal_info=optimalinfo,
                              badpixel_info=badpixelinfo,
@@ -341,6 +345,9 @@ def extract_apertures(fix_badpixels:bool=True,
                                  extract.state['latex_ulabel'],
                                  setup.state['version'],
                                  abeam_fullpath,
+                                 bg_annulus=extract.state['bg_annulus'],
+                                 bg_regions=extract.state['bg_regions'],
+                                 bg_fitdegree=extract.state['bg_fitdegree'],
                                  wavecalinfo=wavecalinfo,
                                  optimal_info=optimalinfo,
                                  badpixel_info=badpixelinfo,
@@ -394,6 +401,9 @@ def extract_apertures(fix_badpixels:bool=True,
                                  extract.state['latex_ulabel'],                 
                                  setup.state['version'],
                                  bbeam_fullpath,
+                                 bg_annulus=extract.state['bg_annulus'],
+                                 bg_regions=extract.state['bg_regions'],
+                                 bg_fitdegree=extract.state['bg_fitdegree'],
                                  wavecalinfo=wavecalinfo,
                                  optimal_info=optimalinfo,
                                  badpixel_info=badpixelinfo,

@@ -12,7 +12,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 def define_aperture_parameters(aperture_radii:int | float | list,
                                bg_annulus:list=None,
                                bg_regions:str=None,
-                               bg_fit_degree:int=1,
+                               bg_fit_degree:int=0,
                                psf_radius:int | float=None,
                                verbose:bool=None,
                                qa_show:bool=None,

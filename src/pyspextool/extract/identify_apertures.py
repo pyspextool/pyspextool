@@ -1,7 +1,6 @@
 import numpy as np
-import numpy.typing as npt
 import logging
-from os.path import join
+from os.path import join as osjoin
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -11,10 +10,8 @@ from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def identify_apertures(find_naps:int=None,
-                       guess_positions:int | float | list=None,
-                       aperture_positions:int | float | list=None,
-                       fwhm:int | float=0.8,
+def identify_apertures(method_info:list,
+                       seeing_fwhm:int | float=0.8,
                        verbose:bool=None,
                        qa_show:bool=None,
                        qa_showscale:float | int=None,
@@ -27,6 +24,18 @@ def identify_apertures(find_naps:int=None,
 
     Parameters
     ----------
+    method_info : list
+        A (2,) list if
+
+        list[0] = 'auto' then list[1] is the number of apertures to
+        search for.
+
+        list[1] = 
+
+        
+
+
+    
     find_naps : {1,2,3,4} default None
         If given, the function will automatically attempt to identify
         `find_naps` peaks in the profile.
@@ -38,7 +47,7 @@ def identify_apertures(find_naps:int=None,
     aperture_positions : int, float, list
         If given, the function will use store these apertures.
 
-    fwhm: float, default 0.8 (arcseconds).
+    seeing_fwhm: float, default 0.8 (arcseconds).
         The approximate FWHM of the peak to be identified.  Only used 
         if `method` is 'auto' or 'guess'.
 
@@ -85,16 +94,20 @@ def identify_apertures(find_naps:int=None,
     # Check parameters and QA keywords 
     #
 
-    check_parameter('identify_apertures', 'naps', find_naps, ['int','NoneType'],
-                    possible_values=[1,2,3,4, None])
-
-    check_parameter('identify_apertures', 'guess_positions', guess_positions,
-                    ['int', 'float', 'list', 'NoneType'])    
-
-    check_parameter('identify_apertures', 'aperture_positions',
-                    aperture_positions, ['int', 'float', 'list', 'NoneType'])
+    check_parameter('identify_apertures', 'method_info', method_info, 'list')
     
-    check_parameter('identify_apertures', 'fwhm', fwhm, ['int', 'float'])
+
+#    check_parameter('identify_apertures', 'naps', find_naps, ['int','NoneType'],
+#                    possible_values=[1,2,3,4, None])
+#
+#    check_parameter('identify_apertures', 'guess_positions', guess_positions,
+#                    ['int', 'float', 'list', 'NoneType'])    
+#
+#    check_parameter('identify_apertures', 'aperture_positions',
+#                    aperture_positions, ['int', 'float', 'list', 'NoneType'])
+    
+    check_parameter('identify_apertures', 'seeing_fwhm', seeing_fwhm,
+                    ['int', 'float'])
 
     check_parameter('identify_apertures', 'verbose', verbose,
                     ['NoneType', 'bool'])
@@ -118,24 +131,12 @@ def identify_apertures(find_naps:int=None,
                           showblock=qa_showblock,
                           write=qa_write)
 
-    #
-    # Make sure only one of `find_naps`, `guess_positions`, and
-    # `aperture_positions` was passed.
-    #
+    # Check the method_info 
 
-    test = int(np.sum([find_naps is None, guess_positions is None,
-            aperture_positions is None]))
+    if method_info[0] not in ['auto','guess','fixed']:
 
-    if test == 3:
-
-        message = 'Must use one of `find_naps`, `guess_positions`, and '+ \
-            '`aperture_positions`. when calling identify_apertures.'
-        raise pySpextoolError(message)
-        
-    if test < 2:
-
-        message = 'Can only use one of `find_naps`, `guess_positions`, and '+ \
-            '`aperture_positions` when calling identify_apertures.'
+        message = "`method_info[0]`='"+method_info[0]+"'. Can only be "+ \
+            "'find', 'guess', or 'fixed'."
         raise pySpextoolError(message)
 
     #
@@ -150,31 +151,30 @@ def identify_apertures(find_naps:int=None,
     
     norders = len(extract.state['profiles'])
 
-    if find_naps is not None:
+    if method_info[0] == 'auto':
 
         method = 'auto'        
-        peaks = find_naps
-        naps = find_naps
+        peaks = method_info[1]
+        naps = method_info[1]
         extract.state['aperture_type'] = 'auto'
         
-    if guess_positions is not None:
+    if method_info[0] == 'guess':
 
         method = 'guess'
-        peaks = np.tile(guess_positions, (norders, 1))
+        peaks = np.tile(method_info[1], (norders, 1))
         naps = np.shape(peaks)[1]
         extract.state['aperture_type'] = 'guess'        
 
-    if aperture_positions is not None:
+    if method_info[0] == 'fixed':
 
         method = 'fixed'
-        peaks = np.tile(aperture_positions, (norders, 1))
+        peaks = np.tile(method_info[1], (norders, 1))
         naps = np.shape(peaks)[1]
         extract.state['aperture_type'] = 'fixed'        
                
     apertures, apsigns = find_peaks(extract.state['profiles'],
                                     {'method': method, 'peaks': peaks},
-                                    fwhm=fwhm)
-
+                                    fwhm=seeing_fwhm)
     #
     # Determine the average apsign
     #
@@ -222,7 +222,7 @@ def identify_apertures(find_naps:int=None,
 
         filename = extract.state['qafilename'] + '_profiles' + \
             setup.state['qa_extension']
-        fullpath = join(setup.state['qa_path'],filename)
+        fullpath = osjoin(setup.state['qa_path'],filename)
 
         plot_profiles(extract.state['profiles'],
                       extract.state['slith_arc'],

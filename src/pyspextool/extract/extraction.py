@@ -549,8 +549,9 @@ def write_apertures_fits(spectra,
                          version,
                          output_fullpath,
                          wavecalinfo=None,
-                         psbginfo=None,
-                         xsbginfo=None,
+                         bg_annulus=None,
+                         bg_regions=None,
+                         bg_fitdegree=None,
                          optimal_info=None,
                          badpixel_info=None,
                          overwrite=True,
@@ -624,11 +625,11 @@ def write_apertures_fits(spectra,
     check_parameter('write_apertures_fits', 'output_fullpath',
                     output_fullpath, 'str')
 
-    check_parameter('write_apertures_fits', 'psbginfo', psbginfo,
-                    ['NoneType', 'dict'])
+#    check_parameter('write_apertures_fits', 'psbginfo', psbginfo,
+#                    ['NoneType', 'dict'])
 
-    check_parameter('write_apertures_fits', 'xsbginfo', xsbginfo,
-                    ['NoneType', 'dict'])
+#    check_parameter('write_apertures_fits', 'xsbginfo', xsbginfo,
+#                    ['NoneType', 'dict'])
 
     check_parameter('write_apertures_fits', 'optimal_info', optimal_info,
                     ['NoneType', 'dict'])
@@ -725,11 +726,11 @@ def write_apertures_fits(spectra,
                          ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (wavecalinfo['wavetype'], ' Wavelength type')
 
-    else:
+#    else:
 
-        hdr['WAVECAL'] = (None, ' Wavecal file')
-        hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
-        hdr['WAVETYPE'] = (None, ' Wavelength type')
+#        hdr['WAVECAL'] = (None, ' Wavecal file')
+#        hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
+#        hdr['WAVETYPE'] = (None, ' Wavelength type')
     
     hdr['NORDERS'] = (norders, ' Number of orders')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders')
@@ -745,17 +746,57 @@ def write_apertures_fits(spectra,
     # Add the aperture positions and radii
 
     for i in range(norders):
+
         name = 'APOSO' + str(orders[i]).zfill(3)
         comment = ' Aperture positions (arcseconds) for order ' + \
                   str(orders[i]).zfill(3)
-        val = ','.join([str(round(elem, 2)) for elem in aperture_positions[i]])
+        val = ','.join([str(round(elem, 4)) for elem in aperture_positions[i]])
         hdr[name] = (val, comment)
 
         name = 'ARADO' + str(orders[i]).zfill(3)
         comment = ' Aperture radii (arcseconds) for order ' + \
                   str(orders[i]).zfill(3)
-        val = ','.join([str(round(elem, 2)) for elem in aperture_radii[i,:]])
+        val = ','.join([str(round(elem, 3)) for elem in aperture_radii[i,:]])
         hdr[name] = (val, comment)
+
+    # Deal with the background info
+
+    if bg_annulus is not None:
+
+        hdr['BGSUB'] = (True, ' Background subtraction?')        
+        hdr['BGREGS'] = (None, ' Background regions (arcseconds)')
+        hdr['BGSTART'] = (bg_annulus[0],
+                          ' Background annulus start (arcseconds)')
+        hdr['BGWIDTH'] = (bg_annulus[1],
+                          ' Background annulus width (arcseconds)')        
+        
+        hdr['BGFITDEG'] = (bg_fitdegree, ' Background fit degree')        
+
+    elif bg_regions is not None:
+
+        hdr['BGSUB'] = (True, ' Background subtraction?')                
+        hdr['BGREGS'] = (bg_regions,
+                          ' Background regions (arcseconds)')        
+
+        hdr['BGSTART'] = (None,
+                          ' Background annulus start (arcseconds)')
+        hdr['BGWIDTH'] = (None,
+                          ' Background annulus width (arcseconds)')        
+        
+        hdr['BGFITDEG'] = (bg_fitdegree, ' Background fit degree')        
+        
+    else:
+
+        hdr['BGSUB'] = (False, ' Background subtraction?')                
+        hdr['BGREGS'] = (None,
+                          ' Background regions (arcseconds)')        
+
+        hdr['BGSTART'] = (None,
+                          ' Background annulus start (arcseconds)')
+        hdr['BGWIDTH'] = (None,
+                          ' Background annulus width (arcseconds)')        
+        
+        hdr['BGFITDEG'] = (None, ' Background fit degree')        
 
     if optimal_info is not None:
 
@@ -784,20 +825,6 @@ def write_apertures_fits(spectra,
 
         hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')        
                 
-    # Add the background info
-
-    if xsbginfo is not None:
-
-        tmplist = []
-        for val in xsbginfo['regions']:
-            region = str(val[0]) + '-' + str(val[1])
-            tmplist.append(region)
-
-        hdr['BGREGS'] = (','.join(tmplist),
-                         ' Background regions (arcseconds)')
-        hdr['BGDEGREE'] = (xsbginfo['degree'],
-                           ' Background polynomial fit degree')
-
     # Deal with units
         
     hdr['XUNITS'] = (xunits, ' Units of the x axis')
@@ -850,15 +877,15 @@ def write_apertures_fits(spectra,
     # Update the user
     #
 
-    if verbose is True:
+#    if verbose is True:
 
-        if xsbginfo is None:
-            print('Wrote', basename(output_fullpath),
-                  'to disk.')
-
-        if xsbginfo is not None:
-            print('Wrote', basename(output_fullpath), 'and',
-                  basename(output_fullpath), 'to disk.')
+##        if xsbginfo is None:
+#            print('Wrote', basename(output_fullpath),
+#                  'to disk.')
+#
+#        if xsbginfo is not None:
+#            print('Wrote', basename(output_fullpath), 'and',
+#                  basename(output_fullpath), 'to disk.')
 
     #
     # Return the file name written to disk
