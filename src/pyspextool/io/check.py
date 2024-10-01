@@ -558,4 +558,36 @@ def check_qakeywords(**kwargs):
             
     return output
 
+
+
+def check_sansfits(file:str,
+                   variable_name:str):
+
+    """
+    Determines whether the string ends in '.fits'
+
+    Parameters
+    ----------
+    file : str
+        A file with a potential suffix of '.fits'.
+
+    Returns
+    -------
+    None
+    
+    """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('check_sansfits', 'file', file, 'str')
+
+    check_parameter('check_sansfits', 'variable_name', variable_name, 'str')
+
+    if file[-5:] == '.fits':
+
+        message = "The variable `"+variable_name+"` cannot have a '.fits' "+\
+            "suffix."
+        raise pySpextoolError(message)
         

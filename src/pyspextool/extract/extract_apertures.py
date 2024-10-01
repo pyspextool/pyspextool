@@ -1,5 +1,5 @@
 import numpy as np
-from os.path import join
+from os.path import join, basename as osbasename
 import logging
 
 from pyspextool import config as setup
@@ -408,7 +408,29 @@ def extract_apertures(fix_badpixels:bool=True,
                                  optimal_info=optimalinfo,
                                  badpixel_info=badpixelinfo,
                                  verbose=qa['verbose'])
-                          
+
+    #
+    # Report results
+    #
+
+    if qa['verbose'] is True:
+
+        message = ' Wrote file(s) '
+
+        files = []
+        if abeam_fullpath is not None:
+
+            files.append(osbasename(abeam_fullpath))
+
+        if bbeam_fullpath is not None:
+
+            files.append(osbasename(bbeam_fullpath))
+
+        message += ', '.join(files)+' to disk.\n'
+
+        logging.info(message)
+            
+            
     #
     # Do the QA plotting
     #

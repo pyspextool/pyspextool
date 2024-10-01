@@ -191,20 +191,6 @@ def combine_images(files:str | list,
                           write=qa_write)
 
     #
-    # Store user inputs
-    #
-
-#    extract.combine['linearity_correction'] = linearity_correction
-#    extract.combine['scale_orders'] = scale_orders
-#    extract.combine['background_subtraction'] = background_subtraction
-#    extract.combine['flat_field_name'] = flat_field_name
-#    extract.combine['flat_field'] = flat_field
-#    extract.combine['qaplotsize'] = qa_showsize
-#    extract.combine['qaplot'] = qa_show
-#    extract.combine['qafile'] = qa_write
-#    extract.combine['verbose'] = verbose
-
-    #
     # Let the user know what you are doing.
     #
 
@@ -230,7 +216,6 @@ def combine_images(files:str | list,
 
         if len(input_files) % 2 == 1:
 
-            print('hi')
             message = "An even number of images are required for "+ \
             "`beam_mode` to be equal to 'A-B'."
             raise pySpextoolError(message)

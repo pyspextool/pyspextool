@@ -625,12 +625,6 @@ def write_apertures_fits(spectra,
     check_parameter('write_apertures_fits', 'output_fullpath',
                     output_fullpath, 'str')
 
-#    check_parameter('write_apertures_fits', 'psbginfo', psbginfo,
-#                    ['NoneType', 'dict'])
-
-#    check_parameter('write_apertures_fits', 'xsbginfo', xsbginfo,
-#                    ['NoneType', 'dict'])
-
     check_parameter('write_apertures_fits', 'optimal_info', optimal_info,
                     ['NoneType', 'dict'])
 
@@ -725,12 +719,6 @@ def write_apertures_fits(spectra,
         hdr['WCTYPE'] = (wavecalinfo['wavecaltype'],
                          ' Wavelength calibration type ')
         hdr['WAVETYPE'] = (wavecalinfo['wavetype'], ' Wavelength type')
-
-#    else:
-
-#        hdr['WAVECAL'] = (None, ' Wavecal file')
-#        hdr['WCTYPE'] = (None, ' Wavelength calibration type ')
-#        hdr['WAVETYPE'] = (None, ' Wavelength type')
     
     hdr['NORDERS'] = (norders, ' Number of orders')
     hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders')
@@ -872,26 +860,5 @@ def write_apertures_fits(spectra,
     hdr['FILENAME'] = (basename(output_fullpath), ' File name')
 
     fits.writeto(output_fullpath, array, hdr, overwrite=overwrite)
-
-    #
-    # Update the user
-    #
-
-#    if verbose is True:
-
-##        if xsbginfo is None:
-#            print('Wrote', basename(output_fullpath),
-#                  'to disk.')
-#
-#        if xsbginfo is not None:
-#            print('Wrote', basename(output_fullpath), 'and',
-#                  basename(output_fullpath), 'to disk.')
-
-    #
-    # Return the file name written to disk
-    #
-
-    return hdr['FILENAME']
-
 
 

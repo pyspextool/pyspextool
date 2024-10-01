@@ -18,6 +18,8 @@ plots = {"portrait_size":(7,9),
          "profile_size":(6,3),
          "profilestack_max":4,
          "font_size":12,
+         "spectrum_linewidth":0.75,
+         "spine_linewidth":1.5,         
          'flat':1,
          'locate_orders':1,
          'wavecal_image':1,
@@ -26,5 +28,6 @@ plots = {"portrait_size":(7,9),
          'wavecal_residuals':3,
          'profiles':4,
          'abeam_spectra':5,
-         'bbeam_spectra':6}
+         'bbeam_spectra':6,
+         'combine_spectra':7}
 
