@@ -228,7 +228,7 @@ def check_parameter(caller_name:str,
         
 
     if possible_values is not None:
-
+        
         if (parameter not in possible_values):        
 
             values_str = ['`'+str(x)+'`' for x in possible_values]

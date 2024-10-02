@@ -13,7 +13,8 @@ from pyspextool.utils.for_print import for_print
 
 def find_peaks(profiles:list,
                method_info:dict,
-               fwhm:int | float=0.8):
+               fwhm:int | float=0.8,
+               ybuffer:int=1):
     
     """
     To determine the locations of peaks in spatial profiles
@@ -52,6 +53,11 @@ def find_peaks(profiles:list,
         Only used if `method` is 'auto' or 'guess' to estimate the standard
         deviation of the gaussian function fit to the profile.
 
+    ybuffer : int, default 1
+        The number of pixels on the edge of the orders to ignore.  Useful
+        as sometimes there is a downturn that can mess with the finding
+        routine.
+    
 
     Returns
     -------
@@ -76,7 +82,9 @@ def find_peaks(profiles:list,
 
     check_parameter('find_peaks', 'method_info', method_info, 'dict')
 
-    check_parameter('find_peaks', 'fwhm', fwhm, ['int', 'float'])        
+    check_parameter('find_peaks', 'fwhm', fwhm, ['int', 'float'])
+
+    check_parameter('find_peaks', 'ybuffer', ybuffer, 'int')            
     
 
     # Get the number of orders
@@ -108,6 +116,11 @@ def find_peaks(profiles:list,
             good = trim_nan(profile)
             angles = angles[good]
             profile = profile[good]
+
+            # Remove `ybuffer` pixels
+
+            angles = angles[ybuffer+1:-(ybuffer+1)]
+            profile = profile[ybuffer+1:-(ybuffer+1)]            
 
             # Subtract the background
 

@@ -12,6 +12,8 @@ from pyspextool.pyspextoolerror import pySpextoolError
 
 def identify_apertures(method_info:list,
                        seeing_fwhm:int | float=0.8,
+                       ybuffer:int=3,
+                       aperture_signs:list=None,
                        verbose:bool=None,
                        qa_show:bool=None,
                        qa_showscale:float | int=None,
@@ -32,25 +34,19 @@ def identify_apertures(method_info:list,
 
         list[1] = 
 
-        
-
-
-    
-    find_naps : {1,2,3,4} default None
-        If given, the function will automatically attempt to identify
-        `find_naps` peaks in the profile.
-
-    guess_positions : int, float, list
-        If given, the function will use these positions in an attempt to
-        identify peaks in the profile.
-
-    aperture_positions : int, float, list
-        If given, the function will use store these apertures.
-
+       
     seeing_fwhm: float, default 0.8 (arcseconds).
         The approximate FWHM of the peak to be identified.  Only used 
         if `method` is 'auto' or 'guess'.
 
+    ybuffer : int, default 3
+        The number of pixels on the edge of the orders to ignore.  Useful
+        as sometimes there is a downturn that can mess with the finding
+        routine.
+       
+    aperture_signs : list, default None
+    
+    
     qa_show : {None, True, False}, optional
         Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
@@ -95,6 +91,9 @@ def identify_apertures(method_info:list,
     #
 
     check_parameter('identify_apertures', 'method_info', method_info, 'list')
+
+    check_parameter('identify_apertures', 'aperture_signs', aperture_signs,
+                    ['list','NoneType'])    
     
 
 #    check_parameter('identify_apertures', 'naps', find_naps, ['int','NoneType'],
@@ -171,19 +170,33 @@ def identify_apertures(method_info:list,
         peaks = np.tile(method_info[1], (norders, 1))
         naps = np.shape(peaks)[1]
         extract.state['aperture_type'] = 'fixed'        
-               
+
     apertures, apsigns = find_peaks(extract.state['profiles'],
                                     {'method': method, 'peaks': peaks},
                                     fwhm=seeing_fwhm)
+    
     #
     # Determine the average apsign
     #
 
-    average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns), axis=0)
-    apsigns = np.empty(naps, dtype=int)
+    if aperture_signs is not None:
 
-    for i in range(naps):
-        apsigns[i] = 1 if average_apsign[i] > 0 else -1
+        aperture_signs = np.array(aperture_signs)
+        apsigns = np.empty_like(aperture_signs,dtype=np.int8)
+        z = (aperture_signs == '+')
+        apsigns[z] = 1
+
+        z = (aperture_signs == '-')
+        apsigns[z] = -1
+        
+    else:
+
+        average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns),
+                                                          axis=0)
+        apsigns = np.empty(naps, dtype=int)
+
+        for i in range(naps):
+            apsigns[i] = 1 if average_apsign[i] > 0 else -1
 
     #
     # Store the results into the config variable
