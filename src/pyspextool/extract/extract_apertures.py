@@ -426,7 +426,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
             files.append(osbasename(bbeam_fullpath))
 
-        message += ', '.join(files)+' to disk.\n'
+        message += ', '.join(files)+' to proc/.\n'
 
         logging.info(message)
             
@@ -481,6 +481,8 @@ def extract_apertures(fix_badpixels:bool=True,
             plot_spectra(abeam_fullpath,
                          figure_size=setup.plots['landscape_size'],
                          font_size=setup.plots['font_size'],
+                         spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                         spine_linewidth=setup.plots['spectrum_linewidth'],   
                          output_fullpath=fullpath)
             
         if bbeam_fullpath is not None:
@@ -492,6 +494,8 @@ def extract_apertures(fix_badpixels:bool=True,
             plot_spectra(bbeam_fullpath,
                          figure_size=setup.plots['landscape_size'],
                          font_size=setup.plots['font_size'],
+                         spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                         spine_linewidth=setup.plots['spectrum_linewidth'],   
                          output_fullpath=fullpath)    
 
     #

@@ -314,9 +314,9 @@ def files_to_fullpath(path:str,
         fullpaths = make_full_path(path, nums, indexinfo=indexinfo,exist=exist)
 
         readmode = 'index'
-
+        
     filenames = [basename(x) for x in fullpaths]
-        
-        
+
+               
     return fullpaths, readmode, filenames
     

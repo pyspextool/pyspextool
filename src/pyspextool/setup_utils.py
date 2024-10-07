@@ -318,8 +318,7 @@ def set_instrument(instrument_name: str):
     #
 
     instrument_data_path = os.path.join(
-        setup.state["package_path"], "instrument_data",
-        instrument_name + "_dir")
+        setup.state["package_path"], "instruments",instrument_name)
 
     data_path = os.path.join(setup.state["package_path"], "data")
 

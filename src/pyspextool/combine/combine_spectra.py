@@ -27,9 +27,28 @@ def combine_spectra(statistic:str='robust weighted mean',
 
     Parameters
     ----------
-    statistic: str
+    statistic : {'robust weighted mean', 'robust mean', 'weighted mean', 
+                 'mean', 'median'}
+        For the means, the uncertainty is the standard error on the 
+        mean, e.g. s/np.sqrt(n) where s is the sample standard deviation and 
+        n is the number of data points.
 
-    
+        For the median, the uncertainty is given by 1.482*MAD/np.sqrt(n) where
+        MAD is the median absolute deviation and is given by,
+
+        1.482*median(|x_i-x_med|).
+
+    robust_sigma : float or int, default 8
+        The sigma threshold of a robust statistic is requested.   Values are 
+        identified as outliers if 
+
+        |x_i - x_med|/MAD > robust_sigma,
+
+        where x_i is the ith data point, x_med is the median of the data, and 
+        MAD is the median absolute deviation given by,
+
+        1.482*median(|x_i-x_med|).
+        
     verbose : {None, True, False}
         Set to True to report updates to the command line.
         Set to False to not report updates to the command line.
@@ -53,19 +72,29 @@ def combine_spectra(statistic:str='robust weighted mean',
     qa_showscale : float or int, default=None
         The scale factor by which to increase or decrease the default size of
         the plot window.  Set to None to default to setup.state['qa_scale'].    
-    
-    
+        
     Returns
     -------
     None
-
+        Write a pySpextool FITS file to the proc/ directory.
 
     """
+
+    #
+    # Check to make sure we can proceed.
+    #
+
+    if combine.state['scale_done'] is False:
+
+        message = 'Previous steps complete.  Please run combine.scale_spectra.'
+        raise pySpextoolError(message)
+    
     #
     # Check the parameters and QA keywords
     #
 
-    check_parameter('combine_spectra', 'statistic', statistic, 'str')
+    check_parameter('combine_spectra', 'statistic', statistic, 'str',
+                    possible_values=combine.state['statistics'])
 
     check_parameter('combine_spectra', 'robust_sigma', robust_sigma,
                     ['int', 'float'])            
@@ -99,11 +128,12 @@ def combine_spectra(statistic:str='robust weighted mean',
     uncertainty = np.full_like(combine.state['wavelengths'], np.nan)
     bitmask = np.full_like(combine.state['wavelengths'], 0,dtype=np.int8)
 
+
+    logging.info(' Combining the spectra using a '+statistic+'.')
+    
     #
     #  Loop over apertures and orders
     #
-
-    statistic = statistic.replace(" ", "")
 
     for i in range(combine.state['final_napertures']):
 
@@ -114,16 +144,16 @@ def combine_spectra(statistic:str='robust weighted mean',
 
             # First do the data
 
-            if statistic == 'robustweightedmean':
+            if statistic == 'robust weighted mean':
 
                 result = math.mean_data_stack(data, robust=robust_sigma,
                                               weights=1/var, stderr=True)
 
-            elif statistic == 'robustmean':
+            elif statistic == 'robust mean':
 
                 result = math.mean_data_stack(data, robust=sigma, stderr=True)
 
-            elif statistic == 'weightedmean':
+            elif statistic == 'weighted mean':
 
                 result = math.mean_data_stack(data,weights=1/var, stderr=True)
 
@@ -134,11 +164,6 @@ def combine_spectra(statistic:str='robust weighted mean',
             elif statistic == 'median':                        
 
                 result = math.median_data_stack(data,stderr=True)
-
-            else:
-
-                message=' is an unknown `statitics`.'
-                raise pySpextoolError(message)
 
             mean = result[0]
             unc = result[1]
@@ -154,7 +179,6 @@ def combine_spectra(statistic:str='robust weighted mean',
             uncertainty[i,j,:] = unc
             bitmask[i,j,:] = mask
 
-
     #
     # Write the results to disk
     #
@@ -164,7 +188,6 @@ def combine_spectra(statistic:str='robust weighted mean',
     
     shape = (combine.state['norders']*combine.state['final_napertures'],4, \
              combine.state['npixels'])
-    
     array = np.empty(shape)
 
     #
@@ -175,7 +198,7 @@ def combine_spectra(statistic:str='robust weighted mean',
 
         for j in range(combine.state['final_napertures']):        
 
-            idx = i+combine.state['final_napertures']*j
+            idx = i*combine.state['final_napertures']+j            
             array[idx,0,:]  = combine.state['wavelengths'][j,i]
             array[idx,1,:]  = intensity[j,i]
             array[idx,2,:]  = uncertainty[j,i]
@@ -307,7 +330,7 @@ def combine_spectra(statistic:str='robust weighted mean',
 
     fits.writeto(full_path, array, hdr, overwrite=True)
 
-    logging.info(' Wrote file '+osbasename(full_path) + ' to disk.')
+    logging.info(' Wrote file '+osbasename(full_path) + ' to proc/.')
 
     #
     # Do the QA plotting
@@ -317,7 +340,9 @@ def combine_spectra(statistic:str='robust weighted mean',
 
         plot_spectra(full_path,
                      figure_size=setup.plots['landscape_size'],
-                     font_size=setup.plots['font_size'],
+                     font_size=setup.plots['font_size'], 
+                     spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                     spine_linewidth=setup.plots['spine_linewidth'],
                      showblock=qa['showblock'],
                      showscale=qa['showscale'])
 
@@ -331,6 +356,8 @@ def combine_spectra(statistic:str='robust weighted mean',
         plot_spectra(full_path,
                      figure_size=setup.plots['landscape_size'],
                      font_size=setup.plots['font_size'],
+                     spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                     spine_linewidth=setup.plots['spine_linewidth'],
                      output_fullpath=qafullpath)
     
             

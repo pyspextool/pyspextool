@@ -352,17 +352,22 @@ def extract_1dxd(image:npt.ArrayLike,
                                     bg_fitdegree,
                                     robust={'thresh': 4, 'eps': 0.1},
                                     silent=True)
-
+                
                 # Generate a background slit 
-
+                print(xmin+j)
+                print(result['coeffs_covar'])
                 slit_bg, slit_bg_var = poly_1d(slit_arc, result['coeffs'],
-                                               covar=result['coeffs_covar'])
+                                               covar=result['coeffs_covar'],
+                                               talk=False)
 
                 # Subtract the background and propagate the uncertainties
 
-                slit_img = np.subtract(slit_img, slit_bg)
-                slit_var = slit_var + slit_bg_var
+                slit_img -= slit_bg
+                slit_var += slit_bg_var
 
+#                print(slit_bg_var)
+                print(' ')
+                
             #
             # Scale the profile to the data
             #

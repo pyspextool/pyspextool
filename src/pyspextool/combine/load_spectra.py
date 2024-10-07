@@ -44,7 +44,7 @@ def load_spectra(files:str | list,
 
     output_name : str
         The output file name sans the suffix.
-
+    
     verbose : {None, True, False}
         Set to True to report updates to the command line.
         Set to False to not report updates to the command line.
@@ -73,7 +73,10 @@ def load_spectra(files:str | list,
 
     Returns
     -------
+    None
+        Loads data into memory
 
+    
     """
 
     #
@@ -82,7 +85,20 @@ def load_spectra(files:str | list,
 
     check_parameter('load_spectra', 'files', files, ['str', 'list'])
 
-    check_parameter('load_spectra', 'output_name', output_name, 'str')    
+    check_parameter('load_spectra', 'output_name', output_name, 'str')
+
+    check_parameter('load_spectra', 'verbose', verbose, ['NoneType', 'bool'])
+    
+    check_parameter('load_spectra', 'qa_write', qa_write, ['NoneType', 'bool'])
+
+    check_parameter('load_spectra', 'qa_show', qa_show, ['NoneType', 'bool'])
+
+    check_parameter('load_spectra', 'qa_showscale', qa_showscale,
+                    ['int', 'float', 'NoneType'])
+
+    check_parameter('load_spectra', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
+    
 
     qa = check_qakeywords(verbose=verbose,
                           show=qa_show,
@@ -106,10 +122,12 @@ def load_spectra(files:str | list,
 
     input_files = results[0]
     file_readmode = results[1]
+    filenames = results[2]
 
     check_file(input_files)
 
     combine.state['input_files'] = input_files
+    combine.state['filenames'] = filenames
     combine.state['nfiles'] = len(input_files)
 
     check_sansfits(output_name,'output_name')
@@ -264,8 +282,13 @@ def load_spectra(files:str | list,
     if qa['write'] is True:
 
         plot_allorders(setup.plots['combine_spectra'],
-                       setup.plots['portrait_size'],
-                       setup.plots['font_size'])
+                       setup.plots['landscape_size'],
+                       setup.plots['font_size'],
+                       setup.plots['spectrum_linewidth'],
+                       setup.plots['spine_linewidth'],
+                       filenames,
+                       scalerange=None,
+                       title='Raw Spectra')
 
         
         pl.savefig(join(setup.state['qa_path'],output_name+'_raw'+\
@@ -274,17 +297,31 @@ def load_spectra(files:str | list,
 
     if qa['show'] is True:
 
-        scaled_size = (setup.plots['portrait_size'][0]*qa['showscale'],
-                       setup.plots['portrait_size'][1]*qa['showscale'])
+        scaled_size = (setup.plots['landscape_size'][0]*qa['showscale'],
+                       setup.plots['landscape_size'][1]*qa['showscale'])
 
         scaled_font = setup.plots['font_size']*qa['showscale']
         
         plot_allorders(setup.plots['combine_spectra'],
                        scaled_size,
-                       scaled_font)
+                       scaled_font,
+                       setup.plots['spectrum_linewidth'],
+                       setup.plots['spine_linewidth'],
+                       filenames,
+                       scalerange=None,                       
+                       title='Raw Spectra')
         
         pl.show(block=qa['showblock'])
         if qa['showblock'] is False: pl.pause(1)
+
+
+    #
+    # Set the done variables
+    #
+
+    combine.state['load_done'] = True
+    combine.state['scale_done'] = False
+        
 
     
     

@@ -18,10 +18,11 @@ def plot_spectra(file:str,
                  apertures:int=None,
                  title:str=None,
                  colors:str | list=['green','black'],
-                 line_width:int | float=0.5,
+                 spectrum_linewidth:int | float=0.5,
+                 spine_linewidth:int | float=1.5,
                  yrange_buffer:int | float=0.05,
                  order_numbers:bool=True,
-                 figure_size:tuple=(6,4),
+                 figure_size:tuple=(9,7),
                  font_size:int=12,               
                  output_fullpath:str=None,
                  showblock:bool=False,
@@ -40,32 +41,52 @@ def plot_spectra(file:str,
     file : str
         The full path to a pySpextool spectral fits files.
 
+    ytype : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}
+        A str giving the type of "intensity".
+
+    aperture : int, default None
+        The 1-indexed aperture to plot.  If None, all apertures are plotted.
+    
+    title : str, default None
+        A str title.
+
+    colors : str or list of (str, str) or list of (str, str, str), 
+             default='green'
+        The spectra will be plotted with alternative colors depending on 
+        how many colors are given.
+
+    spectrum_linewidth : int or float
+        An int or float giving the spectrum line width to pass to matplotlib
+
+    spine_linewidth : int or float
+        An int or float giving the spine line width to pass to matplotlib
+
+    yrange_buffer : float, default=0.05
+        The fraction by which to expand the y range.  
+
+    order_numbers : {True, False}
+        Set to True to label the order numbers on the plot.
+        Set to False to not label the order numbers on the plot.
+
+    
+    
+    
+
     plot_size : tuple of (float, float), optional
         A (2,) tuple giving the page size.
 
     ytype : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}
         Which spectrum to plot.
 
-    aperture : int or NoneType, default=None
-        The aperture to plot.  It is one-indexed.  if None, all apertures
-        are plotted.
 
     title : str, optional
         The title.
 
-    colors : str or list of (str, str) or list of (str, str, str), 
-             default='green'
-        The spectra will be plotted with alternative colors depending on 
-        how many colors are given.
         
     line_width : float or int, default=1
         The line width value passed to maplotlib.
 
-    yrange_buffer : float, default=0.05
-        The fraction by which to expand the y range if desired.
 
-    order_numbers : {True, False}
-        Set to True for the order numbers to be plotted on the plot.
 
     block : {False, True}, optional
         Set to make the plot block access to the command line, e.g. pl.ioff().
@@ -93,8 +114,12 @@ def plot_spectra(file:str,
     check_parameter('plot_spectra', 'colors', colors,
                     ['NoneType', 'str', 'list'])
 
-    check_parameter('plot_spectra', 'line_width', line_width, ['float', 'int'])
-    
+    check_parameter('plot_spectra', 'spectrum_linewidth', spectrum_linewidth,
+                    ['float', 'int'])
+
+    check_parameter('plot_spectra', 'spine_linewidth', spine_linewidth,
+                    ['float', 'int'])
+        
     check_parameter('plot_spectra', 'yrange_buffer', yrange_buffer, 'float')
 
     check_parameter('plot_spectra', 'order_numbers', order_numbers, 'bool')
@@ -172,7 +197,8 @@ def plot_spectra(file:str,
                plot_apertures,
                ytype,
                colors,
-               line_width,
+               spectrum_linewidth,
+               spine_linewidth,
                latex_xlabel,
                latex_ylabel,
                latex_yunits,
@@ -201,7 +227,8 @@ def plot_spectra(file:str,
                plot_apertures,
                ytype,
                colors,
-               line_width,
+               spectrum_linewidth,
+               spine_linewidth,               
                latex_xlabel,
                latex_ylabel,
                latex_yunits,
@@ -227,7 +254,8 @@ def doplot(spectra:npt.ArrayLike,
            plot_apertures:list,
            ytype:str,
            colors:str | list,
-           line_width:int | float,
+           spectrum_linewidth:int | float,
+           spine_linewidth:int | float,
            latex_xlabel:str,
            latex_ylabel:str,
            latex_yunits:str,
@@ -331,10 +359,15 @@ def doplot(spectra:npt.ArrayLike,
 
         axe.xaxis.set_minor_locator(AutoMinorLocator())    
         axe.tick_params(right=True, left=True, top=True, bottom=True,
-                          which='both', direction='in', width=1.5)
+                          which='both', direction='in', width=spine_linewidth)
         axe.tick_params(which='minor', length=3)
         axe.tick_params(which='major', length=5)
         axe.yaxis.set_minor_locator(AutoMinorLocator())
+
+        # change all spines
+        for axis in ['top','bottom','left','right']:
+            axe.spines[axis].set_linewidth(spine_linewidth)
+
         
         
         # Get the coordinate transform ready for order number labels
@@ -394,10 +427,10 @@ def doplot(spectra:npt.ArrayLike,
                 color = colors
                             
             # Plot the spectrum
-        
+
             axe.step(xvalues, yvalues, color=color, ls='-',
-                     lw=line_width, where='mid')
-            axe.step(xvalues, y2values, color='grey', lw=line_width,
+                     lw=spectrum_linewidth, where='mid')
+            axe.step(xvalues, y2values, color='grey', lw=spectrum_linewidth,
                      where='mid')
 
             # Now label the order numbers

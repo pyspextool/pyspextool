@@ -1,9 +1,10 @@
 import logging
 import numpy as np
 from math import floor
+from os.path import join as osjoin
 
 from pyspextool import config as setup
-from pyspextool.telluric import config as telluric
+from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.utils.arrays import find_index
 from pyspextool.telluric.core import measure_linerv
@@ -12,8 +13,8 @@ def get_radialvelocity(fwhm_scale:float,
                        resolving_power:bool | float |int =None, 
                        verbose:bool=None,
                        qa_show:bool=None,
-                       qa_scale:float | int=None,
-                       qa_block:bool=None,
+                       qa_showscale:float | int=None,
+                       qa_showblock:bool=None,
                        qa_write:bool=None):
 
     """
@@ -59,13 +60,12 @@ def get_radialvelocity(fwhm_scale:float,
     None
     Loads data into the config state variable.
 
-        telluric.load['rv_nfwhm']
-        telluric.plotwindows['radial_velocity']
-        telluric.state['ew_scale'] 
-        telluric.state['standard_rv']
-        telluric.state['standard_redshift']
-        telluric.state['1+z']
-        telluric.state['rv_done']
+        tc.state['rv_nfwhm']
+        tc.state['ew_scale'] 
+        tc.state['standard_rv']
+        tc.state['standard_redshift']
+        tc.state['1+z']
+        tc.state['rv_done']
     
     """
 
@@ -73,7 +73,7 @@ def get_radialvelocity(fwhm_scale:float,
     # Check the load_done variable
     #
     
-    if telluric.state['prepare_done'] is False:
+    if tc.state['prepare_done'] is False:
 
         message = "Line has not been prepared.  Please run prepare_line.py."
         raise pySpextoolError(message)
@@ -94,43 +94,45 @@ def get_radialvelocity(fwhm_scale:float,
     check_parameter('get_radialvelocity', 'qa_show', qa_show,
                     ['NoneType','bool'])
 
-    check_parameter('get_radialvelocity', 'qa_scale', qa_scale,
+    check_parameter('get_radialvelocity', 'qa_showscale', qa_showscale,
                     ['NoneType','float','int'])
     
-    check_parameter('get_radialvelocity', 'qa_block', qa_block,
+    check_parameter('get_radialvelocity', 'qa_showblock', qa_showblock,
                     ['NoneType','bool'])    
     
     check_parameter('get_radialvelocity', 'qa_write', qa_write,
                     ['NoneType','bool'])
 
-    keywords = check_keywords(verbose=verbose, qa_show=qa_show,
-                              qa_scale=qa_scale, qa_block=qa_block,
-                              qa_write=qa_write)
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)
 
     #
     # Log the action
     #
     
-    logging.info(f" Computing radial velocity... ")
+    logging.info(f" Computing radial velocity.")
 
-    telluric.load['rv_nfwhm'] = fwhm_scale
+    tc.state['rv_nfwhm'] = fwhm_scale
     
     #
     # Determine the wavelength window over which to measure the radial velocity
     #
     
-    range = telluric.state['line_fwhm']*fwhm_scale
-    window = np.array([telluric.state['line_center']-range/2.,
-                      telluric.state['line_center']+range/2.])
+    range = tc.state['line_fwhm']*fwhm_scale
+    window = np.array([tc.state['line_center']-range/2.,
+                      tc.state['line_center']+range/2.])
     
     # Now ensure the range doesn't go beyond what is available.
 
-    wavelength = telluric.state['normalized_line_wavelength']
+    wavelength = tc.state['normalized_line_wavelength']
 
     window[0] = max(window[0],np.nanmin(wavelength))
     window[1] = min(window[1],np.nanmax(wavelength))                   
     
-    telluric.state['rv_window'] = window
+    tc.state['rv_window'] = window
         
     #
     # Smooth model to approximate resolving power of line
@@ -141,12 +143,12 @@ def get_radialvelocity(fwhm_scale:float,
     if resolving_power is None:
     
         delta = wavelength-np.roll(wavelength,
-                                   floor(telluric.state['slitw_pix']))
+                                   floor(tc.state['slitw_pix']))
         resolving_powers = wavelength/delta
     
-        line = np.sum(np.array(telluric.state['normalization_window']))/2
+        line = np.sum(np.array(tc.state['normalization_window']))/2
         
-        idx = floor(find_index(wavelength, telluric.state['line_center']))
+        idx = floor(find_index(wavelength, tc.state['line_center']))
         resolving_power = floor(resolving_powers[idx])
 
     if resolving_power is not False:
@@ -155,15 +157,15 @@ def get_radialvelocity(fwhm_scale:float,
 
         # Find the dispersion of the Vega model at this wavelength
         
-        idx = int(find_index(telluric.state['vega_wavelength'],
-                             telluric.state['line_center']))
+        idx = int(find_index(tc.state['vega_wavelength'],
+                             tc.state['line_center']))
 
-        model_dispersion = telluric.state['vega_wavelength'][idx]- \
-            telluric.state['vega_wavelength'][idx-1] 
+        model_dispersion = tc.state['vega_wavelength'][idx]- \
+            tc.state['vega_wavelength'][idx-1] 
         
         # Determine the number of pixels for the resolving power.
 
-        fwhm_kernel = int(telluric.state['line_center']/resolving_power/ \
+        fwhm_kernel = int(tc.state['line_center']/resolving_power/ \
                           model_dispersion)
 
         # Create a Gaussian kernel
@@ -180,30 +182,39 @@ def get_radialvelocity(fwhm_scale:float,
         gaussian = np.exp(-(x/sigma)**2 / 2)
         gaussian /= np.sum(gaussian)
 
-        model = np.convolve(telluric.state['vega_normalized_fluxdensity'],
+        model = np.convolve(tc.state['vega_normalized_fluxdensity'],
                             gaussian, mode='same')
 
     else:
 
-        model = telluric.state['vega_normalized_fluxdensity']
+        model = tc.state['vega_normalized_fluxdensity']
         
         
     #
     # Get QA set up
     #
 
-    xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]
-    title = telluric.state['standard_name']+', '+\
-        telluric.state['mode']+' Order '+\
-        str(telluric.state['normalization_order'])
+    xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
+    title = tc.state['standard_name']+', '+\
+        tc.state['mode']+' Order '+\
+        str(tc.state['normalization_order'])
 
-    if keywords['qa_show'] is True:
+    if qa['show'] is True:
 
         # Build the qashow_info dictionary.
 
-        qashow_info = {'number':telluric.plotwindows['radial_velocity'],
-                       'scale':keywords['qa_scale'],
-                       'block':keywords['qa_block'],
+        figure_size = (setup.plots['portrait_size'][0]*qa['showscale'],
+                       setup.plots['portrait_size'][1]*qa['showscale'])
+        
+        font_size = setup.plots['font_size']*qa['showscale']
+
+        
+        qashow_info = {'plot_number':setup.plots['radial_velocity'],
+                       'figure_size':figure_size,
+                       'font_size':font_size,
+                    'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                       'spine_linewidth':setup.plots['spine_linewidth'],
+                       'block':qa['showblock'],
                        'xlabel':xlabel,
                        'title':title}
 
@@ -211,60 +222,64 @@ def get_radialvelocity(fwhm_scale:float,
 
         qashow_info = None
 
-    if keywords['qa_write'] is True:
+    if qa['write'] is True:
 
+        fullpath = osjoin(setup.state['qa_path'],
+                          tc.state['output_filename']+\
+                          '_rv'+setup.state['qa_extension'])    
+        
         # Build the qafile_info dictionary.        
 
-        qafile_info = {'filepath':setup.state['qa_path'],
-                       'filename':telluric.load['output_filename']+'_rv',
-                       'extension':setup.state['qa_extension'],
+        qafile_info = {'figure_size':setup.plots['portrait_size'],
+                       'font_size':setup.plots['font_size'],
+                    'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                       'spine_linewidth':setup.plots['spine_linewidth'],
+                       'file_fullpath':fullpath,
                        'xlabel':xlabel,
                        'title':title}
 
     else:
 
         qafile_info = None
-
+        
     #
     # Compute the RV
     #
 
     # Locate the region for the object and Vega
 
-    zd = np.where((telluric.state['normalized_line_wavelength'] >= window[0]) &
-                  (telluric.state['normalized_line_wavelength'] <= \
+    zd = np.where((tc.state['normalized_line_wavelength'] >= window[0]) &
+                  (tc.state['normalized_line_wavelength'] <= \
                    window[1]))[0]
     
-    zm = np.where((telluric.state['vega_wavelength'] >= window[0]) & 
-                  (telluric.state['vega_wavelength'] <= window[1]))[0]
+    zm = np.where((tc.state['vega_wavelength'] >= window[0]) & 
+                  (tc.state['vega_wavelength'] <= window[1]))[0]
     
-    result = measure_linerv(telluric.state['normalized_line_wavelength'][zd],
-                            telluric.state['normalized_line_flux'][zd],
-                            telluric.state['vega_wavelength'][zm],
+    result = measure_linerv(tc.state['normalized_line_wavelength'][zd],
+                            tc.state['normalized_line_flux'][zd],
+                            tc.state['vega_wavelength'][zm],
                             model[zm],
                             qashow_info=qashow_info,
                             qafile_info=qafile_info)
 
     # Did we show it?
 
-    if keywords['qa_show'] is True:
+    if qa['show'] is True:
 
-        telluric.plotwindows['radial_velocity'] = result['plotnum']
-
-    logging.info(f" Radial velocity = "+\
+        logging.info(f" Radial velocity = "+\
                  '{:g}'.format(float('{:.4g}'.format(result['rv'])))+" km s-1")
 
     #
     # Store the results
     #
 
-    telluric.state['ew_scale'] = 1.0
-    telluric.state['standard_rv'] = result['rv']
-    telluric.state['standard_redshift'] = result['z']
-    telluric.state['1+z'] = (1+result['z'])
+    tc.state['ew_scale'] = 1.0
+    tc.state['standard_rv'] = result['rv']
+    tc.state['standard_redshift'] = result['z']
+    tc.state['1+z'] = (1+result['z'])
         
     #
     # Set the done variable
     #
         
-    telluric.state['rv_done'] = True
+    tc.state['rv_done'] = True

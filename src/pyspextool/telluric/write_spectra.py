@@ -3,7 +3,7 @@ import os
 import logging
 
 from pyspextool import config as setup
-from pyspextool.telluric import config as telluric
+from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.utils.units import get_latex_fluxdensity
 from pyspextool.plot.plot_spectra import plot_spectra
@@ -12,8 +12,8 @@ def write_spectra(write_model_spectra:bool=False,
                   write_telluric_spectra:bool=True,
                   verbose:bool=None,
                   qa_show:bool=None,
-                  qa_scale:float |int =None,
-                  qa_block:bool=None,
+                  qa_showscale:float |int =None,
+                  qa_showblock:bool=None,
                   qa_write:bool=None,
                   overwrite:bool=True):
 
@@ -48,12 +48,12 @@ def write_spectra(write_model_spectra:bool=False,
         Set to False to not write a QA plot to disk.
         Set to None to default to setup.state['qa_write'].
     
-    qa_block : {None, True, False}
+    qa_showblock : {None, True, False}
         Set to True to block the screen QA plot.
         Set to False to not block the screen QA plot.
         Set to None to default to setup.state['qa_block'].
     
-    qa_scale : float or int, default=None
+    qa_showscale : float or int, default=None
         The scale factor by which to increase or decrease the default size of
         the plot window which is (9,6).  This does affect plots written to disk.
         Set to None to default to setup.state['qa_scale'].
@@ -84,19 +84,22 @@ def write_spectra(write_model_spectra:bool=False,
     
     check_parameter('write_spectra', 'qa_show', qa_show, ['NoneType','bool'])
 
-    check_parameter('write_spectra', 'qa_scale', qa_scale,
+    check_parameter('write_spectra', 'qa_showscale', qa_showscale,
                     ['NoneType','float','int'])
     
-    check_parameter('write_spectra', 'qa_block', qa_block, ['NoneType','bool'])
+    check_parameter('write_spectra', 'qa_showblock', qa_showblock,
+                    ['NoneType','bool'])
         
     check_parameter('write_spectra', 'qa_write', qa_write, ['NoneType','bool'])
 
     check_parameter('write_spectra', 'overwrite', overwrite, 'bool')    
 
-    keywords = check_keywords(verbose=verbose, qa_show=qa_show,
-                              qa_scale=qa_scale, qa_block=qa_block,
-                              qa_write=qa_write, overwrite=overwrite)    
-
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)
+    
     #
     # Write the (Vega) model to disk if requested.
     #
@@ -106,7 +109,7 @@ def write_spectra(write_model_spectra:bool=False,
         # Create the header. Make a new hdrinfo dictionary using the standard
         # hdrinfo dictionary
         
-        std_hdrinfo = telluric.state['standard_hdrinfo']
+        std_hdrinfo = tc.state['standard_hdrinfo']
 
         new_hdrinfo = {}
         
@@ -116,22 +119,22 @@ def write_spectra(write_model_spectra:bool=False,
         new_hdrinfo['MODULE']=std_hdrinfo['MODULE']
         new_hdrinfo['MODULE'][0] = 'telluric'
         new_hdrinfo['VERSION'] = std_hdrinfo['VERSION']
-        filename = [telluric.load['output_filename']+'_vega.fits', ' File name']
+        filename = [tc.state['output_filename']+'_vega.fits', ' File name']
         new_hdrinfo['FILENAME'] = filename
 
         f = '{:.3f}'
-        mag = float(f.format(telluric.state['standard_bmag']))
+        mag = float(f.format(tc.state['standard_bmag']))
         new_hdrinfo['STD_BMAG'] = (mag, 'Telluric standard B mag')
-        mag = float(f.format(telluric.state['standard_vmag']))
+        mag = float(f.format(tc.state['standard_vmag']))
         new_hdrinfo['STD_VMAG'] = (mag, 'Telluric standard V mag')
 
         # Now deal with the units
 
-        latex = get_latex_fluxdensity(telluric.load['intensity_unit']) 
+        latex = get_latex_fluxdensity(tc.state['intensity_unit']) 
         
         new_hdrinfo['XUNITS'] = std_hdrinfo['XUNITS']
         new_hdrinfo['YUNITS'] = std_hdrinfo['YUNITS']
-        new_hdrinfo['YUNITS'][0] = telluric.load['intensity_unit']
+        new_hdrinfo['YUNITS'][0] = tc.state['intensity_unit']
         new_hdrinfo['LXUNITS'] = std_hdrinfo['LXUNITS']
         new_hdrinfo['LYUNITS'] = std_hdrinfo['LYUNITS']        
         new_hdrinfo['LYUNITS'][0] = latex[0]
@@ -158,19 +161,19 @@ def write_spectra(write_model_spectra:bool=False,
         #
 
         full_path = os.path.join(setup.state['proc_path'],
-                                 telluric.load['output_filename']+\
+                                 tc.state['output_filename']+\
                                  '_vega.fits')    
 
-        fits.writeto(full_path, telluric.state['vega_spectra'], newhdr,
-                 overwrite=keywords['overwrite'])
+        fits.writeto(full_path, tc.state['vega_spectra'], newhdr,
+                     overwrite=True)
         
-        logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+        logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
 
 
     
     if write_telluric_spectra is True:
 
-        hdr = telluric.state['standard_hdrinfo']
+        hdr = tc.state['standard_hdrinfo']
 
         # Store the history
 
@@ -184,25 +187,25 @@ def write_spectra(write_model_spectra:bool=False,
         
         hdr['MODULE'][0] = 'telluric'
         
-        hdr['FILENAME'][0] = telluric.load['output_filename']+'_telluric.fits'
+        hdr['FILENAME'][0] = tc.state['output_filename']+'_telluric.fits'
         
-        hdr['STDFILE'] = [telluric.load['standard_file'],
+        hdr['STDFILE'] = [tc.state['standard_file'],
                           'Telluric standard input file']
         
-        hdr['STD_ID'] = [telluric.state['standard_name'],'Telluric standard']
+        hdr['STD_ID'] = [tc.state['standard_name'],'Telluric standard']
 
         f = '{:.3f}'
-        hdr['STD_BMAG'] = [float(f.format(telluric.state['standard_bmag'])),
+        hdr['STD_BMAG'] = [float(f.format(tc.state['standard_bmag'])),
                            'Telluric standard B mag']
 
-        hdr['STD_VMAG'] = [float(f.format(telluric.state['standard_vmag'])),
+        hdr['STD_VMAG'] = [float(f.format(tc.state['standard_vmag'])),
                        'Telluric standard V mag']
 
         # Deal with the units and plot labels
     
-        hdr['YUNITS'][0] = telluric.load['intensity_unit']+' / DN s-1'
+        hdr['YUNITS'][0] = tc.state['intensity_unit']+' / DN s-1'
 
-        lylabel = get_latex_fluxdensity(telluric.load['intensity_unit'])[0]
+        lylabel = get_latex_fluxdensity(tc.state['intensity_unit'])[0]
 
         hdr['LYLABEL'][0] = 'Ratio ('+lylabel+' / DN s$^{-1}$)'
         
@@ -236,13 +239,13 @@ def write_spectra(write_model_spectra:bool=False,
         #
 
         full_path = os.path.join(setup.state['proc_path'],
-                                 telluric.load['output_filename']+\
+                                 tc.state['output_filename']+\
                                  '_telluric.fits')    
 
-        fits.writeto(full_path, telluric.state['telluric_spectra'], newhdr,
-                 overwrite=keywords['overwrite'])
+        fits.writeto(full_path, tc.state['telluric_spectra'], newhdr,
+                     overwrite=True)
         
-        logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+        logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
         
     
     #
@@ -251,8 +254,8 @@ def write_spectra(write_model_spectra:bool=False,
     
     # Rename header for ease of reading
             
-    hdr = telluric.state['object_hdrinfo']
-                
+    hdr = tc.state['object_hdrinfo']
+
     # Store the history
 
     old_history = hdr['HISTORY']
@@ -267,47 +270,48 @@ def write_spectra(write_model_spectra:bool=False,
 
     hdr['MODULE'][0] = 'telluric'
 
-    hdr['FILENAME'][0] = telluric.load['output_filename']+'.fits'
+    hdr['FILENAME'][0] = tc.state['output_filename']+'.fits'
 
-    hdr['TC_OFILE'] = [telluric.load['object_file'],
+    hdr['TC_OFILE'] = [tc.state['object_file'],
                       'Telluric object input file']
 
-    hdr['TC_SFILE'] = [telluric.load['standard_file'],
+    hdr['TC_SFILE'] = [tc.state['standard_file'],
                       'Telluric standard input file']
 
-    hdr['TC_STDID'] = [telluric.state['standard_name'],'Telluric standard']
+    hdr['TC_STDID'] = [tc.state['standard_name'],'Telluric standard']
 
 
-    hdr['TC_STDB'] = [float('{:.3f}'.format(telluric.state['standard_bmag'])),
+    hdr['TC_STDB'] = [float('{:.3f}'.format(tc.state['standard_bmag'])),
                        'Telluric standard B mag']
 
-    hdr['TC_STDV'] = [float('{:.3f}'.format(telluric.state['standard_vmag'])),
+    hdr['TC_STDV'] = [float('{:.3f}'.format(tc.state['standard_vmag'])),
                        'Telluric standard V mag']
 
-    hdr['TC_STDRV'] =  [float('{:.2f}'.format(telluric.state['standard_rv'])),
+    hdr['TC_STDRV'] =  [float('{:.2f}'.format(tc.state['standard_rv'])),
                       'Telluric standard radial velocity (km s-1)']
 
-    hdr['TC_dAM'] = [float('{:.2f}'.format(telluric.state['delta_airmass'])),\
+    hdr['TC_dAM'] = [float('{:.2f}'.format(tc.state['delta_airmass'])),\
                        'Telluric Average airmass difference']    
 
-    hdr['TC_METH'] = [telluric.state['method'],'Telluric method']
+    hdr['TC_METH'] = [tc.state['method'],'Telluric method']
 
-    if telluric.state['method'] == 'deconvolution':
+    if tc.state['method'] == 'deconvolution':
     
-        hdr['TC_MXDEV'] = [float('{:.5f}'.format(telluric.state['max_deviation'])),
+        hdr['TC_MXDEV'] = [float('{:.5f}'.format(tc.state['max_deviation'])),
                            'Telluric maxmimum % deviation of Vega-data']
 
-        hdr['TC_RMS'] = [float('{:.5f}'.format(telluric.state['rms_deviation'])),
+        hdr['TC_RMS'] = [float('{:.5f}'.format(tc.state['rms_deviation'])),
                          'Telluric RMS deviation of Vega-data']
 
     # Deal with the units and plot labels
     
-    hdr['YUNITS'][0] = telluric.load['intensity_unit']
+    hdr['YUNITS'][0] = tc.state['intensity_unit']
 
-    latex = get_latex_fluxdensity(telluric.load['intensity_unit']) 
+    latex = get_latex_fluxdensity(tc.state['intensity_unit']) 
 
     hdr['LYUNITS'][0] = latex[0]    
     hdr['LYLABEL'][0] = latex[1]
+    hdr['LULABEL'][0] = latex[2]    
     
     #
     # Create the header
@@ -343,36 +347,52 @@ def write_spectra(write_model_spectra:bool=False,
     #
 
     full_path = os.path.join(setup.state['proc_path'],
-                             telluric.load['output_filename']+'.fits')
+                             tc.state['output_filename']+'.fits')
     
-    fits.writeto(full_path, telluric.state['corrected_spectra'], newhdr,
-                 overwrite=keywords['overwrite'])
+    fits.writeto(full_path, tc.state['corrected_spectra'], newhdr,
+                 overwrite=True)
 
-    logging.info(' Wrote file '+os.path.basename(full_path) + ' to disk.')
+    logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
         
     #
     # Do the QA plotting
     #
 
-    if keywords['qa_show'] is True:
+    if qa['show'] is True:
 
-        plot_spectra(full_path, ytype='flux and uncertainty',
-                     line_width=0.5,
+        figure_size = (setup.plots['landscape_size'][0]*qa['showscale'],
+                       setup.plots['landscape_size'][1]*qa['showscale'])
+
+        font_size = setup.plots['font_size']*qa['showscale']
+        
+        plot_spectra(full_path,
+                     ytype='flux and uncertainty',
+                     spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                     spine_linewidth=setup.plots['spine_linewidth'],            
                      title=os.path.basename(full_path),
-                     block=keywords['qa_block'],
+                     showblock=qa['showblock'],
+                     plot_number=setup.plots['abeam_spectra'],
+                     figure_size=figure_size,
+                     font_size=font_size,
                      colors=['green','black'])
         
-    if keywords['qa_write'] is True:
+    if qa['write'] is True:
 
-        qafileinfo = {'figsize': (6,4),
-                      'filepath': setup.state['qa_path'],
-                      'filename': telluric.load['output_filename'],
-                      'extension': setup.state['qa_extension']}
+        file_fullpath = os.path.join(setup.state['qa_path'],
+                                     tc.state['output_filename']+\
+                                     setup.state['qa_extension'])
 
-        plot_spectra(full_path, ytype='flux and uncertainty',
-                     order_numbers=False,
-                     line_width=0.5,colors=['green','black'],
+        plot_spectra(full_path,
+                     ytype='flux and uncertainty',
+                     spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                     spine_linewidth=setup.plots['spine_linewidth'],            
                      title=os.path.basename(full_path),
-                     file_info=qafileinfo)
+                     showblock=qa['showblock'],
+                     output_fullpath=file_fullpath,
+                     figure_size=setup.plots['landscape_size'],
+                     font_size=setup.plots['font_size'],
+                     colors=['green','black'])
+        
+
 
     

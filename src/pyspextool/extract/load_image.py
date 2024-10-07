@@ -281,7 +281,8 @@ def load_image(files:str | list,
         message = 'More than two files cannot be passed.'
         raise pySpextoolError(message)
 
-    logging.info(f' Setting reduction mode to '+reduction_mode+'.')
+    if do_all_steps is False:
+        logging.info(f' Setting reduction mode to '+reduction_mode+'.')
         
     # Do we need to reorder because we are IRTF?
 
@@ -449,8 +450,8 @@ def load_image(files:str | list,
 
     # Get the readfits module
 
-    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
-             '_dir.' + setup.state['instrument']
+    module = 'pyspextool.instruments.' + setup.state['instrument'] + \
+             '.' + setup.state['instrument']
 
     instr = importlib.import_module(module)
         
@@ -532,7 +533,7 @@ def load_image(files:str | list,
         
     else:
 
-        logging.info(' image not flat field.')
+        logging.info(' Mmage not flat field.')
         extract.state['flat_fielded'] = False        
         flag_mask = linearity_mask
               

@@ -351,7 +351,8 @@ def make_alphabeta_2d(x:npt.ArrayLike,
 
 def poly_1d(x:int | float | npt.ArrayLike,
             coeffs:npt.ArrayLike,
-            covar:npt.ArrayLike=None):
+            covar:npt.ArrayLike=None,
+            talk=False):
     
     """
     Evaluates a polynomial function of an independent variables
@@ -359,7 +360,7 @@ def poly_1d(x:int | float | npt.ArrayLike,
 
     Parameters
     ----------
-    x : array_like
+    x : int, float, ndarray
         An (ndat, ) array of independent values
 
     coeffs : ndarray
@@ -392,9 +393,9 @@ def poly_1d(x:int | float | npt.ArrayLike,
     #
 
     x = np.float64(x)
-    ncoeffs = len(coeffs)
+    ncoeffs = np.size(coeffs)
     ndat = np.size(x)
-
+    if talk is True: print('first', ncoeffs)
     #
     # Compute the values at x
     #
@@ -405,6 +406,7 @@ def poly_1d(x:int | float | npt.ArrayLike,
 
     # Compute the variances if requested
 
+    if talk is True:  print('second',ncoeffs)
     if covar is not None:
 
         var = np.zeros(ndat, dtype=np.float64)
@@ -412,7 +414,9 @@ def poly_1d(x:int | float | npt.ArrayLike,
 
             for j in range(ncoeffs):
                 var = var + covar[j, i] * x ** i * x ** j
-
+                if talk is True:  print(i,j,covar[j, i])
+#                print(covar[j, i] * x ** i * x ** j)
+                
         return z, var
 
     else:

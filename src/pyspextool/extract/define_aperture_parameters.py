@@ -161,7 +161,8 @@ def define_aperture_parameters(aperture_radii:int | float | list,
         if np.sum(psf_radius < aperture_radii) != 0:
             message = '`psf_radius` must be >= `aperture_radii`.'
             raise pySpextoolError(message)
-                                  
+
+        
     #
     # Store the results
     #

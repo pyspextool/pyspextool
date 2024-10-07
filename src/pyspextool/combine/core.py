@@ -15,20 +15,49 @@ from pyspextool.io.check import check_parameter
 def plot_allorders(plot_number,
                    figure_size,
                    font_size,
-                   plot_scalerange:tuple=False,
+                   spectrum_linewidth,
+                   spine_linewidth,                   
+                   spectra_labels,
+                   scalerange:tuple=None,
                    title:str=None):
 
     """
-    To plot all the spectra
+    To plot all the spectra during the combine step in a device independent way
 
     Parameters
     ----------
-    None
+    plot_number : int
+        The plot number to pass to matplotlib
 
+    figure_size : tuple
+        A (2,) tuple giving the figure size to pass to matplotlib
+
+    font_size : int
+        An int giving the font size to pass to matplotlib
+
+    spectrum_linewidth : int or float
+        An int or float giving the spectrum line width to pass to matplotlib
+
+    spine_linewidth : int or float
+        An int or float giving the spine line width to pass to matplotlib
+    
+    spectrum_labels : list
+        An (nspectra,) list giving the file names for the spectra.
+
+    spectra_labels : list
+        An (nspectra,) list giving the labels for each spectrum.
+    
+    scalerange : ndarray, default None
+        If given, a (2,) ndarray giving the wavlength range over which the
+        scale factors were determined.
+
+    title : string, default None
+        If given, a string giving the title of the plot.
+    
     Returns
     -------
     None
-        
+        Plots 
 
     """
 
@@ -36,14 +65,23 @@ def plot_allorders(plot_number,
     # Check the parameters
     #
 
-
-
     check_parameter('plot_allorders', 'plot_number', plot_number, 'int')
 
     check_parameter('plot_allorders', 'figure_size', figure_size, 'tuple')
 
-    check_parameter('plot_allorders', 'plot_scalerange', plot_scalerange,
-                    'bool')
+    check_parameter('plot_allorders', 'font_size', font_size, ['int','float'])
+
+    check_parameter('plot_allorders', 'spectrum_linewidth', spectrum_linewidth,
+                    ['int','float'])        
+
+    check_parameter('plot_allorders', 'spine_linewidth', spine_linewidth,
+                    ['int','float'])        
+
+    check_parameter('plot_allorders', 'spectra_labels', spectra_labels,
+                    'list')        
+    
+    check_parameter('plot_allorders', 'scalerange', scalerange,
+                    ['list','ndarray', 'NoneType'])
 
     check_parameter('plot_allorders', 'title', title, ['str','NoneType'])
     
@@ -56,7 +94,7 @@ def plot_allorders(plot_number,
     uncertainty = combine.state['uncertainties']
     snr = intensity/uncertainty
     bitmask = combine.state['bitmasks']
-
+    
     #
     # Get the ranges
     #
@@ -117,120 +155,173 @@ def plot_allorders(plot_number,
                        hspace=0.05)
 
 
-    #
-    # plot the flux
-    #
-        
-    ax = fig.add_subplot(211)    
-    ax.set_xlim(wavelength_range)
-    ax.set_ylim(intensity_range)
-#    ax.set_xlabel(combine.state['xlabel'])
-    ax.set_ylabel(combine.state['ylabel'])
+    for i in range(combine.state['final_napertures']):
 
-    ax.xaxis.set_minor_locator(AutoMinorLocator())    
-    ax.tick_params(right=True, left=True, top=True, bottom=True,
-                    which='both', direction='in',
-                   width=setup.plots['spine_linewidth'])
-    ax.tick_params(which='minor', length=3)
-    ax.tick_params(which='major', length=5)
-    ax.yaxis.set_minor_locator(AutoMinorLocator())
-        
-    ax.get_xaxis().set_ticklabels([])
+        #
+        # plot the flux
+        #
+ 
+        idx = i+1
+        ax = fig.add_subplot(2,combine.state['final_napertures']+1,i+1)    
+        ax.set_xlim(wavelength_range)
+        ax.set_ylim(intensity_range)
 
+        if i == 0:
+            ax.set_ylabel(combine.state['ylabel'])
+
+        else:
+
+            ax.get_yaxis().set_ticklabels([])        
+
+            
+        ax.xaxis.set_minor_locator(AutoMinorLocator())    
+        ax.tick_params(right=True, left=True, top=True, bottom=True,
+                       which='both', direction='in',
+                       width=setup.plots['spine_linewidth'])
+        ax.tick_params(which='minor', length=3)
+        ax.tick_params(which='major', length=5)
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+
+        ax.get_xaxis().set_ticklabels([])        
+
+
+        axis_to_data = ax.transAxes + ax.transData.inverted()
+        data_to_axis = axis_to_data.inverted()
+
+
+        for j in range(combine.state['norders']):
+
+            color = iter(cm.rainbow(np.linspace(0, 1,
+                                                combine.state['nspectra'])))
+            for k in range(combine.state['nspectra']):
+                
+                c = next(color)
+                ax.step(wavelength[0,j,:], intensity[i,j,k,:],c=c,
+                        lw=spectrum_linewidth)
+
+            # Get the order number position
+            
+            ave_wave = np.mean(wavelength_ranges[j, :])
+            xnorm = data_to_axis.transform((ave_wave, 0))[0]
+            
+            # Print the text
+
+            ax.text(xnorm, 1.01 + 0.01 * (j % 2),
+                    str(combine.state['orders'][j]),
+                    color='black', transform=ax.transAxes)
+
+        # change all spines
+        for axis in ['top','bottom','left','right']:
+            ax.spines[axis].set_linewidth(spine_linewidth)            
+                
+        ax.text(0.9, 0.9, 'Ap '+str(i+1), color='black', ha='right',
+                transform=ax.transAxes)
+
+        if scalerange is not None:
+            
+            ax.axvline(x=scalerange[0],color='0',ls='--')
+            ax.axvline(x=scalerange[1],color='0',ls='--')
+            
+        
+
+            
+
+    for i in range(combine.state['final_napertures']):
+
+        #
+        # plot the uncertainty
+        #
+
+        idx = combine.state['final_napertures']+i+2
+        ax = fig.add_subplot(2,combine.state['final_napertures']+1,idx)
+        ax.set_xlim(wavelength_range)
+        ax.set_ylim(intensity_range)
+
+        if i == 0:
+            ax.set_ylabel('Signal-to-Noise Ratio')
+
+        else:
+
+            ax.get_yaxis().set_ticklabels([])
+
+
+        ax.set_xlim(wavelength_range)
+        ax.set_ylim(snr_range)
+        ax.set_xlabel(combine.state['xlabel'])
+
+        
+        ax.xaxis.set_minor_locator(AutoMinorLocator())    
+        ax.tick_params(right=True, left=True, top=True, bottom=True,
+                       which='both', direction='in',
+                       width=setup.plots['spine_linewidth'])
+        ax.tick_params(which='minor', length=3)
+        ax.tick_params(which='major', length=5)
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+        
+        
+        axis_to_data = ax.transAxes + ax.transData.inverted()
+        data_to_axis = axis_to_data.inverted()
+        
+        for j in range(combine.state['norders']):
+            
+            color = iter(cm.rainbow(np.linspace(0, 1,
+                                                combine.state['nspectra'])))
+            for k in range(combine.state['nspectra']):
+                
+                c = next(color)
+                ax.step(wavelength[0,j,:], snr[i,j,k,:],c=c,
+                        lw=spectrum_linewidth)                
+                
+                # Get the order number position
+                
+            ave_wave = np.mean(wavelength_ranges[j, :])
+            xnorm = data_to_axis.transform((ave_wave, 0))[0]
+
+        # change all spines
+        for axis in ['top','bottom','left','right']:
+            ax.spines[axis].set_linewidth(spine_linewidth)
+
+        if scalerange is not None:
+            
+            ax.axvline(x=scalerange[0],color='0',ls='--')
+            ax.axvline(x=scalerange[1],color='0',ls='--')
+
+
+                      
+            
+#    fig.tight_layout()
+
+    pl.suptitle(title)
 
     
-    axis_to_data = ax.transAxes + ax.transData.inverted()
-    data_to_axis = axis_to_data.inverted()
-
-
-    for i in range(combine.state['norders']):
-
-        color = iter(cm.rainbow(np.linspace(0, 1, combine.state['nspectra'])))
-        for j in range(combine.state['nspectra']):
-
-            c = next(color)
-            ax.step(wavelength[0,i,:], intensity[0,i,j,:],c=c,
-                    lw=setup.plots['spectrum_linewidth'])                
-#            pl.plot(wavelength[0,i,:], uncertainty[0,i,j,:],c='gray',
-#                    lw=setup.plots['linewidth'])            
-
-        # Get the order number position
-
-        ave_wave = np.mean(wavelength_ranges[i, :])
-        xnorm = data_to_axis.transform((ave_wave, 0))[0]
-
-        # Print the text
-
-        ax.text(xnorm, 1.01 + 0.01 * (i % 2), str(combine.state['orders'][i]),
-                color='black', transform=ax.transAxes)
-
-    # Add the title
-
-    if title is not None:
-
-        ax.set_title(title, pad=20.0)
-
-    if plot_scalerange is True:
-
-        ax.axvline(x=combine.state['scale_range'][0],color='0',ls='--')
-        ax.axvline(x=combine.state['scale_range'][1],color='0',ls='--')        
+    ax = fig.add_subplot(1,3,3)
+    
+    ax.get_yaxis().set_ticklabels([])
+    ax.get_xaxis().set_ticklabels([])    
 
     # change all spines
     for axis in ['top','bottom','left','right']:
-        ax.spines[axis].set_linewidth(setup.plots['spine_linewidth'])
+        ax.spines[axis].set_linewidth(0)
 
+        ax.tick_params(which='minor', length=0)
+        ax.tick_params(which='major', length=0)
+
+    colors = iter(cm.rainbow(np.linspace(0, 1,
+                                        combine.state['nspectra'])))
 
         
-    #
-    # Do the SNR plot
-    #
+    for i in range(combine.state['nspectra']):
 
-        
+        c = next(colors)
 
-    ax = fig.add_subplot(212)    
-    ax.set_xlim(wavelength_range)
-    ax.set_ylim(snr_range)
-    ax.set_xlabel(combine.state['xlabel'])
-    ax.set_ylabel('Signal-to-Noise Ratio')
+        ax.step(np.nan, np.nan,c=c,
+                lw=1,label=spectra_labels[i])                
 
-    ax.xaxis.set_minor_locator(AutoMinorLocator())    
-    ax.tick_params(right=True, left=True, top=True, bottom=True,
-                    which='both', direction='in',
-                   width=setup.plots['spine_linewidth'])
-    ax.tick_params(which='minor', length=3)
-    ax.tick_params(which='major', length=5)
-    ax.yaxis.set_minor_locator(AutoMinorLocator())
-        
+         
+    leg = ax.legend(frameon=False)
 
-
-
+    for color,text in zip(colors,leg.get_texts()):
+        text.set_color(color)
     
-    axis_to_data = ax.transAxes + ax.transData.inverted()
-    data_to_axis = axis_to_data.inverted()
-
-    for i in range(combine.state['norders']):
-
-        color = iter(cm.rainbow(np.linspace(0, 1, combine.state['nspectra'])))
-        for j in range(combine.state['nspectra']):
-
-            c = next(color)
-            ax.step(wavelength[0,i,:], snr[0,i,j,:],c=c,
-                    lw=setup.plots['spectrum_linewidth'])                
-    
-        # Get the order number position
-
-        ave_wave = np.mean(wavelength_ranges[i, :])
-        xnorm = data_to_axis.transform((ave_wave, 0))[0]
-
-
-    if plot_scalerange is True:
-
-        ax.axvline(x=combine.state['scale_range'][0],color='0',ls='--')
-        ax.axvline(x=combine.state['scale_range'][1],color='0',ls='--')        
-
-    # change all spines
-    for axis in ['top','bottom','left','right']:
-        ax.spines[axis].set_linewidth(setup.plots['spine_linewidth'])
-
 
         

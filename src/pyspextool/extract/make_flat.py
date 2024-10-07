@@ -132,8 +132,8 @@ def make_flat(files:list | str,
     # Load the instrument module for the read_fits program
     #
 
-    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
-             '_dir.' + setup.state['instrument']
+    module = 'pyspextool.instruments.' + setup.state['instrument'] + \
+             '.' + setup.state['instrument']
 
     instr = importlib.import_module(module)
 

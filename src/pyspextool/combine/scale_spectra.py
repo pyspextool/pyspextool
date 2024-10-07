@@ -15,7 +15,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 
 def scale_spectra(order:int=None,
                   wavelength_range:list=None,
-                  range_fraction:int | float=0.8,
+                  wavelength_fraction:int | float=0.8,
                   verbose:bool=None,
                   qa_show:bool=None,
                   qa_showscale:float | int=None,
@@ -35,16 +35,51 @@ def scale_spectra(order:int=None,
         The wavelength range over which the scale factors are determined in
         order `order`.
 
-    range_fraction : int or float
-        If `range` is None, then range_fraction of the wavelength range
-        centered around the center of the order are used to determine the
-        scale factors.
+    wavelength_fraction : int or float
+        If `wavelength_range` is None, then wavelength_fraction of the
+        wavelength range centered around the center of the order are used to
+        determine the scale factors.
+
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+    
+    qa_show : {None, True, False}
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
+        Set to None to default to setup.state['qa_show'].
+
+    qa_write : {None, True, False}
+        Set to True to write a QA plot to disk
+        Set to False to not write a QA plot to disk.
+        Set to None to default to setup.state['qa_write'].
+    
+    qa_showblock : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+    
+    qa_showscale : float or int, default=None
+        The scale factor by which to increase or decrease the default size of
+        the plot window.  Set to None to default to setup.state['qa_scale'].    
+    
     
     Returns
     -------
     None
+        Loads data into memory
     
     """
+
+    #
+    # Check to make sure we can proceed.
+    #
+
+    if combine.state['load_done'] is False:
+
+        message = 'Previous steps complete.  Please run combine.load_spectra.'
+        raise pySpextoolError(message)
 
     #
     # Check the parameters and QA keywords
@@ -55,8 +90,21 @@ def scale_spectra(order:int=None,
     check_parameter('scale_spectra', 'wavelength_range', wavelength_range ,
                     ['list', 'NoneType'])    
 
-    check_parameter('scale_spectra', 'range_fraction', range_fraction ,
+    check_parameter('scale_spectra', 'waveleng_fraction', wavelength_fraction,
                     ['int', 'float'])
+
+    check_parameter('scale_spectra', 'verbose', verbose, ['NoneType', 'bool'])
+    
+    check_parameter('scale_spectra', 'qa_write', qa_write, ['NoneType', 'bool'])
+
+    check_parameter('scale_spectra', 'qa_show', qa_show, ['NoneType', 'bool'])
+
+    check_parameter('scale_spectra', 'qa_showscale', qa_showscale,
+                    ['int', 'float', 'NoneType'])
+
+    check_parameter('scale_spectra', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
+    
 
     qa = check_qakeywords(verbose=verbose,
                           show=qa_show,
@@ -109,7 +157,7 @@ def scale_spectra(order:int=None,
 
         median_wave = np.nanmedian(wave)
 
-        delta_wave = (max_wave-min_wave)*range_fraction/2
+        delta_wave = (max_wave-min_wave)*wavelength_fraction/2
 
         scale_range = np.array([median_wave-delta_wave,median_wave+delta_wave])
 
@@ -177,9 +225,12 @@ def scale_spectra(order:int=None,
     if qa['write'] is True:
 
         plot_allorders(setup.plots['combine_spectra'],
-                       setup.plots['portrait_size'],
+                       setup.plots['landscape_size'],
                        setup.plots['font_size'],
-                       plot_scalerange=True,
+                       setup.plots['spectrum_linewidth'],
+                       setup.plots['spine_linewidth'],                       
+                       combine.state['filenames'],
+                       scalerange=scale_range,
                        title='Scaled Spectra')
 
         
@@ -189,19 +240,28 @@ def scale_spectra(order:int=None,
 
     if qa['show'] is True:
 
-        scaled_size = (setup.plots['portrait_size'][0]*qa['showscale'],
-                       setup.plots['portrait_size'][1]*qa['showscale'])
+        scaled_size = (setup.plots['landscape_size'][0]*qa['showscale'],
+                       setup.plots['landscape_size'][1]*qa['showscale'])
 
         scaled_font = setup.plots['font_size']*qa['showscale']
         
         plot_allorders(setup.plots['combine_spectra'],
                        scaled_size,
                        scaled_font,
-                       plot_scalerange=True,
+                       setup.plots['spectrum_linewidth'],
+                       setup.plots['spine_linewidth'],                       
+                       combine.state['filenames'],                       
+                       scalerange=scale_range,
                        title='Scaled Spectra')                       
         
         pl.show(block=qa['showblock'])
         if qa['showblock'] is False: pl.pause(1)
+
+    #
+    # Set the done variable
+    #
+
+    combine.state['scale_done'] = True
     
 
         

@@ -275,7 +275,7 @@ def convert_wavelength(wavelength, input_unit, output_unit):
                 
     return twavelength
 
-def get_latex_fluxdensity(unit):
+def get_latex_fluxdensity(unit:str):
 
     """
     To return latex appropriate things
@@ -283,16 +283,22 @@ def get_latex_fluxdensity(unit):
     Parameters
     ----------
     unit : {'W m-2 um-1', 'erg s-1 cm-1 A-1', 'Jy', 'mJy', 'uJy',
-            'W m-2 Hz-1', 'erg s-1 cm-2 Hz-1'}
+            'W m-2 Hz-1', 'erg s-1 cm-2 Hz-1', 'reflectence'}
+        A str ASCII unit
 
+    
     Returns
     -------
-    str, str
-    f : str
-        Either $f_\lambda$ or $f\_nu$
-
-    u : str
+    str, str, str
+    latex_unit : str
         Latex version of the ASCII units
+
+    latex_flux : str
+        Either $f_\lambda$ or $f\_nu$ and (`latex_unit`)
+
+    latex_unc : str
+        Either $\sigma$ and (`latex_unit`)
+    
         
     """
 
@@ -345,7 +351,7 @@ def get_latex_fluxdensity(unit):
     
     z = units == unit
     
-    return lunits[z][0], ftype[z][0]+lunits[z][0]
+    return lunits[z][0], ftype[z][0]+lunits[z][0], '$\sigma$'+lunits[z][0] 
     
 
 
