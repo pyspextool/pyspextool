@@ -258,6 +258,7 @@ def make_wavecal(arc_files:str | list,
                            np.full((1),1),
                            progressbar=qa['verbose'])
 
+
     #
     # Find the pixel offset between these spectra and the disk spectra
     #
@@ -274,7 +275,7 @@ def make_wavecal(arc_files:str | list,
 
     xsource = np.squeeze(spectra[z][0, :])
     fsource = np.squeeze(spectra[z][1, :])
-    
+
     if qa['write'] is True:
 
             filename = extract.load['wavecal']['output_filename'] + \
@@ -601,8 +602,8 @@ def make_arcsky_image(arc_files:str | list,
     #
     # Now deal with the potential sky frames
     #
-
-    if wavecalinfo['skyorders']:
+    
+    if len(wavecalinfo['skyorders']) !=0:
 
         logging.info(' Creating the sky image.')
         

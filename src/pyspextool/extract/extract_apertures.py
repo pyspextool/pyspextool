@@ -460,6 +460,7 @@ def extract_apertures(fix_badpixels:bool=True,
                          plot_number=setup.plots['abeam_spectra'],
                          figure_size=figure_size,
                          font_size=font_size,
+                         title=osbasename(abeam_fullpath),
                          showblock=a_showblock)
             
         if bbeam_fullpath is not None:
@@ -468,6 +469,7 @@ def extract_apertures(fix_badpixels:bool=True,
                          plot_number=setup.plots['bbeam_spectra'],
                          figure_size=figure_size,
                          font_size=font_size,
+                         title=osbasename(abeam_fullpath),
                          showblock=b_showblock)                         
                     
     if qa['write'] is True:
@@ -482,7 +484,8 @@ def extract_apertures(fix_badpixels:bool=True,
                          figure_size=setup.plots['landscape_size'],
                          font_size=setup.plots['font_size'],
                          spectrum_linewidth=setup.plots['spectrum_linewidth'],
-                         spine_linewidth=setup.plots['spectrum_linewidth'],   
+                         spine_linewidth=setup.plots['spectrum_linewidth'],
+                         title=osbasename(abeam_fullpath),
                          output_fullpath=fullpath)
             
         if bbeam_fullpath is not None:
@@ -495,7 +498,8 @@ def extract_apertures(fix_badpixels:bool=True,
                          figure_size=setup.plots['landscape_size'],
                          font_size=setup.plots['font_size'],
                          spectrum_linewidth=setup.plots['spectrum_linewidth'],
-                         spine_linewidth=setup.plots['spectrum_linewidth'],   
+                         spine_linewidth=setup.plots['spectrum_linewidth'],
+                         title=osbasename(abeam_fullpath),
                          output_fullpath=fullpath)    
 
     #

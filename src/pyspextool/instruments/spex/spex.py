@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from astropy.io import fits
 from astropy.time import Time
 import re
@@ -7,15 +8,18 @@ import os
 from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
-from pyspextool.io.fitsheader import get_header_info
-from pyspextool.io.fitsheader import average_header_info
+from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
 
 
-def correct_linearity(image, itime, slowcnts, ndr, coefficients):
+def correct_linearity(image:npt.ArrayLike,
+                      itime:int | float,
+                      slowcnts:int | float,
+                      ndr:int,
+                      coefficients:npt.ArrayLike):
 
     """
     Correct for non-linearity in SpeX images.
@@ -26,7 +30,7 @@ def correct_linearity(image, itime, slowcnts, ndr, coefficients):
         (nrows, ncols) image in DN (raw/DIVISOR).
 
     itime : int or float
-        The integration time
+        The integration time (sec)
 
     slowcnts : int or float
         The slowcnt value
@@ -35,11 +39,11 @@ def correct_linearity(image, itime, slowcnts, ndr, coefficients):
         The number of none destructive reads
 
     coefficients : ndarray
-        A (nrows, ncols, ncoefficients) array of linearity coefficients.
+        An (nrows, ncols, ncoefficients) array of linearity coefficients.
 
     Returns
     -------
-    A (nrows, ncols) linearity corrected image.
+    An (nrows, ncols) linearity corrected image.
 
     Notes
     -----
@@ -50,6 +54,20 @@ def correct_linearity(image, itime, slowcnts, ndr, coefficients):
 
     """
 
+    #
+    # Check parameters
+    #
+    
+    check_parameter('correct_linearity', 'image', image, 'ndarray')
+
+    check_parameter('correct_linearity', 'itime', itime, ['int','float'])
+
+    check_parameter('correct_linearity', 'slowcnts', slowcnts, ['int','float'])
+
+    check_parameter('correct_linearity', 'ndr', ndr, 'int')
+
+    check_parameter('correct_linearity', 'coeffiients', coefficients, 'ndarray')
+            
     # Store possible values of of slowcnts and corresponding array read times.
     
     slowcnts_possible = np.array([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
@@ -127,7 +145,8 @@ def correct_linearity(image, itime, slowcnts, ndr, coefficients):
 
 
         
-def get_header(header, keywords=None):
+def get_header(header,
+               keywords=None):
 
     """
     To get header values from the FITS file.
@@ -162,11 +181,11 @@ def get_header(header, keywords=None):
     
     if keywords:
 
-        hdrinfo = get_header_info(header, keywords=keywords)
+        hdrinfo = get_headerinfo(header, keywords=keywords)
 
     else:
 
-        hdrinfo = get_header_info(header)
+        hdrinfo = get_headerinfo(header)
     
     #
     # Now create the required Spextool keywords
@@ -247,7 +266,10 @@ def get_header(header, keywords=None):
 
 
 
-def load_data(file, linearity_info, keywords=None, linearity_coefficients=None):
+def load_data(file,
+              linearity_info,
+              keywords=None,
+              linearity_coefficients=None):
 
     
     """
@@ -371,8 +393,14 @@ def load_data(file, linearity_info, keywords=None, linearity_coefficients=None):
 
 
 
-def read_fits(files, linearity_info, keywords=None, pair_subtract=False,
-              rotate=0, linearity_correction=True, verbose=False):
+def read_fits(files,
+              linearity_info,
+              keywords=None,
+              pair_subtract=False,
+              rotate=0,
+              linearity_correction=True,
+              verbose=False,
+              extra=None):
 
     """
     To read a SpeX FITS image file.

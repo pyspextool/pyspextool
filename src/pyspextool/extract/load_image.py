@@ -533,7 +533,7 @@ def load_image(files:str | list,
         
     else:
 
-        logging.info(' Mmage not flat field.')
+        logging.info(' Image not flat field.')
         extract.state['flat_fielded'] = False        
         flag_mask = linearity_mask
               

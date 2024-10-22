@@ -223,11 +223,6 @@ def trim_nan(arr, flag=0, trim=False):
     > nantrim(x,flag=3,trim=True)
       [ 2.  3.  4.  7. 89. 90.]
 
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_nantrim.pro.
-
     """
 
     # Test for correct flags

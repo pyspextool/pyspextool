@@ -482,6 +482,7 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
     xsource = xsource[zsource]
     ysource = ysource[zsource]
 
+
     #
     # Savitzky-Golay the results to protect against bad pixels
     #
@@ -496,11 +497,26 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
         sgyanchor = yanchor
         sgysource = ysource
 
+    #
+    # Check for NaNs
+    #
+
+    z = np.isnan(sgyanchor)
+    if np.sum(z) != 0:
+
+        sgyanchor[z] = 0
+
+    z = np.isnan(sgysource)
+    if np.sum(z) != 0:
+
+        sgysource[z] = 0
+               
     #     
     # Run the cross correlation
     #
     
     xcor = correlate(sgysource, sgyanchor, mode='same', method='fft')
+    
     xcor = xcor / np.nanmax(xcor)
 
     lag = correlation_lags(ndat, ndat, mode='same')
@@ -533,7 +549,7 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
     fitxcor = xcor[maxidx - halfwin:maxidx + halfwin]
 
     # Do the fit
-
+    
     r = fit_peak1d(fitlag, fitxcor, nparms=4, positive=True)
     offset = r['parms'][1]
 

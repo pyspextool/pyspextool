@@ -364,10 +364,10 @@ def poly_1d(x:int | float | npt.ArrayLike,
         An (ndat, ) array of independent values
 
     coeffs : ndarray
-        An (ndat,) array of coefficients from polyfit_1d
+        An (ncoeffs,) array of coefficients from polyfit_1d
 
     covar : ndarray, default None
-        An (ncoefs, ncoeffs) covariance array.
+        An (ncoeffs, ncoeffs) covariance array.
 
     Returns
     -------

@@ -347,26 +347,41 @@ def extract_1dxd(image:npt.ArrayLike,
                 # Fit the background
 
                 z_background = (aperture_mask == -1)
-                result = polyfit_1d(slit_arc[z_background],
-                                    slit_img[z_background],
-                                    bg_fitdegree,
-                                    robust={'thresh': 4, 'eps': 0.1},
-                                    silent=True)
+
+                if bg_fitdegree == 0:
+
+                    result = moments(slit_img[z_background],
+                                     robust=4,
+                                     silent=True)
+                    slit_bg = np.full_like(slit_img, result['mean'])
+
+                    slit_bgvar = np.full_like(slit_bg, result['stderr']**2)
+
+                else:
+
+                    result = polyfit_1d(slit_arc[z_background],
+                                        slit_img[z_background],
+                                        bg_fitdegree,
+                                        robust={'thresh': 4, 'eps': 0.1},
+                                        silent=True)
+
+#                    print(xmin+j)
+#                    print(result['coeffs'])
+#                    print(result['coeffs_covar'])
                 
-                # Generate a background slit 
-                print(xmin+j)
-                print(result['coeffs_covar'])
-                slit_bg, slit_bg_var = poly_1d(slit_arc, result['coeffs'],
-                                               covar=result['coeffs_covar'],
-                                               talk=False)
+                    # Generate a background slit 
+
+                    slit_bg, slit_bgvar = poly_1d(slit_arc, result['coeffs'],
+                                                   covar=result['coeffs_covar'],
+                                                   talk=False)
 
                 # Subtract the background and propagate the uncertainties
 
                 slit_img -= slit_bg
-                slit_var += slit_bg_var
+                slit_var += slit_bgvar
 
 #                print(slit_bg_var)
-                print(' ')
+#                print(' ')
                 
             #
             # Scale the profile to the data
