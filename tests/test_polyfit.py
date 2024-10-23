@@ -1,4 +1,4 @@
-from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.fit.polyfit import polyfit_1d
 import numpy as np
 # import matplotlib.pyplot as pl
 
