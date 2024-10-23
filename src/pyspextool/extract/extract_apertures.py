@@ -187,7 +187,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
     message = ' Optimal ' if optimal_extraction is True else ' Sum '
     
-    message = message+(' extracting '+str(naps)+' apertures in '+ \
+    message = message+('extracting '+str(naps)+' apertures in '+ \
                        str(norders)+' orders')
 
     if extract.state['bg_annulus'] is not None or \

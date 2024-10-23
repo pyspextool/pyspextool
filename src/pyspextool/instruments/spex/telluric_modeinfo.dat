@@ -15,5 +15,7 @@
 # Instrument Mode  | Method        | Vega Model  | Order  | Normalization Ranges  | Poly Deg  | Fit Type   |RV N_FWHM   | Deconvolution N_FWHM |
 #===============================================================================================================================================
 ShortXD            | deconvolution | 50000       | 6      | 0.975 1.04            | 6         | lorentzian | 6          | 4                    |
-LowRes15           | ip            | 5000        | 1      | 2.12  2.2             | 1         | lorentzian | 6          |                      |
-
+LowRes15           | ip            | 5000        |        |                       |           |            |            |                      |
+LongXD1.9          | ip            | 50000       |        |                       |           |            |            |                      |
+LongXD2.1          | ip            | 50000       |        |                       |           |            |            |                      |
+LongXD2.3          | ip            | 50000       |        |                       |           |            |            |                      |

@@ -255,7 +255,6 @@ def telluric(object_file:str,
                   qa_show=qa['show'],
                   qa_showscale=qa['showscale'],
                   qa_showblock=qa['showblock'],
-                  qa_write=qa['write'],
-                  overwrite=True)
+                  qa_write=qa['write'])
     
     

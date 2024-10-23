@@ -14,8 +14,7 @@ def write_spectra(write_model_spectra:bool=False,
                   qa_show:bool=None,
                   qa_showscale:float |int =None,
                   qa_showblock:bool=None,
-                  qa_write:bool=None,
-                  overwrite:bool=True):
+                  qa_write:bool=None):
 
     """
     Write telluric-corrected spectra in pySpextool FITS files to disk.
@@ -57,11 +56,6 @@ def write_spectra(write_model_spectra:bool=False,
         The scale factor by which to increase or decrease the default size of
         the plot window which is (9,6).  This does affect plots written to disk.
         Set to None to default to setup.state['qa_scale'].
-
-    overwrite : {True, False, None}
-        Set to True to overwrite FITS file on disk.
-        Set to False to not overwrite FITS file on disk.
-        Set to None to default to setup.state['overwrite'].
         
     Returns
     -------
@@ -91,8 +85,6 @@ def write_spectra(write_model_spectra:bool=False,
                     ['NoneType','bool'])
         
     check_parameter('write_spectra', 'qa_write', qa_write, ['NoneType','bool'])
-
-    check_parameter('write_spectra', 'overwrite', overwrite, 'bool')    
 
     qa = check_qakeywords(verbose=verbose,
                           show=qa_show,

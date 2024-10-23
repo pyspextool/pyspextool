@@ -162,6 +162,7 @@ def make_flat(files:list | str,
     
     mode = hdr[0]['MODE'][0]
     modefile = join(setup.state['instrument_path'], mode + '_flatinfo.fits')
+
     modeinfo = read_flatcal_file(modefile)
 
     # Load the FITS files into memory

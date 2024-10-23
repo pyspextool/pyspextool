@@ -425,7 +425,7 @@ def make_wavecal(arc_files:str | list,
                     'ngood': wavecalinfo['ngood'],
                     'nbad': wavecalinfo['nbad']}
 
-        stored_solution_offset = offset
+        stored_solution_offset = -offset
             
     #
     # Creating rectification indices
@@ -541,6 +541,7 @@ def make_arcsky_image(arc_files:str | list,
 
     wavecalfile = join(setup.state['instrument_path'],
                        flatinfo['mode'] + '_wavecalinfo.fits')
+
     wavecalinfo = read_wavecal_file(wavecalfile)
 
     #
@@ -627,7 +628,7 @@ def make_arcsky_image(arc_files:str | list,
             sky = skys
 
         # Mix the orders
-        
+
         wavecal_image = mix_orders(arc,
                                    sky,
                                    flatinfo['ordermask'],

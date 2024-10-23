@@ -362,6 +362,7 @@ def extract_1dxd(image:npt.ArrayLike,
                     result = polyfit_1d(slit_arc[z_background],
                                         slit_img[z_background],
                                         bg_fitdegree,
+                                        yunc=np.sqrt(slit_var[z_background]),
                                         robust={'thresh': 4, 'eps': 0.1},
                                         silent=True)
 
@@ -380,7 +381,7 @@ def extract_1dxd(image:npt.ArrayLike,
                 slit_img -= slit_bg
                 slit_var += slit_bgvar
 
-#                print(slit_bg_var)
+#                print(slit_bgvar)
 #                print(' ')
                 
             #
