@@ -4,6 +4,7 @@
 name: Python package
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
   pull_request:
@@ -16,24 +17,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11","3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         lfs: true
         submodules: true
     - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE" 
+
     - name: Create LFS file list # relevant issue https://github.com/actions/checkout/issues/165#issuecomment-1639209867_
       run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+
     - name: LFS Cache
-      uses: actions/cache@v3
+      uses: actions/cache/restore@v4
       with:
         path: .git/lfs/objects
         key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-        restore-keys: |
-          ${{ runner.os }}-lfs-
+    
     - name: Git LFS Pull
       run: git lfs pull
     - name: Set up Python ${{ matrix.python-version }}
