@@ -225,7 +225,7 @@ def load_data():
     
     """
 
-    logging.info(f" Loading the spectra.")
+    logging.info("Loading the spectra.")
             
     # Object first
     

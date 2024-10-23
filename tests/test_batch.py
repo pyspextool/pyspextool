@@ -19,7 +19,6 @@ from pyspextool.batch.batch import (
 
 
 basefold = "tests/test_data/"
-
 rawfold = os.path.join(basefold, "raw/")
 procfold = os.path.join(basefold, "processed/")
 test_instruments = ["spex-prism", "spex-SXD","uspex-prism", "uspex-SXD"]
@@ -109,9 +108,9 @@ def test_writeReadDriver():
 # 	 pass
 
 
-@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
+#@pytest.mark.skip(reason='issues with organization of prism data currently prevent this test')
 def test_batchReduce_spex_prism():
-	base_folder = "./tests/test_data/spex-prism/"
+	base_folder = os.path.abspath('tests/test_data/raw/spex-prism/')
 
 	# first, make sure proc and cal folders _do not have_ FITS files
 	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
@@ -123,8 +122,8 @@ def test_batchReduce_spex_prism():
 
 	# generate driver file
 	driver_file = os.path.join(base_folder, "proc/driver_test.txt")
-	# dp = processFolder(os.path.join(base_folder, "data"),verbose=False)
-	# writeDriver(dp,driver_file,data_folder=os.path.join(base_folder, "data"),check=False,create_folders=False,verbose=False)
+	dp = processFolder(os.path.join(base_folder, "data"),verbose=False)
+	writeDriver(dp,driver_file,data_folder=os.path.join(base_folder, "data"),check=False,create_folders=False,verbose=False)
 
 	par = readDriver(driver_file)
 	batchReduce(par,verbose=True)
@@ -133,9 +132,9 @@ def test_batchReduce_spex_prism():
 	proc_fits_files = glob.glob(os.path.join(base_folder, "proc/*.fits"))
 	cal_fits_files = glob.glob(os.path.join(base_folder, "cals/*.fits"))
 	qa_pdf_files = glob.glob(os.path.join(base_folder, "qa/*.pdf"))
-	assert len(proc_fits_files) == 17
+	assert len(proc_fits_files) == 19
 	assert len(cal_fits_files) == 2
-	assert len(qa_pdf_files) == 55
+	assert len(qa_pdf_files) == 48
 
 	# CLEANUP
 	# remove generated files

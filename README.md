@@ -8,48 +8,44 @@ Python code to reduce data obtained with the SpeX spectrograph.
     ```
     git clone https://github.com/pyspextool/pyspextool.git
     ```
-3) navigate into the `pyspextool` directory
+
+3) Navigate into the `pyspextool/` directory
    ```
    cd pyspextool/
    ```
 
-4) Make a `pyspextool` conda environment and install necessary dependencies
+4) Make a `pyspextool_3.11` conda environment and install necessary dependencies, including Python 3.11.
    ```
    conda env create -f environment.yml
    ```
+
 5) Activate the new environment
    ```
-   conda activate pyspextool
+   conda activate pyspextool_3.11
    ```
-6) Install the package
+6) Install the `pyspextool` package
    ```
    pip install -e ./
    ```
 
-<!--  This should be done by the conda environment
-1) [Install git-lfs](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) 
-The calibration files stored in the `data/` and `instruments/` directories
-are stored using [Github Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files). Git-lfs must be installed before using this package.
--->
+7) Optional - Install other Python packages
+
+   If you want to use Jupyter notebooks or other Python tools with `pyspextool`, you need to install them in the new environment. For example:
+   ```
+   pip install jupyterlab
+   ```
 
 
-<!---
-3) Install the package
+## Developer Instructions
 
-#   **For Users**
-    ```
-    pip install pyspextool@git+https://github.com/pyspextool/pyspextool.git
-    ```
+If you plan to contribute code to `pyspextool`, you'll need `pytest` and the test data in order to run the tests.
 
-    **For Developers**
-    * clone the repository to your local computer
-    ```
-    git clone https://github.com/pyspextool/pyspextool.git
-    ```
-    * navigate into the `pyspextool` directory and install with pip/setuptools
-    
-    ```
-    cd pyspextool
-    pip install -e ./
-    ```
-    -->
+8) Install pytest
+   ```
+   pip install pytest
+   ```
+
+9) Setup and download the `test_data/` submodule
+   ```
+   git submodule update --init --recursive 
+   ```

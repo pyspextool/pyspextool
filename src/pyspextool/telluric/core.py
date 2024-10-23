@@ -21,6 +21,7 @@ from pyspextool.plot.limits import get_spectra_range
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.utils.interpolate import linear_bitmask_interp1d
 from pyspextool.utils.math import combine_flag_stack
+from pyspextool.pyspextoolerror import pySpextoolError
 
 def correct_spectrum(object_wavelength:npt.ArrayLike,
                      object_intensity:npt.ArrayLike,
@@ -916,6 +917,11 @@ def measure_linerv(data_wavelength:npt.ArrayLike,
     if ndata > nmodel:
 
         message = 'Data has a higher sampling frequency than the model.'
+        raise pySpextoolError(message)
+
+    if ndata == 0:
+
+        message = 'The wavelength array is empty.'
         raise pySpextoolError(message)
 
     #
