@@ -11,6 +11,7 @@ from pyspextool.utils.add_entry import add_entry
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.arrays import idl_unrotate
 from pyspextool.utils.math import moments
+from pyspextool.utils.loop_progress import loop_progress
 
 from pyspextool.fit.polyfit import polyfit_1d, poly_1d
 from pyspextool.io.check import check_parameter
@@ -633,7 +634,7 @@ def normalize_flat(img:npt.ArrayLike,
 
     
         if verbose:
-            loop_progress(i, 0, norders, message='Normalizing the flat...')
+            loop_progress(i, 0, norders, message='Normalizing the flat.')
 
     return nimg, nvar, rms
 
