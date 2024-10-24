@@ -53,7 +53,7 @@ def check_path(path:str,
     if result is False:
 
         message = f'The path {path} does not exist. '\
-            'The current working directory is {cwd}'
+            f'The current working directory is {cwd}'
         raise pySpextoolError(message)
 
     else:

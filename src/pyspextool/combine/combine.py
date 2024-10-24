@@ -1,7 +1,5 @@
 import logging
 
-from pyspextool import config as setup
-from pyspextool.combine import config as combine
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.combine.load_spectra import load_spectra
 from pyspextool.combine.scale_spectra import scale_spectra as scale_them
