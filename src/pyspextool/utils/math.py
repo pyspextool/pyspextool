@@ -1,54 +1,61 @@
 import numpy as np
+import numpy.typing as npt
 import warnings
 from scipy.stats import describe
 
 from pyspextool.io.check import check_parameter
 
-def bit_set(array, bits):
+def bit_set(array:npt.ArrayLike,
+            bits:int | list | npt.ArrayLike):
 
     """
     To determine if the given bits are set in an array.
 
     Parameters
     ----------
-    array : numpy.ndarray
+    array : ndarray
         numpy array to search
 
-    bits : int, list, numpy.ndarray
-        bit values to search in `array`
+    bits : int, list, ndarray
+        bit values to search in `array`.
+
+        bit=0 -> the first bit
+        bit=1 -> the second bit
 
     Returns
     --------
-    numpy.ndarray
+    ndarray
         Returns a byte array of the same size as `array`.  An element
         is set if any of the bits requested are set in the same element
         of `array`.
 
-    Procedure
-    ---------
-    Uses the Gumley IDL ishft technique.  Note that the "first" bit 
-    is denoted as zero, while the "second" bit is denoted as 1.
-
-
     Example
-    --------
+    -------
 
     > import numpy as np
-    > bitset(np.array([3,4,1]),0)
+    > bit_set(np.array([3,4,1]),0)
 
     [1, 0, 1]
 
     > import numpy as np
-    > bitset(np.array([3,4,1]),[0,3])
+    > bit_set(np.array([3,4,1]),[0,3])
 
     [1, 0, 1]
 
     > import numpy as np
-    > bitset(np.array([3,4,1]),[2,3])
+    > bit_set(np.array([3,4,1]),[2,3])
 
     [0, 1, 0]
 
     """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('bit_set', 'array', array, 'ndarray')
+
+    check_parameter('bit_set', 'bits', bits, ['int', 'list', 'ndarray'])    
 
     #  Define empty mask
 
@@ -64,51 +71,43 @@ def bit_set(array, bits):
 
         bits = [bits]
 
-        #  Loop over every bit requested and identify those pixels for
+    #  Loop over every bit requested and identify those pixels for
     #  which that bit is set.
 
     for val in bits:
-#        print('test1', (array >> val).dtype)
+
         tmp = (array >> val) & 1
-#        print('test2', ((array >> val) & 1).dtype)
-#        print('test2a', (tmp.dtype))
-#        print('test2b', mask.dtype)
-#        print('test2c', np.sum(mask), np.sum(tmp))
         mask = (mask | tmp)
-#        print('test3', mask.dtype)
 
     return mask
 
 
 
-def combine_flag_stack(stack, nbits=8):
+def combine_flag_stack(stack:npt.ArrayLike,
+                       nbits:int=8):
 
     """
     To combine bit-set flag arrays.
 
     Parameters
     ----------
-    stack : numpy.ndarray
+    stack : ndarray
         The stack of bit-set flag arrays to combine.  The stack
         can either be a stack of spectra [nspec,ndat] or a stack
         of images [nimg,nx,ny].
 
-    nbits : int, optional
+    nbits : int, default=8
         The number of bits that can potentially be set.  This
         routine assumes the bits are set sequentially, starting
         with the zeroth bit.  So if nbits is 2, then it will
         check the 0th and 1st bit.  The default is to check all
         eight bits
 
-    Output Parameters
-    ------------------
-    numpy.ndarray
+    Returns
+    -------
+    ndarray
         A bit-set flag array that reflects the bit-set flags from all
         the spectra or images.
-
-    Procedure
-    ---------
-    Just some basic math.
 
     Example
     -------
@@ -126,13 +125,21 @@ def combine_flag_stack(stack, nbits=8):
     > img1 = np.array([[0,2,0],[3,0,4],[0,0,0]])
     > img2 = np.array([[1,0,0],[1,0,0],[0,0,0]])
     > stack = np.stack((img1,img2))
-    > combflagstack(stack)
+    > combine_flag_stack(stack)
 
     [[1 2 0]
      [3 0 4]
      [0 0 0]]
 
     """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('combine_flag_stack', 'stack', stack, 'ndarray')
+
+    check_parameter('combine_flag_stack', 'nbits', nbits, 'int')    
 
     # Determine whether this is a spectral stack or image stack
 
@@ -146,8 +153,9 @@ def combine_flag_stack(stack, nbits=8):
         comb = np.zeros(shape[1], dtype=np.uint8)
 
     if ndim == 3:
-        comb = np.zeros(shape[1:2], dtype=np.uint8)
+        comb = np.zeros(shape[1:3], dtype=np.uint8)
 
+        
     # Now just loop over each bit requested.
 
     for i in range(0, nbits):
@@ -166,7 +174,7 @@ def combine_flag_stack(stack, nbits=8):
 
         #  Set them to the proper bit value and add to the comb
 
-        comb = comb + mask * 2 ** i
+        comb +=  np.multiply(mask,(2 ** i), dtype='uint8')
 
     return comb
 
@@ -296,7 +304,11 @@ def find_outliers(data, thresh, leave_nans=True, silent=False):
 
 
     
-def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
+def mean_data_stack(data,
+                    weights=None,
+                    goodbad=None,
+                    robust=None,
+                    stderr=True):
 
     '''
     (Robustly) Compute the mean of a spectral or image stack with optional mask
@@ -473,7 +485,9 @@ def mean_data_stack(data, weights=None, goodbad=None, robust=None, stderr=True):
     
 
 
-def median_data_stack(data, mask=None, stderr=True):
+def median_data_stack(data,
+                      mask=None,
+                      stderr=True):
 
     """
     Median a spectral or image stack with optional mask
@@ -650,16 +664,20 @@ def median_data_stack(data, mask=None, stderr=True):
     return (med, unc)
 
 
-def moments(data, goodbad=False, robust=None, silent=True):
+def moments(data:npt.ArrayLike,
+            goodbad:npt.ArrayLike=False,
+            robust:int | float=None,
+            silent:bool=True):
 
     """
-    (Robustly) computes various statistics
+    (Robustly) computes basic statistics
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data : numpy
+        An array of numbers.
 
-    goodbad : numpy.ndarray, optional
+    goodbad : numpy, optional
         An array with the same shape as `data` that identifies good and
         bad data points.  0=bad, 1=good, 2=NaN
 
@@ -810,12 +828,12 @@ def round(x):
 
     Parameters
     ----------
-    x : numpy.ndarray
+    x : ndarray
 
 
     Returns
     --------
-    numpy.ndarray like `x`
+    ndarray like `x`
         The numbers are rounded to the nearest integer, and tied away \
         from zero.
 
@@ -841,7 +859,10 @@ def round(x):
 
 
 
-def scale_data_stack(stack, var, mask=None, index=None):
+def scale_data_stack(stack:npt.ArrayLike,
+                     var:npt.ArrayLike,
+                     mask:npt.ArrayLike=None,
+                     index=None):
 
     """
     Scales a stack of spectra or images to a common intensity level.
@@ -859,19 +880,20 @@ def scale_data_stack(stack, var, mask=None, index=None):
         A mask array with the same shape as `stack`.  0 = bad, 1=good.
         
     index : int, optional
-        A mask array with the same shape as `stack`.  0 = bad, 1=good.
+        The index into the first dimension of `stack` giving the
+        spectrum/image that the rest of the spectra/images should be scaled to.
 
     Returns
     --------
-    sstack : numpy.ndarray
+    sstack : ndarray
         An (nspec, nwave) or (nimgs, nrows, ncols) array of the scaled stack.
 
-    svar : numpy.ndarray or None
+    svar : ndarray or None
         An (nspec, nwave) or (nimgs, nrows, ncols) array of the scaled 
         variance, if `var` is not None.
 
-    scales : numpy.ndarray
-        An (nspec,) array of scale factors.
+    scales : ndarray
+        An (nspec, ) array of scale factors.
 
     Notes
     -----
@@ -969,7 +991,6 @@ def scale_data_stack(stack, var, mask=None, index=None):
     check_parameter('scale_data_stack', 'var', mask, ['ndarray', 'NoneType'])
 
     check_parameter('scale_data_stack', 'index', index, ['int', 'NoneType'])            
-
     
     # Get array dimensions
 

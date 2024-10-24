@@ -1,9 +1,10 @@
-import os
+from os.path import join, basename
 
 from pyspextool.io.check import check_file
 from pyspextool.io.check import check_parameter
 
-def extract_filestring(string, method):
+def extract_filestring(string:str,
+                       method:str):
 
     """
     Extracts the indices or filenames from a comma-separated string.
@@ -11,14 +12,14 @@ def extract_filestring(string, method):
     Parameters
     ----------
     string : str
-        a comma separated string of either file names or file index numbers.
+        A comma separated string of either file names or file index numbers.
 
     method : {'index', 'filename'}
         'index' if the values passed are index values and 'filename' if the 
-        values passed our file names
+        values passed are full file names, e.g. 
 
     Returns
-    --------
+    -------
     list
         `method`='index'
          A list of integers giving the individual file numbers
@@ -26,8 +27,8 @@ def extract_filestring(string, method):
         `method`='filename'
          A list of strings giving the individual file names
 
-    Procedure
-    ---------
+    Notes
+    -----
     `method` = 'index'
     1.  separate into groups based on the comma.
     2.  loop over each group, and separate based on dash.
@@ -51,6 +52,7 @@ def extract_filestring(string, method):
     #
     # Check parameters
     #
+
     check_parameter('extract_filestring', 'string',  string, 'str')
 
     check_parameter('extract_filestring', 'method',  method, 'str')    
@@ -99,7 +101,10 @@ def extract_filestring(string, method):
         raise ValueError(message)
 
 
-def make_full_path(dir, files, indexinfo=None, exist=False):
+def make_full_path(dir:str,
+                   files:list | str,
+                   indexinfo:dict=None,
+                   exist:bool=True):
     
     """
     Constructs fullpath strings for files.
@@ -109,7 +114,7 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
     dir : str
         the directory where the files are located
 
-    files : list, str, int 
+    files : list, str
         a list of strings that either contain the index numbers of the 
         files or the file names
 
@@ -127,13 +132,14 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
             the suffix of the file.
 
     exist : {False, True}, optional
-        set to test whether the file exists
-
+        Set to True to test whether the file exists.
+        Set to False to NOT test whether the file exists.
+        Choices in brackets, default first when optional.
+    
     Returns
     --------
     list or str
         A list of strings giving the fullpath of the `files` if `files` is list
-
         A str giving the fullpath of `files` if `files` is a string
 
     Examples
@@ -141,8 +147,8 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
     > files = '1-5'
     > dir = '../../uSpeXdata/raw/'
-    > mkfullpath(dir,files,indexinfo={'nint':5,'prefix':'spc-',
-                 'suffix':'.[ab].fits'})
+    > mk_full_path(dir,files,indexinfo={'nint':5,'prefix':'spc-',
+                   'suffix':'.[ab].fits'})
 
     ['../../uSpeXdata/raw/spc-00001.a.fits', 
      '../../uSpeXdata/raw/spc-00002.b.fits', 
@@ -158,7 +164,7 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
     check_parameter('make_full_path', 'dir', dir, 'str')
 
-    check_parameter('make_full_path', 'files', files, ['list', 'str', 'int'])
+    check_parameter('make_full_path', 'files', files, ['list', 'str'])
 
     check_parameter('make_full_path', 'indexinfo', indexinfo,
                     ['NoneType','dict'])
@@ -195,7 +201,7 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
                 # Now create the file names
 
-        output = [os.path.join(dir,indexinfo['prefix'] +
+        output = [join(dir,indexinfo['prefix'] +
                   str(root).zfill(indexinfo['nint']) +
                   indexinfo['suffix']+indexinfo['extension'])
                   for root in files]
@@ -204,16 +210,113 @@ def make_full_path(dir, files, indexinfo=None, exist=False):
 
         if isinstance(files, str):
 
-            output = os.path.join(dir,files)
+            output = join(dir,files)
 
         else:
         
-            output = [os.path.join(dir,root) for root in files]
+            output = [join(dir,root) for root in files]
 
         #  Now let's check to see if the file actually exists
 
     if exist is True:
         test = check_file(output)
 
-    return output    
+    return output
+
+
+def files_to_fullpath(path:str,
+                      files:list | str,
+                      nint:int,
+                      suffix:str,
+                      extension:str,
+                      exist:bool=True):
+
+    """
+    Takes pySpextool user inputs and create full paths.
+
+    Parameters
+    ----------
+    path : str
+        The path to the files.
+
+    files : str or list
+    
+        If type is str, then a comma-separated string of full file names, 
+        e.g. 'spc-00001.a.fits, spc-00002.b.fits'.
+
+        If type is list, then a two-element list where
+        files[0] is a str giving the perfix, files[1] is a str giving the 
+        index numbers of the files, e.g. ['spc', '1-2,5-10,13,14'].
+
+    nint : int
+        The number of integers to use for indexed files, e.g. 5 -> 00001.
+
+    suffix : str
+        The file suffix.
+
+    extension : str
+        The file extension, e.g. '.fits'
+
+    exist : {True, False}, optional
+        Set to True to test whether the file exists.
+        Set to False to not test whether the file exists.    
+        Choices in brackets, default first when optional.
+    
+    Returns
+    -------
+    list or str
+    
+
+    """
+
+
+    #
+    # Check the input parmameters
+    #
+
+    check_parameter('files_to_fullpath', 'path', path, 'str')
+
+    check_parameter('files_to_fullpath', 'files', files, ['str','list'],
+                    list_types=['str','str'])
+
+    check_parameter('files_to_fullpath', 'nint', nint, 'int')
+
+    check_parameter('files_to_fullpath', 'suffix', suffix, 'str')
+
+    check_parameter('files_to_fullpath', 'extension', extension, 'str')
+
+    check_parameter('files_to_fullpath', 'exist', exist, 'bool')    
+
+    #
+    # Figure out whether you are in FILENAME mode or INDEX mode
+    #
+
+    if isinstance(files, str):
+
+        # You are in FILENAME mode
+
+        files = files.replace(" ", "").split(',')
+        fullpaths = make_full_path(path, files, exist=exist)
+
+        readmode = 'filename'
+        
+    else:
+
+        # You are in INDEX mode
+
+        prefix = files[0]
+        nums = files[1]
+
+        indexinfo={'nint': nint, 'prefix': prefix,
+                   'suffix': suffix, 'extension': extension}
+                              
+        
+        fullpaths = make_full_path(path, nums, indexinfo=indexinfo,exist=exist)
+
+        readmode = 'index'
+        
+    filenames = [basename(x) for x in fullpaths]
+
+               
+    return fullpaths, readmode, filenames
     

@@ -8,12 +8,12 @@ import astropy.units as u
 from astroquery.simbad import Simbad
 
 from pyspextool import config as setup
-from pyspextool.telluric import config as telluric
-from pyspextool.io.check import check_parameter, check_keywords
+from pyspextool.telluric import config as tc
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import make_full_path
-from pyspextool.io.fitsheader import get_header_info
+from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.io.read_spectra_fits import read_spectra_fits
-from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
@@ -76,21 +76,21 @@ def load_spectra(object_file:str,
     None
     Loads data into memory:
 
-        telluric.load['object_file']
-        telluric.load['standard_file']
-        telluric.load['standard_info']
-        telluric.load['output_filename']
-        telluric.load['reflectance']
-        telluric.state['ew_scale']
-        telluric.state['standard_rv']
-        telluric.state['standard_redshift']
-        telluric.state['1+z']
-        telluric.state['rms_deviation']
-        telluric.state['max_deviation']
-        telluric.state['load_done']
-        telluric.state['prepare_done']
-        telluric.state['rv_done']
-        telluric.state['kernel_done']
+        tc.state['object_file']
+        tc.state['standard_file']
+        tc.state['standard_info']
+        tc.state['output_filename']
+        tc.state['reflectance']
+        tc.state['ew_scale']
+        tc.state['standard_rv']
+        tc.state['standard_redshift']
+        tc.state['1+z']
+        tc.state['rms_deviation']
+        tc.state['max_deviation']
+        tc.state['load_done']
+        tc.state['prepare_done']
+        tc.state['rv_done']
+        tc.state['kernel_done']
 
     
 
@@ -113,24 +113,24 @@ def load_spectra(object_file:str,
 
     check_parameter('load_spectra', 'verbose', verbose, ['NoneType', 'bool'])
     
-    check_keywords(verbose=verbose)
+    qa = check_qakeywords(verbose=verbose)
 
     #
     # Clear the state variables
     #
 
-    telluric.load.clear()
-    telluric.state.clear()    
+    tc.load.clear()
+    tc.state.clear()    
     
     #
     # Store user inputs
     #
 
-    telluric.load['object_file'] = object_file
-    telluric.load['standard_file'] = standard_file
-    telluric.load['standard_info'] = standard_info
-    telluric.load['output_filename'] = output_filename
-    telluric.load['reflectance'] = reflectance
+    tc.state['object_file'] = object_file
+    tc.state['standard_file'] = standard_file
+    tc.state['standard_info'] = standard_info
+    tc.state['output_filename'] = output_filename
+    tc.state['reflectance'] = reflectance
 
     logging.info(f" Telluric Correction\n--------------------------\n")
     
@@ -151,7 +151,7 @@ def load_spectra(object_file:str,
     #
 
     load_modeinfo()
-
+    
     #
     # Load the instrument profile parameters
     #
@@ -170,21 +170,21 @@ def load_spectra(object_file:str,
     # Set variables that need to be set to a default value.
     #
 
-    telluric.state['ew_scale'] = 1.0
-    telluric.state['standard_rv'] = 0.0
-    telluric.state['standard_redshift'] = 0.0
-    telluric.state['1+z'] = 0.0
-    telluric.state['rms_deviation'] = np.nan
-    telluric.state['max_deviation'] = np.nan    
+    tc.state['ew_scale'] = 1.0
+    tc.state['standard_rv'] = 0.0
+    tc.state['standard_redshift'] = 0.0
+    tc.state['1+z'] = 0.0
+    tc.state['rms_deviation'] = np.nan
+    tc.state['max_deviation'] = np.nan    
 
     #
     # Set the done variables
     #
 
-    telluric.state['load_done'] = True
-    telluric.state['prepare_done'] = False
-    telluric.state['rv_done'] = False
-    telluric.state['kernel_done'] = False
+    tc.state['load_done'] = True
+    tc.state['prepare_done'] = False
+    tc.state['rv_done'] = False
+    tc.state['kernel_done'] = False
 
 
     
@@ -202,58 +202,58 @@ def load_data():
     None
     Loads data into memory.
 
-        telluric.state['standard_spectra']
-        telluric.state['standard_info']
-        telluric.state['standard_hdrinfo']
-        telluric.state['delta_airmass']
-        telluric.state['object_spectra']
-        telluric.state['object_info']
-        telluric.state['object_hdrinfo']
-        telluric.state['mode']
-        telluric.state['resolving_power']
-        telluric.state['object_norders']
-        telluric.state['object_napertures']
-        telluric.state['standard_norders']
-        telluric.state['object_orders']
-        telluric.state['standard_orders']
-        telluric.state['standard_wavelengthranges']
-        telluric.state['standard_dispersions']
-        telluric.state['standard_fwhm']
-        telluric.state['slitw_pix']
+        tc.state['standard_spectra']
+        tc.state['standard_info']
+        tc.state['standard_hdrinfo']
+        tc.state['delta_airmass']
+        tc.state['object_spectra']
+        tc.state['object_info']
+        tc.state['object_hdrinfo']
+        tc.state['mode']
+        tc.state['resolving_power']
+        tc.state['object_norders']
+        tc.state['object_napertures']
+        tc.state['standard_norders']
+        tc.state['object_orders']
+        tc.state['standard_orders']
+        tc.state['standard_wavelengthranges']
+        tc.state['standard_dispersions']
+        tc.state['standard_fwhm']
+        tc.state['slitw_pix']
     
 
     
     """
 
-    logging.info(" Loading the files {} and {}...".format(telluric.load['object_file'],telluric.load['standard_file']))
+    logging.info("Loading the spectra.")
             
     # Object first
     
     fullpath = make_full_path(setup.state['proc_path'],
-                              telluric.load['object_file'], exist=True)
+                              tc.state['object_file'], exist=True)
 
-    object_spectra, object_info = read_spectra_fits(fullpath)
+    object_spectra, object_data = read_spectra_fits(fullpath)
 
     header = fits.getheader(fullpath)
 
-    object_hdrinfo = get_header_info(header,
-                                     keywords=setup.state['telluric_keywords'])
+    object_hdrinfo = get_headerinfo(header,
+                                    keywords=setup.state['telluric_keywords'])
 
     # Now the standard
 
     fullpath = make_full_path(setup.state['proc_path'],
-                              telluric.load['standard_file'], exist=True)
+                              tc.state['standard_file'], exist=True)
 
-    standard_spectra, standard_info = read_spectra_fits(fullpath)
+    standard_spectra, standard_data = read_spectra_fits(fullpath)
           
     header = fits.getheader(fullpath)
 
     standard_hdrinfo = \
-        get_header_info(header, keywords=setup.state['telluric_keywords'])
+        get_headerinfo(header, keywords=setup.state['telluric_keywords'])
 
     # Does the standard have only one aperture?
     
-    if standard_info['napertures'] != 1:
+    if standard_data['napertures'] != 1:
 
         message = 'The standard has more than one aperture and can only '+ \
             'have one.'
@@ -261,10 +261,10 @@ def load_data():
 
     # Does the standard have at least the order numbers of the object?
     
-    intersection = np.intersect1d(object_info['orders'],
-                                  standard_info['orders'])
+    intersection = np.intersect1d(object_data['orders'],
+                                  standard_data['orders'])
 
-    if np.size(intersection) != object_info['norders']:
+    if np.size(intersection) != object_data['norders']:
 
         message = 'The standard lacks an order the object has.'
         raise pySpextoolError(message)
@@ -273,52 +273,52 @@ def load_data():
     # Store the results
     #
 
-    telluric.state['standard_spectra'] = standard_spectra
-    telluric.state['standard_info'] = standard_info
-    telluric.state['standard_hdrinfo'] = standard_hdrinfo
-    telluric.state['delta_airmass'] = float(object_hdrinfo['AVE_AM'][0])-\
-        float(standard_hdrinfo['AVE_AM'][0]) 
-    telluric.state['object_spectra'] = object_spectra
-    telluric.state['object_info'] = object_info    
-    telluric.state['object_hdrinfo'] = object_hdrinfo
-    telluric.state['mode'] = standard_hdrinfo['MODE'][0]
-    telluric.state['resolving_power'] = standard_hdrinfo['RP'][0]
-    telluric.state['object_norders'] = object_info['norders']
-    telluric.state['object_napertures'] = object_info['napertures']    
-    telluric.state['standard_norders'] = standard_info['norders']
-    telluric.state['object_orders'] = object_info['orders']
-    telluric.state['standard_orders'] = standard_info['orders']
+    tc.state['standard_spectra'] = standard_spectra
+    tc.state['standard_data'] = standard_data
+    tc.state['standard_hdrinfo'] = standard_hdrinfo
+    tc.state['delta_airmass'] = object_hdrinfo['AVE_AM'][0]-\
+        standard_hdrinfo['AVE_AM'][0] 
+    tc.state['object_spectra'] = object_spectra
+    tc.state['object_data'] = object_data
+    tc.state['object_hdrinfo'] = object_hdrinfo
+    tc.state['mode'] = standard_hdrinfo['MODE'][0]
+    tc.state['resolving_power'] = standard_hdrinfo['RP'][0]
+    tc.state['object_norders'] = object_data['norders']
+    tc.state['object_napertures'] = object_data['napertures']    
+    tc.state['standard_norders'] = standard_data['norders']
+    tc.state['object_orders'] = object_data['orders']
+    tc.state['standard_orders'] = standard_data['orders']
 
     #
     # Compute the minimum and maximum wavelengths and dispersions for each
     # order (This may go away eventually once you implement mikeline_convolve).
     #
 
-    nwavelengths = np.shape(telluric.state['standard_spectra'])[-1]
+    nwavelengths = np.shape(tc.state['standard_spectra'])[-1]
     pixels = np.arange(nwavelengths)
-    dispersions = np.empty(telluric.state['standard_norders'])            
+    dispersions = np.empty(tc.state['standard_norders'])            
     wavelength_ranges = []
     
-    for i in range(telluric.state['standard_norders']):
+    for i in range(tc.state['standard_norders']):
 
         # Do min max first
 
-        min = np.nanmin(telluric.state['standard_spectra'][i,0,:])
-        max = np.nanmax(telluric.state['standard_spectra'][i,0,:])
+        min = np.nanmin(tc.state['standard_spectra'][i,0,:])
+        max = np.nanmax(tc.state['standard_spectra'][i,0,:])
 
         wavelength_ranges.append(np.array([min,max]))
 
         # Now do the dispersion
                 
-        fit = poly_fit_1d(pixels,telluric.state['standard_spectra'][i,0,:],1)
+        fit = polyfit_1d(pixels,tc.state['standard_spectra'][i,0,:],1)
         dispersions[i] = fit['coeffs'][1]
 
     # Store the results
 
-    telluric.state['standard_wavelengthranges'] = wavelength_ranges
-    telluric.state['standard_dispersions'] = dispersions
-    telluric.state['standard_fwhm'] = dispersions*standard_info['slitw_pix']
-    telluric.state['slitw_pix'] = standard_info['slitw_pix']    
+    tc.state['standard_wavelengthranges'] = wavelength_ranges
+    tc.state['standard_dispersions'] = dispersions
+    tc.state['standard_fwhm'] = dispersions*standard_data['slitw_pix']
+    tc.state['slitw_pix'] = standard_data['slitw_pix']    
     
     
     
@@ -336,22 +336,22 @@ def load_vegamodel():
     None
     Loads data into memory.
 
-        telluric.state['vega_wavelength']
-        telluric.state['vega_fluxdensity']
-        telluric.state['vega_continuum']
-        telluric.state['vega_fitted_continuum']
-        telluric.state['vega_normalized_fluxdensity']
-        telluric.state['vega_dispersions']
+        tc.state['vega_wavelength']
+        tc.state['vega_fluxdensity']
+        tc.state['vega_continuum']
+        tc.state['vega_fitted_continuum']
+        tc.state['vega_normalized_fluxdensity']
+        tc.state['vega_dispersions']
     
     """
 
-    logging.info(f' Loading Vega model...')
+    logging.info(f' Loading the Vega model.')
 
     #
     # Determine which Vega model to use and load
     #
 
-    root = 'Vega'+telluric.state['model']+'.fits'
+    root = 'Vega'+tc.state['model']+'.fits'
     file = os.path.join(setup.state['package_path'],'data',root)
     
     hdul = fits.open(file) 
@@ -366,33 +366,32 @@ def load_vegamodel():
             
     # Store the results
 
-    telluric.state['vega_wavelength'] = vega_wavelength
-    telluric.state['vega_fluxdensity'] = vega_flux
-    telluric.state['vega_continuum'] = vega_continuum
-    telluric.state['vega_fitted_continuum'] = vega_fitted_continuum
-    telluric.state['vega_normalized_fluxdensity'] = vega_flux/\
-        vega_fitted_continuum
+    tc.state['vega_wavelength'] = vega_wavelength
+    tc.state['vega_fluxdensity'] = vega_flux
+    tc.state['vega_continuum'] = vega_continuum
+    tc.state['vega_fitted_continuum'] = vega_fitted_continuum
+    tc.state['vega_normalized_fluxdensity'] = vega_flux/vega_fitted_continuum
     
     #
     # Compute the dispersions over the order wavelengths
     #
 
-    dispersions = np.empty(telluric.state['standard_norders'])            
-    for i in range(telluric.state['standard_norders']):
+    dispersions = np.empty(tc.state['standard_norders'])            
+    for i in range(tc.state['standard_norders']):
 
         zleft = (vega_wavelength > \
-                 telluric.state['standard_wavelengthranges'][i][0])
+                 tc.state['standard_wavelengthranges'][i][0])
         zright = (vega_wavelength < \
-                  telluric.state['standard_wavelengthranges'][i][1])
+                  tc.state['standard_wavelengthranges'][i][1])
         
         zselection = np.logical_and(zleft,zright)
 
         pixels = np.arange(np.sum(zselection))
         
-        fit = poly_fit_1d(pixels,vega_wavelength[zselection],1)
+        fit = polyfit_1d(pixels,vega_wavelength[zselection],1)
         dispersions[i] = fit['coeffs'][1]
 
-    telluric.state['vega_dispersions'] = dispersions
+    tc.state['vega_dispersions'] = dispersions
     
 
     
@@ -410,13 +409,13 @@ def load_modeinfo():
     None
     Loads data into memory:
 
-        telluric.state['method']
-        telluric.state['model']
-        telluric.state['normalized_order']
-        telluric.state['normalization_window']
-        telluric.state['normalization_degree']
-        telluric.state['radialvelocity_nfwhm']
-        telluric.state['deconvolution_nfwhm']
+        tc.state['method']
+        tc.state['model']
+        tc.state['normalized_order']
+        tc.state['normalization_window']
+        tc.state['normalization_degree']
+        tc.state['radialvelocity_nfwhm']
+        tc.state['deconvolution_nfwhm']
 
 
     """
@@ -439,7 +438,7 @@ def load_modeinfo():
 
     # Grab the values for that mode
     
-    z = np.where(modes == telluric.state['mode'])[0]
+    z = np.where(modes == tc.state['mode'])[0]
 
     method = str(values[z,1][0])
     model = str(values[z,2][0]).strip()
@@ -468,14 +467,14 @@ def load_modeinfo():
     
     # Save the results
     
-    telluric.state['method'] = method
-    telluric.state['model'] = model
-    telluric.state['normalization_order'] = order
-    telluric.state['normalization_window'] = window
-    telluric.state['normalization_degree'] = degree
-    telluric.state['normalization_fittype'] = fittype
-    telluric.state['radialvelocity_nfwhm'] = rv_nfwhm
-    telluric.state['deconvolution_nfwhm'] = dc_nfwhm
+    tc.state['method'] = method
+    tc.state['model'] = model
+    tc.state['normalization_order'] = order
+    tc.state['normalization_window'] = window
+    tc.state['normalization_degree'] = degree
+    tc.state['normalization_fittype'] = fittype
+    tc.state['radialvelocity_nfwhm'] = rv_nfwhm
+    tc.state['deconvolution_nfwhm'] = dc_nfwhm
 
 
     
@@ -493,7 +492,7 @@ def load_ipcoefficients():
     None
     Loads data into memory:
 
-        telluric.state['ip_coefficients']
+        tc.state['ip_coefficients']
 
     """
 
@@ -509,11 +508,11 @@ def load_ipcoefficients():
     # Find the right slit width and store the coefficients
     
     z = np.where(slitw_arc == \
-                 telluric.state['standard_hdrinfo']['SLTW_ARC'][0])[0]
+                 tc.state['standard_hdrinfo']['SLTW_ARC'][0])[0]
 
     ip_coefficients = np.squeeze(np.array((c0[z],c1[z],c2[z])))
 
-    telluric.state['ip_coefficients'] = ip_coefficients
+    tc.state['ip_coefficients'] = ip_coefficients
 
 
     
@@ -531,25 +530,26 @@ def load_standard_info():
     None
     Loads data into memory:
 
-        telluric.state['standard_name']
-        telluric.state['standard_sptype']
-        telluric.state['standard_vmag']
-        telluric.state['standard_bmag']
+        tc.state['standard_name']
+        tc.state['standard_sptype']
+        tc.state['standard_vmag']
+        tc.state['standard_bmag']
 
     """
 
-    if isinstance(telluric.load['standard_info'], str):
-        
+    if isinstance(tc.state['standard_info'], str):
+
         #
         # user has passed the name of the standard
         #
         
         # Get SIMBAD information of the standard
 
-        logging.info(f' Querying SIMBAD for standard star information...')
+        logging.info(f' Querying SIMBAD for standard star '+\
+                     tc.state['standard_info']+' information.')
         
         Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
-        table = Simbad.query_object(telluric.load['standard_info'])
+        table = Simbad.query_object(tc.state['standard_info'])
 
         if isinstance(table,Table):
             standard_name = table['MAIN_ID'][0]
@@ -566,7 +566,7 @@ def load_standard_info():
             
             raise pySpextoolError(message)
         
-    if isinstance(telluric.load['standard_info'], list):
+    if isinstance(tc.state['standard_info'], list):
 
         #
         # user has passed the coordinates of the standard
@@ -576,8 +576,8 @@ def load_standard_info():
         
         Simbad.add_votable_fields('id','sptype', 'flux(B)', 'flux(V)')
 
-        c = SkyCoord(telluric.load['standard_info'][0],
-                     telluric.load['standard_info'][1],
+        c = SkyCoord(tc.state['standard_info'][0],
+                     tc.state['standard_info'][1],
                      unit=(u.hourangle, u.deg))
         
 
@@ -598,24 +598,24 @@ def load_standard_info():
             
             raise pySpextoolError(message)
 
-    if isinstance(telluric.load['standard_info'], dict):
+    if isinstance(tc.state['standard_info'], dict):
 
         #
         # user has passed the standard information        
         #
 
-        standard_name = telluric.load['standard_info']['id']
-        standard_sptype = telluric.load['standard_info']['sptype']
-        standard_vmag = float(telluric.load['standard_info']['bmag'])
-        standard_bmag = float(telluric.load['standard_info']['vmag'])
+        standard_name = tc.state['standard_info']['id']
+        standard_sptype = tc.state['standard_info']['sptype']
+        standard_vmag = float(tc.state['standard_info']['bmag'])
+        standard_bmag = float(tc.state['standard_info']['vmag'])
     
 
     #
     # Store the results
     #
         
-    telluric.state['standard_name'] = standard_name
-    telluric.state['standard_sptype'] = standard_sptype
-    telluric.state['standard_vmag'] = standard_vmag
-    telluric.state['standard_bmag'] = standard_bmag
+    tc.state['standard_name'] = standard_name
+    tc.state['standard_sptype'] = standard_sptype
+    tc.state['standard_vmag'] = standard_vmag
+    tc.state['standard_bmag'] = standard_bmag
     

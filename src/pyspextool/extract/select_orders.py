@@ -1,14 +1,24 @@
 import numpy as np
+import logging
+from os.path import join
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
-from pyspextool.io.check import check_parameter
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import extract_filestring
 from pyspextool.plot.plot_profiles import plot_profiles
+from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def select_orders(include=None, exclude=None, include_all=False, verbose=None,
-                  qa_show=None, qa_write=None, qa_showsize=(6, 10)):
+def select_orders(include:int | str | list=None,
+                  exclude:int | str | list=None,
+#                  include_all:bool=True,
+                  verbose:bool=None,
+                  qa_show:bool=None,
+                  qa_showscale:float | int=None,
+                  qa_showblock:bool=None,
+                  qa_write:bool=None):
+
     """
     To set which orders are to be traced and extracted
 
@@ -20,12 +30,12 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
         If the type is str, a str giving the orders, e.g. '1-3,4,5'.
 
     exclude : int, list, str, optional
-        If the type is int, the single order to include.
+        If the type is int, the single order to exclude.  
         If the type is list, a list of integer orders to include.
         If the type is str, a str giving the orders, e.g. '1-3,4,5'.
 
-    include_all : {False, True}, optional
-        Set to include all orders.
+ #   include_all : {False, True}, optional
+ #       Set to include all orders.
 
     qa_show : {None, True, False}, optional
         Set to True/False to override config.state['qa_show'] in the
@@ -70,12 +80,11 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
 
     if extract.state['apertures_done'] is False:
 
-        message = "extract.state['apertures_done']=False.  "+\
-          "Previous steps not complete."        
-        raise ValueError(message)        
+        message = " Previous steps not complete.  Please run locate_apertures."
+        raise pySpextoolError(message)        
 
     #
-    # Check parameters
+    # Check parameters and QA keywords
     #
 
     check_parameter('select_orders', 'include', include,
@@ -84,61 +93,51 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
     check_parameter('select_orders', 'exclude', exclude,
                     ['NoneType', 'int', 'list', 'str'])
 
-    check_parameter('select_orders', 'include_all', include_all, 'bool')
-
-    check_parameter('select_orders', 'qa_show', qa_show,
-                    ['NoneType', 'bool'])
-
-    check_parameter('select_orders', 'qa_write', qa_write,
-                    ['NoneType', 'bool'])
-
-    check_parameter('select_orders', 'qa_showsize', qa_showsize, 'tuple')
+#    check_parameter('select_orders', 'include_all', include_all, 'bool',
+#                    possible_values=True)
 
     check_parameter('select_orders', 'verbose', verbose, ['NoneType', 'bool'])
 
+    check_parameter('select_orders', 'qa_write', qa_write, ['NoneType', 'bool'])
+
+    check_parameter('select_orders', 'qa_show', qa_show, ['NoneType', 'bool'])
+
+    check_parameter('select_orders', 'qa_showscale', qa_showscale,
+                    ['int', 'float','NoneType'])
+
+    check_parameter('select_orders', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
+    
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)
+    
     #
     # Ensure only one optional argument is passed
     #
 
     if include is not None and exclude is not None:
-        message = 'Cannot use both parameters `include` and `remove`.'
-        raise ValueError(message)
 
-    #
-    # Check the qa and verbose variables and set to system default if need be.
-    #
-
-    if qa_write is None:
-        qa_write = setup.state['qa_write']
-
-    if qa_show is None:
-        qa_show = setup.state['qa_show']
-
-    if verbose is None:
-        verbose = setup.state['verbose']
-
-        #
-    # Store the user inputs
-    #
-
-    extract.orders['include'] = include
-    extract.orders['exclude'] = exclude
-    extract.orders['include_all'] = include_all
-    extract.orders['qaplot'] = qa_show
-    extract.orders['qafile'] = qa_write
-    extract.orders['qaplotsize'] = qa_showsize
-    extract.orders['verbose'] = verbose
+        message = 'Cannot use keywords `include` and `exclude` at the '+ \
+            'same time.'
+        raise pySpextoolError(message)
 
     #
     # Update command line if requested.
     #
-    if verbose is True:
-        print('Updating order selection...')
 
+    logging.info(' Selecting orders for extraction.')
+    
     #
     # Do the checks
     #
 
+    if include is None and exclude is None:
+
+        doorders = np.full(extract.state['norders'], 1, dtype=int)
+            
     if include is not None:
 
         if isinstance(include, int) is True:
@@ -152,13 +151,14 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
 
         # Find the overlap 
 
-        test = np.isin(extract.state['orders'], include)
+        doorders = np.isin(extract.state['orders'], include)
 
         # Test to make sure they are orders you are allowed work with
 
-        if np.sum(test) != np.size(include):
-            message = 'A requested order does not exist.'
-            raise ValueError(message)
+        if np.sum(doorders) != np.size(include):
+
+            message = ' A requested order does not exist.'
+            raise pySpextoolError(message)
 
     if exclude is not None:
 
@@ -173,56 +173,57 @@ def select_orders(include=None, exclude=None, include_all=False, verbose=None,
 
         # Find the overlap 
 
-        test = ~np.isin(extract.state['orders'], exclude)
+        doorders = ~np.isin(extract.state['orders'], exclude)
 
         # Test to make sure they are orders you are allowed work with
 
-        if np.sum(~test) != np.size(exclude):
-            message = 'A requested order does not exist.'
-            raise ValueError(message)
+        if np.sum(~doorders) != np.size(exclude):
 
-    if include_all is True:
-        test = np.full(extract.state['norders'], True)
+            message = ' A requested order does not exist.'
+            raise pySpextoolError(message)
+
+#    if include_all is True:
+#        doorders = np.full(extract.state['norders'], True)
 
     #
     # Set the correct doorders variable
     #
 
-    if extract.state['type'] == 'xs':
-
-        extract.state['xsdoorders'] = test
-        doorders = test
-
-    else:
-
-        extract.state['psdoorders'] = test
-        doorders = test
-
-    if qa_show is True:
-        number = plot_profiles(extract.state['profiles'],
-                               extract.state['slith_arc'],
-                               doorders, apertures=extract.state['apertures'],
-                               plot_number=extract.state['profiles_plotnum'],
-                               plot_size=qa_showsize)
-        extract.state['profiles_plotnum'] = number
-
-    if qa_write is True:
-        qafileinfo = {'figsize': (8.5, 11),
-                      'filepath': setup.state['qa_path'],
-                      'filename': extract.state['qafilename'] +
-                                  '_aperturepositions',
-                      'extension': setup.state['qa_extension']}
-
-        plot_profiles(extract.state['profiles'], extract.state['slith_arc'],
-                      doorders, apertures=extract.state['apertures'],
-                      file_info=qafileinfo)
+    extract.state['doorders'] = doorders
 
     #
-    # Do the trace if the extraction is extended source
+    # Do the QA plotting
     #
+    
+    if qa['show'] is True:
+               
+        plot_profiles(extract.state['profiles'],
+                      extract.state['slith_arc'],
+                      doorders,
+                      aperture_positions=extract.state['aperture_positions'],
+                      plot_number=setup.plots['profiles'],
+                      profilestack_max=setup.plots['profilestack_max'],
+                      profile_size=setup.plots['profile_size'],
+                      font_size=setup.plots['font_size'],
+                      showscale=qa['showscale'],
+                      showblock=qa['showblock'])
 
-    #    if extract.state['type'] == 'xs':
-    #        trace_apertures(verbose=verbose, qa_show=qa_show, qa_write=qa_write)
+    if qa['write'] is True:
+
+        filename = extract.state['qafilename'] + '_profiles' + \
+            setup.state['qa_extension']
+        fullpath = join(setup.state['qa_path'],filename)
+
+        plot_profiles(extract.state['profiles'],
+                      extract.state['slith_arc'],
+                      doorders,
+                      aperture_positions=extract.state['aperture_positions'],
+                      profilestack_max=setup.plots['profilestack_max'],
+                      profile_size=setup.plots['profile_size'],
+                      font_size=setup.plots['font_size'],
+                      output_fullpath=fullpath)
+
+        
 
     #
     # Set the done variable

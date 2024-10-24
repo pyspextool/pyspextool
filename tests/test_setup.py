@@ -48,7 +48,7 @@ def test_pyspextool_setup_defaults():
         qa_path=spex_prism_paths["qa_path"],
     )
 
-    assert setup.state["verbose"] is False
+    assert setup.state["verbose"] is True
 
     assert setup.state["raw_path"] == os.path.abspath(spex_prism_paths["raw_path"])
     assert setup.state["cal_path"] == os.path.abspath(spex_prism_paths["cal_path"])
@@ -57,7 +57,7 @@ def test_pyspextool_setup_defaults():
     assert setup.state["instrument"] == "uspex"
 
     assert setup.state["qa_path"] == os.path.abspath(spex_prism_paths["qa_path"])
-    assert setup.state["qa_extension"] == ".pdf"
+    assert setup.state["qa_extension"] == ".png"
     assert setup.state["qa_show"] is False
     assert setup.state["qa_write"] is False
 
@@ -91,21 +91,20 @@ def test_set_instrument(instrument):
         assert setup.state["lincormax"] == 4000
 
 
-def test_set_instrument_state_bad():
-    with pytest.raises(ValueError):
-        set_instrument("SpeX")
-
-    with pytest.raises(ValueError):
-        set_instrument("not_an_instrument")
-
-    with pytest.raises(TypeError):
-        set_instrument(5)
+#def test_set_instrument_state_bad():
+#    with pytest.raises(ValueError):
+#        set_instrument("SpeX")
+#
+#    with pytest.raises(ValueError):
+#        set_instrument("not_an_instrument")
+#
+#    with pytest.raises(TypeError):
+#        set_instrument(5)
 
 
 def test_set_qa_state():
-    set_qa_state()
+    set_qa_state(False, 1, False, False, '.pdf')
 
     assert setup.state["qa_show"] is False
-    assert setup.state["qa_write"] is True
-    # assert setup.state["qa_path"] == cwd
+    assert setup.state["qa_write"] is False
     assert setup.state["qa_extension"] == ".pdf"

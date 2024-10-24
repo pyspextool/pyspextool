@@ -13,16 +13,15 @@ from os.path import join as osjoin
 from dust_extinction.parameter_averages import G23
 import astropy.units as u
 
-from pyspextool.io.check import check_parameter
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.utils.math import moments
 from pyspextool.utils.arrays import find_index
-from pyspextool.plot.limits import get_spec_range
+from pyspextool.plot.limits import get_spectra_range
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.utils.interpolate import linear_bitmask_interp1d
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
-
 
 def correct_spectrum(object_wavelength:npt.ArrayLike,
                      object_intensity:npt.ArrayLike,
@@ -285,18 +284,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     
     check_parameter('deconvolve_line', 'qafile_info', qafile_info,
                     ['NoneType', 'dict'])
+
+    check_qakeywords(verbose=verbose)
     
-    #
-    # Check verbose
-    #
-
-    if verbose is True:
-        logging.getLogger().setLevel(logging.INFO)
-        
-    elif verbose is False:
-        logging.getLogger().setLevel(logging.ERROR)
-
-
     #
     # Do basic set up stuff
     #
@@ -504,58 +494,48 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
     # Make the QA plot
     #
 
-    figure_size = (6,10)
-    plotnum = None    
-
     if qashow_info is not None:
-        
-        if qashow_info['block'] is True:
 
-            pl.ioff()
+        plot_deconvolve_line(qashow_info['plot_number'],
+                             qashow_info['figure_size'],
+                             qashow_info['font_size'],
+                             qashow_info['spectrum_linewidth'],
+                             qashow_info['spine_linewidth'],
+                             data_line_wavelength,
+                             data_zeroed_line_fluxdensity,
+                             rmodel_zeroed_line_fluxdensity,
+                             rmodel_zeroed_scaled_convolved_line_fluxdensity,
+                             line_fluxdensity_ratio,
+                             rms_deviation,
+                             maximum_deviation,
+                             plot_xlabel=qashow_info['xlabel'],
+                             plot_title=qashow_info['title'])
 
-        else:
+        pl.show(block=qashow_info['block'])
+        if qashow_info['block'] is False: pl.pause(1)
 
-            pl.ion()
-
-        plotnum = plot_deconvolve_line(data_line_wavelength,
-                                       data_zeroed_line_fluxdensity,
-                                       rmodel_zeroed_line_fluxdensity,
-                                rmodel_zeroed_scaled_convolved_line_fluxdensity,
-                                       line_fluxdensity_ratio,
-                                       rms_deviation,
-                                       maximum_deviation,
-                                       plot_scale=qashow_info['scale'],
-                                       plot_xlabel=qashow_info['xlabel'],
-                                       plot_title=qashow_info['title'])
-                                
-
-            
-        pl.show()
-        if qashow_info['block'] is False:
-            pl.pause(1)
-
-        
     if qafile_info is not None:
 
-        plot_deconvolve_line(data_line_wavelength,
-                              data_zeroed_line_fluxdensity,
-                              rmodel_zeroed_line_fluxdensity,
-                              rmodel_zeroed_scaled_convolved_line_fluxdensity,
-                              line_fluxdensity_ratio,
-                              rms_deviation,
-                              maximum_deviation,
-                              plot_xlabel=qafile_info['xlabel'],
-                              plot_title=qafile_info['title'])
+        plot_deconvolve_line(None,
+                             qafile_info['figure_size'],
+                             qafile_info['font_size'],
+                             qafile_info['spectrum_linewidth'],
+                             qafile_info['spine_linewidth'],
+                             data_line_wavelength,
+                             data_zeroed_line_fluxdensity,
+                             rmodel_zeroed_line_fluxdensity,
+                             rmodel_zeroed_scaled_convolved_line_fluxdensity,
+                             line_fluxdensity_ratio,
+                             rms_deviation,
+                             maximum_deviation,
+                             plot_xlabel=qafile_info['xlabel'],
+                             plot_title=qafile_info['title'])
         
         
-        pl.savefig(osjoin(qafile_info['filepath'],
-                          qafile_info['filename'] + \
-                          qafile_info['extension']))
+        pl.savefig(qafile_info['file_fullpath'])
         pl.close()
 
 
-    dict['plot_number'] = plotnum
-            
     return dict
 
 
@@ -723,7 +703,7 @@ def make_telluric_spectrum(standard_wavelength:npt.ArrayLike,
 
     check_parameter('make_telluric_spectrum', 'scale', scale, ['int','float'])
 
-    
+
     #
     # Determine the range over which to convolved the Vega model
     #
@@ -1037,44 +1017,46 @@ def measure_linerv(data_wavelength:npt.ArrayLike,
 
     if qashow_info is not None:
 
-        if qashow_info['block'] is True:
+        plot_measure_linerv(qashow_info['plot_number'],
+                            qashow_info['figure_size'],
+                            qashow_info['font_size'],
+                            qashow_info['spectrum_linewidth'],
+                            qashow_info['spine_linewidth'],
+                            lnlambda_wavelengths,
+                            data_resampled_zflux,
+                            model_resampled_zflux,
+                            lag,
+                            xcor,
+                            offset_pixels,
+                            velocity_shift,
+                            redshift,
+                            fit=fit,
+                            plot_xlabel=qashow_info['xlabel'],
+                            plot_title=qashow_info['title'])
 
-            pl.ioff()
-
-        else:
-
-            pl.ion()
-
-        plotnum = plot_measure_linerv(lnlambda_wavelengths,
-                                  data_resampled_zflux,
-                                  model_resampled_zflux,
-                                  lag, xcor,
-                                  offset_pixels, velocity_shift,
-                                  redshift,
-                                  fit=fit,
-                                  plot_scale=qashow_info['scale'],
-                                  plot_number=qashow_info['number'],
-                                  plot_xlabel=qashow_info['xlabel'],
-                                  plot_title=qashow_info['title'])
-        
-        pl.show()
-        if qashow_info['block'] is False:
-            pl.pause(1)
+        pl.show(block=qashow_info['block'])
+        if qashow_info['block'] is False: pl.pause(1)
 
     if qafile_info is not None:
 
-        plot_measure_linerv(lnlambda_wavelengths,
-                        data_resampled_zflux,
-                        model_resampled_zflux,
-                        lag, xcor, offset_pixels,
-                        velocity_shift, redshift,
-                        fit=fit,
-                        plot_xlabel=qafile_info['xlabel'],
-                        plot_title=qafile_info['title'])
-                
-        pl.savefig(osjoin(qafile_info['filepath'],
-                          qafile_info['filename'] + \
-                          qafile_info['extension']))
+        plot_measure_linerv(None,
+                            qafile_info['figure_size'],
+                            qafile_info['font_size'],
+                            qafile_info['spectrum_linewidth'],
+                            qafile_info['spine_linewidth'],
+                            lnlambda_wavelengths,
+                            data_resampled_zflux,
+                            model_resampled_zflux,
+                            lag,
+                            xcor,
+                            offset_pixels,
+                            velocity_shift,
+                            redshift,
+                            fit=fit,
+                            plot_xlabel=qafile_info['xlabel'],
+                            plot_title=qafile_info['title'])
+
+        pl.savefig(qafile_info['file_fullpath'])
         pl.close()
 
 
@@ -1085,25 +1067,43 @@ def measure_linerv(data_wavelength:npt.ArrayLike,
     
 
 
-def plot_measure_linerv(wavelength:npt.ArrayLike,
-                         object_flux:npt.ArrayLike,
-                         model_flux:npt.ArrayLike,
-                         lag:npt.ArrayLike,
-                         xcorrelation:npt.ArrayLike,
-                         offset:float,
-                         velocity:float,
-                         redshift:float,
-                         fit:npt.ArrayLike=None,
-                         plot_scale:float=1.0,
-                         plot_number:int=None,
-                         plot_xlabel:str=None,
-                         plot_title:str=None):
+def plot_measure_linerv(plot_number:int,
+                        figure_size:tuple,
+                        font_size:int,
+                        spectrum_linewidth:int | float,
+                        spine_linewidth:int | float,
+                        wavelength:npt.ArrayLike,
+                        object_flux:npt.ArrayLike,
+                        model_flux:npt.ArrayLike,
+                        lag:npt.ArrayLike,
+                        xcorrelation:npt.ArrayLike,
+                        offset:float,
+                        velocity:float,
+                        redshift:float,
+                        fit:npt.ArrayLike=None,
+                        plot_xlabel:str=None,
+                        plot_title:str=None):
     
     """
     To create a plot for the cross correlation in a device-independent way
 
     Parameters
     ----------
+    plot_number : int or None
+        The plot number to pass to matplotlib
+
+    figure_size : tuple
+        A (2,) tuple giving the figure size to pass to matplotlib
+
+    font_size : int
+        An int giving the font size to pass to matplotlib
+
+    spectrum_linewidth : int or float
+        An int or float giving the spectrum line width to pass to matplotlib
+
+    spine_linewidth : int or float
+        An int or float giving the spine line width to pass to matplotlib
+    
     wavelength : ndarray
         A (nwave,) array of wavelengths.
 
@@ -1131,12 +1131,6 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
     fit : ndarray, default=None
         A (nwave,) array of fitted values to the xcorrelation array.
 
-    plot_scale : float, default=1
-        The scale factor by which to scale the default plot size.
-
-    plot_number : int, default=None
-        The plot number passed to pl.figure() if updating a figure is necssary.
-
     plot_xlabel : str, default=None
         A string given an optional x label.  Useful because the wavelength
         units may change.
@@ -1147,9 +1141,8 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
     
     Returns
     -------
-    int
-    The plot number of the window.
-
+    None
+        May write a file to disk.  
     
     """
         
@@ -1157,6 +1150,20 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
     # Check the parameters
     #
 
+    check_parameter('plot_measure_linerv', 'plot_number', plot_number,
+                    ['int','NoneType'])
+
+    check_parameter('plot_measure_linerv', 'figure_size', figure_size, 'tuple')
+
+    check_parameter('plot_measure_linerv', 'font_size', font_size,
+                    ['int','float'])
+
+    check_parameter('plot_measure_linerv', 'spectrum_linewidth',
+                    spectrum_linewidth, ['int','float'])        
+
+    check_parameter('plot_measure_linerv', 'spine_linewidth', spine_linewidth,
+                    ['int','float'])        
+    
     check_parameter('plot_measure_linerv', 'wavelength', wavelength,
                     'ndarray')
 
@@ -1178,12 +1185,6 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
 
     check_parameter('plot_measure_linerv', 'fit', fit, ['NoneType','ndarray'])
     
-    check_parameter('plot_measure_linerv', 'plot_scale', plot_scale,
-                    ['int','float'])
-
-    check_parameter('plot_measure_linerv', 'plot_number', plot_number,
-                    ['NoneType','int'])    
-
     check_parameter('plot_measure_linerv', 'plot_xlabel', plot_xlabel,
                     ['Nonetype','str'])    
 
@@ -1192,25 +1193,12 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
 
     
     #
-    # Define Figure properties
-    #
-
-    figure_size = (6,9)
-    font_size = 12
-
-
-    scaled_figure_size = (figure_size[0]*plot_scale,
-                          figure_size[1]*plot_scale)
-    
-    scaled_font_size = font_size*plot_scale
-
-    #
     # Set the fonts
     #
     
     font = {'family' : 'helvetica',
             'weight' : 'normal',
-            'size'   : scaled_font_size}
+            'size'   : font_size}
 
     matplotlib.rc('font', **font)
 
@@ -1218,7 +1206,7 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
     # Create the figure
     #
     
-    fig = pl.figure(num=plot_number, figsize=scaled_figure_size)
+    fig = pl.figure(num=plot_number, figsize=figure_size)
     pl.subplots_adjust(left=0.1,
                     bottom=0.1, 
                     right=0.95, 
@@ -1233,23 +1221,23 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
     
     if fit is not None:
 
-        yrange = get_spec_range(xcorrelation, fit, frac=0.1)
+        yrange = get_spectra_range(xcorrelation, fit, frac=0.1)
 
     else:
 
-        yrange = get_spec_range(xcorrelation, frac=0.1)        
+        yrange = get_spectra_range(xcorrelation, frac=0.1)        
 
     # Build the figure
         
     axes1 = fig.add_subplot(211)    
     axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes1.step(lag, xcorrelation, 'black')
+    axes1.step(lag, xcorrelation, 'black',lw=spectrum_linewidth)
     axes1.set(xlabel='lag (pixels)')
     axes1.set_title(plot_title)    
 
     axes1.xaxis.set_minor_locator(AutoMinorLocator())    
     axes1.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in', width=1.5)
+                      which='both', direction='in',width=spine_linewidth)
     axes1.tick_params(which='minor', length=3)
     axes1.tick_params(which='major', length=5)
     axes1.yaxis.set_minor_locator(AutoMinorLocator())
@@ -1268,7 +1256,7 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
 
     # change all spines
     for axis in ['top','bottom','left','right']:
-        axes1.spines[axis].set_linewidth(1.5)
+        axes1.spines[axis].set_linewidth(spine_linewidth)
 
     if fit is not None:
         
@@ -1282,23 +1270,26 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
 
     # Get the y range
     
-    yrange = get_spec_range(object_flux, model_flux, frac=0.1)
+    yrange = get_spectra_range(object_flux, model_flux, frac=0.1)
 
     # Build the figure
     
     axes2 = fig.add_subplot(212)
     axes2.margins(x=0)
     axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
-    axes2.step(wavelength, object_flux, 'black', label='spectrum')
+    axes2.step(wavelength, object_flux, 'black', label='spectrum',
+               lw=spectrum_linewidth)
     axes2.step(wavelength, model_flux, 'r',linestyle='dashed',
-               label='Model (0 km s$^{-1}$)')
+               label='Model (0 km s$^{-1}$)',
+               lw=spectrum_linewidth)
     axes2.step(wavelength*(1+redshift), model_flux, 'r',
-               label='Model (%+.2f' % velocity+' km s$^{-1}$)')  
+               label='Model (%+.2f' % velocity+' km s$^{-1}$)',
+               lw=spectrum_linewidth)  
     axes2.set(xlabel=plot_xlabel, ylabel='Relative Flux Density')
 
     axes2.xaxis.set_minor_locator(AutoMinorLocator())    
     axes2.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in', width=1.5)
+                      which='both', direction='in', width=spine_linewidth)
     axes2.tick_params(which='minor', length=3)
     axes2.tick_params(which='major', length=5)
     axes2.yaxis.set_minor_locator(AutoMinorLocator())    
@@ -1313,25 +1304,22 @@ def plot_measure_linerv(wavelength:npt.ArrayLike,
 
     # change all spines
     for axis in ['top','bottom','left','right']:
-        axes1.spines[axis].set_linewidth(1.5)
-              
-    #
-    # Get the plot number and return the results
-    #
-    
-    plot_number = pl.gcf().number
-    return plot_number
+        axes1.spines[axis].set_linewidth(spine_linewidth)
 
 
-def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
+        
+def plot_deconvolve_line(plot_number,
+                         figure_size,
+                         font_size,
+                         spectrum_linewidth,
+                         spine_linewidth,
+                         line_wavelength:npt.ArrayLike,
                          line_data_fluxdensity:npt.ArrayLike,
                          line_model_fluxdensity:npt.ArrayLike,
                          line_model_convolved_fluxdensity:npt.ArrayLike,
                          line_fluxdensity_ratio:npt.ArrayLike,
                          rms_deviation:float,
                          maximum_deviation:float,
-                         plot_scale:float=1.0,
-                         plot_number:int=None,
                          plot_xlabel:str=None,
                          plot_title:str=None):
     
@@ -1345,6 +1333,21 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
 
     Parameters
     ----------
+    plot_number : int or None
+        The plot number to pass to matplotlib
+
+    figure_size : tuple
+        A (2,) tuple giving the figure size to pass to matplotlib
+
+    font_size : int
+        An int giving the font size to pass to matplotlib
+
+    spectrum_linewidth : int or float
+        An int or float giving the spectrum line width to pass to matplotlib
+
+    spine_linewidth : int or float
+        An int or float giving the spine line width to pass to matplotlib
+    
     line_wavelength : ndarray
         A (nwave2,) array of wavelengths used in the deconvolution
         
@@ -1393,6 +1396,20 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
     #
     # Check the parameters
     #
+
+    check_parameter('plot_deconvolve_line', 'plot_number', plot_number,
+                    ['int','NoneType'])
+
+    check_parameter('plot_deconvolve_line', 'figure_size', figure_size, 'tuple')
+
+    check_parameter('plot_deconvolve_line', 'font_size', font_size,
+                    ['int','float'])
+
+    check_parameter('plot_deconvolve_line', 'spectrum_linewidth',
+                    spectrum_linewidth, ['int','float'])        
+
+    check_parameter('plot_deconvolve_line', 'spine_linewidth', spine_linewidth,
+                    ['int','float'])        
     
     check_parameter('plot_deconvolve_line', 'line_wavelength',
                     line_wavelength, 'ndarray',1)
@@ -1408,12 +1425,6 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
 
     check_parameter('plot_deconvolve_line', 'line_fluxdensity_ratio',
                     line_fluxdensity_ratio, 'ndarray',1)
-
-    check_parameter('plot_deconvolve_line', 'plot_scale', plot_scale,
-                    ['float','int'])
-
-    check_parameter('plot_deconvolve_line', 'plot_number', plot_number,
-                    ['int','NoneType'])
         
     check_parameter('plot_deconvolve_line', 'plot_xlabel', plot_xlabel,
                     ['str','NoneType'])
@@ -1424,24 +1435,17 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
     
     #
     # Set up the plot
-    #
-
-    figure_size = (9,6)
-    scaled_figure_size = (figure_size[0]*plot_scale,
-                          figure_size[1]*plot_scale)
-    
-    font_size = 12
-    scaled_font_size = font_size*plot_scale
-    
-    # Set the fonts
+    #    
 
     font = {'family' : 'helvetica',
             'weight' : 'normal',
-            'size'   : scaled_font_size}
+            'size'   : font_size}
 
     matplotlib.rc('font', **font)
     
-    fig = pl.figure(num=plot_number, figsize=figure_size)
+    fig = pl.figure(num=plot_number,
+                    figsize=figure_size)
+
     pl.subplots_adjust(left=0.15,
                     bottom=0.1, 
                     right=0.95, 
@@ -1456,7 +1460,7 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
 
     # Get the yrange based on the data in that wavelength range
     
-    yrange = get_spec_range(line_data_fluxdensity,
+    yrange = get_spectra_range(line_data_fluxdensity,
                             line_model_fluxdensity,
                             line_model_convolved_fluxdensity,
                             line_fluxdensity_ratio-1, frac=0.1)
@@ -1466,15 +1470,15 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
     # Plot the spectrum
 
     axes1.step(line_wavelength, line_data_fluxdensity,color='black',
-               where='mid')
+               where='mid', lw=spectrum_linewidth)
     axes1.step(line_wavelength, line_model_fluxdensity, color='green',
-               where='mid')
+               where='mid', lw=spectrum_linewidth)
 
     axes1.step(line_wavelength, line_model_convolved_fluxdensity,color='red',
-               where='mid')
-
+               where='mid', lw=spectrum_linewidth)
+    
     axes1.step(line_wavelength,line_fluxdensity_ratio-1,color='blue',
-               where='mid')
+               where='mid', lw=spectrum_linewidth)
 
     # Plot the rms limit lines of 0.01.
     
@@ -1485,7 +1489,7 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
 
     axes1.xaxis.set_minor_locator(AutoMinorLocator())    
     axes1.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in', width=1.5)
+                      which='both', direction='in', width=spine_linewidth)
     axes1.tick_params(which='minor', length=3)
     axes1.tick_params(which='major', length=5)
     axes1.yaxis.set_minor_locator(AutoMinorLocator())
@@ -1515,14 +1519,12 @@ def plot_deconvolve_line(line_wavelength:npt.ArrayLike,
     axes1.text(0.95, 0.15, 'Ratio', color='blue', ha='right',
                va='bottom', transform=axes1.transAxes)
 
-    
-    #
-    # Get the plot number and return the results
-    #
-    
-    plot_number = pl.gcf().number
+        # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes1.spines[axis].set_linewidth(spine_linewidth)
 
-    return dict
+
+    
 
 
 

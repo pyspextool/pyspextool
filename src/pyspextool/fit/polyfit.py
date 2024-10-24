@@ -1,25 +1,27 @@
 import numpy as np
+import numpy.typing as npt
 from numpy.polynomial.polynomial import polyval
 
 from pyspextool.io.check import check_parameter
 
+def goodbad_init(*args,
+                 goodbad:npt.ArrayLike=None):
 
-def goodbad_init(*args, goodbad=None):
     """
     To set up the goodbad array for a robust fit.
 
     Parameters
     ----------
-    *args : array_like, optional
-        (ndat,) arrays to be used in a robust fit.  Typically, the
+    *args : ndarray
+        A tuple of (ndat, ) arrays to be used in a robust fit.  Typically, the
         dependent variable array and its associated uncertainty.
 
-    goodbad : array_like, default=None, optional
-         An (ndat,) array of int values where 0=bad, 1=good, 2=NaN.
+    goodbad : ndarray, default None
+         An (ndat, ) array of int values where 0=bad, 1=good, 2=NaN.
 
     Returns
     -------
-    numpy.ndarray
+    ndarray
          A goodbad array with properties consistent with `goodbad` and
          `*args`.
 
@@ -37,6 +39,24 @@ def goodbad_init(*args, goodbad=None):
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('goodbad_init', 'args', args, 'tuple')
+
+    check_parameter('goodbad_init', 'goodbad', goodbad, ['NoneType', 'ndarray'])
+
+    #
+    # Make sure the arrays are all the same size
+    #
+
+    
+
+
+    
+    #  Was a goodbad array passed?
+    
     if goodbad is None:
 
         # Create a good bad array
@@ -49,8 +69,10 @@ def goodbad_init(*args, goodbad=None):
 
         goodbad = np.array(goodbad, dtype=int)
 
+    #
     # Find NaNs if need be
-
+    #
+    
     for arg in args:
 
         if arg is not None:
@@ -62,19 +84,19 @@ def goodbad_init(*args, goodbad=None):
     return goodbad
 
 
-#
-# ==============================================================================
-#
-def image_poly(img, coeffs):
+
+def image_poly(img:npt.ArrayLike,
+               coeffs:npt.ArrayLike):
+
     """
     Evaluates a polynomial function of a variable for images
 
     Parameters
     ----------
-    img : numpy.ndarray
+    img : ndarray
         An (nrows, ncols) image of "independent" values.
 
-    coeffs : numpy.ndarray
+    coeffs : ndarray
         An (ncoeffs, nrows, ncols) array of polynomial coefficients
         [0,:,:] is the c_0 array
         [1,:,:] is the c_1 array
@@ -82,8 +104,8 @@ def image_poly(img, coeffs):
 
     Returns
     -------
-    numpy.ndarray
-        an [nrows,ncols] array the 
+    ndarray
+        An (rows,ncols) array where the each element is 
 
     Procedure
     ---------
@@ -114,34 +136,37 @@ def image_poly(img, coeffs):
     return y
 
 
-#
-# ==============================================================================
-#
-def make_alphabeta_1d(x, y, yunc, order, doalpha=False):
+
+def make_alphabeta_1d(x:npt.ArrayLike,
+                      y:npt.ArrayLike,
+                      yunc:npt.ArrayLike,
+                      order:int,
+                      doalpha:bool=False):
+
     """
     Creates the alpha and beta arrays of the normal equations of
     the general linear least squares problem.
 
     Parameters
     ----------
-    x : array_like
-        (ndat,) array of independent values.
+    x : ndarray
+        (ndat, ) array of independent values.
 
-    y : array_like
-        (ndat,) array of dependent values.
+    y : ndarray
+        (ndat, ) array of dependent values.
 
-    yunc : array_like
+    yunc : ndarray
         (ndat,) array of uncertainties.
 
     order : int
         The polynomial order.
 
-    doalpha : {False, True}, optional
+    doalpha : {False, True}
         Set to True to create the alpha directly.  See Notes.
 
     Returns
     -------
-    alpha, beta : numpy.ndarray, numpy.ndarray
+    alpha, beta : ndarray, ndarray
 
     Notes
     -----
@@ -151,11 +176,11 @@ def make_alphabeta_1d(x, y, yunc, order, doalpha=False):
     since constructing the alpha and beta arrays directly takes longer for
     smaller surfaces.
 
-    Examples
-    --------
-    later
-
     """
+
+    #
+    # Check parameters
+    #
 
     # How many coefficients
 
@@ -200,27 +225,32 @@ def make_alphabeta_1d(x, y, yunc, order, doalpha=False):
     return alpha, beta
 
 
-#
-# ==============================================================================
-#
-def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
+
+def make_alphabeta_2d(x:npt.ArrayLike,
+                      y:npt.ArrayLike,
+                      z:npt.ArrayLike,
+                      zunc:npt.ArrayLike,
+                      xorder:int,
+                      yorder:int,
+                      doalpha:bool=False):
+
     """
     Creates the alpha and beta arrays of the normal equations of
     the general linear least squares problem.
 
     Parameters
     ----------
-    x : array_like
-        (ndat,) array of independent values.
+    x : ndarray
+        An (ndat, ) array of independent values.
 
-    y : array_like
-        (ndat,) array of independent values.
+    y : ndarray
+        An (ndat, ) array of independent values.
 
-    z : array_like
-        (ndat,) array of dependent values.
+    z : ndarray
+        An (ndat ) array of dependent values.
 
-    zunc : array_like
-        (ndat,) array of uncertainties.
+    zunc : ndarray
+        (ndat, ) array of uncertainties.
 
     xorder : int
         The polynomial order of the first independent variable.
@@ -228,12 +258,14 @@ def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
     yorder : int
         The polynomial order of the second indepenent variable.
 
-    doalpha : {False, True}, optional
+    doalpha : {False, True}, 
         Set to True to create the alpha directly.  See Notes.
 
     Returns
     -------
-    alpha, beta : numpy.ndarray, numpy.ndarray
+    ndarray, ndarray
+    
+    The alpha and beta arrays.  
 
     Notes
     -----
@@ -243,12 +275,27 @@ def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
     since constructing the alpha and beta arrays directly takes longer for
     smaller surfaces.
 
-    Examples
-    --------
-    later
-
     """
 
+    #
+    # Check parameters
+    #
+
+    
+    check_parameter('make_alphabeta_2d', 'x', x, 'ndarray')
+
+    check_parameter('make_alphabeta_2d', 'y', y, 'ndarray')
+
+    check_parameter('make_alphabeta_2d', 'z', z, 'ndarray')
+
+    check_parameter('make_alphabeta_2d', 'zunc', zunc, 'ndarray')
+
+    check_parameter('make_alphabeta_2d', 'xorder', xorder, 'int')
+
+    check_parameter('make_alphabeta_2d', 'yorder', yorder, 'int')    
+    
+    check_parameter('make_alphabeta_2d', 'doalpha', doalpha, 'bool')        
+    
     # How many coefficients
 
     ncoeffs = (xorder + 1) * (yorder + 1)
@@ -302,44 +349,40 @@ def make_alphabeta_2d(x, y, z, zunc, xorder, yorder, doalpha=False):
     return alpha, beta
 
 
-#
-# ==============================================================================
-#
-def poly_1d(x, coeffs, covar=None):
+def poly_1d(x:int | float | npt.ArrayLike,
+            coeffs:npt.ArrayLike,
+            covar:npt.ArrayLike=None,
+            talk=False):
+    
     """
     Evaluates a polynomial function of an independent variables
     
 
     Parameters
     ----------
-    x : array_like, int or float
-        An (ndat,) array of independent values
+    x : int, float, ndarray
+        An (ndat, ) array of independent values
 
-    coeffs : np.ndarray
-        An (ndat,) array of coefficients from poly_fit_1d
+    coeffs : ndarray
+        An (ncoeffs,) array of coefficients from polyfit_1d
 
-    covar : np.ndarray, default=None, optional
-        An (ncoefs, ncoeffs) covariance array.
+    covar : ndarray, default None
+        An (ncoeffs, ncoeffs) covariance array.
 
-    Output Parameters
-    -----------------
-    numpy.ndarray, optional numpy.ndarray 
+    Returns
+    -------
+    ndarray, optional ndarray 
         The polynomial evaluated at `x`.
         The variances evaluated at `x`.
-
-    Notes
-    -----
-
-    Examples
-    --------
-    later?
 
     """
 
     #
     # Check the parameters
     #
-    check_parameter('poly_1d', 'x', x, ['list', 'ndarray'])
+    
+    check_parameter('poly_1d', 'x', x,
+                    ['int', 'float', 'float64', 'list', 'ndarray'])
 
     check_parameter('poly_1d', 'coeffs', coeffs, 'ndarray')
 
@@ -348,27 +391,32 @@ def poly_1d(x, coeffs, covar=None):
     #
     # Get set up
     #
-    ncoeffs = len(coeffs)
-    ndat = len(x)
 
+    x = np.float64(x)
+    ncoeffs = np.size(coeffs)
+    ndat = np.size(x)
+    if talk is True: print('first', ncoeffs)
     #
     # Compute the values at x
     #
 
-    z = np.zeros(ndat, dtype=float)
+    z = np.zeros(ndat, dtype=np.float64)
     for i in range(ncoeffs):
         z = z + coeffs[i] * x ** i
 
     # Compute the variances if requested
 
+    if talk is True:  print('second',ncoeffs)
     if covar is not None:
 
-        var = np.zeros(ndat, dtype=float)
+        var = np.zeros(ndat, dtype=np.float64)
         for i in range(ncoeffs):
 
             for j in range(ncoeffs):
                 var = var + covar[j, i] * x ** i * x ** j
-
+                if talk is True:  print(i,j,covar[j, i])
+#                print(covar[j, i] * x ** i * x ** j)
+                
         return z, var
 
     else:
@@ -376,122 +424,159 @@ def poly_1d(x, coeffs, covar=None):
         return z
 
 
-#
-# ==============================================================================
-#
-def poly_2d(x, y, xorder, yorder, coeffs):
-    """
-    evaluates a polynomial function of two independent variables
-    
+def poly_2d(x:int | float | npt.ArrayLike,
+            y:int | float | npt.ArrayLike,
+            xorder:int,
+            yorder:int,
+            coefficients:npt.ArrayLike):
 
+    """
+    Evaluates a polynomial function of two independent variables
+    
     Parameters
     ----------
-    x : array_like, int or float
-        an array of independent values
+    x : ndarray
+        An (ndat, ) array of independent values (int or float)
 
-    y : array_like, int or float
-        an array of independent values
+    y : ndarray
+        An (ndat, ) array of independent values (int or float)
 
     xorder : int
-        the order of the polynomial for the x dimension
+        The order of the polynomial for the x dimension
 
     yorder : int
-        the order of the polynomial for the y dimension
+        The order of the polynomial for the y dimension
 
-    coeffs : np.ndarray
-        an array of coefficients from polyfit2d
+    coefficients : ndarray
+        An (xorder+1 * yorder+1, ) array of coefficients from polyfit2d
 
-    Output Parameters
-    -----------------
-    numpy.ndarray
-        the polynomial evaluated at `x` and `y`
+    Returns
+    -------
+    ndarray
+        The polynomial evaluated at `x` and `y`.
 
-    Examples
-    --------
-    later?
 
     """
+    
+    #
+    # Check parameters
+    #
+
+    all = ['int', 'int8', 'float', 'float64', 'ndarray']
+    check_parameter('poly_2d', 'x', x, all)
+
+    check_parameter('poly_2d', 'y', y, all)
+
+    check_parameter('poly_2d', 'xorder', xorder, 'int')
+
+    check_parameter('poly_2d', 'yorder', yorder, 'int')            
+
+    check_parameter('poly_2d', 'coefficients', coefficients, 'ndarray')    
+
+    x = np.float64(x)
+    y = np.float64(y)
+    
     idx = 0
     z = 0
+    
     for i in range(yorder + 1):
 
         for j in range(xorder + 1):
-            z = z + x ** j * y ** i * coeffs[idx]
+
+            z = z + x ** j * y ** i * coefficients[idx]
             idx += 1
 
     return z
 
 
-#
-# ==============================================================================
-#
-def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
-                doalpha=False, justfit=False, silent=True):
+def polyfit_1d(x:npt.ArrayLike,
+               y:npt.ArrayLike,
+               order:int,
+               yunc:npt.ArrayLike=None,
+               goodbad:npt.ArrayLike=None,
+               robust:dict=None,
+               doalpha:bool=False,
+               justfit:bool=False,
+               silent:bool=True):
+
     """
-    Fits a (robust) polynomial of a given order to a set of 1-D data.
+    Fits a (robust) polynomial to a set of 1D data.
 
     Parameters
-    ----------------
-    x : array_like
-        (ndat,) array of independent values.
+    ----------
+    x : ndarray
+        An (ndat, ) array of independent values.
 
-    y : array_like
-        (ndat,) array of dependent values.
+    y : ndarray
+        An (ndat, ) array of dependent values.
 
     order : int
-        The order of the polynomial
+        The order of the polynomial fit.
 
-    yunc : array_like, optional
-        (ndat,) array of uncertainties on the dependent values `y`
+    yunc : ndarray, default None
+        An (ndat, ) array of uncertainties on the dependent values `y`
 
-    goodbad : array_like
-        A goodbad array identifying each value.  0=bad, 1=good, 2=NaN.
+    goodbad : ndarray, deafult None
+        An (ndat, ) array identifying each value as either, bad (0),
+        good(1) or Nan (2). If passed, the the function will ignore "bad"
+        values during the fit.
 
-    robust : dict, optional
-        
+    robust : dict of {str:int or float, str:int or float}, optional
 
-    doalpha: {False, True}, optional
-        If true, then A**T * A is computed directly instead of A
+        `"thresh"` : int or float
+            The standard deviation threshold over which to identify pixels as
+            an outlier.
 
-    justfit : {False, True}, optional 
-        Set to compute only the coefficients.  Faster this way.
+        `"eps"` : int or float
+            The epsilon value to decide when to stop trying to identify
+            outliers.  If (stddev_i-1 - stddev_i) / stddev_i < `"eps"` then
+            the search is ended.
 
-    silent : {True, False}, optional
-        If False, the result of the fit will be written to the command line
+        If given, an attempt will be made to robustly determine the fit.  
+
+    doalpha: {False, True}
+        Set to False to compute the design matrix A, then alpha and beta.
+        Set to True to compute the alpha and beta arrays directly.
+
+    justfit : {False, True}
+        Set to False to do everything.
+        Set to True to only fit the coefficients.  Faster this way.
+    
+    silent : {True, False}
+        Set to True to report the results to the command line.
+        Set to False to not report the results to the command line.
 
     Returns
     -------
     dict
-        A dict where with the following entries:
-
-        coeffs : numpy.ndarray
+        `"coeffs"` : ndarray
             The polynomial coefficients
 
-        coeff_var : numpy.ndarray
+        `"coeff_var"`: ndarray
             The variances of the coefficients
 
-        coeff_covar : numpy.ndarray
+        `"coeff_covar"` : ndarray
             The covariance matrix
 
-        yfit : numpy.ndarray 
+        `"yfit"` : ndarray 
             The polynomial evaluated at `x`
 
-        yfit_var : numpy.ndarray 
+        `"yfit_var"` : ndarray 
             The variances of `yfit` calculated using `coeff_covar`.
 
-        nparm : int
+        `"nparm"` : int
             The number of parameters of the fit
 
-        ndof : int
+        `"ndof"` : int
             The number of degrees of freedom
 
-        chi2 : float
+        `"chi2"` : float64
             The chi^2 value of the fit
 
-        rchi2 : float
+        `"rchi2"`: float64
             The reduced chi^2 value of the fit
 
-        rms : flat
+        `"rms"`: float64
             The rms of the fit (1/N, not 1/(N-1))
 
     Notes
@@ -499,7 +584,7 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
     Standard least squares fitting (e.g. Numerical Recipes).  
     The program fits the following function:
 
-    z = f(x) = c_0 + c_1*x + c_2*x**2 + c_3*x**3 + ...
+    y = f(x) = c_0 + c_1*x + c_2*x**2 + c_3*x**3 + ...
 
     By default, the design matrix A is constructed.  The alpha 
     (A^T ## A) and beta (A^T ## b) arrays of the normal equations 
@@ -511,7 +596,6 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
     set `doalpha` to True and the alpha and beta arrays are constructed 
     directly.  There is a trade-off since constructing the alpha and beta
     arrays directly takes longer for smaller surfaces.
-
 
     Examples
     --------
@@ -525,10 +609,33 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('polyfit_1d','x', x, 'ndarray')
+
+    check_parameter('polyfit_1d','y', y, 'ndarray')
+
+    check_parameter('polyfit_1d','order', order, 'int')
+
+    check_parameter('polyfit_1d','yunc', yunc, ['ndarray','NoneType'])
+
+    check_parameter('polyfit_1d','goodbad', goodbad, ['ndarray','NoneType'])
+
+    check_parameter('polyfit_1d','robust', robust, ['dict','NoneType'])
+
+    check_parameter('polyfit_1d','doalpha', doalpha, 'bool')
+
+    check_parameter('polyfit_1d','silent', silent, 'bool')    
+
+    check_parameter('polyfit_1d','justfit', justfit, 'bool')                
+
+
     # Construct the uncertainty array if need be
 
     if yunc is None:
-        yunc = np.full(len(x), 1.0)
+        yunc = np.full(len(x), 1.0, dtype=np.float64)
 
     # Create the goodbad array
 
@@ -682,75 +789,101 @@ def poly_fit_1d(x, y, order, yunc=None, goodbad=None, robust=None,
 #
 # ==============================================================================
 #
-def poly_fit_2d(x, y, z, xorder, yorder, zunc=None, goodbad=None,
-                robust=None, doalpha=False, silent=True, justfit=False):
+def polyfit_2d(x:npt.ArrayLike,
+               y:npt.ArrayLike,
+               z:npt.ArrayLike,
+               xorder:int,
+               yorder:int,
+               zunc:npt.ArrayLike=None,
+               goodbad:npt.ArrayLike=None,
+               robust:dict=None,
+               doalpha:bool=False,
+               silent:bool=True,
+               justfit:bool=False):
+    
     """
-    Fits a 2D polynomial of a given order to a set of 2D data
-
-    Standard least squares fitting (e.g. Numerical Recipes).  This 
-    program is based on solving the equation A ## coeff = b.  Except 
-    now, 
+    Fits a 2D polynomial to a set of 2D data
 
     
     Parameters
-    ----------------
-    x : array_like, int or float
-        An array of independent values
+    ----------
+    x : ndarray
+        An (ndat, ) array of independent values
 
-    y : array_like, int of float
-        An array of independent values
+    y : ndarray
+        An (ndat, ) array of independent values
 
-    z : array_like, int or float 
-        An array of dependent values
+    z : ndarray
+        An (ndat, ) array of dependent values
 
     xorder : int
-        The order of the polynomial for the x dimension
+        The order of the polynomial for the x dimension.  1=linear
 
     yorder : int
-        The order of the polynomial for the y dimension
+        The order of the polynomial for the y dimension.  1=linear
 
-    zunc : array_like, float, optional
-        An array of uncertainties on the dependent values
+    zunc : nndarray, default None
+        An (ndat, ) array of uncertainties on the dependent values
 
-    doalpha: {False, True}, optional
-        If true, then A**T * A is computed directly instead of A
+    goodbad : ndarray, deafult None
+        An (ndat, ) array identifying each value as either, bad (0),
+        good(1) or Nan (2). If passed, the the function will ignore "bad"
+        values during the fit.
 
-    silent : {True, False}, optional
-        If False, the result of the fit will be written to the command line
+    robust : dict of {str:int or float, str:int or float}, optional
 
-    justfit : {False, True}, optional
-        If True, only the coefficients are computed and returned
+        `"thresh"` : int or float
+            The standard deviation threshold over which to identify pixels as
+            an outlier.
+
+        `"eps"` : int or float
+            The epsilon value to decide when to stop trying to identify
+            outliers.  If (stddev_i-1 - stddev_i) / stddev_i < `"eps"` then
+            the search is ended.
+
+        If given, an attempt will be made to robustly determine the fit.  
+
+    doalpha: {False, True}
+        Set to False to compute the design matrix A, then alpha and beta.
+        Set to True to compute the alpha and beta arrays directly.
+
+    justfit : {False, True}
+        Set to False to do everything.
+        Set to True to only fit the coefficients.  Faster this way.
+    
+    silent : {True, False}
+        Set to True to report the results to the command line.
+        Set to False to not report the results to the command line.
 
     Returns
     -------
     dict
-        A dict where with the following entries:
 
-        coeffs : numpy.ndarray
+        `"coeffs"` : ndarray 
             The polynomial coefficients
 
-        var : numpy.ndarray
+        `"var"` : ndarray 
             The variances of the coefficients
 
-        covar : numpy.ndarray
+        `"covar"` : ndarray
             The covariance matrix
 
-        zfit : numpy.ndarray 
+        `"zfit"` : ndarray 
             The polynomial evaluated at `x` and `y`
 
-        nparm : int
+        `"nparm"` : int
             The number of parameters of the fit
 
-        ndof : int
+        `"ndof"` : int
             The number of degrees of freedom
 
-        chi2 : float
+        `"chi2"` : float64
             The chi^2 value of the fit
 
-        rchi2 : float
+        `"rchi2"` : float64
             The reduced chi^2 value of the fit
 
-        rms : flat
+        `"rms"` : float64
             The rms of the fit (1/N, not 1/(N-1))
 
     Notes
@@ -773,22 +906,48 @@ def poly_fit_2d(x, y, z, xorder, yorder, zunc=None, goodbad=None,
     directly.  There is a trade-off since constructing the alpha and beta
     arrays directly takes longer for smaller surfaces.
 
-    Examples
-    --------
-    later?
-
-    Modification History
-    --------------------
-        2022-03-09 - Written by M. Cushing, University of Toledo.  
-                     Based on the Spextool IDL program mc_polyfit2d.pro
-        2022-06-17 - Simplfied the creation of alpha is doalpha=True
-
     """
+    
+    #
+    # Check parameters
+    #
 
+    check_parameter('polyfit_2d','x', x, 'ndarray')
+
+    check_parameter('polyfit_2d','y', y, 'ndarray')
+
+    check_parameter('polyfit_2d','z', z, 'ndarray')
+
+    check_parameter('polyfit_2d','xorder', xorder, 'int')
+
+    check_parameter('polyfit_2d','yorder', yorder, 'int')
+
+    check_parameter('polyfit_2d','zunc', zunc, ['ndarray','NoneType'])
+
+    check_parameter('polyfit_2d','goodbad', goodbad, ['ndarray','NoneType'])
+
+    check_parameter('polyfit_2d','robust', robust, 'dict')
+
+    check_parameter('polyfit_2d','doalpha', doalpha, 'bool')
+
+    check_parameter('polyfit_2d','silent', silent, 'bool')    
+
+    check_parameter('polyfit_2d','justfit', justfit, 'bool')                
+
+    #
+    # Get set up
+    # 
+    
+    # Convert to float64
+
+    x = np.float64(x)
+    y = np.float64(y)    
+    z = np.float64(z)
+    
     # Construct the uncertainty array if necessary
 
     if zunc is None:
-        zunc = np.full(len(x), 1.0)
+        zunc = np.full(len(x), 1.0,dtype=np.float64)
 
     # Create the goodbad array
 
@@ -811,9 +970,18 @@ def poly_fit_2d(x, y, z, xorder, yorder, zunc=None, goodbad=None,
     zz = z[z_initgood]
     zzunc = zunc[z_initgood]
 
+    #
+    # Now get the fit started
+    #
+    
     # Create the alpha and beta arrays of the normal equatioon
 
-    alpha, beta = make_alphabeta_2d(xx, yy, zz, zzunc, xorder, yorder,
+    alpha, beta = make_alphabeta_2d(xx,
+                                    yy,
+                                    zz,
+                                    zzunc,
+                                    xorder,
+                                    yorder,
                                     doalpha=doalpha)
 
     # Solve things
@@ -926,7 +1094,7 @@ def poly_fit_2d(x, y, z, xorder, yorder, zunc=None, goodbad=None,
             print('Coefficients:')
             print(' ')
 
-            for i in range(0, order + 1):
+            for i in range(0, ncoeffs):
                 print('Coeff #', str(i).zfill(2), ': ', coeffs[i], '+-',
                       np.sqrt(var[i]), sep='')
 

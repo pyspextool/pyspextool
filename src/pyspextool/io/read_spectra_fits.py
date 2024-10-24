@@ -118,6 +118,7 @@ def read_spectra_fits(file):
            'lyunits': header['LYUNITS'],
            'lxlabel': header['LXLABEL'],
            'lylabel': header['LYLABEL'],
+           'lulabel': header['LULABEL'],           
            'slith_pix': header['SLTH_PIX'],
            'slith_arc': header['SLTH_ARC'],
            'slitw_pix': header['SLTW_PIX'],

@@ -1,16 +1,25 @@
 import numpy as np
+import logging
+from os.path import join
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
-from pyspextool.extract.trace_spectrum_1dxd import trace_spectrum_1dxd
-from pyspextool.extract.trace_to_xy import trace_to_xy
-from pyspextool.io.check import check_parameter
+from pyspextool.extract.trace import trace_spectrum_1dxd, trace_to_xy
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.plot.plot_image import plot_image
+from pyspextool.pyspextoolerror import pySpextoolError
 
+def trace_apertures(fit_degree:int=2,
+                    step_size:int=5,
+                    summation_width:int=5,
+                    centroid_threshold:int=2,
+                    seeing_fwhm:int | float=0.8,
+                    verbose:bool=None,
+                    qa_show:bool=None,
+                    qa_showscale:float | int=None,
+                    qa_showblock:bool=None,
+                    qa_write:bool=None):
 
-def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
-                    centroid_threshold=2, fwhm=0.8, verbose=None,
-                    qa_show=None, qa_write=None, qa_showsize=(6, 6)):
     """
     Command line call for tracing apertures.
 
@@ -32,42 +41,13 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
         If (fit-guess) > centroid_threshold to peak identification is found
         to fail.
 
-    fwhm : float, optional, default 0.8
+    seeing_fwhm : float, optional, default 0.8
         The approximate FWHM of the peaks in arcseconds.
-
-    qa_show : {None, True, False}, optional
-        Set to True/False to override config.state['qa_show'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be interactively generated.
-
-    qa_showsize : tuple, default=(6,6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_showsize)) for the interactive plot.
-
-    qa_write : {None, True, False}, optional
-        Set to True/False to override config.state['qa_write'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be written to disk.
-
-    verbose : {None, True, False}, optional
-        Set to True/False to override config.state['verbose'] in the
-        pyspextool config file.
 
     Returns
     -------
     None
-    Updates config.state['tracecoeffs'] variable.  
-
-
-    Notes
-    -----
-    Just collects information from the config.state variable, calls
-    trace_spectrum_1dxd, and then optional plots the qa plot.
-
-
-    Examples
-    --------
-    later
+        Updates config.state['tracecoeffs'], extract.state['trace_done'].
 
     """
 
@@ -77,12 +57,11 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
 
     if extract.state['select_done'] is False:
 
-        message = "extract.state['select_done']=False.  "+\
-          "Previous steps not complete."        
-        raise ValueError(message)
+        message = "Previous steps not complete.  Please run locate_apertures.py"
+        raise pySpextoolError(message)
 
     #
-    # Check parameters
+    # Check parameters and QA parameters
     #
 
     check_parameter('trace_apertures', 'fit_degree', fit_degree, 'int')
@@ -95,107 +74,67 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     check_parameter('trace_apertures', 'centroid_threshold',
                     centroid_threshold, 'int')
 
-    check_parameter('trace_apertures', 'fwhm', fwhm, 'float')
+    check_parameter('trace_apertures', 'seeing_fwhm', seeing_fwhm,
+                    ['int','float'])
 
-    check_parameter('trace_apertures', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('trace_apertures', 'verbose', verbose,
+                    ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter('trace_apertures', 'qa_write', qa_write,
+                    ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('trace_apertures', 'qa_show', qa_show,
+                    ['NoneType', 'bool'])
 
-    check_parameter('trace_apertures', 'qa_showsize', qa_showsize, 'tuple')
+    check_parameter('trace_apertures', 'qa_showscale', qa_showscale,
+                    ['int', 'float', 'NoneType'])
 
-    #
-    # Check the qa and verbose variables and set to system default if need be.
-    #
-
-    if qa_write is None:
-        qa_write = setup.state['qa_write']
-
-    if qa_show is None:
-        qa_show = setup.state['qa_show']
-
-    if verbose is None:
-        verbose = setup.state['verbose']
-
-        #
-    # Store user inputs
-    #
-
-    extract.trace['fitdeg'] = fit_degree
-    extract.trace['step'] = step_size
-    extract.trace['sumwidth'] = summation_width
-    extract.trace['centresh'] = centroid_threshold
-    extract.trace['fwhm'] = fwhm
-    extract.trace['qafile'] = qa_write
-    extract.trace['qaplot'] = qa_show
-    extract.trace['qaplotsize'] = qa_showsize
-    extract.trace['verbose'] = verbose
-
+    check_parameter('trace_apertures', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
+    
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)    
     #
     # Run the trace
     #
 
-    if extract.state['type'] == 'ps':
+    if extract.state['aperture_type'] == 'fixed':
 
-        # Point source extraction.  Must actually trace the apertures
+        # Build the trace coefficients from the aperture positions
 
-        doorders = extract.state['psdoorders']
+        norders, naps = np.shape(extract.state['aperture_positions'])
 
+        doorders = extract.state['doorders']
         z = doorders == 1
+        ndoorders = np.sum(doorders)
+
+        tracecoeffs = np.full((ndoorders * naps, 2), 0)
+        tracecoeffs[:, 0] = np.ravel(extract.state['aperture_positions'][z, :])
+
+    else:
+        
+        # Must actually trace the apertures
+
+        z = extract.state['doorders'] == 1
+
+        logging.info(' Tracing apertures.')
         trace = trace_spectrum_1dxd(extract.state['workimage'],
                                     extract.state['ordermask'],
                                     extract.state['orders'][z],
                                     extract.state['wavecal'],
                                     extract.state['spatcal'],
                                     extract.state['xranges'][z, :],
-                                    extract.state['apertures'][z, :],
+                                    extract.state['aperture_positions'][z, :],
                                     fit_degree=fit_degree,
                                     step_size=step_size,
                                     centroid_threshold=centroid_threshold,
-                                    fwhm=fwhm, verbose=verbose)
+                                    fwhm=seeing_fwhm,
+                                    verbose=qa['verbose'])
         
         tracecoeffs = trace['coeffs']
-
-        if qa_show is True or qa_write is True:
-            norders, naps = np.shape(extract.state['apertures'])
-            info = trace_to_xy(extract.state['ordermask'],
-                               extract.state['wavecal'],
-                               extract.state['spatcal'],
-                               extract.state['xranges'],
-                               extract.state['orders'], doorders, naps,
-                               trace['coeffs'], verbose=verbose)
-
-            plotinfo = {'x': trace['x'], 'y': trace['y'],
-                        'goodbad': trace['goodbad'], 'fits': info}
-
-    else:
-
-        # Must be an extended source extraction
-
-        # Build the trace coefficients from the aperture positions
-
-        norders, naps = np.shape(extract.state['apertures'])
-
-        doorders = extract.state['xsdoorders']
-        z = doorders == 1
-        ndoorders = np.sum(doorders)
-
-        tracecoeffs = np.full((ndoorders * naps, 2), 0)
-        tracecoeffs[:, 0] = np.ravel(extract.state['apertures'][z, :])
-
-        # Do the plotting stuff
-
-        if qa_show is True or qa_write is True:
-            norders, naps = np.shape(extract.state['apertures'])
-            info = trace_to_xy(extract.state['ordermask'],
-                               extract.state['wavecal'],
-                               extract.state['spatcal'],
-                               extract.state['xranges'],
-                               extract.state['orders'], doorders, naps,
-                               tracecoeffs)
-
-            plotinfo = {'fits': info}
 
     #
     # Store the results
@@ -204,28 +143,58 @@ def trace_apertures(fit_degree=2, step_size=5, summation_width=5,
     extract.state['tracecoeffs'] = tracecoeffs
 
     #
-    # Plot stuff up if requested
+    # Do the QA plots
     #
 
-    if qa_show is True:
+    if qa['show'] is True or qa['write'] is True:
 
-        number = plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
-                   plot_number=extract.state['image_plotnum'],
-                   plot_size=qa_showsize)
-        extract.state['image_plotnum'] = number
+            norders, naps = np.shape(extract.state['aperture_positions'])
 
+            info = trace_to_xy(extract.state['ordermask'],
+                               extract.state['wavecal'],
+                               extract.state['spatcal'],
+                               extract.state['xranges'],
+                               extract.state['doorders'],
+                               naps,
+                               tracecoeffs,
+                               verbose=verbose)
+
+            if extract.state['aperture_type'] != 'fixed':
+
+                trace_info = {'x': trace['x'], 'y': trace['y'],
+                              'goodbad': trace['goodbad'], 'fits': info}
+                
+            else:
+
+                trace_info = {'fits': info}                
+                  
+    if qa['show'] is True:
         
-    if qa_write is True:
-        qafileinfo = {'figsize': (7, 7),
-                      'filepath': setup.state['qa_path'],
-                      'filename': extract.state['qafilename'] + '_trace',
-                      'extension': setup.state['qa_extension']}
+        plot_image(extract.state['workimage'],
+                   mask=extract.state['maskimage'],
+                   figure_size=(setup.plots['square_size'][0]*qa['showscale'],
+                                setup.plots['square_size'][1]*qa['showscale']),
+                   font_size=setup.plots['font_size']*qa['showscale'],
+                   showblock=qa['showblock'],
+                   plot_number=setup.plots['combine_image'],
+                   trace_plotinfo=trace_info)
+            
+    if qa['write'] is True:
 
-        plot_image(extract.state['workimage'], trace_plotinfo=plotinfo,
-                   file_info=qafileinfo)
+        filename = extract.state['qafilename'] + '_trace' + \
+            setup.state['qa_extension']
+        fullpath = join(setup.state['qa_path'],filename)
+
+        plot_image(extract.state['workimage'],
+                   mask=extract.state['maskimage'],
+                   output_fullpath=fullpath,
+                   figure_size=setup.plots['square_size'],
+                   font_size=setup.plots['font_size'],
+                   trace_plotinfo=trace_info)
 
     #
     # Set the done variable
     #
 
     extract.state['trace_done'] = True
+

@@ -1,35 +1,48 @@
-import os
+from os.path import join, basename
 import importlib
 import numpy as np
 from astropy.io import fits
+import logging
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
 
 from pyspextool.extract import background_subtraction as background
-from pyspextool.extract.scale_orders import scale_orders as scale_background
-from pyspextool.io.check import check_parameter
+from pyspextool.extract.images import scale_order_background
+from pyspextool.io.check import check_parameter, check_qakeywords, check_file
 from pyspextool.io.files import make_full_path
-from pyspextool.io.flat import read_flat_fits
+from pyspextool.extract.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
-from pyspextool.io.fitsheader import average_header_info
+from pyspextool.io.fitsheader import average_headerinfo
 from pyspextool.utils import math
 from pyspextool.utils.arrays import idl_unrotate
 from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.plot.plot_image import plot_image
+from pyspextool.io.files import files_to_fullpath
+from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def combine_images(files, output_name, extension='.fits*',
-                   linearity_correction=True, beam_mode='A',
-                   scale_orders=False, background_subtraction=False,
-                   flat_field_name=None, flat_field=False,
-                   statistic='robust weighted mean',
-                   robust_sigma=8, output_directory='proc', overwrite=True,
-                   qa_show=None, qa_showsize=(6, 6), qa_write=None,
-                   verbose=None):
+def combine_images(files:str | list,
+                   output_filename:str,
+                   input_extension:str='.fits*',
+                   output_directory:str='proc',
+                   correct_nonlinearity:bool=True,
+                   beam_mode:str='A',
+                   scale_background:bool=False,
+                   subtract_background:bool=False,
+                   flatfield_filename:str=None,
+                   flatfield:bool=False,
+                   statistic:str='robust weighted mean',
+                   robust_sigma:int | float=8,
+                   verbose=None,
+                   qa_show=None,
+                   qa_showscale:float | int=1.0,
+                   qa_showblock:bool=None,
+                   qa_write=None):
+
     """
-    To combine (pair-subtracted) images for later extraction
+    To combine (pair-subtracted) images for later extraction.
 
     Parameters
     ----------
@@ -44,11 +57,13 @@ def combine_images(files, output_name, extension='.fits*',
     output_name : str
         The filename of the combined image to written to disk.      
 
-    extension : str, default='.fits*'
+    input_extension : str, default '.fits*'
         The file extension
 
-    linearity_correction : {True, False}
-        Set to True to correct for linearity
+    correct_nonlinearity : {True, False}
+        Set to True to correct for non-linearity.
+        Set to False to not correct for non-linearity.
+        Deafult is True
 
     beam_mode : {'A', 'A-B'}
         Seto to 'A-B' to pair-subtract images before combining.  
@@ -57,16 +72,16 @@ def combine_images(files, output_name, extension='.fits*',
         Set to scale the flux levels in each order to the median value of all
         orders.
 
-    background_subtraction : {False, True}
+    subtract_background : {False, True}
         Set to subtract the background off of each image.  Currently only 
         does the median flux level over the slit.
 
-    flat_field_name : str, optional
+    flatfield_name : str, optional
         A string given the flat field FITS file associated with the images.  
         Required if `scale_orders`, `background_subtraction` or `flat_field` is 
         set to True.
 
-    flat_field : {False, True}
+    flatfield : {False, True}
         Set to flat field the image.
 
     statistic : {'robust weighted mean', 'robust mean', 'weighted mean', 
@@ -93,9 +108,6 @@ def combine_images(files, output_name, extension='.fits*',
 
     output_directory : {'proc', 'cal'}
         The pyspextool directory into which the file is written.
-
-    overwrite : {True, False}
-        Set to True to overwrite a file on disk with the same name.
 
     qa_show : {None, True, False}
         Set to True/False to override config.state['qa_show'] in the 
@@ -124,38 +136,35 @@ def combine_images(files, output_name, extension='.fits*',
     """
 
     #
-    #  Check parameters
+    #  Check parameters and QA keywords
     #
 
-    check_parameter('combine_images', 'files', files, ['str', 'list'])
+    check_parameter('combine_images', 'files', files, ['str', 'list'],
+                    list_types=['str','str'])
 
-    if isinstance(files, list):
-        check_parameter('combine_images', 'files[0]', files[0], 'str')
-        check_parameter('combine_images', 'files[1]', files[1],
-                        ['str', 'list', 'int'])
+    check_parameter('combine_images', 'output_filename', output_filename, 'str')
 
-    check_parameter('combine_images', 'output_name', output_name, 'str')
+    check_parameter('combine_images', 'input_extension', input_extension, 'str')
 
     check_parameter('combine_images', 'output_directory', output_directory,
                     'str', possible_values=['proc', 'cal'])
-
-    check_parameter('combine_images', 'extension', extension, 'str')
+    
+    check_parameter('combine_images', 'correct_nonlinearity',
+                    correct_nonlinearity, 'bool')
 
     check_parameter('combine_images', 'beam_mode', beam_mode, 'str',
                     possible_values=['A', 'A-B'])
 
-    check_parameter('combine_images', 'linearity_correction',
-                    linearity_correction, 'bool')
+    check_parameter('combine_images', 'scale_background', scale_background,
+                    'bool')
 
-    check_parameter('combine_images', 'scale_orders', scale_orders, 'bool')
+    check_parameter('combine_images', 'subtract_background',
+                    subtract_background, 'bool')
 
-    check_parameter('combine_images', 'background_subtraction',
-                    background_subtraction, 'bool')
-
-    check_parameter('combine_images', 'flat_field_name', flat_field_name,
+    check_parameter('combine_images', 'flatfield_fiename', flatfield_filename,
                     ['NoneType', 'str'])
 
-    check_parameter('combine_images', 'flat_field', flat_field, 'bool')
+    check_parameter('combine_images', 'flatfield', flatfield, 'bool')
 
     check_parameter('combine_spectra', 'statistic', statistic, 'str')
 
@@ -164,93 +173,64 @@ def combine_images(files, output_name, extension='.fits*',
 
     check_parameter('combine_images', 'verbose', verbose, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'overwrite', overwrite, 'bool')
-
-    check_parameter('combine_images', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('combine_images', 'qa_write', qa_write,
+                    ['NoneType', 'bool'])
 
     check_parameter('combine_images', 'qa_show', qa_show, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'qa_showsize', qa_showsize,
-                    ['NoneType', 'tuple'])
+    check_parameter('combine_images', 'qa_showscale', qa_showscale,
+                    ['int', 'float'])
 
-    #
-    # Check the qa and verbose variables and set to system default if need be.
-    #
+    check_parameter('combine_images', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
 
-    if qa_write is None:
-        qa_write = setup.state['qa_write']
-
-    if qa_show is None:
-        qa_show = setup.state['qa_show']
-
-    if verbose is None:
-        verbose = setup.state['verbose']
-
-    #
-    # Store user inputs
-    #
-
-    extract.combine['linearity_correction'] = linearity_correction
-    extract.combine['scale_orders'] = scale_orders
-    extract.combine['background_subtraction'] = background_subtraction
-    extract.combine['flat_field_name'] = flat_field_name
-    extract.combine['flat_field'] = flat_field
-    extract.combine['overwrite'] = overwrite
-    extract.combine['qaplotsize'] = qa_showsize
-    extract.combine['qaplot'] = qa_show
-    extract.combine['qafile'] = qa_write
-    extract.combine['verbose'] = verbose
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)
 
     #
     # Let the user know what you are doing.
     #
 
-    if verbose is True:
-        print('Combining Images')
-        print('---------------------')
-
-        #
-    # Load the instrument module for the read_fits program
-    #
-
-    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
-             '_dir.' + setup.state['instrument']
-
-    instr = importlib.import_module(module)
-
-    #
-    # Create the file names
-    #
-
+    logging.info(' Combining Images \n ---------------------')    
+    
+#
     # Create the file names
 
-    if isinstance(files, str):
-
-        # You are in FILENAME mode
-
-        files = files.replace(" ", "").split(',')
-        files = make_full_path(setup.state['raw_path'], files, exist=True)
-
-    else:
-
-        # You are in INDEX mode
-
-        prefix = files[0]
-        nums = files[1]
-
-        files = make_full_path(setup.state['raw_path'], nums,
-                               indexinfo={'nint': setup.state['nint'],
-                                          'prefix': prefix,
-                                          'suffix': setup.state['suffix'],
-                                          'extension': extension},
-                               exist=True)
+    input_files = files_to_fullpath(setup.state['raw_path'],
+                                    files,
+                                    setup.state['nint'],
+                                    setup.state['suffix'],
+                                    input_extension)
+    check_file(input_files)
 
     #
     # Deal with the beam parameter
     #
 
-    if beam_mode == 'A-B' and setup.state['irtf'] is True:
-        files, indices = reorder_irtf_files(files)
+    if beam_mode == 'A-B':
+
+        # Are there an even number of images?
+
+        if len(input_files) % 2 == 1:
+
+            message = "An even number of images are required for "+ \
+            "`beam_mode` to be equal to 'A-B'."
+            raise pySpextoolError(message)
+
+        if setup.state['irtf'] is True:
+
+            input_files, indices = reorder_irtf_files(input_files)
+
+        nimages = int(len(input_files) / 2)            
+        pair = True
+
+    else:
+
+        nimages = int(len(input_files))
+        pair = False
 
     #
     #  Load the images
@@ -258,17 +238,23 @@ def combine_images(files, output_name, extension='.fits*',
 
     # First we have to figure out whether we are doing background subtraction
 
-    if scale_orders is True or background_subtraction is True:
+
+    if (scale_background or subtract_background or flatfield) is True:
 
         # Check if the flat field file is passed.
 
-        if flat_field_name is None:
-            message = '`flat_field_name` required for scaling/subtraction.'
-            raise ValueError(message)
+        if flatfield_filename is None:
+
+            message = 'The parameter `flatfield_filename` is required for '+\
+                'flat fielding and/or scaling orders and/or background '+\
+                'subtraction.'
+            raise pySpextoolError(message)
 
         # Read the flat field
 
-        file_name = os.path.join(setup.state['cal_path'], flat_field_name)
+        file_name = join(setup.state['cal_path'], flatfield_filename)
+        check_file(file_name)
+
         flatinfo = read_flat_fits(file_name)
         rotation = flatinfo['rotation']
         edgecoeffs = flatinfo['edgecoeffs']
@@ -285,78 +271,84 @@ def combine_images(files, output_name, extension='.fits*',
 
     # Check beam mode
 
-    pair = True if beam_mode == 'A-B' else False
 
-    if pair is True:
-
-        nimages = int(len(files) / 2)
-
-    else:
-
-        nimages = int(len(files))
-
-    # Read the data in
+            
     
-    data, var, hdr, mask = instr.read_fits(files,
-                                           setup.state['linearity_info'],
-                                           pair_subtract=pair,
-                                    linearity_correction=linearity_correction,
-                                    keywords=setup.state['extract_keywords'],
-                                           rotate=rotation,
-                                           verbose=verbose)
+    # Load the instrument module for the read_fits program
+
+    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
+             '_dir.' + setup.state['instrument']
+
+    instr = importlib.import_module(module)
+
+    logging.info(' Loading images...')    
+    
+    result = instr.read_fits(input_files,
+                             setup.state['linearity_info'],
+                             pair_subtract=pair,
+                             linearity_correction=correct_nonlinearity,
+                             keywords=setup.state['extract_keywords'],
+                             rotate=rotation,
+                             verbose=qa['verbose'])
+
+    data = result[0]
+    var = result[1]
+    hdr = result[2]
+    mask = result[3]
+    
+    #
+    # Scale the orders to a common intensity level?
+    #
+    
+    if scale_background is True:
+
+            logging.info(' Scaling the orders to a common intensity level.')
+
+            result = scale_order_background(data,
+                                            orders,
+                                            edgecoeffs,
+                                            xranges,
+                                            var_stack=var,
+                                            ybuffer=ybuffer,
+                                            verbose=qa['verbose'])
+
+            data = result[0]
+            var = result[1]
 
     #
-    # Scale orders
+    # Subtract the background? 
     #
 
-    if scale_orders is True:
+    if subtract_background is True:
 
-        if verbose is True:
-            print('Scaling the orders to a common level...')
-
-        result = scale_background(data, orders, edgecoeffs, xranges,
-                                  var_stack=var, ybuffer=ybuffer)
-
-        data = result[0]
-        var = result[1]
-
-    #
-    # Background subtraction    
-    #
-
-    if background_subtraction is True:
-
+        logging.info(' Subtracting the background.')    
+        
         for i in range(nimages):
-
-            if verbose is True:
-                loop_progress(i, 0, nimages,
-                              message='Subtracting background...')
-
+            
             result = background.median_1dxd(data[i, :, :],
                                             flatinfo['edgecoeffs'],
                                             flatinfo['xranges'],
                                             var=var[i, :, :],
-                                            ybuffer=flatinfo['ybuffer'])
+                                            ybuffer=ybuffer)
             data[i, :, :] = result[0]
             var[i, :, :] = result[1]
 
     #
-    # Now combine the images together
+    # Now combine the images
     #
 
-    if verbose is True:
-        print('Combining images with a ' + statistic + '...')
+    logging.info(' Combining images with a ' + statistic + '.')
 
     if statistic == 'robust weighted mean':
-
+        
         result = math.mean_data_stack(data, robust=robust_sigma,
                                       weights=1 / var, stderr=True)
     elif statistic == 'robust mean':
-
+        
         result = math.mean_data_stack(data, robust=robust_sigma, stderr=True)
-
+        
     elif statistic == 'weighted mean':
-
+        
         result = math.mean_data_stack(data, weights=1 / var, stderr=True)
 
     elif statistic == 'mean':
@@ -370,7 +362,7 @@ def combine_images(files, output_name, extension='.fits*',
     else:
 
         message = '`statistic` is unknown.'
-        raise ValueError(message)
+        raise pySpextool(message)
 
     mean = result[0]
     var = result[1] ** 2
@@ -383,10 +375,9 @@ def combine_images(files, output_name, extension='.fits*',
     # Flat field if requested
     #
 
-    if flat_field is True:
+    if flatfield is True:
 
-        if verbose is True:
-            print('Flat fielding the image...')
+        logging.info(' Flat fielding the image.')
 
         np.divide(mean, extract.state['flat'], out=mean)
         np.divide(var, extract.state['flat'] ** 2, out=var)
@@ -409,7 +400,7 @@ def combine_images(files, output_name, extension='.fits*',
 
     pair = True if beam_mode == 'A-B' else False
 
-    avehdr = average_header_info(hdr, pair=pair)
+    avehdr = average_headerinfo(hdr, pair=pair)
 
     # Store the history
 
@@ -434,31 +425,31 @@ def combine_images(files, output_name, extension='.fits*',
     avehdr['IC_THRSH'] = [robust_sigma,
                           ' Image combine:  robust threshold (if used)']
 
-    avehdr['IC_LNCOR'] = [linearity_correction,
+    avehdr['IC_LNCOR'] = [correct_nonlinearity,
                          ' Image combine: linearity corrected?']
 
     avehdr['IC_LNMAX'] = [setup.state['linearity_info']['max'],
                           ' Image combine: linearity correction max (DN)']
 
-    avehdr['IC_SCLED'] = [scale_orders, ' Image combine: orders scaled?']
+    avehdr['IC_SCLED'] = [scale_background, ' Image combine: orders scaled?']
 
-    avehdr['IC_BGSUB'] = [background_subtraction,
+    avehdr['IC_BGSUB'] = [subtract_background,
                           ' Imagine combine: background subtraction?']
 
-    avehdr['IC_FLATD'] = [flat_field, ' Imagine combine: flat fielded?']
+    avehdr['IC_FLATD'] = [flatfield, ' Imagine combine: flat fielded?']
 
     avehdr['IC_NIMGS'] = [len(files),
                           ' Image combine: number of images combined']
 
     avehdr['IC_BEAM'] = [beam_mode, ' Imagine combine: beam mode']
 
-    avehdr['FILENAME'] = [output_name + '.fits', ' Filename']
+    avehdr['FILENAME'] = [output_filename + '.fits', ' Filename']
 
     # Create the history
 
     # Strip the directories.
 
-    file_names = [os.path.basename(i) for i in files]
+    file_names = [basename(i) for i in files]
 
     history = 'This image was created by combining the images ' + \
               ', '.join(file_names) + ' with a ' + statistic
@@ -471,23 +462,64 @@ def combine_images(files, output_name, extension='.fits*',
 
         history = history + '.'
 
-    if linearity_correction is True:
+    if correct_nonlinearity is True:
         history = history + '  The raw data were corrected for non-linearity.'
 
-    if scale_orders is True:
+    if scale_background is True:
         history = history + '  The orders were scaled to a common flux level.'
 
-    if background_subtraction is True:
+    if subtract_background is True:
         history = history + '  Background subtraction was accomplished by ' + \
                   'subtracting the median flux level on a ' + \
                   'column by column basis within each order.'
 
-    if flat_field is True:
+    if flatfield is True:
         history = history + '  The image was flat fielded.'
 
     if is_history_present is True:
         
         history = old_history + history
+
+
+    #        
+    # Make the QA plot
+    #
+
+    if (scale_background or subtract_background or flatfield) is True:
+    
+        orders_plotinfo = {'xranges': flatinfo['xranges'],
+                           'edgecoeffs': flatinfo['edgecoeffs'],
+                           'orders': flatinfo['orders']}
+
+    else:
+
+        orders_plotinfo = None
+        
+    if qa['show'] is True:
+        
+        plot_image(mean,
+                   mask=mask,
+                   orders_plotinfo=orders_plotinfo,
+                   figure_size=(setup.plots['square_size'][0]*qa['showscale'],
+                                setup.plots['square_size'][1]*qa['showscale']),
+                   font_size=setup.plots['font_size']*qa['showscale'],
+                   showblock=qa['showblock'],
+                   plot_number=setup.plots['flat'])
+            
+    if qa['write'] is True:
+
+        filename = output_filename + '_combined' + setup.state['qa_extension']
+        fullpath = join(setup.state['qa_path'],filename)
+
+        plot_image(mean,
+                   mask=mask,
+                   orders_plotinfo=orders_plotinfo,
+                   output_fullpath=fullpath,
+                   figure_size=setup.plots['square_size'],
+                   font_size=setup.plots['font_size'])
+
+
+        
 
     #
     # Write the file to disk
@@ -525,10 +557,8 @@ def combine_images(files, output_name, extension='.fits*',
     var_hdu = fits.ImageHDU(var)
     flg_hdu = fits.ImageHDU(mask)
 
-    path = setup.state[output_directory + '_path']
-
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu])
-    hdu.writeto(os.path.join(path, output_name + '.fits'), overwrite=overwrite)
+    hdu.writeto(join(setup.state['proc_path'], output_filename + '.fits'),
+                overwrite=True)
 
-    if verbose is True:
-        print('Wrote ' + output_name + '.fits to disk.')
+    logging.info(' Wrote ' + output_filename + '.fits to disk.')

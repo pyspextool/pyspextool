@@ -1,0 +1,34 @@
+# Worflow for creating LFS cache
+
+name: Create LFS Cache
+
+on:
+  workflow_dispatch:
+ 
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+        submodules: true
+    - name: work around permission issue. # relevant issue https://github.com/actions/checkout/issues/766
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE" 
+
+    - name: Create LFS file list # relevant issue https://github.com/actions/checkout/issues/165#issuecomment-1639209867_
+      run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+    
+    - name: Git LFS Pull
+      run: git lfs pull
+  
+    - name: Save LFS Cache 
+      uses: actions/cache/save@v4
+      id: save-lfs-cache
+      with:
+        path: .git/lfs/objects
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}

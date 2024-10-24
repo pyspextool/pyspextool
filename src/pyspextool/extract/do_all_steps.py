@@ -5,9 +5,8 @@ from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter
 from pyspextool.io.files import extract_filestring
 from pyspextool.extract.load_image import load_image
-from pyspextool.extract.set_extraction_type import set_extraction_type
-from pyspextool.extract.make_spatial_profiles import make_spatial_profiles
-from pyspextool.extract.locate_aperture_positions import locate_aperture_positions
+from pyspextool.extract.make_profiles import make_profiles
+from pyspextool.extract.identify_apertures import identify_apertures
 from pyspextool.extract.select_orders import select_orders
 from pyspextool.extract.trace_apertures import trace_apertures
 from pyspextool.extract.define_aperture_parameters import define_aperture_parameters
@@ -134,16 +133,16 @@ def do_all_steps(files, verbose=None):
         # Set the extraction type
         #
 
-        set_extraction_type(extract.type['type'])
+#        set_extraction_type(extract.type['type'])
 
         #
         # Make the Profiles
         #
 
-        make_spatial_profiles(verbose=extract.profiles['verbose'],
-                              qa_show=extract.profiles['qaplot'],
-                              qa_write=extract.profiles['qafile'],
-                              qa_showsize=extract.profiles['qaplotsize'])
+#        make_profiles(verbose=extract.profiles['verbose'],
+#                      qa_show=extract.profiles['qaplot'],
+#                      qa_write=extract.profiles['qafile'],
+#                      qa_showsize=extract.profiles['qaplotsize'])
 
         #
         # Locate the Aperture Positions

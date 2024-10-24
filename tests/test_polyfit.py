@@ -1,4 +1,4 @@
-from pyspextool.fit.polyfit import poly_fit_1d
+from pyspextool.fit.polyfit import polyfit_1d
 import numpy as np
 # import matplotlib.pyplot as pl
 
@@ -13,9 +13,9 @@ yerr = np.ones(N)*sigma
 y[50] = 30
 y[30] = np.nan
 
-def test_poly_fit_1d():
+def test_polyfit_1d():
 
-    result = poly_fit_1d(x, y, 3, yunc=yerr, robust={'thresh':4, 'eps':0.1},
+    result = polyfit_1d(x, y, 3, yunc=yerr, robust={'thresh':4, 'eps':0.1},
                     silent=False)
 
     fit = result['yfit']

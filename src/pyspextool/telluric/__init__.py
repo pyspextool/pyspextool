@@ -1,4 +1,4 @@
-from .telluric_correction import telluric_correction
+from .telluric import telluric
 from .load_spectra import load_spectra
 from .prepare_line import prepare_line
 from .get_radialvelocity import get_radialvelocity

@@ -1,102 +1,121 @@
-import os
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as pl
+from matplotlib import rc
+from matplotlib.ticker import AutoMinorLocator
 
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
 
-def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
-               locateorders_plotinfo=None, file_info=None, plot_size=(9, 9),
-               block=False, plot_number=None):
+def plot_image(image:npt.ArrayLike,
+               mask:npt.ArrayLike=None,
+               orders_plotinfo:dict=None,
+               trace_plotinfo:dict=None,
+               locateorders_plotinfo:dict=None,
+               figure_size:tuple=(7,7),
+               font_size:int=12,               
+               output_fullpath:str=None,
+               showblock:bool=False,
+               showscale:float | int=1.0,
+               plot_number:int=None):
+    
     """
     To plot a spectral image along with the edges and order numbers
 
     Parameters
     ----------
-    image : numpy.ndarray
-        An (nrows, ncols) float array with (cross-dispersed) spectral orders.  
+    image : ndarray
+        An (nrows, ncols) array with (cross-dispersed) spectral orders.  
         It is assumed that the dispersion direction is roughly aligned 
         with the rows of `img` and the spatial axis is roughly aligned 
         with the columns of `img.  That is, orders go left-right and 
         not up-down. 
 
-    mask : numpy.ndarray, optional
+    mask : ndarray, optional
         An (nrows, ncols) array where "bad" pixels are set to unity and 
-        "good" pixels are zero. If passed, bad pixels are colored red.
+        "good" pixels are zero. If passed, "bad" pixels are colored red.
 
-    orders_plotinfo : dict, default=None
-        `'edgecoeffs'` : numpy.ndarray 
+    orders_plotinfo : dict, optional
+        'edgecoeffs' : ndarray 
             (norders,`edgedeg`+1,2) float array giving the polynomial 
             coefficients delineating the top and bottom of each order.  
             edgecoeffs[0,0,:] gives the coefficients for the bottom of the 
             order closest to the bottom of the image and edgecoeffs[0,1,:] 
             gives the coefficients for the top of said order.  
 
-        `'xranges'` : array_like
+        'xranges' : ndarray
             An (norders, 2) float array giving the column numbers over which to 
             operate.  xranges[0,0] gives the starting column number for the 
             order nearest the bottom of the image and xranges[0,1] gives 
             the end column number for said order.
 
-        `'orders'` : list of int
+        'orders' : list of int
             (norders,) int array of the order numbers.  By Spextool convention, 
             orders[0] is the order closest to the bottom of the array.
 
-    trace_plotinfo : dict, default=None
-        
+    trace_plotinfo : dict, optional
+        'x' : list
+            An (npoints,) list of x positions for the `y` fit positions.
 
+        'y' : list
+            An (npoints,) list of fitted positions.
+
+        'goodbad' : list
+            An (npoints,) list of goodbad values.  0=bad, 1=good.
+
+        'fits' : list
+            An (norders*napertures,) list of fitted values to the `x`s and `y`s.
+            fits[i] is a (2,ndata) array where fits[i][0,:] = x values, and
+            fits[i][1,:] = y values.  
+       
     locateorders_plotinfo : dict, optional
-        `'guess_positions'`: list
+        'guess_positions': list
             An (norders,) list where each element is a two-element list 
             giving the (x,y) position of the guess position
 
-        `'x'` : list
+        'x' : list
             An (2*norders,) list where each element is the x positions of 
             either the top or the bottom of an order.
 
-        `'y'` : list
+        'y' : list
             An (2*norders,) list where each element is the x positions of 
             either the top or the bottom of an order.
 
-        `'goodbad'` : list
+        'goodbad' : list
             An (2*norders,) list where each element is the x positions of 
             either the top or the bottom of an order.
 
-        `'coefficients'` : list
+        'coefficients' : list
             An (2*norders,) list where each element is (ncoeffs,) ndarray of 
-            the polynomial coefficients of the top or bottom of an order.  
+            the polynomial coefficients of the top or bottom of an order.
 
-    file_info : dict, optional
-        `'figsize'` : tuple
-            (2,) tuple of the figure size (inches).
+    figure_size : tuple of int or float, default (7,7)
+         The figure size in inches.
 
-        `'filepath'` : str
-            The directory to write the QA figure.
+    font_size : int, default 12
+         The font size to use in the plot.
+    
+    output_fullpath : str, optional
+        A string giving the fullpath filename to write the QA to disk.
+    
+    showblock : {False, True}
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
 
-        `'filename'` : str
-            The name of the file, sans suffix/extension.
-
-        `'extension'` : str
-            The file extension.  Must be compatible with the savefig
-            function of matplotlib.
-
-    plot_size : tuple, default=(9, 9)
-        A (2,) tuple giving the figure size.
-
-    block : {False, True}, optional
-        Set to make the plot block access to the command line, e.g. pl.ioff().
-
-    plot_number : int, default=None
-        The plot number to pass to matplotlib
+    showscale : int or float, default 1
+        A scale factor by which to scale the size of the plot displayed to the
+        screen and the font size.
+    
+    plot_number : int, default None
+        A plot number to pass to matplotlib.  
 
     Returns
     -------
-        int or None
-        If int, it is the plot number that can be passed back using 
-        `plot_number` to update a plot.
-
+        None
+        Displays an image to the screen or writes the image to disk.
+    
     """
 
     #
@@ -116,70 +135,80 @@ def plot_image(image, mask=None, orders_plotinfo=None, trace_plotinfo=None,
     check_parameter('plot_image', 'trace_plotinfo', trace_plotinfo,
                     ['NoneType', 'dict'])
 
-    check_parameter('plot_image', 'file_info', file_info, ['NoneType', 'dict'])
-
-    check_parameter('plot_image', 'plot_size', plot_size, ['NoneType', 'tuple'])
+    check_parameter('plot_image', 'output_fullpath', output_fullpath,
+                    ['NoneType', 'str'])
 
     check_parameter('plot_image', 'plot_number', plot_number,
                     ['NoneType', 'int'])
 
-    check_parameter('plot_image', 'block', block, 'bool')        
+    check_parameter('plot_image', 'showblock', showblock, 'bool')
+
+    check_parameter('plot_image', 'showscale', showscale, ['int','float'])
+    
 
     #
     # Make the plot
     #
+ 
+    if output_fullpath is not None:
 
-    
-    if file_info is None:
+        # Write the plot to disk.
 
-        # This is to the screen
-        
-        if block is True:
-
-            pl.ioff()
-
-        else:
-
-            pl.ion()
-
-        plot_number = doplot(image, plot_size, plot_number, mask=mask,
-                             locateorders_plotinfo=locateorders_plotinfo,
-                             orders_plotinfo=orders_plotinfo,
-                             trace_plotinfo=trace_plotinfo)
-
-        pl.show()
-        pl.pause(1)
-
-        return plot_number
-
-    else:
-
-        # This is to a file
-
-        pl.ioff()
-        doplot(image, file_info['figsize'], plot_number, mask=mask,
+        doplot(None,
+               figure_size, 
+               font_size,
+               image,               
+               mask=mask,
                locateorders_plotinfo=locateorders_plotinfo,
                orders_plotinfo=orders_plotinfo,
                trace_plotinfo=trace_plotinfo)
 
-        pl.savefig(os.path.join(file_info['filepath'], file_info['filename'] + \
-                                file_info['extension']))
+        pl.savefig(output_fullpath)
         pl.close()
-        return None
-        
 
+    if output_fullpath is None:
     
-def doplot(image, figsize, plot_number, mask=None, locateorders_plotinfo=None,
-           orders_plotinfo=None, trace_plotinfo=None):
+        # Display the image to the screen.
+
+        doplot(plot_number,
+               (figure_size[0]*showscale,figure_size[1]*showscale),
+               font_size*showscale,
+               image,
+               mask=mask,
+               locateorders_plotinfo=locateorders_plotinfo,
+               orders_plotinfo=orders_plotinfo,
+               trace_plotinfo=trace_plotinfo)
+
+        pl.show(block=showblock)
+        if showblock is False: pl.pause(1)
+
+        return plot_number
+
+        
+    
+def doplot(plot_number:int,
+           figure_size:tuple,
+           font_size:float | int,
+           image:npt.ArrayLike,
+           mask:npt.ArrayLike=None,
+           locateorders_plotinfo:dict=None,
+           orders_plotinfo:dict=None,
+           trace_plotinfo:dict=None):
 
     """
     To plot the image "independent of the device"
 
-    image : ndarray
-        
 
     """
 
+    # Set the fonts
+
+    font = {'family' : 'helvetica',
+            'weight' : 'normal',
+            'size'   : font_size}
+
+    rc('font', **font)
+    
     # Set the color map
 
     minmax = get_image_range(image, 'zscale')
@@ -199,13 +228,23 @@ def doplot(image, figsize, plot_number, mask=None, locateorders_plotinfo=None,
 
     # Now draw the figure
 
-    fig = pl.figure(num=plot_number, figsize=figsize)
+    fig = pl.figure(num=plot_number, figsize=figure_size)
     pl.clf()
-    pl.imshow(pimage, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
+    axes1 = fig.add_subplot(111)
+
+    axes1.imshow(pimage, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
               origin='lower')
+    
     pl.xlabel('Columns (pixels)')
     pl.ylabel('Rows (pixels)')
 
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in', width=1.5)
+    axes1.tick_params(which='minor', length=3)
+    axes1.tick_params(which='major', length=5)
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())
+       
     #
     # Overplot orders if requested
     #
@@ -278,9 +317,3 @@ def doplot(image, figsize, plot_number, mask=None, locateorders_plotinfo=None,
             pl.plot(x[i], np.polynomial.polynomial.polyval(x[i], coeffs[i]),
                     'r-', linewidth=0.3)
 
-    #
-    # Get plot number
-    #
-
-    plot_number = pl.gcf().number
-    return plot_number

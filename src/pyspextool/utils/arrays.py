@@ -2,7 +2,9 @@ import numpy as np
 import re
 
 
-def find_index(x, x_want, ends_to_nan=False):
+def find_index(x,
+               x_want,
+               ends_to_nan=False):
 
     """
     Finds the effective index of a function value in an ordered array.
@@ -220,11 +222,6 @@ def trim_nan(arr, flag=0, trim=False):
       [ 2.  3.  4. nan  7. 89. 90.]
     > nantrim(x,flag=3,trim=True)
       [ 2.  3.  4.  7. 89. 90.]
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_nantrim.pro.
 
     """
 

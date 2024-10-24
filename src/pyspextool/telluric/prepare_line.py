@@ -8,11 +8,11 @@ import os
 
 from pyspextool import config as setup
 from pyspextool.pyspextoolerror import pySpextoolError
-from pyspextool.telluric import config as telluric
-from pyspextool.io.check import check_parameter, check_range, check_keywords
+from pyspextool.telluric import config as tc
+from pyspextool.io.check import check_parameter, check_range, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.fit.polyfit import poly_1d
-from pyspextool.plot.limits import get_spec_range
+from pyspextool.plot.limits import get_spectra_range
 
 def prepare_line(order:int,
                  wavelength_range:npt.ArrayLike,
@@ -20,8 +20,8 @@ def prepare_line(order:int,
                  poly_degree:int,
                  verbose:bool=None,
                  qa_show:bool=None,
-                 qa_scale:float | int=None,
-                 qa_block:bool=None,
+                 qa_showscale:float=None,
+                 qa_showblock:bool=None,
                  qa_write:bool=None):
 
     """
@@ -47,34 +47,34 @@ def prepare_line(order:int,
         Set to None to default to setup.state['verbose'].
     
     qa_show : {None, True, False}
-        Set to True to show a QA plot to the screen.
-        Set to False to not show a QA plot to the screen.
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
         Set to None to default to setup.state['qa_show'].
+
+    qa_showblock : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+    
+    qa_showscale : float or int, default=None
+        The scale factor by which to increase or decrease the default size of
+        the plot window.  Set to None to default to setup.state['qa_scale'].    
 
     qa_write : {None, True, False}
         Set to True to write a QA plot to disk
         Set to False to not write a QA plot to disk.
         Set to None to default to setup.state['qa_write'].
-    
-    qa_block : {None, True, False}
-        Set to True to block the screen QA plot.
-        Set to False to not block the screen QA plot.
-        Set to None to default to setup.state['qa_block'].
-    
-    qa_scale : float or int, default=None
-        The scale factor by which to increase or decrease the default size of
-        the plot window which is (9,6).  
-    
+           
     Returns
     -------
     None
     Load data into memory and writes QA plots to disk.
 
-        telluric.state['normalized_line_wavelength']
-        telluric.state['normalized_line_flux']
-        telluric.state['line_center']
-        telluric.state['line_fwhm']
-        telluric.state['prepare_done']
+        tc.state['normalized_line_wavelength']
+        tc.state['normalized_line_flux']
+        tc.state['line_center']
+        tc.state['line_fwhm']
+        tc.state['prepare_done']
     
     """
 
@@ -82,7 +82,7 @@ def prepare_line(order:int,
     # Check the load_done variable
     #
     
-    if telluric.state['load_done'] is False:
+    if tc.state['load_done'] is False:
 
         message = "Spectra have not been loaded.  Please run load_spectra.py."
         raise pySpextoolError(message)
@@ -105,22 +105,25 @@ def prepare_line(order:int,
 
     check_parameter('prepare_line', 'qa_show', qa_show, ['NoneType','bool'])
 
-    check_parameter('prepare_line', 'qa_scale', qa_scale,
+    check_parameter('prepare_line', 'qa_showscale', qa_showscale,
                     ['NoneType','float','int'])
 
-    check_parameter('prepare_line', 'qa_block', qa_block, ['NoneType','bool'])
+    check_parameter('prepare_line', 'qa_showblock', qa_showblock,
+                    ['NoneType','bool'])
     
     check_parameter('prepare_line', 'qa_write', qa_write, ['NoneType','bool'])
 
-    keywords = check_keywords(verbose=verbose, qa_show=qa_show,
-                              qa_scale=qa_scale, qa_block=qa_block,
-                              qa_write=qa_write)
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)
 
     #
     # log the operation
     #
     
-    logging.info(f" Normalizing continuum in order "+str(order)+"...")
+    logging.info(f" Normalizing continuum in order "+str(order)+".")
 
     #
     # Get set up for the normalization
@@ -128,17 +131,17 @@ def prepare_line(order:int,
     
     # Find the order given the modeinfo file
 
-    z_order = np.where(telluric.state['standard_orders'] == order)
+    z_order = np.where(tc.state['standard_orders'] == order)
 
 
     # Store values in shorter variable names for ease
     
-    wavelength = np.squeeze(telluric.state['standard_spectra'][z_order,0,:])
-    flux = np.squeeze(telluric.state['standard_spectra'][z_order,1,:])
+    wavelength = np.squeeze(tc.state['standard_spectra'][z_order,0,:])
+    flux = np.squeeze(tc.state['standard_spectra'][z_order,1,:])
     robust = {'threshold':5, 'epsilon':0.1}
-    xlabel = telluric.state['standard_hdrinfo']['LXLABEL'][0]
-    title = telluric.state['standard_name']+', '+\
-        telluric.state['mode']+' Order '+str(order)+', degree='+str(poly_degree)
+    xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
+    title = tc.state['standard_name']+', '+\
+        tc.state['mode']+' Order '+str(order)+', degree='+str(poly_degree)
     
     #
     # Determine if wavelength_range is monotonically increasing
@@ -175,68 +178,71 @@ def prepare_line(order:int,
     
     # Fit the line and continuum
 
-    result = fit_peak1d(wavelength, flux, type=fit_type, negative=True,
+    result = fit_peak1d(wavelength,
+                        flux,
+                        type=fit_type,
+                        negative=True,
                         nparms=3+poly_degree+1)
-
+    
     continuum_coefficients = result['parms'][3:]
     line_center = float(result['parms'][1])
     line_halfwidth = float(result['parms'][2])
 
-    continuum = poly_1d(wavelength, continuum_coefficients)
-    
+    continuum = poly_1d(wavelength, continuum_coefficients)    
     normalized_flux = flux/continuum
 
     #
     # Store the reults
     #
 
-    telluric.state['normalized_line_wavelength'] = wavelength
-    telluric.state['normalized_line_flux'] = normalized_flux
-    telluric.state['line_center'] = line_center
+    tc.state['normalized_line_wavelength'] = wavelength
+    tc.state['normalized_line_flux'] = normalized_flux
+    tc.state['line_center'] = line_center
 
     if fit_type == 'gaussian':
 
-        telluric.state['line_fwhm'] = 2.354*line_halfwidth
+        tc.state['line_fwhm'] = 2.354*line_halfwidth
 
     else:
 
-        telluric.state['line_fwhm'] = 2*line_halfwidth        
+        tc.state['line_fwhm'] = 2*line_halfwidth        
         
     #
     # Make the QA plot
     #
 
-    if keywords['qa_show'] is True:
+    if qa['show'] is True:
 
-        if keywords['qa_block'] is True:
+        figure_size = (setup.plots['portrait_size'][0]*qa['showscale'],
+                       setup.plots['portrait_size'][1]*qa['showscale'])
 
-            pl.ioff()
+        font_size = setup.plots['font_size']*qa['showscale']
+        
+        plot_normalization(setup.plots['normalize_order'],
+                           figure_size,
+                           font_size,
+                           setup.plots['zoomspectrum_linewidth'],
+                           setup.plots['spine_linewidth'],                     
+                           wavelength,
+                           flux,
+                           result['fit'],
+                           line_center,
+                           line_halfwidth,
+                           continuum,
+                           plot_xlabel=xlabel,
+                           plot_title=title)
 
-        else:
+        pl.show(block=qa['showblock'])
+        if qa['showblock'] is False: pl.pause(1)
+        
+    if qa['write'] is True:
 
-            pl.ion()
-
-        plotnum = plot_normalization(wavelength,
-                                     flux,
-                                     result['fit'],
-                                     line_center,
-                                     line_halfwidth,
-                                     continuum,
-                                     plot_scale=keywords['qa_scale'],
-                            plot_number=telluric.plotwindows['prepare_line'],
-                                     plot_xlabel=xlabel,
-                                     plot_title=title)
-    
-        telluric.plotwindows['prepare_line'] = plotnum
-    
-        pl.show()
-
-        if keywords['qa_block'] is False:
-            pl.pause(1)
-
-    if keywords['qa_write'] is True:
-
-        plot_normalization(wavelength,
+        plot_normalization(None,
+                           setup.plots['portrait_size'],
+                           setup.plots['font_size'],
+                           setup.plots['zoomspectrum_linewidth'],
+                           setup.plots['spine_linewidth'],                     
+                           wavelength,
                            flux,
                            result['fit'],
                            line_center,
@@ -246,7 +252,7 @@ def prepare_line(order:int,
                            plot_title=title)
 
         pl.savefig(os.path.join(setup.state['qa_path'],
-                                telluric.load['output_filename']+ \
+                                tc.state['output_filename']+ \
                                 '_normalization' + \
                                 setup.state['qa_extension']))
         pl.close()
@@ -255,18 +261,20 @@ def prepare_line(order:int,
     # Set the done variable
     #
         
-    telluric.state['prepare_done'] = True
+    tc.state['prepare_done'] = True
 
         
-        
-def plot_normalization(wavelength:npt.ArrayLike,
+def plot_normalization(plot_number:int,
+                       figure_size:tuple,
+                       font_size:int,
+                       spectrum_linewidth:int | float,
+                       spine_linewidth:int | float,        
+                       wavelength:npt.ArrayLike,
                        intensity:npt.ArrayLike,
                        fit:npt.ArrayLike,
                        line_center:float,
                        line_halfwidth:float,
                        continuum:npt.ArrayLike,
-                       plot_scale:float=1.0,
-                       plot_number:int=None,
                        plot_xlabel:str=None,
                        plot_title:str=None):
 
@@ -332,12 +340,6 @@ def plot_normalization(wavelength:npt.ArrayLike,
     
     check_parameter('plot_normalization', 'continuum', continuum, 'ndarray')    
 
-    check_parameter('plot_normalization', 'plot_scale', plot_scale,
-                    ['int','float'])
-
-    check_parameter('plot_normalization', 'plot_number', plot_number,
-                    ['int','NoneType'])
-
     check_parameter('plot_normalization', 'plot_xlabel', plot_xlabel, 'str')
 
     check_parameter('plot_normalization', 'plot_title', plot_title, 'str')    
@@ -345,24 +347,18 @@ def plot_normalization(wavelength:npt.ArrayLike,
     #
     # Make the two-panel figure
     #
-
-    figure_size = (9,6)
-    scaled_figure_size = [figure_size[0]*plot_scale,figure_size[1]*plot_scale]
-
-    font_size = 12
-    scaled_font_size = font_size*plot_scale
     
     # Set the fonts
 
     font = {'family' : 'helvetica',
             'weight' : 'normal',
-            'size'   : scaled_font_size}
+            'size'   : font_size}
 
     matplotlib.rc('font', **font)
 
     # Start the figure, and set the spacing
     
-    fig = pl.figure(num=plot_number, figsize=scaled_figure_size)
+    fig = pl.figure(num=plot_number, figsize=figure_size)
     pl.clf()
     pl.subplots_adjust(left=0.1,
                        bottom=0.1, 
@@ -380,10 +376,12 @@ def plot_normalization(wavelength:npt.ArrayLike,
 
     # Determine the yrange for spectral plot
     
-    yrange = get_spec_range([intensity, continuum],frac=0.1)
+    yrange = get_spectra_range([intensity,continuum],frac=0.1)
 
+
+    
     axes1 = fig.add_subplot(211)    
-    axes1.step(wavelength, intensity, 'black')
+    axes1.step(wavelength, intensity, 'black',lw=spectrum_linewidth)
     axes1.set_title(plot_title)
     axes1.set_ylim(ymin = yrange[0], ymax=yrange[1])
     axes1.set_xlim(xmin = xrange[0], xmax=xrange[1])    
@@ -391,16 +389,17 @@ def plot_normalization(wavelength:npt.ArrayLike,
 
     axes1.xaxis.set_minor_locator(AutoMinorLocator())    
     axes1.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in', width=1.5,
+                      which='both', direction='in', width=spine_linewidth,
                       labelbottom=False)
     axes1.tick_params(which='minor', length=3)
     axes1.tick_params(which='major', length=5)
     axes1.yaxis.set_minor_locator(AutoMinorLocator())
     axes1.step(wavelength, fit, 'red')
 
+    
     # change all spines
     for axis in ['top','bottom','left','right']:
-        axes1.spines[axis].set_linewidth(1.5)
+        axes1.spines[axis].set_linewidth(spine_linewidth)
     
     # Plot the continuum
     
@@ -413,10 +412,11 @@ def plot_normalization(wavelength:npt.ArrayLike,
     # Normalize and get the plot range
     
     normalized = intensity/continuum
-    yrange = get_spec_range(normalized, frac=0.1)
+    yrange = get_spectra_range(normalized, frac=0.1)
+
     
     axes2 = fig.add_subplot(212)    
-    axes2.step(wavelength, normalized, 'black')
+    axes2.step(wavelength, normalized, 'black',lw=spectrum_linewidth)
     axes2.set_ylim(ymin = yrange[0], ymax=yrange[1])
     axes2.set_xlim(xmin = xrange[0], xmax=xrange[1])    
     axes2.set_xlabel(plot_xlabel)
@@ -427,7 +427,7 @@ def plot_normalization(wavelength:npt.ArrayLike,
         
     axes2.xaxis.set_minor_locator(AutoMinorLocator())    
     axes2.tick_params(right=True, left=True, top=True, bottom=True,
-                      which='both', direction='in', width=1.5)
+                      which='both', direction='in', width=spine_linewidth)
     axes2.tick_params(which='minor', length=3)
     axes2.tick_params(which='major', length=5)
     axes2.yaxis.set_minor_locator(AutoMinorLocator())    
@@ -435,13 +435,11 @@ def plot_normalization(wavelength:npt.ArrayLike,
 
     # change all spines
     for axis in ['top','bottom','left','right']:
-        axes2.spines[axis].set_linewidth(1.5)
+        axes2.spines[axis].set_linewidth(spine_linewidth)
 
     
     #
     # Get the plot number and return the results
     #
     
-    plot_number = pl.gcf().number
-    return plot_number
 

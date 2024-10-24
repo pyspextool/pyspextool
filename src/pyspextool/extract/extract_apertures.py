@@ -1,49 +1,73 @@
 import numpy as np
-import os
+from os.path import join, basename as osbasename
+import logging
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
-from pyspextool.extract.extract_pointsource_1dxd import extract_pointsource_1dxd
-from pyspextool.extract.extract_extendedsource_1dxd import extract_extendedsource_1dxd
-from pyspextool.io.check import check_parameter
-from pyspextool.io.write_apertures_fits import write_apertures_fits
+from pyspextool.extract.extraction import extract_1dxd, write_apertures_fits
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.plot.plot_spectra import plot_spectra
+from pyspextool.utils.arrays import find_index
+from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
-                      fix_bad_pixels=True, use_mean_profile=False,
-                      bad_pixel_thresh=extract.state['bad_pixel_thresh'],
-                      verbose=None):
+def extract_apertures(fix_badpixels:bool=True,
+                      use_meanprofile:bool=False,
+                      badpixel_thresh:int | float=7,
+                      verbose:bool=None,
+                      qa_show:bool=None,
+                      qa_showscale:float | int=None,
+                      qa_showblock:bool=None,
+                      qa_write:bool=None):
     
     """
-    User function to extract spectra.
+    Command line function to extract spectra.
 
     Parameters
     ----------
-    qa_show : {None, True, False}, optional
-        Set to True/False to override config.state['qa_show'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be interactively generated.
-
-    qa_showsize : tuple, default=(6,6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_showsize)) for the interactive plot.
-
-    qa_write : {None, True, False}, optional
-        Set to True/False to override config.state['qa_write'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be written to disk.
-
-    verbose : {None, True, False}, optional
-        Set to True/False to override config.state['verbose'] in the
-        pyspextool config file.
-
     fix_bad_pixels : {True, False}, optional
-        Set to True to fix bad pixels using the 2D model profiles.  
+        Set to True to fix bad pixels using the 2D model profiles.
+        Set to False to not fix bad pixels using the 2D model profile.
 
-    use_mean_profile : {False, True}, optional
-        Set to True to use the mean profile at all wavelengths.  
+        If optimal extraction is done, bad pixels are ignored and so this
+        keyword has no effect.
 
+    use_meanprofile : {False, True}, optional
+        Set to True to use the mean profile for bad pixel identification,
+        fixing, and optimal extraction instead of the 2D model profile.
+
+        Set to False to use the 2D model profile for bad pixel identification,
+        fixing, and optimal extraction.
+
+    badpixel_thresh : int or float, default 6
+        The sigma threshold over which to pixels are identified as bad.
+    
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+    
+    qa_show : {None, True, False}
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
+        Set to None to default to setup.state['qa_show'].
+
+    qa_write : {None, True, False}
+        Set to True to write a QA plot to disk
+        Set to False to not write a QA plot to disk.
+        Set to None to default to setup.state['qa_write'].
+    
+    qa_showblock : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+    
+    qa_showscale : float or int, default=None
+        The scale factor by which to increase or decrease the default size of
+        the plot window which is (9,6).  This does NOT affect plots written
+        to disk.  Set to None to default to setup.state['qa_scale'].    
+
+    
     Returns 
     -------
     list
@@ -57,567 +81,255 @@ def extract_apertures(qa_show=None, qa_showsize=(10, 6), qa_write=None,
 
     if extract.state['parameters_done'] is False:
 
-        message = "extract.state['parameters_done']=False.  "+\
-          "Previous steps not complete."        
-        raise ValueError(message)
+        message = "Previous steps not complete.  Please run "+ \
+            'define_aperture_parameters.'
+        raise pySpextoolError(message)
 
     #
-    # Check parameters.  Just do it now to not waste extracting.
+    # Check parameters and QA keywords
     #
 
-    check_parameter('extract_apertures', 'qa_show', qa_show,
+    check_parameter('extract_apertures', 'fix_badpixels', fix_badpixels, 'bool')
+
+    check_parameter('extract_apertures', 'use_meanprofile', use_meanprofile,
+                    'bool')    
+
+    check_parameter('extract_apertures', 'badpixel_thresh', badpixel_thresh,
+                   ['int', 'float'])    
+    
+    check_parameter('extract_apertures', 'verbose', verbose,
                     ['NoneType', 'bool'])
-
-    check_parameter('extract_apertures', 'qa_showsize', qa_showsize,
-                    'tuple')
 
     check_parameter('extract_apertures', 'qa_write', qa_write,
                     ['NoneType', 'bool'])
 
-    check_parameter('extract_apertures', 'fix_bad_pixels',
-                    fix_bad_pixels, 'bool')
+    check_parameter('extract_apertures', 'qa_show', qa_show,
+                    ['NoneType', 'bool'])
 
-    check_parameter('extract_apertures', 'use_mean_profile',
-                    use_mean_profile, 'bool')        
+    check_parameter('extract_apertures', 'qa_showscale', qa_showscale,
+                    ['int', 'float', 'NoneType'])
+
+    check_parameter('extract_apertures', 'qa_showblock', qa_showblock,
+                    ['NoneType', 'bool'])
     
-    check_parameter('extract_apertures', 'verbose',
-                    verbose, ['NoneType', 'bool'])
+    qa = check_qakeywords(verbose=verbose,
+                          show=qa_show,
+                          showscale=qa_showscale,
+                          showblock=qa_showblock,
+                          write=qa_write)    
 
     #
-    # Check the qa and verbose variables and set to system default if need be.
+    # Get set up
     #
 
-    if qa_write is None:
-        qa_write = setup.state['qa_write']
+    optimal_extraction = True if extract.state['psf_radius'] else False 
 
-    if qa_show is None:
-        qa_show = setup.state['qa_show']
+    z = (extract.state['doorders'] == 1)
 
-    if verbose is None:
-        verbose = setup.state['verbose']
+    # Set up the bad pixel information
+    
+    if fix_badpixels:
 
-    #
-    # Store user inputs
-    #
-
-    extract.extract['qafile'] = qa_write
-    extract.extract['qaplot'] = qa_show
-    extract.extract['verbose'] = verbose
-    extract.extract['fix_bad_pixels'] = fix_bad_pixels
-    extract.extract['use_mean_profile'] = use_mean_profile
-
-    #
-    # The procedure depends on the extraction type, point or extended source
-    #
-
-    xsbginfo = None
-    psbginfo = None
-
-    optimal_extraction = True if extract.state['psfradius'] is not None else \
-      False
+        badpixelinfo = {'images':np.asarray(extract.state['rectorders'])[z],
+                        'usemeanprofile':use_meanprofile,
+                        'mask':extract.state['bad_pixel_mask'],
+                        'thresh':badpixel_thresh}
         
-    if extract.state['type'] == 'ps':
-
-        #
-        # ========================= Point Source ============================
-        #
-
-        # Grab which orders are being extracted
-
-        z = (extract.state['psdoorders'] == 1)
-
-        #
-        # Now build the various information dictionaries
-        #
-
-        # Background first
+        # Add the atmospheric transmission if a wavecal file was used.
         
-        if extract.state['bgradius'] is not None:
-
-            psbginfo = {'radius': extract.state['bgradius'],
-                        'width': extract.state['bgwidth'],
-                        'degree': extract.state['bgfitdeg']}
-
-        else:
-
-            psbginfo = None
-
-        # Now bad pixels
-        
-        if fix_bad_pixels is True:
-
-            badpixelinfo = {'images':np.asarray(extract.state['rectorders'])[z],
-                            'usemeanprofile':use_mean_profile,
-                            'mask':extract.state['bad_pixel_mask'],
-                            'thresh':bad_pixel_thresh}
-
-            # Add the atmospheric transmission if a wavecal file was used.
-                
-            if extract.load['wavecalfile'] is not None:
-
-                badpixelinfo['atmosphere'] = extract.state['atmosphere']
-
-        else:
-
-            badpixelinfo = None
-
-        # Now optimal extraction
+        if extract.state['wavecalfile'] is not None:
             
-        if optimal_extraction is True:
-
-            # Set badpixelinfo to None since it isn't redundant
+            badpixelinfo['atmosphere'] = extract.state['atmosphere']
             
-            badpixelinfo = None
-
-            optimalinfo = {'images':np.asarray(extract.state['rectorders'])[z],
-                           'psfradius':extract.parameters['psfradius'],
-                           'usemeanprofile':use_mean_profile,
-                           'mask':extract.state['bad_pixel_mask'],
-                           'thresh':bad_pixel_thresh}
-
-            # Add the atmospheric transmission if a wavecal file was used.
-                
-            if extract.load['wavecalfile'] is not None:
-
-                optimalinfo['atmosphere'] = extract.state['atmosphere']
-
-            else:
-
-                optimalinfo['atmosphere'] = None
-                    
         else:
-
-            optimalinfo = None
-        
-        # Do the extraction
-        
-        spectra = extract_pointsource_1dxd(extract.state['workimage'],
-                                           extract.state['varimage'],
-                                           extract.state['ordermask'],
-                                           extract.state['orders'][z],
-                                           extract.state['wavecal'],
-                                           extract.state['spatcal'],
-                                           extract.state['tracecoeffs'],
-                                           extract.state['apradii'],
-                                           extract.state['apsigns'],
-                                     linmax_bitmask=extract.state['maskimage'],
-                                           badpixel_info=badpixelinfo,
-                                           optimal_info=optimalinfo,
-                                           background_info=psbginfo,
-                                           verbose=verbose)
+            
+            badpixelinfo['atmosphere'] = None
 
     else:
 
-        #
-        # ======================= Extended Source ===========================
-        #
+        badpixelinfo = None
+            
+            
+    # Set up the optimal extraction information
+        
+    if optimal_extraction:
 
-        # Grab which orders are being extracted
+        # Set badpixelinfo to None since it is now redundant
+            
+        badpixelinfo = None
+        
+        optimalinfo = {'images':np.asarray(extract.state['rectorders'])[z],
+                       'psfradius':extract.state['psf_radius'],
+                       'usemeanprofile':use_meanprofile,
+                       'mask':extract.state['bad_pixel_mask'],
+                       'thresh':badpixel_thresh}
+        
+        # Add the atmospheric transmission if a wavecal file was used.
+        
+        if extract.state['wavecalfile'] is not None:
+            
+            optimalinfo['atmosphere'] = extract.state['atmosphere']
+            
+        else:
+            
+            optimalinfo['atmosphere'] = None
+            
+    else:
+        
+        optimalinfo = None
 
-        z = extract.state['xsdoorders'] == 1
+    #
+    # Do the extraction
+    #
 
-        # Create background information dictionary
+    naps = len(extract.state['aperture_signs'])
+    norders = len(extract.state['tracecoeffs']) // naps
 
-        if extract.state['bgregions'] is not None:
-            xsbginfo = {'regions': extract.state['bgregions'],
-                        'degree': extract.state['bgfitdeg']}
+    message = ' Optimal ' if optimal_extraction is True else ' Sum '
+    
+    message = message+('extracting '+str(naps)+' apertures in '+ \
+                       str(norders)+' orders')
 
-        # Do the extraction
+    if extract.state['bg_annulus'] is not None or \
+       extract.state['bg_regions'] is not None:
+        
+        logging.info(message + ' (with background subtraction).')
+            
+    else:
 
-        spectra = extract_extendedsource_1dxd(extract.state['workimage'],
-                                              extract.state['varimage'],
-                                              extract.state['ordermask'],
-                                              extract.state['orders'][z],
-                                              extract.state['wavecal'],
-                                              extract.state['spatcal'],
-                                              extract.state['apertures'][z],
-                                              extract.state['apradii'],
-                                              bginfo=xsbginfo, verbose=verbose)
+        logging.info(message + ' (without background subtraction).')
 
+
+    z = extract.state['doorders'] == True
+    extract_orders = extract.state['orders'][z]
+              
+    spectra = extract_1dxd(extract.state['workimage'],
+                           extract.state['varimage'],
+                           extract.state['ordermask'],
+                           extract.state['wavecal'],
+                           extract.state['spatcal'],
+                           extract_orders,
+                           extract.state['tracecoeffs'],
+                           extract.state['aperture_radii'],
+                           extract.state['aperture_signs'],
+                           linmax_bitmask=extract.state['maskimage'],
+                           bg_annulus=extract.state['bg_annulus'],
+                           bg_regions=extract.state['bg_regions'],
+                           bg_fitdegree=extract.state['bg_fitdegree'],
+                           badpixel_info=badpixelinfo,
+                           optimal_info=optimalinfo,
+                           progressbar=qa['verbose'])
+        
     #
     # Write the results to disk
     #
 
-    filenames = write_apertures(spectra, psbginfo=psbginfo, xsbginfo=xsbginfo,
-                                optimal_info=optimalinfo,
-                                badpixel_info=badpixelinfo, qa_write=qa_write,
-                                qa_show=qa_show, qa_showsize=qa_showsize,
-                                verbose=verbose)
-    
-    #
-    # Set the done variable
-    #
+    if extract.state['wavecalfile'] is not None:
 
-    extract.state['extract_done'] = True
-
-    #
-    # Return the filenames written to disk
-    #
-
-    return filenames
-    
-
-def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
-                    badpixel_info=None, qa_show=None, qa_write=None,
-                    qa_showsize=(10, 6), verbose=None):
-
-    """
-    To write extracted spectra to disk.
-
-    Parameters
-    ----------
-    spectra : list
-        An (norders*naps,) list of spectral planes of the extracted target.
-
-    psbginfo : dict, optional
-        `"radius"` : float
-            The background start radius in arcseconds
-
-        `"width"` : float
-            The background annulus width in arcseconds
-
-        `"degree"` : int
-            The background polynomial fit degree.
-
-    xsbginfo : dict, optional
-
-        `"regions"` : str
-            A comma-separated list of background regions, e.g. '1-2,14-15'.
-
-        `"degree"` : int
-            The background polynomial fit degree.
-
-    qa_show : {None, True, False}, optional
-        Set to True/False to override config.state['qa_show'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be interactively generated.
-
-    qa_showsize : tuple, default=(10,6)
-        A (2,) tuple giving the plot size that is passed to matplotlib as,
-        pl.figure(figsize=(qa_showsize)) for the interactive plot.
-
-    qa_write : {None, True, False}, optional
-        Set to True/False to override config.state['qa_write'] in the
-        pyspextool config file.  If set to True, quality assurance
-        plots will be written to disk.
-
-    verbose : {None, True, False}, optional
-        Set to True/False to override config.state['verbose'] in the
-        pyspextool config file.
-
-    Returns 
-    -------
-    list
-    A list of str giving the names of the files successfully written to disk.
-
-    Also writes FITS files to disk.
-
-    """
-
-    #
-    # Get the plotting ready
-    #
-
-    qafileinfo = {'figsize': (11, 8.5), 'filepath': setup.state['qa_path'],
-                  'filename': extract.state['qafilename'],
-                  'extension': setup.state['qa_extension']}
-
-    # Get the wavelengh calibration info if used.
-
-    if extract.load['wavecalfile'] is not None:
-
-        wavecalinfo = {'file': extract.load['wavecalfile'],
+        wavecalinfo = {'file': extract.state['wavecalfile'],
                        'wavecaltype': extract.state['wavecaltype'],
-                       'wavetype': 'vacuum',
-                       'dispersions': extract.state['dispersions']}
+                       'wavetype': 'vacuum'}
 
     else:
 
         wavecalinfo = None
 
-    # Things proceed depending on the extraction mode
+    # Grab things all modes need
 
-    if extract.state['type'] == 'ps':
+    z = extract.state['doorders'] == 1    
+    xranges = extract.state['xranges'][z]
+    apertures = extract.state['aperture_positions'][z,:]
+    norders = np.sum(z)
+    
+    # Now go mode by mode
 
-        #
-        # ========================= Point Source ============================
-        #
+    if extract.state['reductionmode'] == 'A':
+        
+        # Get file information
 
-        # Grab things all modes need
+        hdrinfo = extract.state['hdrinfo'][0]
+        aimage = hdrinfo['FILENAME'][0]
+        sky = 'None'
+        abeam_fullpath = join(setup.state['proc_path'],
+                              extract.state['output_files'][0]+'.fits')
+        bbeam_fullpath = None
+        
+        # Write ther results
+        
+        write_apertures_fits(spectra,
+                             xranges,
+                             aimage,
+                             sky,
+                             extract.state['flat_filename'],
+                             extract.state['flat_fielded'],                    
+                             extract.state['naps'],
+                             extract_orders,
+                             hdrinfo,
+                             apertures,
+                             extract.state['aperture_radii'],
+                             extract.state['plate_scale'],
+                             extract.state['slith_pix'],
+                             extract.state['slith_arc'],
+                             extract.state['slitw_pix'],
+                             extract.state['slitw_arc'],
+                             extract.state['resolvingpower'],
+                             extract.state['xunits'],
+                             extract.state['yunits'],
+                             extract.state['latex_xunits'],
+                             extract.state['latex_yunits'],
+                             extract.state['latex_xlabel'],
+                             extract.state['latex_ylabel'],
+                             extract.state['latex_ulabel'],                  
+                             setup.state['version'],
+                             abeam_fullpath,
+                             bg_annulus=extract.state['bg_annulus'],
+                             bg_regions=extract.state['bg_regions'],
+                             bg_fitdegree=extract.state['bg_fitdegree'],
+                             wavecalinfo=wavecalinfo,
+                             optimal_info=optimalinfo,
+                             badpixel_info=badpixelinfo,
+                             verbose=qa['verbose'])
 
-        xranges = extract.state['xranges'][extract.state['psdoorders']]
-        orders = extract.state['orders'][extract.state['psdoorders']]
-        apertures = extract.state['apertures'][extract.state['psdoorders']]
-        norders = np.sum(extract.state['psdoorders'])
+    # Now go mode by mode
 
-        # Now go mode by mode
+    if extract.state['reductionmode'] == 'A-B':
 
-        if extract.state['reductionmode'] == 'A':
+        abeam_fullpath = None
+        bbeam_fullpath = None        
+        
+        # Are there positive apertures?
 
+        z_pos = extract.state['aperture_signs'] == 1
+        pos_naps = int(np.sum(z_pos))
+        if pos_naps != 0:
+            
             # Get file information
-
-            hdrinfo = extract.state['hdrinfo'][0]
-            aimage = hdrinfo['FILENAME'][0]
-            sky = 'None'
-            output_fullpath = extract.state['output_files'][0]
-
-            # Write ther results
-
-            write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['flatfile'],
-                                 extract.state['naps'],
-                                 orders, hdrinfo, apertures,
-                                 extract.state['apradii'],
-                                 extract.state['plate_scale'],
-                                 extract.state['slith_pix'],
-                                 extract.state['slith_arc'],
-                                 extract.state['slitw_pix'],
-                                 extract.state['slitw_arc'],
-                                 extract.state['resolvingpower'],
-                                 extract.state['xunits'],
-                                 extract.state['yunits'],
-                                 extract.state['latex_xunits'],
-                                 extract.state['latex_yunits'],
-                                 extract.state['latex_xlabel'],
-                                 extract.state['latex_ylabel'],
-                                 setup.state['version'],
-                                 output_fullpath,
-                                 wavecalinfo=wavecalinfo,
-                                 psbginfo=psbginfo,
-                                 optimal_info=optimal_info,
-                                 badpixel_info=badpixel_info,
-                                 verbose=verbose)
-
-            # Plot the spectra
-
-            filename = os.path.basename(output_fullpath)            
-            if qa_show is True:
-                
-                number = plot_spectra(output_fullpath + '.fits',
-                                      title=filename+'.fits',
-                                      plot_size=qa_showsize,
-                                      flag_linearity=True,
-                            plot_number=extract.state['spectra_a_plotnum'])
-
-                extract.state['spectra_a_plotnum'] = number
-
-            if qa_write is True:
-
-                qafileinfo['filename'] = os.path.basename(output_fullpath)
-                plot_spectra(output_fullpath + '.fits',
-                             flat_linearity=True,
-                             file_info=qafileinfo)
-
-            # Store name of successfully written files 
-                
-            filenames = filename
-
-        elif extract.state['reductionmode'] == 'A-B':
-
-            filenames = []
-
-            # Are there positive apertures?
-
-            z_pos = extract.state['apsigns'] == 1
-            pos_naps = int(np.sum(z_pos))
-            if pos_naps != 0:
-
-                # Get file information
-
-                hdrinfo = extract.state['hdrinfo'][0]
-                aimage = hdrinfo['FILENAME'][0]
-                sky = extract.state['hdrinfo'][1]['FILENAME'][0]
-                output_fullpath = extract.state['output_files'][0]
-
-                # Now get the indices for the spectra array
-
-                full_apsign = np.tile(extract.state['apsigns'], norders)
-                z = (np.where(full_apsign == 1))[0]
-                pos_spectra = [spectra[i] for i in z]
-
-                write_apertures_fits(pos_spectra, xranges, aimage, sky,
-                                     extract.load['flatfile'], pos_naps,
-                                     orders, hdrinfo, apertures,
-                                     extract.state['apradii'],
-                                     extract.state['plate_scale'],
-                                     extract.state['slith_pix'],
-                                     extract.state['slith_arc'],
-                                     extract.state['slitw_pix'],
-                                     extract.state['slitw_arc'],
-                                     extract.state['resolvingpower'],
-                                     extract.state['xunits'],
-                                     extract.state['yunits'],
-                                     extract.state['latex_xunits'],
-                                     extract.state['latex_yunits'],
-                                     extract.state['latex_xlabel'],
-                                     extract.state['latex_ylabel'],
-                                     setup.state['version'],
-                                     output_fullpath,
-                                     wavecalinfo=wavecalinfo,
-                                     psbginfo=psbginfo,
-                                     optimal_info=optimal_info,
-                                     badpixel_info=badpixel_info,
-                                     verbose=verbose)
-
-                # Plot the spectra
-
-                a_filename = os.path.basename(output_fullpath)
-
-                if qa_show is True:
-
-                    number = plot_spectra(output_fullpath + '.fits',
-                                 title=a_filename+'.fits',
-                                 plot_size=qa_showsize,
-                                 flag_linearity=True,
-                                 plot_number=extract.state['spectra_a_plotnum'])
-
-                    extract.state['spectra_a_plotnum'] = number
-
-                    
-                if qa_write is True:
-
-                    qafileinfo['filename'] = a_filename
-                    plot_spectra(output_fullpath + '.fits',
-                                 flag_linearity=True,                 
-                                 file_info=qafileinfo)
-
-                filenames.append(a_filename+'.fits')
-                
-            # Are there negative apertures?
-
-            z_neg = extract.state['apsigns'] == -1
-            neg_naps = int(np.sum(z_neg))
-            if neg_naps != 0:
-
-                # Get file information
-
-                hdrinfo = extract.state['hdrinfo'][1]
-                aimage = hdrinfo['FILENAME'][1]
-                sky = extract.state['hdrinfo'][0]['FILENAME'][0]
-                output_fullpath = extract.state['output_files'][1]
-
-                # Now get the indices for the spectra array
-
-                full_apsign = np.tile(extract.state['apsigns'], norders)
-                z = (np.where(full_apsign == -1))[0]
-                neg_spectra = [spectra[i] for i in z]
-
-                write_apertures_fits(neg_spectra, xranges, aimage, sky,
-                                     extract.load['flatfile'],
-                                     neg_naps, orders, hdrinfo, apertures,
-                                     extract.state['apradii'],
-                                     extract.state['plate_scale'],
-                                     extract.state['slith_pix'],
-                                     extract.state['slith_arc'],
-                                     extract.state['slitw_pix'],
-                                     extract.state['slitw_arc'],
-                                     extract.state['resolvingpower'],
-                                     extract.state['xunits'],
-                                     extract.state['yunits'],
-                                     extract.state['latex_xunits'],
-                                     extract.state['latex_yunits'],
-                                     extract.state['latex_xlabel'],
-                                     extract.state['latex_ylabel'],
-                                     setup.state['version'],
-                                     output_fullpath,
-                                     wavecalinfo=wavecalinfo,
-                                     psbginfo=psbginfo,
-                                     verbose=verbose)
-
-                # Plot the spectra
-
-                b_filename = os.path.basename(output_fullpath)
-                if qa_show is True:
-
-                    number = plot_spectra(output_fullpath + '.fits',
-                                          title=b_filename+'.fits',
-                                          flag_linearity=True,                
-                                          plot_size=qa_showsize,
-                                plot_number=extract.state['spectra_b_plotnum'])
-                    extract.state['spectra_b_plotnum'] = number
-                    
-                if qa_write is True:
-
-                    qafileinfo['filename'] = b_filename
-                    plot_spectra(output_fullpath + '.fits',flag_linearity=True,
-                                 file_info=qafileinfo)
-
-                filenames.append(b_filename+'.fits')
-                
-            # Store name of successfully written files 
             
-        elif extract.state['reductionmode'] == 'A-Sky':
-
-            x = 1
-
-        else:
-
-            print('Reduction Mode Unknown.')
-
-    else:
-
-        #
-        # ======================= Extended Source ===========================
-        #
-
-        # Grab things all modes need
-
-        xranges = extract.state['xranges'][extract.state['psdoorders']]
-        orders = extract.state['orders'][extract.state['psdoorders']]
-        apertures = extract.state['apertures'][extract.state['psdoorders']]
-
-        if extract.state['reductionmode'] == 'A':
-
-            hdrinfo = extract.state['hdrinfo'][0]
-            aimage = hdrinfo['FILENAME'][0]
-            sky = 'None'
-            output_fullpath = extract.state['output_files'][0]
-            
-            write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['flatfile'],
-                                 extract.state['naps'],
-                                 orders, hdrinfo, apertures,
-                                 extract.state['apradii'],
-                                 extract.state['plate_scale'],
-                                 extract.state['slith_pix'],
-                                 extract.state['slith_arc'],
-                                 extract.state['slitw_pix'],
-                                 extract.state['slitw_arc'],
-                                 extract.state['resolvingpower'],
-                                 extract.state['xunits'],
-                                 extract.state['yunits'],
-                                 extract.state['latex_xunits'],
-                                 extract.state['latex_yunits'],
-                                 extract.state['latex_xlabel'],
-                                 extract.state['latex_ylabel'],
-                                 setup.state['version'],
-                                 output_fullpath, wavecalinfo=wavecalinfo,
-#                                 background_spectra=background[z],
-                                 xsbginfo=xsbginfo,
-                                 verbose=verbose)
-
-            # Plot the spectra
-
-            if qa_show is True:
-                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_showsize)
-
-            if qa_write is True:
-                qafileinfo['filename'] = os.path.basename(output_fullpath)
-                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
-
-        elif extract.state['reductionmode'] == 'A-B':
-
             hdrinfo = extract.state['hdrinfo'][0]
             aimage = hdrinfo['FILENAME'][0]
             sky = extract.state['hdrinfo'][1]['FILENAME'][0]
-            output_fullpath = extract.state['output_files'][0]            
+            abeam_fullpath = join(setup.state['proc_path'],
+                                  extract.state['output_files'][0]+'.fits')
 
-            write_apertures_fits(spectra, xranges, aimage, sky,
-                                 extract.load['flatfile'],
-                                 extract.state['naps'],
-                                 orders, hdrinfo, apertures,
-                                 extract.state['apradii'],
+            # Now get the indices for the spectra array
+            
+            full_apsign = np.tile(extract.state['aperture_signs'], norders)
+            z = (np.where(full_apsign == 1))[0]
+            pos_spectra = [spectra[i] for i in z]
+            
+            # Write ther results
+        
+            write_apertures_fits(pos_spectra,
+                                 xranges,
+                                 aimage,
+                                 sky,
+                                 extract.state['flat_filename'],
+                                 extract.state['flat_fielded'],                
+                                 pos_naps,
+                                 extract_orders,
+                                 hdrinfo,
+                                 apertures,
+                                 extract.state['aperture_radii'],
                                  extract.state['plate_scale'],
                                  extract.state['slith_pix'],
                                  extract.state['slith_arc'],
@@ -630,31 +342,168 @@ def write_apertures(spectra, psbginfo=None, xsbginfo=None, optimal_info=None,
                                  extract.state['latex_yunits'],
                                  extract.state['latex_xlabel'],
                                  extract.state['latex_ylabel'],
-                                 extract.state['version'],
-                                 output_fullpath, wavecalinfo=wavecalinfo,
-#                                 background_spectra=background[z],
-                                 xsbginfo=xsbginfo,
-                                 verbose=verbose)
+                                 extract.state['latex_ulabel'],
+                                 setup.state['version'],
+                                 abeam_fullpath,
+                                 bg_annulus=extract.state['bg_annulus'],
+                                 bg_regions=extract.state['bg_regions'],
+                                 bg_fitdegree=extract.state['bg_fitdegree'],
+                                 wavecalinfo=wavecalinfo,
+                                 optimal_info=optimalinfo,
+                                 badpixel_info=badpixelinfo,
+                                 verbose=qa['verbose'])
 
-            # Plot the spectra
+        # Are there negative apertures?
 
-            if qa_show is True:
-                plot_spectra(output_fullpath + '.fits', title=output_fullpath,
-                             plot_size=qa_showsize)
+        z_neg = extract.state['aperture_signs'] == -1
+        neg_naps = int(np.sum(z_neg))
+        if neg_naps != 0:
 
-            if qa_write is True:
-                qafileinfo['filename'] = os.path.basename(output_fullpath)
-                plot_spectra(output_fullpath + '.fits', file_info=qafileinfo)
+            # Get file information
+            
+            hdrinfo = extract.state['hdrinfo'][1]
+            aimage = hdrinfo['FILENAME'][1]
+            sky = extract.state['hdrinfo'][0]['FILENAME'][0]
+            bbeam_fullpath = join(setup.state['proc_path'],
+                                  extract.state['output_files'][1]+'.fits')
 
-        elif extract.state['reductionmode'] == 'A-Sky':
+            # Now get the indices for the spectra array
+            
+            full_apsign = np.tile(extract.state['aperture_signs'], norders)
+            z = (np.where(full_apsign == -1))[0]
+            neg_spectra = [spectra[i] for i in z]
+            
+            # Write ther results
+        
+            write_apertures_fits(neg_spectra,
+                                 xranges,
+                                 aimage,
+                                 sky,
+                                 extract.state['flat_filename'],
+                                 extract.state['flat_fielded'],
+                                 neg_naps,
+                                 extract_orders,
+                                 hdrinfo,
+                                 apertures,
+                                 extract.state['aperture_radii'],
+                                 extract.state['plate_scale'],
+                                 extract.state['slith_pix'],
+                                 extract.state['slith_arc'],
+                                 extract.state['slitw_pix'],
+                                 extract.state['slitw_arc'],
+                                 extract.state['resolvingpower'],
+                                 extract.state['xunits'],
+                                 extract.state['yunits'],
+                                 extract.state['latex_xunits'],
+                                 extract.state['latex_yunits'],
+                                 extract.state['latex_xlabel'],
+                                 extract.state['latex_ylabel'],
+                                 extract.state['latex_ulabel'],                 
+                                 setup.state['version'],
+                                 bbeam_fullpath,
+                                 bg_annulus=extract.state['bg_annulus'],
+                                 bg_regions=extract.state['bg_regions'],
+                                 bg_fitdegree=extract.state['bg_fitdegree'],
+                                 wavecalinfo=wavecalinfo,
+                                 optimal_info=optimalinfo,
+                                 badpixel_info=badpixelinfo,
+                                 verbose=qa['verbose'])
 
-            x = 1
+    #
+    # Report results
+    #
 
-        else:
+    if qa['verbose'] is True:
 
-            print('Reduction Mode Unknown.')
+        message = ' Wrote file(s) '
 
-    print(' ')
+        files = []
+        if abeam_fullpath is not None:
 
-    return filenames
+            files.append(osbasename(abeam_fullpath))
+
+        if bbeam_fullpath is not None:
+
+            files.append(osbasename(bbeam_fullpath))
+
+        message += ', '.join(files)+' to proc/.\n'
+
+        logging.info(message)
+            
+            
+    #
+    # Do the QA plotting
+    #
     
+    if qa['show'] is True:
+
+        figure_size = (setup.plots['landscape_size'][0]*qa['showscale'],
+                       setup.plots['landscape_size'][1]*qa['showscale'])
+
+        font_size = setup.plots['font_size']*qa['showscale']
+
+    # Get the blocking right if you are showing both beams
+        
+        if abeam_fullpath is not None and bbeam_fullpath is not None:
+
+            a_showblock = False
+            b_showblock = qa['showblock']
+
+        else:  
+
+            a_showblock = qa['showblock']
+            b_showblock = qa['showblock']
+        
+        if abeam_fullpath is not None:
+            
+            plot_spectra(abeam_fullpath,
+                         plot_number=setup.plots['abeam_spectra'],
+                         figure_size=figure_size,
+                         font_size=font_size,
+                         title=osbasename(abeam_fullpath),
+                         showblock=a_showblock)
+            
+        if bbeam_fullpath is not None:
+
+            plot_spectra(bbeam_fullpath,
+                         plot_number=setup.plots['bbeam_spectra'],
+                         figure_size=figure_size,
+                         font_size=font_size,
+                         title=osbasename(abeam_fullpath),
+                         showblock=b_showblock)                         
+                    
+    if qa['write'] is True:
+
+        if abeam_fullpath is not None:
+
+            fullpath = join(setup.state['qa_path'],
+                            extract.state['output_files'][0]+\
+                            setup.state['qa_extension'])
+
+            plot_spectra(abeam_fullpath,
+                         figure_size=setup.plots['landscape_size'],
+                         font_size=setup.plots['font_size'],
+                         spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                         spine_linewidth=setup.plots['spectrum_linewidth'],
+                         title=osbasename(abeam_fullpath),
+                         output_fullpath=fullpath)
+            
+        if bbeam_fullpath is not None:
+
+            fullpath = join(setup.state['qa_path'],
+                            extract.state['output_files'][1]+\
+                            setup.state['qa_extension'])
+
+            plot_spectra(bbeam_fullpath,
+                         figure_size=setup.plots['landscape_size'],
+                         font_size=setup.plots['font_size'],
+                         spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                         spine_linewidth=setup.plots['spectrum_linewidth'],
+                         title=osbasename(abeam_fullpath),
+                         output_fullpath=fullpath)    
+
+    #
+    # Set the done variable
+    #
+
+    extract.state['extract_done'] = True

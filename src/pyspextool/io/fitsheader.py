@@ -5,7 +5,8 @@ from pyspextool.io.check import check_parameter
 from pyspextool.utils import coords
 from pyspextool.utils.add_entry import add_entry
 
-def average_header_info(hdrs, pair=False):
+def average_headerinfo(hdrs,
+                       pair=False):
 
     """
     Averages a pySpextool header lists
@@ -17,7 +18,7 @@ def average_header_info(hdrs, pair=False):
         {key:[val,com]} where key is the FITS keyword, "val" is the 
         value, and "com" is the comment.
 
-    pair : {False, True}, optional 
+    pair : {False, True}
         Set to True if the Spextool header list was generated for 
         pair subtraced images
 
@@ -29,14 +30,6 @@ def average_header_info(hdrs, pair=False):
         values for each keyword, e.g. SRT_HA, AVE_HA, END_HA.  A new 
         keyword, ITOTIMAGE gives the total exposure time.
 
-    Procedure
-    ---------
-    Mostly a bunch of string parsing and watching for oddities the signs 
-    of sexigesimal numbers.
-
-    Examples
-    --------
-    Later
 
     """
     # Store the first hdrinfo
@@ -240,7 +233,9 @@ def average_header_info(hdrs, pair=False):
     return hdrinfo
 
 
-def get_header_info(hdr, keywords=None, ignore_missing_keywords=False):
+def get_headerinfo(hdr,
+                   keywords=None,
+                   ignore_missing_keywords=False):
 
     """
     Pulls (user requested) keyword values and comments from a FITS file

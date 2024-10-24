@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from astropy.visualization import PercentileInterval, ZScaleInterval, MinMaxInterval
 
 from pyspextool.fit.robust_savgol import robust_savgol
@@ -97,7 +98,10 @@ def get_image_range(arr, info):
 
         return None
 
-def get_spec_range(*args, frac=0.0):
+def get_spectra_range(*args,
+                      robust=False,
+                      savgol_window:int=11,
+                      frac:float=0.0):
 
     """
     To return a nice y-axis plot range
@@ -107,6 +111,15 @@ def get_spec_range(*args, frac=0.0):
     *args : array-like
         Array(s) of y values to be plotted.
 
+    robust : bool, default False
+        Set to True to deal with outliers.  Each spectrum is smoothed
+        with a robust Savitsky-Golay filter to "fix" bad before identifying
+        the minimum and maximum.
+        Set to False to keep outliers in the spectra.
+
+    savgol_window : int, default 11
+        The number of 
+    
     frac : float, default 0.0
         The fraction by which to expand the range if desired.
 
@@ -120,23 +133,37 @@ def get_spec_range(*args, frac=0.0):
     The minimum and maximum values of `*args` are first determined.
     If `frac` is not 0, then the range is expanded by `frac`*(max-min).
 
-    Examples
-    --------
-    later
-
-    Modification History
-    --------------------
-    2022-07-01 - Written by M. Cushing, University of Toledo.
-    Based on Spextool IDL program mc_burange.pro.
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('get_spectra_range', 'args', args, 'tuple')
+
+    check_parameter('get_spectra_range', 'robust', robust, 'bool')
+
+    check_parameter('get_spectra_range', 'savgol_window', savgol_window, 'int')
+    
+    check_parameter('get_spectra_range', 'frac', frac, ['int','float'])
+    
     # Convert each element into a numpy.ndarray
 
     longlist = []
     for arg in args:
 
-        longlist = longlist+list(np.ravel(arg))
+        if robust is True:
+
+            array = np.ravel(arg)
+            x_values = np.arange(len(array))
+            tmp = list(robust_savgol(x_values, array, savgol_window)['fit'])
+            
+        else:
+
+            tmp = list(np.ravel(arg))
+        
+        longlist = longlist+tmp
     
     # Get the min and max value, ignoring NaNs
 
@@ -151,7 +178,10 @@ def get_spec_range(*args, frac=0.0):
     return range
 
 
-def get_stack_range(stack, savgol=False, savgol_window=11, frac=0.0):
+def get_stack_range(stack:npt.ArrayLike,
+                    savgol:bool=False,
+                    savgol_window:int=11,
+                    frac:float=0.0):
 
     """
     To obtain the plotting range of a stack of data.

@@ -2,9 +2,11 @@ import os
 from astropy.io import fits
 import numpy as np
 import logging
+
 from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter, check_path, check_file
+from pyspextool.pyspextoolerror import pySpextoolError
 from importlib.resources import files  # Python 3.10+
 
 # TODO:  test logging works as expected. run some commands in the REPL
@@ -12,29 +14,27 @@ from importlib.resources import files  # Python 3.10+
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
 
-def pyspextool_setup(
-    instrument=setup.state["instruments"][0],
-    raw_path:str=None,
-    cal_path:str=None,
-    proc_path:str=None,
-    qa_path:str=None,
-    verbose:bool=False,
-    qa_show:bool=False,
-    qa_scale:float=1.0,
-    qa_block:bool=False,
-    qa_write:bool=False,
-    qa_extension:str=None):
-
+def pyspextool_setup(instrument=setup.state["instruments"][0],
+                     raw_path:str=None,
+                     cal_path:str=None,
+                     proc_path:str=None,
+                     qa_path:str=None,
+                     search_extension:str=setup.state["search_extensions"][0],
+                     verbose:bool=True,
+                     qa_show:bool=False,
+                     qa_showscale:float=1.0,
+                     qa_showblock:bool=False,
+                     qa_write:bool=False,
+                     qa_extension:str=setup.state["qa_extensions"][0]):
+    
     """
     Set the pyspextool instrument, paths, and quality assurance settings
 
     Parameters
     ----------
-    instrument : str, optional
-        Default: 'uspex'
+    instrument : setup.state['instruments']
         The name of the instrument.
         Must be one of options provided in config.setup['instruments'].
-        Currently, only 'spex' and 'uspex' are supported.
 
     raw_path : str, optional.
         The path to the raw data.
@@ -51,8 +51,11 @@ def pyspextool_setup(
     qa_path : str, optional
         If qa_write is True, this is the path where the files will be written.
         Default: current working directory
+
+    search_extension : setup.state['search_extensions']
+        The file extension used to search for files in `raw_path`.
     
-    verbose : bool, default = True
+    verbose : bool, default True
         verbose = True sets the logging level to DEBUG
             Lots of information will be printed to the screen.
         verbose = False sets the logging level to INFO
@@ -62,11 +65,11 @@ def pyspextool_setup(
         True: Display the quality assurance plots to the screen.
         False: Do not display the quality assurance plots to the screen.
 
-    qa_scale : float, default=1.0
+    qa_showscale : float, default 1.0
         A scale factor that resizes the plots shown on the screen by a factor
-        of 'qashow_scale`. 
+        of 'qashow_showscale`. 
     
-    qa_block : {False, True}
+    qa_showblock : {False, True}
         Set to True to stop the workflow after each plot is shown.
     
     qa_write : {True, False}, optional
@@ -75,10 +78,8 @@ def pyspextool_setup(
         Set the path with `qa_path`.
         Set extension with `qa_extension`.
 
-    qa_extension : {'pdf', 'png'}, optional
+    qa_extension : setup.state['qa_extensions']
         if qa_write is True, this is the file extension used for the files.
-        Default: pdf
-        Options: pdf, png
 
     Returns
     -------
@@ -86,36 +87,90 @@ def pyspextool_setup(
 
     """
 
-    # Set up verbose scale and logging
+    #
+    # Check parameters
+    #
 
+    check_parameter('pyspextool_setup', 'instrument', instrument, 'str',
+                    possible_values=setup.state['instruments'])
+    
+    check_parameter('pyspextool_setup', 'raw_path', raw_path,
+                    ['NoneType', 'str'])
+    
+    check_parameter('pyspextool_setup', 'cal_path', cal_path,
+                    ['NoneType', 'str'])
+                    
+    check_parameter('pyspextool_setup', 'proc_path', proc_path, 
+                    ['NoneType', 'str'])
+                    
+    check_parameter('pyspextool_setup', 'qa_path', qa_path, 
+                    ['NoneType', 'str'])
+
+    check_parameter('pyspextool_setup', 'search_extension', search_extension, 
+                    'str', possible_values=setup.state['search_extensions'])
+
+    check_parameter('pyspextool_setup', 'qa_show', qa_show, 'bool')
+
+    check_parameter('pyspextool_setup', 'qa_showscale', qa_showscale,
+                    ['float','int'])
+    
+    check_parameter('pyspextool_setup', 'qa_showblock', qa_showblock, 'bool')
+    
+    check_parameter('pyspextool_setup', 'qa_write', qa_write, 'bool')
+
+    check_parameter('pyspextool_setup', 'qa_extensioan', qa_extension,
+        'str', possible_values=setup.state['qa_extensions'])
+
+    #
+    # Report what you are doing
+    #
+    
+    message = ' pySpextool Setup'
+    logging.info(message+'\n'+'-'*(len(message)+5)+'\n')
+    
+    #
+    # Store the search extension
+    #
+
+    setup.state['search_extension'] = search_extension
+
+    #
+    # Set up verbose scale and logging
+    #
+    
     if verbose is True:
+
         logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
 
     elif verbose is False:
+
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-    logging.info(f"Verbose set to {setup.state['verbose']}")
+    logging.info(f" Verbose set to {setup.state['verbose']}")
 
+    #
     # Set the instrument
+    #
+    
+    set_instrument(instrument)
 
-    if instrument is not None:
-        set_instrument(instrument)
+    logging.info(f" Instrument set to {setup.state['instrument']}")
 
-    logging.info(f"Instrument set to {setup.state['instrument']}")
-
+    #
     # Set the paths
-
+    #
+    
     set_paths(raw_path, cal_path, proc_path, qa_path)
 
-    logging.info("Paths set")
+    logging.info(" Paths set")
 
     # Set the quality assurance settings
 
-    set_qa_state(qa_show, qa_scale, qa_block, qa_write, qa_extension)
+    set_qa_state(qa_show, qa_showscale, qa_showblock, qa_write, qa_extension)
 
-    logging.info("QA settings set")
+    logging.info(" QA settings set")
 
     msg = f"""
     Pyspextool Setup
@@ -140,7 +195,10 @@ def pyspextool_setup(
     return  # setup.state
 
 
-def set_paths(raw_path, cal_path, proc_path, qa_path):
+def set_paths(raw_path:str,
+              cal_path:str,
+              proc_path:str,
+              qa_path:str):
 
     """
     Set the pyspextool paths
@@ -164,73 +222,69 @@ def set_paths(raw_path, cal_path, proc_path, qa_path):
     None
 
     """
-
-    #
-    # Check parameters
-    #
-
-    check_parameter("set_parameters", "raw_path", raw_path,
-                    ['NoneType', "str"])
-
-    check_parameter("set_parameters", "cal_path", cal_path, 
-                    ['NoneType', "str"])
-                    
-    check_parameter("set_parameters", "proc_path", proc_path, 
-                    ['NoneType', "str"])
-                    
-    check_parameter("set_parameters", "qa_path", qa_path, 
-                    ['NoneType', "str"])
-                    
+        
     #
     # Load the paths
     #
 
     # Get the current working directory in case it is needed.
     
-    cwd = os.path.abspath(os.getcwd())
+#    cwd = os.path.abspath(os.getcwd())
     
     # Modify the paths based on the user requests.
-    
+
     if raw_path is not None:
 
         raw_path = check_path(raw_path, make_absolute=True)
-        setup.state["raw_path"] = raw_path
-        logging.debug(f"Set raw_path to {raw_path}")
 
-    else:
-
-        setup.state["raw_path"] = cwd
+    setup.state["raw_path"] = raw_path
+    logging.debug(f"Set raw_path to {raw_path}")
 
     if cal_path is not None:
 
         cal_path = check_path(cal_path, make_absolute=True)
-        setup.state["cal_path"] = cal_path
-        logging.debug(f"Set cal_path to {cal_path}")
 
-    else:
-
-        setup.state["cal_path"] = cwd
-                                        
+    setup.state["cal_path"] = cal_path
+    logging.debug(f"Set cal_path to {cal_path}")
+                                    
     if proc_path is not None:
 
         proc_path = check_path(proc_path, make_absolute=True)
-        setup.state["proc_path"] = proc_path
-        logging.debug(f"Set proc_path to {proc_path}")
                                         
-    else:
+    setup.state["proc_path"] = proc_path
+    logging.debug(f"Set proc_path to {proc_path}")
 
-        setup.state["proc_path"] = cwd
 
     if qa_path is not None:
 
         qa_path = check_path(qa_path, make_absolute=True)
-        setup.state["qa_path"] = qa_path
-        logging.debug(f"Set qa_path to {qa_path}")
-                                        
-    else:
 
-        setup.state["qa_path"] = cwd
+    setup.state["qa_path"] = qa_path
+    logging.debug(f"Set qa_path to {qa_path}")
+    
+    #
+    # Now ensure that `raw_path` does not equal any of the other paths
+    #
 
+    if setup.state['raw_path'] is not None:
+
+        if setup.state['raw_path'] == setup.state['cal_path']:
+            
+            message = 'The parameter `raw_path` cannot be the same as the '+\
+                'parameter `cal_path`.'
+            raise pySpextoolError(message)
+
+        if setup.state['raw_path'] == setup.state['proc_path']:
+
+            message = 'The parameter `raw_path` cannot be the same as the '+\
+                'parameter `proc_path`.'
+            raise pySpextoolError(message)
+
+        if setup.state['raw_path'] == setup.state['qa_path']:
+            
+            message = 'The parameter `raw_path` cannot be the same as the '+\
+                'parameter `qa_path`.'
+            raise pySpextoolError(message)
         
     return
 
@@ -242,27 +296,14 @@ def set_instrument(instrument_name: str):
 
     Parameters
     ----------
-    instrument_name : str
-        Default = 'uspex'
-        The name of the instrument.  Must be one of
-        config.setup['instruments'].
-        Currently, only 'spex' and 'uspex' are supported.
+    instrument_name : setup.state['instruments']
+        The name of the instrument. 
 
     Returns
     -------
     None
 
     """
-
-    if instrument_name is None:
-        instrument_name = setup.state["instruments"][0]
-
-    #
-    # Check parameter and store results
-    #
-
-    check_parameter("set_instrument", "instrument_name", instrument_name,
-                    "str", possible_values=["spex", "uspex"])
 
     setup.state["instrument"] = instrument_name
 
@@ -277,8 +318,7 @@ def set_instrument(instrument_name: str):
     #
 
     instrument_data_path = os.path.join(
-        setup.state["package_path"], "instrument_data",
-        instrument_name + "_dir")
+        setup.state["package_path"], "instruments",instrument_name)
 
     data_path = os.path.join(setup.state["package_path"], "data")
 
@@ -305,7 +345,7 @@ def set_instrument(instrument_name: str):
 
     setup.state["suffix"] = instrument_info["SUFFIX"]
     setup.state["nint"] = instrument_info["NINT"]
-    setup.state["extract_keywords"] = instrument_info["XSPEXTOOL_KEYWORDS"]
+    setup.state["extract_keywords"] = instrument_info["EXTRACT_KEYWORDS"]
     setup.state["combine_keywords"] = instrument_info["COMBINE_KEYWORDS"]
     setup.state["telluric_keywords"] = instrument_info["TELLURIC_KEYWORDS"]
 
@@ -352,11 +392,11 @@ def set_instrument(instrument_name: str):
     return
 
 
-def set_qa_state(qa_show:bool=False,
-                 qa_scale:float=1.0,
-                 qa_block:bool=True,
-                 qa_write:bool=True,
-                 qa_extension:str='.pdf',):
+def set_qa_state(qa_show:bool,
+                 qa_showscale:float,
+                 qa_showblock:bool,
+                 qa_write:bool,
+                 qa_extension:str,):
 
     """
     To set the quality assurance plot settings.
@@ -369,11 +409,11 @@ def set_qa_state(qa_show:bool=False,
         True: Display the quality assurance plots to the screen.
         False: Do not display the quality assurance plots to the screen.
 
-    qashow_scale : float, default=1.0
+    qa_showscale : float, default=1.0
         A scale factor that resizes the plots shown on the screen by a factor
         of 'qashow_scale`. 
 
-    qashow_block : {False, True}
+    qa_showblock : {False, True}
         Set to True to stop the workflow after each plot is shown.
     
     qa_write : {True, False}
@@ -392,32 +432,16 @@ def set_qa_state(qa_show:bool=False,
     -------
     None
 
-    """
-
-    #
-    # Check parameters
-    #
-    
-    check_parameter("set_qa_state", "qa_show", qa_show, ["NoneType", "bool"])
-
-    check_parameter("set_qa_state", "qa_scale", qa_scale, 'float')
-    
-    check_parameter("set_qa_state", "qa_block", qa_block, ["NoneType", "bool"])
-    
-    check_parameter("set_qa_state", "qa_write", qa_write, ["NoneType", "bool"])
-
-    check_parameter("set_qa_state", "qa_extensioan", qa_extension,
-        ["NoneType", "str"], possible_values=setup.state["qa_extensions"])
-
+    """    
     #
     # Set the values
     #
     
     setup.state["qa_show"] = qa_show
 
-    setup.state["qa_block"] = qa_block
+    setup.state["qa_showblock"] = qa_showblock
 
-    setup.state["qa_scale"] = qa_scale
+    setup.state["qa_showscale"] = qa_showscale
 
     setup.state["qa_write"] = qa_write
 
