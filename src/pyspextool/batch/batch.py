@@ -259,7 +259,7 @@ def test(verbose=True):
 	pandas
 	'''	
 	testdatafold = os.path.join(CODEDIR,"../../tests/test_data/")
-	instrumentdatafold = os.path.join(CODEDIR,"instrument_data/")
+	instrumentdatafold = os.path.join(CODEDIR,"instruments/")
 	reductiondatafold = os.path.join(CODEDIR,"data/")
 	test_instruments = ['spex-prism', 'spex-SXD','uspex-prism','uspex-SXD']
 	rawfold = os.path.join(testdatafold, "raw/")
@@ -271,7 +271,7 @@ def test(verbose=True):
 	if verbose==True: print('...checking that code can find instrument data')
 	assert os.path.exists(instrumentdatafold), 'could not find instrument data folder {}, try downloading from {}'.format(instrumentdatafold,BACKUP_INSTRUMENT_DATA_URL)
 	for x in ['spex','uspex']:
-		testfold = os.path.join(instrumentdatafold,'{}_dir'.format(x))
+		testfold = os.path.join(instrumentdatafold,'{}'.format(x))
 		assert os.path.exists(testfold), 'could not find instrument data folder {}, try downloading from {}'.format(testfold,BACKUP_INSTRUMENT_DATA_URL)
 		testfile = os.path.join(testfold,'{}_bdpxmk.fits'.format(x))
 		assert os.path.exists(testfile), 'could not find bad pixel mask file {}, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
