@@ -40,7 +40,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 Aug 5'
+VERSION = '2024 Oct 27'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -649,7 +649,7 @@ def organize(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite
 
 
 
-def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
+def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
 	'''
 	Purpose
 	-------
@@ -697,9 +697,9 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 	'''	
 
 # Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
-	base_folder = os.path.join(folder, LEGACY_FOLDER)
+	base_folder = os.path.join(folder, expand)
 	if not os.path.exists(base_folder):
-		print("Error: {} folder not found in the current directory, no action".format(LEGACY_FOLDER))
+		print("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
 		return
 
 # Generate a list of all unique folders containing fits files
@@ -756,7 +756,7 @@ def organizeLegacy(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,ove
 
 
 
-def organizeIRSA(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=True,overwrite=False):
+def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,makecopy=True,overwrite=False):
 	'''
 	Purpose
 	-------
@@ -804,9 +804,10 @@ def organizeIRSA(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=True,overwr
 	'''	
 
 # Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
-	base_folder = os.path.join(folder, IRSA_FOLDER)
+	base_folder = os.path.join(folder, expand)
 	if not os.path.exists(base_folder):
-		raise ValueError("ERROR: IRSA archive output folder {} not found in the current directory".format(IRSA_FOLDER))
+		print("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
+		return
 
 # Generate a list of all fits files
 	fits_paths = glob.glob(os.path.join(base_folder, '**', '*.fits'), recursive=True)
@@ -1606,6 +1607,11 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		if len(imfile)==0:
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 #			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+# added due to annoying .fits suffix
+		if len(imfile)==0:
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+		if len(imfile)==0:
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 		if len(imfile)>0:
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			fitsfile = os.path.join(qa_parameters['PROC_FOLDER'],os.path.basename(imfile[0]).replace('.pdf','.fits'))
@@ -1643,11 +1649,11 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			stxt = stxt.replace('[{}_COMBINED_FILES]'.format(x),ptxt)
 
 # individual files
-			indexinfo = {'nint': setup.state['nint'], 'prefix': driver['SPECTRA_FILE_PREFIX'],'suffix': '', 'extension': '.pdf'}
-			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo)
+			indexinfo = {'nint': setup.state['nint'], 'prefix': driver['SPECTRA_FILE_PREFIX'],'suffix': '', 'extension': qa_parameters['PLOT_TYPE']}
+			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 			files = list(filter(lambda x: os.path.exists(x),files))
 			if len(files)==0:
-				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo)
+				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 				files = list(filter(lambda x: os.path.exists(x),files))
 			files.sort()
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
@@ -1657,27 +1663,59 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_SPECTRA_FILES]'.format(x),ptxt)
 
+# telluric correction files
+			cnt=0
+			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				imfile.sort()
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				cnt+=1
+				if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				imfile.sort()
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				cnt+=1
+				if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+
+			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[STD_TELLURIC_FILES]'.format(x),ptxt)
+
+
 # traces and apertures
 			fnums = extract_filestring(sci_param['{}_FILES'.format(x)],'index')
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 			cnt = 0
 			for f in fnums:
-				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
-				if len(imfile)==0: 
-					imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
 					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 					cnt+=1
-				if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
-				if len(imfile)==0: 
-					imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+					if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
+				# imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				# if len(imfile)>0: 
+				# 	imfile.sort()
+				# 	ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				# 	cnt+=1
+				# 	if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_profiles{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
 					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 					cnt+=1
+					if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_TRACE_APERTURE_FILES]'.format(x.split('_')[0]),ptxt)
 
@@ -1701,15 +1739,22 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	loopstr = '<table>\n <tr>\n'
 	cnt=0
 	for cs in cal_sets:
-		if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
-		if len(imfile)==0: 
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'flat{}_locateorders{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
 		if len(imfile)>0: 
 			imfile.sort()
 			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
 			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),qa_parameters['IMAGE_WIDTH'],os.path.basename(os.path.join(image_folder,os.path.basename(imfile[0]))))
 			cnt+=1
+			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'flat{}_normalized{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'flat{}_normalized{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)>0: 
+			imfile.sort()
+			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
+			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),qa_parameters['IMAGE_WIDTH'],os.path.basename(os.path.join(image_folder,os.path.basename(imfile[0]))))
+			cnt+=1
+			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 	loopstr+=' </tr>\n</table>\n\n'
 	index_bottom = index_bottom.replace('[FLATS]',loopstr)
 
@@ -1718,14 +1763,27 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	loopstr = '<table>\n <tr>\n'
 	cnt=0
 	for cs in cal_sets:
-		if cnt>0 and np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
-		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_shift.pdf'.format(cs)))
-		if len(imfile)==0: 
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}_shift.pdf'.format(cs)))
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
 		if len(imfile)>0: 
 			imfile.sort()
 			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
 			cnt+=1
+			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_pixelshift{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}_pixelshift{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)>0: 
+			imfile.sort()
+			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
+			cnt+=1
+			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_residuals{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}_residuals{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		if len(imfile)>0: 
+			imfile.sort()
+			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
+			cnt+=1
+			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 	loopstr+=' </tr>\n</table>\n'
 	index_bottom = index_bottom.replace('[WAVECALS]',loopstr)
 
@@ -1843,7 +1901,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 
 # set up instrument
 	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CALS_FOLDER'], \
-		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],verbose=parameters['VERBOSE'])
+		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],
+		qa_show=False,qa_showblock=False,qa_write=True,verbose=parameters['VERBOSE'])
+
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
@@ -1853,31 +1913,38 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # flats
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['FLAT_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
-			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo)
+			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False)
 			input_files = list(filter(lambda x: os.path.exists(x),temp_files))
 			if len(input_files)==0: raise ValueError('Cannot find any of the flat files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['FLAT_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
+
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
-				ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs),qa_show=parameters['qa_show'],qa_write=parameters['qa_write'],verbose=parameters['VERBOSE'])
+				ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs))
 			else:
 				if parameters['VERBOSE']==True: print('\nflat{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
 
 # wavecal
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
-			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo)
+			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False)
 			input_files = list(filter(lambda x: os.path.exists(x),temp_files))
 			if len(input_files)==0: raise ValueError('Cannot find any of the arc files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['ARC_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
-				ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs),\
-					qa_show=parameters['qa_show'],qa_write=parameters['qa_write'],verbose=parameters['VERBOSE'])
+				ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs))
 			else:
 				if parameters['VERBOSE']==True: print('\nwavecal{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
+
+# IMPORTANT NOTE
+# FOR LXD MODE WE WILL NEED TO ADD IN A SKY FILE
+# USING FOLLOWING FORMAT
+# ps.extract.make_wavecal(['arc','575,576'],
+#                         'flat577-581.fits','wavecal575-576',
+#                         sky_files=['spc','555,556'])
 
 # extract all sources and standards
 	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
@@ -1901,96 +1968,166 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # first check if file is present - skip if not overwriting
 # FUTURE: could also add file size: os.path.getsize(file1)>100:
 			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-			file1 = make_full_path(setup.state['proc_path'], extract_filestring(spar['TARGET_FILES'],'index')[0], indexinfo=indexinfo)[0]
+#			print(setup.state['proc_path'], [extract_filestring(spar['TARGET_FILES'],'index')[0]])
+			file1 = make_full_path(setup.state['proc_path'], [extract_filestring(spar['TARGET_FILES'],'index')[0]], indexinfo=indexinfo,exist=False)[0]
+#			print(file1)
 			if os.path.exists(file1)==True and parameters['OVERWRITE']==False:
 				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['TARGET_FILES']))
-				continue
 
 # reduce the first pair of targets
-			ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
-				spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['TARGET_REDUCTION_MODE'], \
-				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# set extraction method
-			ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
-
-# make spatial profiles
-			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# NEED A CHECK IN HERE TO STOP EXTRACTION OF THE SPATIAL PROFILE IS MOSTLY FLAT (PEAKS < 3 * BACK STDEV)
-# HOW DO WE ACCESS THE TRACE?
-
-# identify aperture positions
-			if spar['TARGET_APERTURE_METHOD']=='auto':
-				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 			else:
-				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+				naps = 2 # default, may not to make variable
+#			print(spar['TARGET_PSF_RADIUS'],spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH'])
+				if spar['TARGET_APERTURE_METHOD']=='auto':
+					aperture_find = [spar['TARGET_APERTURE_METHOD'],naps]
+	#				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+				else:
+					aperture_find = [spar['TARGET_APERTURE_METHOD'],spar['TARGET_APERTURE_POSITIONS']]
+	#				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
-# select orders to extract (set above)
-			ps.extract.select_orders(include=spar['TARGET_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+				ps.extract.extract(spar['TARGET_REDUCTION_MODE'],
+	#				[spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]] # do just a pair
+					[spar['TARGET_PREFIX'],spar['TARGET_FILES']], # do all pairs
+					spar['TARGET_FLAT_FILE'],
+					spar['TARGET_WAVECAL_FILE'],
+					aperture_find,
+					spar['TARGET_APERTURE'],
+					linearity_correction=True, # default, may not to make variable
+					output_prefix=spar['SPECTRA_FILE_PREFIX'],
+					write_rectified_orders=False, # default, may not to make variable
+					aperture_signs=None, # default, may not to make variable
+					include_orders=spar['TARGET_ORDERS'],
+					bg_annulus=[spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH']],
+					fix_badpixels=False, # default, may not to make variable
+					psf_radius=spar['TARGET_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
+					detector_info={'correct_bias':True},
+					flat_field=True, # default, may not to make variable
+					)
+				
 
-# trace apertures
-			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# 			ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
+# 				spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['TARGET_REDUCTION_MODE'], \
+# 				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
-# define the aperture - psf, width, background
-# NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-			ps.extract.define_aperture_parameters(spar['TARGET_APERTURE'], psf_radius=spar['TARGET_PSF_RADIUS'],bg_radius=spar['TARGET_BACKGROUND_RADIUS'],\
-						bg_width=spar['TARGET_BACKGROUND_WIDTH'],qa_show=spar['qa_show'],qa_write=spar['qa_write'],)
+# # set extraction method
+# 			ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
 
-# extract away
-			ps.extract.extract_apertures(verbose=spar['VERBOSE'])
+# # make spatial profiles
+# 			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+
+# # NEED A CHECK IN HERE TO STOP EXTRACTION OF THE SPATIAL PROFILE IS MOSTLY FLAT (PEAKS < 3 * BACK STDEV)
+# # HOW DO WE ACCESS THE TRACE?
+
+# # identify aperture positions
+# 			if spar['TARGET_APERTURE_METHOD']=='auto':
+# 				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# 			else:
+# 				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+
+# # select orders to extract (set above)
+# 			ps.extract.select_orders(include=spar['TARGET_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+
+# # trace apertures
+# 			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+
+# # define the aperture - psf, width, background
+# # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
+# 			ps.extract.define_aperture_parameters(spar['TARGET_APERTURE'], psf_radius=spar['TARGET_PSF_RADIUS'],bg_radius=spar['TARGET_BACKGROUND_RADIUS'],\
+# 						bg_width=spar['TARGET_BACKGROUND_WIDTH'],qa_show=spar['qa_show'],qa_write=spar['qa_write'],)
+
+# # extract away
+# 			ps.extract.extract_apertures(verbose=spar['VERBOSE'])
 
 # conduct extraction of all remaining files
-			fnum = extract_filestring(spar['TARGET_FILES'],'index')[2:]
-			if len(fnum)>0:
-				ps.extract.do_all_steps([spar['TARGET_PREFIX'],'{}'.format(numberList(fnum))],verbose=spar['VERBOSE'])
+			# fnum = extract_filestring(spar['TARGET_FILES'],'index')[2:]
+			# if len(fnum)>0:
+			# 	ps.extract.do_all_steps([spar['TARGET_PREFIX'],'{}'.format(numberList(fnum))],verbose=spar['VERBOSE'])
 
 # FLUX STANDARD
 # first check if file is present - skip if not overwriting
 # FUTURE: could also add file size: os.path.getsize(file1)>100:
+
 			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-			file1 = make_full_path(setup.state['proc_path'], extract_filestring(spar['STD_FILES'],'index')[0], indexinfo=indexinfo)[0]
+			file1 = make_full_path(setup.state['proc_path'], [extract_filestring(spar['STD_FILES'],'index')[0]], indexinfo=indexinfo,exist=False)[0]
 			if os.path.exists(file1)==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['STD_FILES']))
-				continue
+				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['TARGET_FILES']))
 
-# now reduce the first pair of standards
-# NOTE: ASSUMING THESE ARE BRIGHT POINT SOURCES WITH AUTO APERTURE FINDING
-			ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
-				spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['STD_REDUCTION_MODE'], \
-				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# reduce the first pair of targets
+			else:
+				naps = 2 # default, may not to make variable
+#			print(spar['TARGET_PSF_RADIUS'],spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH'])
+				if spar['STD_APERTURE_METHOD']=='auto':
+					aperture_find = [spar['STD_APERTURE_METHOD'],naps]
+#				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+				else:
+					aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
+#				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
-# set extraction method
-			ps.extract.set_extraction_type('ps')
+				ps.extract.extract(spar['STD_REDUCTION_MODE'],
+	#				[spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]] # do just a pair
+					[spar['STD_PREFIX'],spar['STD_FILES']], # do all pairs
+					spar['STD_FLAT_FILE'],
+					spar['STD_WAVECAL_FILE'],
+					aperture_find,
+					spar['STD_APERTURE'],
+					linearity_correction=True, # default, may not to make variable
+					output_prefix=spar['SPECTRA_FILE_PREFIX'],
+					write_rectified_orders=False, # default, may not to make variable
+					aperture_signs=None, # default, may not to make variable
+					include_orders=spar['STD_ORDERS'],
+					bg_annulus=[spar['STD_BACKGROUND_RADIUS'],spar['STD_BACKGROUND_WIDTH']],
+					fix_badpixels=False, # default, may not to make variable
+					psf_radius=spar['STD_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
+					detector_info={'correct_bias':True},
+					flat_field=True, # default, may not to make variable
+					)
 
-# make spatial profiles
-			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
-# identify aperture positions
-			# if spar['STD_APERTURE_METHOD']=='auto':
-			# 	ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-			# else:
-			# 	ps.extract.locate_aperture_positions(spar['STD_APERTURE_POSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-			ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method='auto', qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=parameters['VERBOSE'])
+# 			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+# 			file1 = make_full_path(setup.state['proc_path'], extract_filestring(spar['STD_FILES'],'index')[0], indexinfo=indexinfo)[0]
+# 			if os.path.exists(file1)==True and parameters['OVERWRITE']==False:
+# 				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['STD_FILES']))
+# 				continue
 
-# select orders to extract (set above)
-			ps.extract.select_orders(include=spar['STD_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# # now reduce the first pair of standards
+# # NOTE: ASSUMING THESE ARE BRIGHT POINT SOURCES WITH AUTO APERTURE FINDING
+# 			ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
+# 				spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['STD_REDUCTION_MODE'], \
+# 				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
-# trace apertures
-			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# # set extraction method
+# 			ps.extract.set_extraction_type('ps')
 
-# define the aperture - psf, width, background
-# NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-			ps.extract.define_aperture_parameters(spar['STD_APERTURE'], psf_radius=spar['STD_PSF_RADIUS'],bg_radius=spar['STD_BACKGROUND_RADIUS'],\
-						bg_width=spar['STD_BACKGROUND_WIDTH'], qa_show=spar['qa_show'],qa_write=spar['qa_write'])
+# # make spatial profiles
+# 			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
 
-# extract away
-			ps.extract.extract_apertures(verbose=verbose)
+# # identify aperture positions
+# 			# if spar['STD_APERTURE_METHOD']=='auto':
+# 			# 	ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# 			# else:
+# 			# 	ps.extract.locate_aperture_positions(spar['STD_APERTURE_POSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+# 			ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method='auto', qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=parameters['VERBOSE'])
 
-# conduct extraction of all remaining files
-			fnum = extract_filestring(spar['STD_FILES'],'index')[2:]
-			if len(fnum)>0:
-				ps.extract.do_all_steps([spar['STD_PREFIX'],'{}'.format(numberList(fnum))],verbose=spar['VERBOSE'])
+# # select orders to extract (set above)
+# 			ps.extract.select_orders(include=spar['STD_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+
+# # trace apertures
+# 			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+
+# # define the aperture - psf, width, background
+# # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
+# 			ps.extract.define_aperture_parameters(spar['STD_APERTURE'], psf_radius=spar['STD_PSF_RADIUS'],bg_radius=spar['STD_BACKGROUND_RADIUS'],\
+# 						bg_width=spar['STD_BACKGROUND_WIDTH'], qa_show=spar['qa_show'],qa_write=spar['qa_write'])
+
+# # extract away
+# 			ps.extract.extract_apertures(verbose=verbose)
+
+# # conduct extraction of all remaining files
+# 			fnum = extract_filestring(spar['STD_FILES'],'index')[2:]
+# 			if len(fnum)>0:
+# 				ps.extract.do_all_steps([spar['STD_PREFIX'],'{}'.format(numberList(fnum))],verbose=spar['VERBOSE'])
+
+
 
 ## COMBINE SPECTRAL FILES ###
 # NOTE: SPECTRA_FILE_PREFIX is currently hardcoded in code to be 'spectra' - how to change?
@@ -2012,8 +2149,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (use --overwrite option to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))			
 # combine
 			else:
-				ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],outfile,
-					scale_spectra=True,scale_range=spar['TARGET_SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
+				# ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],outfile,
+				# 	scale_spectra=True,scale_range=spar['TARGET_SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
+				ps.combine.combine(['spectra',spar['TARGET_FILES']],outfile,verbose=verbose)
 
 # telluric star
 #		if spar['MODE']=='SXD':
@@ -2028,8 +2166,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (use --overwrite option to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
 # combine
 			else:
-				ps.combine.combine_spectra(['spectra',spar['STD_FILES']],outfile,
-					scale_spectra=True,scale_range=spar['STD_SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
+				# ps.combine.combine_spectra(['spectra',spar['STD_FILES']],outfile,
+				# 	scale_spectra=True,scale_range=spar['STD_SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
+				ps.combine.combine(['spectra',spar['STD_FILES']],outfile,verbose=verbose)
 
 ## FLUX CALIBRATE ###
 	if parameters['FLUXTELL']==True:
@@ -2069,9 +2208,10 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				continue
 
 # NOTE: NEED TO PARAMETERIZE DEFAULTS FOR WRITE TELLURIC AND WRITE MODEL
-			ps.telluric.telluric_correction(objfile,stdfile,standard_data,outfile,reflectance=reflectance,
-				write_telluric_spectra=True,write_model_spectra=True,
-				qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])				
+			ps.telluric.telluric(objfile,stdfile,standard_data,outfile,reflectance=reflectance,verbose=verbose)
+			# ps.telluric.telluric_correction(objfile,stdfile,standard_data,outfile,reflectance=reflectance,
+			# 	write_telluric_spectra=True,write_model_spectra=True,
+			# 	qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])				
 
 ## ORDER STITCHING ###
 # NOT YET IMPLEMENTED  #

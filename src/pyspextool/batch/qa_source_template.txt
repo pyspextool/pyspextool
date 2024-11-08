@@ -62,6 +62,10 @@
 
 [STD_SPECTRA_FILES]
 
+<h4>Telluric Correction</h4>
+
+[STD_TELLURIC_FILES]
+
 </div>
 
 
