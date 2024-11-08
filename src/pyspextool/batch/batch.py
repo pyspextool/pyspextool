@@ -1961,6 +1961,13 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 #                         'flat577-581.fits','wavecal575-576',
 #                         sky_files=['spc','555,556'])
 
+# IMPORTANT NOTE
+# FOR LXD MODE WE WILL NEED TO ADD IN A SKY FILE
+# USING FOLLOWING FORMAT
+# ps.extract.make_wavecal(['arc','575,576'],
+#                         'flat577-581.fits','wavecal575-576',
+#                         sky_files=['spc','555,556'])
+
 # extract all sources and standards
 	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
 	scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
@@ -2077,7 +2084,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 ## COMBINE SPECTRAL FILES ##
 ############################
 
-
 # NOTE: SPECTRA_FILE_PREFIX is currently hardcoded in code to be 'spectra' - how to change?
 	if parameters['COMBINE']==True:
 		for k in scikeys:
@@ -2097,7 +2103,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # check if combined file is present - skip if not overwriting
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
 				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
-
 			else:
 # check that all input files are present - skip any they are missing with a warning
 				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
@@ -2199,7 +2204,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 #####################
 
 ### NOT YET IMPLEMENTED ###
-
 	if parameters['STITCH']==True:
 		for k in scikeys:
 			spar = parameters[k]
