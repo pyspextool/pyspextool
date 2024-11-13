@@ -2269,6 +2269,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 #####################
 
 ### NOT YET IMPLEMENTED ###
+
 	if parameters['STITCH']==True:
 		for k in scikeys:
 			spar = parameters[k]
