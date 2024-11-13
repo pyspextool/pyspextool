@@ -391,14 +391,17 @@ def load_image(files:str | list,
             # Find the closest one
 
             deltas = rps - flatinfo['rp']
-            z = deltas == np.min(np.abs(deltas))
+#            z = deltas == np.min(np.abs(deltas))
+            zind = np.argmin(np.abs(deltas))
 
             logging.info(f' Loading the atmospheric tranmission at R='+\
-                         str(rps[z][0])+'.')
+#                         str(rps[z][0])+'.')
+                         str(rps[zind])+'.')
             
             # Load that file
 
-            array = fits.getdata(np.array(fullpath)[z][0])
+#            array = fits.getdata(np.array(fullpath)[z][0])
+            array = fits.getdata(np.array(fullpath)[zind])
             atmosphere = {'wavelength':array[0, :], 'transmission':array[1, :]}
             
             # Get units
