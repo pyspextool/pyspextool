@@ -33,6 +33,7 @@ import shutil
 import sys
 import yaml
 import warnings
+import logging
 warnings.simplefilter('ignore', category=AstropyWarning)
 
 import pyspextool as ps
@@ -40,7 +41,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 Oct 27'
+VERSION = '2024 Nov 12'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -216,7 +217,7 @@ OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
 ####### BASIC TEST OF CODE #######
 ##################################
 
-def test(verbose=True):
+def test(verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -268,7 +269,7 @@ def test(verbose=True):
 	driver_test_file = 'driver_test.txt'
 
 # make sure code can find main instrument data files
-	if verbose==True: print('...checking that code can find instrument data')
+	if verbose==True: logging.info('...checking that code can find instrument data')
 	assert os.path.exists(instrumentdatafold), 'could not find instrument data folder {}, try downloading from {}'.format(instrumentdatafold,BACKUP_INSTRUMENT_DATA_URL)
 	for x in ['spex','uspex']:
 		testfold = os.path.join(instrumentdatafold,'{}'.format(x))
@@ -277,10 +278,10 @@ def test(verbose=True):
 		assert os.path.exists(testfile), 'could not find bad pixel mask file {}, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
 		fstat = os.stat(testfile)
 		assert fstat.st_size > 1000000, 'file {} is too small, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
-		if verbose==True: print('\t{}: PASS'.format(x))
+		if verbose==True: logging.info('\t{}: PASS'.format(x))
 
 # make sure code can find main reduction data files
-	if verbose==True: print('...checking that code can find reduction data')
+	if verbose==True: logging.info('...checking that code can find reduction data')
 	assert os.path.exists(reductiondatafold), 'could not find reduction data folder {}, try downloading from {}'.format(reductiondatafold,BACKUP_REDUCTION_DATA_URL)
 	for x in [100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000,6000,60000,75000]:
 		atmfile = os.path.join(reductiondatafold,'atran{:.0f}.fits'.format(x))
@@ -292,14 +293,13 @@ def test(verbose=True):
 		assert os.path.exists(vfile), 'Vega spectrum file {} not found in data folder {}, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
 		fstat = os.stat(vfile)
 		assert fstat.st_size > 1000000, 'Vega spectrum file {} is too small, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
-	if verbose==True: print('\tPASS')
+	if verbose==True: logging.info('\tPASS')
 
 # make sure code can find raw test data
-	if verbose==True: print('...checking that code can find and process test data')
+	if verbose==True: logging.info('...checking that code can find and process test data')
 	assert os.path.exists(testdatafold), 'Could not find test data folder {}'.format(testdatafold)
 	for inst in test_instruments:
 		rfold = os.path.join(rawfold, inst)
-		print(rawfold,rfold)
 		assert os.path.exists(rfold), 'Could not find test data folder {}'.format(os.path.join(rawfold, inst))
 		for fold in REDUCTION_FOLDERS:
 			assert os.path.exists(os.path.join(rfold, fold)), 'Could not find test data folder {}'.format(os.path.join(rawfold, inst, fold))
@@ -310,11 +310,11 @@ def test(verbose=True):
 		assert len(result) > 0, 'no data files found in {}'.format(os.path.join(rfold, "data/"))
 		for x in list(HEADER_DATA.keys()):
 			assert x in list(result.columns), 'Could not find required header data {} in data files in {}'.format(x,os.path.join(rfold, "data/"))
-		if verbose==True: print('\t{}: PASS'.format(inst))
+		if verbose==True: logging.info('\t{}: PASS'.format(inst))
 #	if verbose==True: print('\tPASS')
 
 # process files and generate a test log
-	if verbose==True: print('...checking that code can generate log')
+	if verbose==True: logging.info('...checking that code can generate log')
 	for inst in test_instruments:
 		rfold = os.path.join(rawfold, inst)
 		pfold = os.path.join(procfold, inst)
@@ -329,13 +329,13 @@ def test(verbose=True):
 			assert x in list(dp.columns), 'Could not find required column {} in log file {}'.format(x,logfile)
 		for x in SIMBAD_COLS:
 			assert x in list(dp.columns), 'Could not find required SIMBAD column {} in log file {}'.format(x,logfile)
-		if verbose==True: print('\t{}: PASS'.format(inst))
+		if verbose==True: logging.info('\t{}: PASS'.format(inst))
 
 # CLEANUP
 # remove generated files
 
 # process files and generate a driver file
-	if verbose==True: print('...checking that code can generate driver')
+	if verbose==True: logging.info('...checking that code can generate driver')
 	for inst in test_instruments:
 		rfold = os.path.join(rawfold, inst)
 		pfold = os.path.join(procfold, inst)
@@ -351,11 +351,11 @@ def test(verbose=True):
 		assert isinstance(par, dict), 'Driver file parameter error: not a dictionary for driver file {}'.format(driver_file)
 		for x in BATCH_PARAMETERS:
 			assert x in list(par.keys()), 'Could not find required parameter {} in driver file {}'.format(x,driver_file)
-		if verbose==True: print('\t{}: PASS'.format(inst))
+		if verbose==True: logging.info('\t{}: PASS'.format(inst))
 
 # CLEANUP
 # remove generated files
-	if verbose==True: print('...cleaning up')
+	if verbose==True: logging.info('...cleaning up')
 	for inst in test_instruments:
 		rfold = os.path.join(rawfold, inst)
 		pfold = os.path.join(procfold, inst)
@@ -363,7 +363,7 @@ def test(verbose=True):
 		os.remove(logfile)
 		driver_file = os.path.join(pfold, "proc", driver_test_file)
 		os.remove(driver_file)
-	if verbose==True: print('\n*** Batch reduction tests have all passed - happy reducing! ***\n')
+	if verbose==True: logging.info('\n*** Batch reduction tests have all passed - happy reducing! ***\n')
 
 	return
 
@@ -445,7 +445,7 @@ def processFolder(folder,verbose=False):
 				if ii in list(header.keys()) and ref=='': ref=ii
 			if ref!='': dp.loc[i,k] = header[ref]
 			if ref=='' and verbose==True and i==0:
-				print('Could not find keywords {} in file {}'.format(HEADER_DATA[k],f))
+				logging.info('Could not find keywords {} in file {}'.format(HEADER_DATA[k],f))
 # update some of the mode names
 		if 'SHORTXD' in dp.loc[i,'MODE'].upper(): dp.loc[i,'MODE'] = 'SXD'
 		if 'lowres' in dp.loc[i,'MODE'].lower(): dp.loc[i,'MODE'] = 'Prism'		
@@ -470,7 +470,7 @@ def processFolder(folder,verbose=False):
 	dpt = dp[dp['TARGET_TYPE']=='standard']
 	dpt.reset_index(inplace=True)
 	if len(dpt)==0: 
-		if verbose==True: print('Warning: no standards present in list; be sure to check driver file carefully')
+		if verbose==True: logging.info('Warning: no standards present in list; be sure to check driver file carefully')
 
 # ignore certain modes
 	dp.loc[dp['MODE'].isin(IGNORE_MODES),'TARGET_TYPE'] = 'ignore'
@@ -502,7 +502,7 @@ def processFolder(folder,verbose=False):
 	if ARC_NAME in names: names.remove(ARC_NAME)
 	if FLAT_NAME in names: names.remove(FLAT_NAME)
 	if len(names)==0:
-		if verbose==True: print('Warning: no science files identified in {}'.format(folder))
+		if verbose==True: logging.info('Warning: no science files identified in {}'.format(folder))
 		return dp
 	else:
 		for n in names:
@@ -519,9 +519,9 @@ def processFolder(folder,verbose=False):
 					dt = (time2-time1).to(u.hour)
 					if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
 						dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
-					if verbose==True: print('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+					if verbose==True: logging.info('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
 				except Exception as e:
-					if verbose==True: print('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
+					if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
 
 # program and PI info (based on code by Evan Watson)
 # NOTE: in this realization we're assuming its the same program and PI for the entire folder
@@ -596,10 +596,10 @@ def organize(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite
 
 # First look to see if LEGACY_FOLDER or IRSA_FOLDER is in the infolder path
 	if LEGACY_FOLDER in folder: 
-		if verbose==True: print('Detected IRTF Legacy archive path {} in input path; using organizeLegacy'.format(LEGACY_FOLDER))
+		if verbose==True: logging.info('Detected IRTF Legacy archive path {} in input path; using organizeLegacy'.format(LEGACY_FOLDER))
 		organizeLegacy(folder,outfolder=outfolder,verbose=verbose,makecopy=makecopy,overwrite=overwrite)
 	if IRSA_FOLDER in folder: 
-		if verbose==True: print('Detected IRTF IRSA archive path {} in input path; using organizeLegacy'.format(IRSA_FOLDER))
+		if verbose==True: logging.info('Detected IRTF IRSA archive path {} in input path; using organizeLegacy'.format(IRSA_FOLDER))
 		organizeIRSA(folder,outfolder=outfolder,verbose=verbose,makecopy=makecopy,overwrite=overwrite)
 
 # Generate a list of all fits files in folder
@@ -626,14 +626,14 @@ def organize(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite
 		output_folder = os.path.join(outfolder,f)
 		if os.path.exists(output_folder)== False: 
 			os.makedirs(output_folder)
-			if verbose==True: print('Creating folder {}'.format(output_folder))
+			if verbose==True: logging.info('Creating folder {}'.format(output_folder))
 
 # create other folders
 		for rf in REDUCTION_FOLDERS:
 			rfolder = os.path.join(output_folder,rf)
 			if os.path.exists(rfolder) == False:
 				os.makedirs(rfolder)
-				if verbose==True: print('Creating folder {}'.format(rfolder))
+				if verbose==True: logging.info('Creating folder {}'.format(rfolder))
 		data_folder = os.path.join(output_folder,REDUCTION_FOLDERS[0])
 
 # run through fits files and copy relevant files over
@@ -642,9 +642,9 @@ def organize(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite
 				if os.path.exists(os.path.join(data_folder,os.path.basename(fl)))==False or overwrite==True: 
 					if makecopy==False: shutil.move(fl,data_folder)
 					else: shutil.copy2(fl,data_folder)
-				else: print('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
+				else: logging.info('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
 
-		if verbose==True: print('\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+		if verbose==True: logging.info('\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
 	return
 
 
@@ -699,7 +699,7 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 # Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
 	base_folder = os.path.join(folder, expand)
 	if not os.path.exists(base_folder):
-		print("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
+		logging.info("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
 		return
 
 # Generate a list of all unique folders containing fits files
@@ -712,7 +712,7 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 	cntr,prefix0 = 1,''
 	for i,f in enumerate(fits_folders):
 # generate file name from UT date of first fits file if not provided
-		if verbose==True: print('\nOrganizing data folder {}'.format(f))
+		if verbose==True: logging.info('\nOrganizing data folder {}'.format(f))
 		if outfolder=='':
 			hdu = fits.open(glob.glob(os.path.join(f,'*.fits'))[0],ignore_missing_end=True)
 			hd = hdu[0].header
@@ -728,30 +728,30 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 		cntr+=1
 		if os.path.exists(output_folder)== False: 
 			os.makedirs(output_folder)
-			if verbose==True: print('Creating folder {}'.format(output_folder))
+			if verbose==True: logging.info('Creating folder {}'.format(output_folder))
 
 # if path exists, just move and rename fits folder, otherwise move files, being careful of overwriting 
 		data_folder = os.path.join(output_folder,'data')
 		if os.path.exists(data_folder) == False: 
 			if makecopy==False: shutil.move(f, data_folder)
 			else: shutil.copytree(f,data_folder)
-			if verbose==True: print('Moved legacy data folder {} to {}'.format(f,data_folder))
+			if verbose==True: logging.info('Moved legacy data folder {} to {}'.format(f,data_folder))
 		else: 
 			if len(glob.glob(os.path.join(f,'*.fits')))==0 or overwrite==True:
 				for df in glob.glob(os.path.join(f,'*.fits')): 
 					if makecopy==False: shutil.move(df,data_folder)
 					else: shutil.copy2(df,data_folder)
-				if verbose==True: print('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
-			else: print('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
+				if verbose==True: logging.info('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
+			else: logging.info('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
 
 # create other folders
 		for rf in REDUCTION_FOLDERS[1:]:
 			rfolder = os.path.join(output_folder,rf)
 			if os.path.exists(rfolder) == False:
 				os.makedirs(rfolder)
-				if verbose==True: print('Creating folder {}'.format(rfolder))
+				if verbose==True: logging.info('Creating folder {}'.format(rfolder))
 
-		if verbose==True: print('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+		if verbose==True: logging.info('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
 	return
 
 
@@ -806,7 +806,7 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 # Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
 	base_folder = os.path.join(folder, expand)
 	if not os.path.exists(base_folder):
-		print("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
+		logging.info("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
 		return
 
 # Generate a list of all fits files
@@ -831,27 +831,27 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 		output_folder = os.path.join(folder,f)
 		if os.path.exists(output_folder)== False: 
 			os.makedirs(output_folder)
-			if verbose==True: print('Creating folder {}'.format(output_folder))
+			if verbose==True: logging.info('Creating folder {}'.format(output_folder))
 
 # create other folders
 		for rf in REDUCTION_FOLDERS:
 			rfolder = os.path.join(output_folder,rf)
 			if os.path.exists(rfolder) == False:
 				os.makedirs(rfolder)
-				if verbose==True: print('Creating folder {}'.format(rfolder))
+				if verbose==True: logging.info('Creating folder {}'.format(rfolder))
 		data_folder = os.path.join(output_folder,REDUCTION_FOLDERS[0])
 
 # run through fits files and copy relevant file over
 		mtchstr = f.split('-')[1]+'.'+f.split('-')[0][len(padstr):]
 		mtch = [s for s in fits_paths if mtchstr in s]
-		if verbose==True: print('Copying {} files in {}'.format(len(mtch),data_folder))
+		if verbose==True: logging.info('Copying {} files in {}'.format(len(mtch),data_folder))
 		for i,fl in enumerate(mtch): 
 			if os.path.exists(os.path.join(data_folder,os.path.basename(fl)))==False or overwrite==True: 
 				if makecopy==False: shutil.move(fl,data_folder)
 				else: shutil.copy2(fl,data_folder)
-			else: print('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
+			else: logging.info('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
 
-		if verbose==True: print('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+		if verbose==True: logging.info('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
 	return
 
 
@@ -923,7 +923,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 		try: dpout = dp[parameters['COLUMNS']]
 		except: 
 			dpout = copy.deepcopy(dp)
-			if verbose==True: print('Warning: could not select subset of columns {} from data frame, saving all columns'.format(parameters['COLUMNS']))
+			if verbose==True: logging.info('Warning: could not select subset of columns {} from data frame, saving all columns'.format(parameters['COLUMNS']))
 	else: dpout = copy.deepcopy(dp)
 
 # fix for RA and DEC for proper formatting
@@ -934,7 +934,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 				try: 
 					if str(y)[0] not in ['-','+']: dpout.loc[i,x]='+{}'.format(str(y))
 				except Exception as e: 
-					if verbose==True: print('\n\tWARNING: {} error: {} for file {} is missing\n'.format(e,x,dpout.loc[i,'FILE']))
+					if verbose==True: logging.info('\n\tWARNING: {} error: {} for file {} is missing\n'.format(e,x,dpout.loc[i,'FILE']))
 
 # FIX FOR PATHOLOGICAL CASE WHERE NO TARGET NAMES ARE GIVEN
 	if 'TARGET_NAME' in list(dpout.columns) and 'TARGET_TYPE' in list(dpout.columns):
@@ -943,12 +943,12 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 		tnames = list(set(list(dpouts['TARGET_NAME'])))
 		tnames = [str(x) for x in tnames]
 		if len(tnames)==1 and len(dpouts)>50:
-			if verbose==True: print('WARNING: only one target name {} suggesting an issue with labeling'.format(tnames[0]))
+			if verbose==True: logging.info('WARNING: only one target name {} suggesting an issue with labeling'.format(tnames[0]))
 			if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
 				for i in range(len(dpout)):
 					if tnames[0] in dpout.loc[i,'TARGET_NAME']:
 						dpout.loc[i,'TARGET_NAME'] = ('J{}{}'.format((dpout.loc[i,'RA'])[:6],(dpout.loc[i,'DEC'])[:6])).replace('J+','J').replace(':','')
-				if verbose==True: print('Replaced target names with coordinate short names')
+				if verbose==True: logging.info('Replaced target names with coordinate short names')
 
 # add in SIMBAD information using astroquery.simbad
 # try statement to catch cases where simbad is not accessible
@@ -985,7 +985,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 			# if len(t_match)>0:
 			# 	for x in list(SIMBAD_COLS.keys()):
 				# 		dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
-	except: print('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
+	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 
 # add on a NOTES column
 	dpout['NOTES'] = ['']*len(dpout)
@@ -1010,7 +1010,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 		with open(parameters['FILENAME'],'w') as f: f.write(dphtml)
 	else: raise ValueError('Could not write out to {}; unknown file format'.format(parameters['FILENAME']))
 
-	if verbose==True: print('log written to {}'.format(parameters['FILENAME']))
+	if verbose==True: logging.info('log written to {}'.format(parameters['FILENAME']))
 	return
 
 
@@ -1099,7 +1099,7 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 # update with passed required parameters			
 		rpars = sline.replace('\n','').split('\t')
 		if len(rpars) < len(list(OBSERVATION_PARAMETERS_REQUIRED.keys())):
-			if verbose==True: print('Warning: line\n{}\ncontains fewer than the required parameters\n{}; skipping'.format(sline,OBSERVATION_PARAMETERS_REQUIRED))
+			if verbose==True: logging.info('Warning: line\n{}\ncontains fewer than the required parameters\n{}; skipping'.format(sline,OBSERVATION_PARAMETERS_REQUIRED))
 		else:
 			for ii,k in enumerate(list(OBSERVATION_PARAMETERS_REQUIRED.keys())): spar[k] = rpars[ii+1]
 # add optional parameters			
@@ -1245,7 +1245,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		if os.path.exists(driver_param[x])==False:
 			if create_folders==True: 
 				os.mkdir(driver_param[x])
-				if verbose==True: print('Created {} folder {}'.format(x,driver_param[x]))
+				if verbose==True: logging.info('Created {} folder {}'.format(x,driver_param[x]))
 			else: raise ValueError('Folder {} does not exist; either create or set keyword create_folders to True'.format(driver_param[x]))
 
 # get information from first line of log
@@ -1323,7 +1323,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 
 # no names - close it up
 	if len(tnames)==0:
-		if verbose==True: print('Warning: no science files identified; you may need to update the observational logs')
+		if verbose==True: logging.info('Warning: no science files identified; you may need to update the observational logs')
 		f.close()
 		return
 
@@ -1351,7 +1351,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 			dpcals = dpcal[dpcal['MODE']==m]
 			dpcals.reset_index(inplace=True)
 			if len(dpcals)==0: 
-				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dpsrc.loc[0,'MODE'],n))
+				if verbose==True: logging.info('WARNING: no calibration files associated with mode {} for source {}'.format(dpsrc.loc[0,'MODE'],n))
 				cs = cal_sets.split(',')[0]
 			else:
 				cnum = np.array(dpcals['FILE NUMBER'])
@@ -1367,7 +1367,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 			dpflux.reset_index(inplace=True)
 			ftxt = '\tA-B\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[ical],cal_sets.split(',')[ical])
 			if len(dpflux)==0: 
-				if verbose==True: print('WARNING: no calibration files associated with mode {} for source {}'.format(dpsrc.loc[0,'MODE'],n))
+				if verbose==True: logging.info('WARNING: no calibration files associated with mode {} for source {}'.format(dpsrc.loc[0,'MODE'],n))
 				line+=ftxt
 			else:
 				dpflux['DIFF1'] = [np.abs(float(x)-np.nanmedian(dpsrc['AIRMASS']))/0.2 for x in dpflux['AIRMASS']]
@@ -1387,7 +1387,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				dpfluxs.reset_index(inplace=True)
 				fnum = np.array(dpfluxs['FILE NUMBER'])
 				if len(fnum)<2: 
-					if verbose==True: print('Fewer than 2 flux calibrator files for source {}'.format(tname))
+					if verbose==True: logging.info('Fewer than 2 flux calibrator files for source {}'.format(tname))
 					line+=ftxt
 				else:				
 					if len(dpcals)>0: 
@@ -1428,7 +1428,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 
 # report out location
 	if verbose==True: 
-		print('\nBatch instructions written to {}, please this check over before proceeding'.format(driver_file))
+		logging.info('\nBatch instructions written to {}, please this check over before proceeding'.format(driver_file))
 
 # if check=True, read back in and return parameters
 	if check==True:
@@ -1507,7 +1507,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		if os.path.exists(os.path.join(qa_parameters['QA_FOLDER'],image_folder))==False:
 			try: os.mkdir(os.path.join(qa_parameters['QA_FOLDER'],image_folder))
 			except:
-				print('WARNING: could not generate image folder {}; reverting to qa folder {}'.format(image_folder,qa_parameters['QA_FOLDER']))
+				logging.info('WARNING: could not generate image folder {}; reverting to qa folder {}'.format(image_folder,qa_parameters['QA_FOLDER']))
 				image_folder = ''
 
 
@@ -1521,7 +1521,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 	else: raise ValueError('Do not recognize format of observing log input {}'.format(log_input))
 
 # show the QA parameters if desired
-	if show_options==True: print('\nQA Parameters:\n{}\n'.format(yaml.dump(qa_parameters)))
+	if show_options==True: logging.info('\nQA Parameters:\n{}\n'.format(yaml.dump(qa_parameters)))
 
 # set up pyspextool parameters
 	ps.pyspextool_setup(driver['INSTRUMENT'])
@@ -1810,12 +1810,12 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		if os.path.exists(output_folder)==True: 
 			try: shutil.copytree(qa_parameters['QA_FOLDER'],output_folder)
 			except: 
-				print('WARNING: could not copy contents of {} into {}; check path or permissions'.format(qa_parameters['QA_FOLDER'],output_folder))
+				logging.info('WARNING: could not copy contents of {} into {}; check path or permissions'.format(qa_parameters['QA_FOLDER'],output_folder))
 				output_folder = qa_parameters['QA_FOLDER']
 		else: output_folder = qa_parameters['QA_FOLDER']
 
 	if verbose==True: 
-		print('\nAcesss QA page at {}\n'.format(os.path.join(qa_parameters['QA_FOLDER'],qa_parameters['FILENAME'])))
+		logging.info('\nAcesss QA page at {}\n'.format(os.path.join(qa_parameters['QA_FOLDER'],qa_parameters['FILENAME'])))
 
 	return
 
@@ -1923,7 +1923,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
 				ps.extract.make_flat([parameters['FLAT_FILE_PREFIX'],fstr],'flat{}'.format(cs))
 			else:
-				if parameters['VERBOSE']==True: print('\nflat{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
+				if parameters['VERBOSE']==True: logging.info(' flat{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
 
 # wavecal
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
@@ -1937,7 +1937,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
 				ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs))
 			else:
-				if parameters['VERBOSE']==True: print('\nwavecal{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
+				if parameters['VERBOSE']==True: logging.info(' wavecal{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
 
 # IMPORTANT NOTE
 # FOR LXD MODE WE WILL NEED TO ADD IN A SKY FILE
@@ -1950,12 +1950,14 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
 	scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 	if len(scikeys)==0: 
-		if parameters['VERBOSE']==True: print('No science files to reduce')
+		if parameters['VERBOSE']==True: logging.info('No science files to reduce')
 		return
 
-### REDUCTION ###
+##################
+### EXTRACTION ###
+##################
 	if parameters['REREDUCE']==True: 
-		if parameters['VERBOSE']==True: print('NOTE: rereduce is set; will overwrite prior reductions ') 
+		if parameters['VERBOSE']==True: logging.info('NOTE: rereduce is set; will overwrite prior reductions ') 
 		parameters['OVERWRITE']=True
 	if parameters['EXTRACT']==True:
 		for k in scikeys:
@@ -1965,171 +1967,101 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 
 
 # SCIENCE TARGET
-# first check if file is present - skip if not overwriting
 # FUTURE: could also add file size: os.path.getsize(file1)>100:
-			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-#			print(setup.state['proc_path'], [extract_filestring(spar['TARGET_FILES'],'index')[0]])
-			file1 = make_full_path(setup.state['proc_path'], [extract_filestring(spar['TARGET_FILES'],'index')[0]], indexinfo=indexinfo,exist=False)[0]
-#			print(file1)
-			if os.path.exists(file1)==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['TARGET_FILES']))
-
-# reduce the first pair of targets
+			if spar['TARGET_REDUCTION_MODE'] in ['A-B']: naps = 2
+			else: naps = 1
+			if spar['TARGET_APERTURE_METHOD']=='auto':
+				aperture_find = [spar['TARGET_APERTURE_METHOD'],naps]
 			else:
-				naps = 2 # default, may not to make variable
-#			print(spar['TARGET_PSF_RADIUS'],spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH'])
-				if spar['TARGET_APERTURE_METHOD']=='auto':
-					aperture_find = [spar['TARGET_APERTURE_METHOD'],naps]
-	#				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+				aperture_find = [spar['TARGET_APERTURE_METHOD'],spar['TARGET_APERTURE_POSITIONS']]
+
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+			fnums = extract_filestring(spar['TARGET_FILES'],'index')
+			if spar['TARGET_REDUCTION_MODE'] in ['A']: nim = 1
+			else: nim = 2
+
+# loop through each pair of images
+			nloop = int(len(fnums)/nim)
+			for loop in range(nloop):
+				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
+# check if first file of pair is present - skip if not overwriting
+				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
 				else:
-					aperture_find = [spar['TARGET_APERTURE_METHOD'],spar['TARGET_APERTURE_POSITIONS']]
-	#				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-				ps.extract.extract(spar['TARGET_REDUCTION_MODE'],
-	#				[spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]] # do just a pair
-					[spar['TARGET_PREFIX'],spar['TARGET_FILES']], # do all pairs
-					spar['TARGET_FLAT_FILE'],
-					spar['TARGET_WAVECAL_FILE'],
-					aperture_find,
-					spar['TARGET_APERTURE'],
-					linearity_correction=True, # default, may not to make variable
-					output_prefix=spar['SPECTRA_FILE_PREFIX'],
-					write_rectified_orders=False, # default, may not to make variable
-					aperture_signs=None, # default, may not to make variable
-					include_orders=spar['TARGET_ORDERS'],
-					bg_annulus=[spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH']],
-					fix_badpixels=False, # default, may not to make variable
-					psf_radius=spar['TARGET_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
-					detector_info={'correct_bias':True},
-					flat_field=True, # default, may not to make variable
-					)
+					fnum = '{}'.format(fnums[loop*nim])
+					if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
+					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
+					ps.extract.extract(spar['TARGET_REDUCTION_MODE'],
+						[spar['TARGET_PREFIX'],fnum], # do just a pair
+	#					[spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]], # do just a pair
+	#					[spar['TARGET_PREFIX'],spar['TARGET_FILES']], # do all pairs
+						spar['TARGET_FLAT_FILE'],
+						spar['TARGET_WAVECAL_FILE'],
+						aperture_find,
+						spar['TARGET_APERTURE'],
+						linearity_correction=True, # default, may not to make variable
+						output_prefix=spar['SPECTRA_FILE_PREFIX'],
+						write_rectified_orders=False, # default, may not to make variable
+						aperture_signs=None, # default, may not to make variable
+						include_orders=spar['TARGET_ORDERS'],
+						bg_annulus=[spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH']],
+						fix_badpixels=False, # default, may not to make variable
+						psf_radius=spar['TARGET_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
+						detector_info={'correct_bias':True},
+						flat_field=True, # default, may not to make variable
+						verbose=parameters['VERBOSE'],
+						)
 				
-
-# 			ps.extract.load_image([spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]],\
-# 				spar['TARGET_FLAT_FILE'], spar['TARGET_WAVECAL_FILE'],reduction_mode=spar['TARGET_REDUCTION_MODE'], \
-# 				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # set extraction method
-# 			ps.extract.set_extraction_type(spar['TARGET_TYPE'].split('-')[-1])
-
-# # make spatial profiles
-# 			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # NEED A CHECK IN HERE TO STOP EXTRACTION OF THE SPATIAL PROFILE IS MOSTLY FLAT (PEAKS < 3 * BACK STDEV)
-# # HOW DO WE ACCESS THE TRACE?
-
-# # identify aperture positions
-# 			if spar['TARGET_APERTURE_METHOD']=='auto':
-# 				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-# 			else:
-# 				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # select orders to extract (set above)
-# 			ps.extract.select_orders(include=spar['TARGET_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # trace apertures
-# 			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # define the aperture - psf, width, background
-# # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-# 			ps.extract.define_aperture_parameters(spar['TARGET_APERTURE'], psf_radius=spar['TARGET_PSF_RADIUS'],bg_radius=spar['TARGET_BACKGROUND_RADIUS'],\
-# 						bg_width=spar['TARGET_BACKGROUND_WIDTH'],qa_show=spar['qa_show'],qa_write=spar['qa_write'],)
-
-# # extract away
-# 			ps.extract.extract_apertures(verbose=spar['VERBOSE'])
-
-# conduct extraction of all remaining files
-			# fnum = extract_filestring(spar['TARGET_FILES'],'index')[2:]
-			# if len(fnum)>0:
-			# 	ps.extract.do_all_steps([spar['TARGET_PREFIX'],'{}'.format(numberList(fnum))],verbose=spar['VERBOSE'])
-
 # FLUX STANDARD
 # first check if file is present - skip if not overwriting
 # FUTURE: could also add file size: os.path.getsize(file1)>100:
-
-			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-			file1 = make_full_path(setup.state['proc_path'], [extract_filestring(spar['STD_FILES'],'index')[0]], indexinfo=indexinfo,exist=False)[0]
-			if os.path.exists(file1)==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['TARGET_FILES']))
-
-# reduce the first pair of targets
+			if spar['STD_REDUCTION_MODE'] in ['A-B']: naps = 2
+			else: naps = 1
+			if spar['STD_APERTURE_METHOD']=='auto':
+				aperture_find = [spar['STD_APERTURE_METHOD'],naps]
 			else:
-				naps = 2 # default, may not to make variable
-#			print(spar['TARGET_PSF_RADIUS'],spar['TARGET_BACKGROUND_RADIUS'],spar['TARGET_BACKGROUND_WIDTH'])
-				if spar['STD_APERTURE_METHOD']=='auto':
-					aperture_find = [spar['STD_APERTURE_METHOD'],naps]
-#				ps.extract.locate_aperture_positions(spar['TARGET_NPOSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+				aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
+
+			fnums = extract_filestring(spar['STD_FILES'],'index')
+			if spar['STD_REDUCTION_MODE'] in ['A']: nim = 1
+			else: nim = 2
+
+# loop through each pair of images
+			nloop = int(len(fnums)/nim)
+			for loop in range(nloop):
+				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
+# check if first file of pair is present - skip if not overwriting
+				fnum = '{}'.format(fnums[loop*nim])
+				if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
+				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnum))
 				else:
-					aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
-#				ps.extract.locate_aperture_positions(spar['TARGET_APERTURE_POSITIONS'], method=spar['TARGET_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
+					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
 
-				ps.extract.extract(spar['STD_REDUCTION_MODE'],
-	#				[spar['TARGET_PREFIX'],extract_filestring(spar['TARGET_FILES'],'index')[:2]] # do just a pair
-					[spar['STD_PREFIX'],spar['STD_FILES']], # do all pairs
-					spar['STD_FLAT_FILE'],
-					spar['STD_WAVECAL_FILE'],
-					aperture_find,
-					spar['STD_APERTURE'],
-					linearity_correction=True, # default, may not to make variable
-					output_prefix=spar['SPECTRA_FILE_PREFIX'],
-					write_rectified_orders=False, # default, may not to make variable
-					aperture_signs=None, # default, may not to make variable
-					include_orders=spar['STD_ORDERS'],
-					bg_annulus=[spar['STD_BACKGROUND_RADIUS'],spar['STD_BACKGROUND_WIDTH']],
-					fix_badpixels=False, # default, may not to make variable
-					psf_radius=spar['STD_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
-					detector_info={'correct_bias':True},
-					flat_field=True, # default, may not to make variable
-					)
+					ps.extract.extract(spar['STD_REDUCTION_MODE'],
+						[spar['STD_PREFIX'],fnum], # do just a pair
+#						[spar['STD_PREFIX'],spar['STD_FILES']], # do all pairs
+						spar['STD_FLAT_FILE'],
+						spar['STD_WAVECAL_FILE'],
+						aperture_find,
+						spar['STD_APERTURE'],
+						linearity_correction=True, # default, may not to make variable
+						output_prefix=spar['SPECTRA_FILE_PREFIX'],
+						write_rectified_orders=False, # default, may not to make variable
+						aperture_signs=None, # default, may not to make variable
+						include_orders=spar['STD_ORDERS'],
+						bg_annulus=[spar['STD_BACKGROUND_RADIUS'],spar['STD_BACKGROUND_WIDTH']],
+						fix_badpixels=False, # default, may not to make variable
+						psf_radius=spar['STD_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
+						detector_info={'correct_bias':True},
+						flat_field=True, # default, may not to make variable
+						verbose=parameters['VERBOSE'],
+						)
 
+############################
+## COMBINE SPECTRAL FILES ##
+############################
 
-# 			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-# 			file1 = make_full_path(setup.state['proc_path'], extract_filestring(spar['STD_FILES'],'index')[0], indexinfo=indexinfo)[0]
-# 			if os.path.exists(file1)==True and parameters['OVERWRITE']==False:
-# 				if parameters['VERBOSE']==True: print('\n{} already created; skipping set {} (use --overwrite option to reextract)'.format(file1,spar['STD_FILES']))
-# 				continue
-
-# # now reduce the first pair of standards
-# # NOTE: ASSUMING THESE ARE BRIGHT POINT SOURCES WITH AUTO APERTURE FINDING
-# 			ps.extract.load_image([spar['STD_PREFIX'],extract_filestring(spar['STD_FILES'],'index')[:2]],\
-# 				spar['STD_FLAT_FILE'], spar['STD_WAVECAL_FILE'],reduction_mode=spar['STD_REDUCTION_MODE'], \
-# 				flat_field=True, linearity_correction=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # set extraction method
-# 			ps.extract.set_extraction_type('ps')
-
-# # make spatial profiles
-# 			ps.extract.make_spatial_profiles(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # identify aperture positions
-# 			# if spar['STD_APERTURE_METHOD']=='auto':
-# 			# 	ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-# 			# else:
-# 			# 	ps.extract.locate_aperture_positions(spar['STD_APERTURE_POSITIONS'], method=spar['STD_APERTURE_METHOD'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-# 			ps.extract.locate_aperture_positions(spar['STD_NPOSITIONS'], method='auto', qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=parameters['VERBOSE'])
-
-# # select orders to extract (set above)
-# 			ps.extract.select_orders(include=spar['STD_ORDERS'], qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # trace apertures
-# 			ps.extract.trace_apertures(qa_show=spar['qa_show'],qa_write=spar['qa_write'], verbose=spar['VERBOSE'])
-
-# # define the aperture - psf, width, background
-# # NOTE - ONLY WORKS FOR POINT SOURCE, NEED TO FIX FOR XS?
-# 			ps.extract.define_aperture_parameters(spar['STD_APERTURE'], psf_radius=spar['STD_PSF_RADIUS'],bg_radius=spar['STD_BACKGROUND_RADIUS'],\
-# 						bg_width=spar['STD_BACKGROUND_WIDTH'], qa_show=spar['qa_show'],qa_write=spar['qa_write'])
-
-# # extract away
-# 			ps.extract.extract_apertures(verbose=verbose)
-
-# # conduct extraction of all remaining files
-# 			fnum = extract_filestring(spar['STD_FILES'],'index')[2:]
-# 			if len(fnum)>0:
-# 				ps.extract.do_all_steps([spar['STD_PREFIX'],'{}'.format(numberList(fnum))],verbose=spar['VERBOSE'])
-
-
-
-## COMBINE SPECTRAL FILES ###
 # NOTE: SPECTRA_FILE_PREFIX is currently hardcoded in code to be 'spectra' - how to change?
 	if parameters['COMBINE']==True:
 		for k in scikeys:
@@ -2139,38 +2071,74 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 
 #			if spar['MODE'] in ['SXD','ShortXD']:
 
+### SCIENCE ###
+
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 			outfile = '{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
 
-# first check if file is present - skip if not overwriting
+# check if combined file is present - skip if not overwriting
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (use --overwrite option to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))			
-# combine
-			else:
-				# ps.combine.combine_spectra(['spectra',spar['TARGET_FILES']],outfile,
-				# 	scale_spectra=True,scale_range=spar['TARGET_SCALE_RANGE'],correct_spectral_shape=False,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
-				ps.combine.combine(['spectra',spar['TARGET_FILES']],outfile,verbose=verbose)
+				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 
-# telluric star
-#		if spar['MODE']=='SXD':
+			else:
+# check that all input files are present - skip any they are missing with a warning
+				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+				fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+				fnumstr = ''
+				for nnn in fnums:
+					file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+					if os.path.exists(file)==True: 
+						fnumstr+='{},'.format(int(nnn))
+					else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
+# combine
+				if fnumstr=='': 
+					if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
+				else:
+					fnumstr=fnumstr[:-1]
+					ps.combine.combine(
+						[spar['SPECTRA_FILE_PREFIX'],fnumstr],
+						outfile,
+						verbose=parameters['VERBOSE']
+					)
+
+### FLUX CAL ###
 
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['STD_FILES'])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 			outfile = '{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
 
-# first check if file is present - skip if not overwriting
+# check if combined file is present - skip if not overwriting
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (use --overwrite option to remake)'.format(spar['COMBINED_FILE_PREFIX'],fsuf))
-# combine
+				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 			else:
-				# ps.combine.combine_spectra(['spectra',spar['STD_FILES']],outfile,
-				# 	scale_spectra=True,scale_range=spar['STD_SCALE_RANGE'],correct_spectral_shape=True,qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'])
-				ps.combine.combine(['spectra',spar['STD_FILES']],outfile,verbose=verbose)
 
-## FLUX CALIBRATE ###
+# check that all input files are present - skip any they are missing with a warning
+				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+				fnums =  extract_filestring(spar['STD_FILES'],'index')
+				fnumstr = ''
+				for nnn in fnums:
+					file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+					if os.path.exists(file)==True: 
+						fnumstr+='{},'.format(int(nnn))
+					else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
+# combine
+				if fnumstr=='': 
+					if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
+				else:
+					fnumstr=fnumstr[:-1]
+					ps.combine.combine(
+						[spar['SPECTRA_FILE_PREFIX'],fnumstr],
+						outfile,
+						verbose=parameters['VERBOSE']
+					)
+
+####################
+## FLUX CALIBRATE ##
+####################
+
 	if parameters['FLUXTELL']==True:
 		for k in scikeys:
 			spar = parameters[k]
@@ -2198,23 +2166,24 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 
 # depends on fixed or moving source which method we use
 			if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
-				if spar['VERBOSE']==True: print('\nfixed target; doing standard telluric correction and flux calibration')
+				if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
 				reflectance = False
 			elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
-				if spar['VERBOSE']==True: print('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
+				if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
 				reflectance = True
 			else: 
-				if spar['VERBOSE']==True: print('\nTarget type {} not recognized, skipping flux/telluric correction'.format(spar['TARGET_TYPE'].split('-')[0]))			
+				if parameters['VERBOSE']==True: logging.info('\nTarget type {} not recognized, skipping flux/telluric correction'.format(spar['TARGET_TYPE'].split('-')[0]))			
 				continue
 
 # NOTE: NEED TO PARAMETERIZE DEFAULTS FOR WRITE TELLURIC AND WRITE MODEL
-			ps.telluric.telluric(objfile,stdfile,standard_data,outfile,reflectance=reflectance,verbose=verbose)
-			# ps.telluric.telluric_correction(objfile,stdfile,standard_data,outfile,reflectance=reflectance,
-			# 	write_telluric_spectra=True,write_model_spectra=True,
-			# 	qa_show=spar['qa_show'],qa_write=spar['qa_write'],verbose=spar['VERBOSE'],overwrite=spar['OVERWRITE'])				
+			ps.telluric.telluric(objfile,stdfile,standard_data,outfile,reflectance=reflectance,verbose=parameters['VERBOSE'])
 
-## ORDER STITCHING ###
-# NOT YET IMPLEMENTED  #
+#####################
+## ORDER STITCHING ##
+#####################
+
+### NOT YET IMPLEMENTED ###
+
 	if parameters['STITCH']==True:
 		for k in scikeys:
 			spar = parameters[k]
@@ -2222,8 +2191,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 			if spar['MODE'] not in ['Prism','LowRes15']:
-				if spar['VERBOSE']==True: 
-					print('\n** NOTE: STITCHING HAS NOT BEEN IMPLEMENTED **')
+				if parameters['VERBOSE']==True: 
+					logging.info('\n** NOTE: STITCHING HAS NOT BEEN IMPLEMENTED **')
 
 	return
 
@@ -2232,20 +2201,20 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # external function call
 if __name__ == '__main__':
 	if len(sys.argv) < 4:
-		print('Call this function from the command line as python batch.py [data_folder] [cals_folder] [proc_folder]')
+		logging.info('Call this function from the command line as python batch.py [data_folder] [cals_folder] [proc_folder]')
 	else:
 		dp = processFolder(sys.argv[1])
 		dp = processFolder(sys.argv[1])
 		if len(sys.argv) > 4: log_file = sys.argv[4]
 		else: log_file = sys.argv[3]+'log.html'
-		print('\nWriting log to {}'.format(log_file))
+		logging.info('\nWriting log to {}'.format(log_file))
 		writeLog(dp,log_file)
 		if len(sys.argv) > 5: driver_file = sys.argv[5]
 		else: driver_file = sys.argv[3]+'driver.txt'
-		print('\nWriting batch driver file to {}'.format(driver_file))
+		logging.info('\nWriting batch driver file to {}'.format(driver_file))
 		writeDriver(dp,driver_file,data_folder=sys.argv[1],cals_folder=sys.argv[2],proc_folder=sys.argv[3])
 		txt = input('\nCheck the driver file {} and press return when ready to proceed...\n')
 		par = readDriver(driver_file)
-		print('\nReducing spectra')
+		logging.info('\nReducing spectra')
 		batchReduce(par)
-		print('\nReduction complete: processed files are in {}'.format(sys.argv[3]))
+		logging.info('\nReduction complete: processed files are in {}'.format(sys.argv[3]))
