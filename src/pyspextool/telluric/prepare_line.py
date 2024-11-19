@@ -123,7 +123,7 @@ def prepare_line(order:int,
     # log the operation
     #
     
-    logging.info(f" Normalizing continuum in order "+str(order)+".")
+    logging.info(" Normalizing continuum in order "+str(order)+".")
 
     #
     # Get set up for the normalization
@@ -138,7 +138,6 @@ def prepare_line(order:int,
     
     wavelength = np.squeeze(tc.state['standard_spectra'][z_order,0,:])
     flux = np.squeeze(tc.state['standard_spectra'][z_order,1,:])
-    robust = {'threshold':5, 'epsilon':0.1}
     xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
     title = tc.state['standard_name']+', '+\
         tc.state['mode']+' Order '+str(order)+', degree='+str(poly_degree)
@@ -233,7 +232,9 @@ def prepare_line(order:int,
                            plot_title=title)
 
         pl.show(block=qa['showblock'])
-        if qa['showblock'] is False: pl.pause(1)
+        if qa['showblock'] is False:
+
+            pl.pause(1)
         
     if qa['write'] is True:
 

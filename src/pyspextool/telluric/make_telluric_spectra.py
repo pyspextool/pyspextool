@@ -1,12 +1,16 @@
+import numpy as np
 import copy
 import logging
 
 from pyspextool import config as setup
-from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.telluric import config as tc
+from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.units import convert_fluxdensity
 from pyspextool.telluric.core import make_telluric_spectrum
+from pyspextool.utils.interpolate import linear_interp1d
+from pyspextool.utils.interpolate import linear_bitmask_interp1d
+
 
 def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
                           verbose:bool=True):
@@ -16,8 +20,8 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
 
     Parameters
     ----------
-    fluxdensity_unit : str, default='W m-2 um-1'
-        The requested flux density units of the final output spectrum.  
+    intensity_unit : str, default='W m-2 um-1'
+        The requested intensity units of the final output spectrum.  
 
     Returns
     -------
@@ -59,7 +63,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
                     intensity_unit, 'str',
                     possible_values=setup.state['units'])    
         
-    logging.info(f' Making telluric correction spectra.')
+    logging.info(' Making telluric correction spectra.')
 
     tc.state['intensity_unit'] = intensity_unit
     
@@ -130,10 +134,9 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             vega_spectra[i,1,:] = vega
             
         #
-        # Store the results
+        # Store the Vega results
         #
 
-        tc.state['telluric_spectra'] = telluric_spectra
         tc.state['vega_spectra'] = vega_spectra    
 
     else:
@@ -149,12 +152,43 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             telluric_spectra[i,1,:] = 1/standard_fluxdensity
             telluric_spectra[i,2,:] = 1/standard_fluxdensity**2 * \
                 standard_uncertainty
-            
+
     #
-    # Store the results
+    # Interpolate the telluric spectra onto the object wavelengths
     #
 
-    tc.state['telluric_spectra'] = telluric_spectra
+    object_spectra = tc.state['object_spectra']
+    tmp = copy.deepcopy(tc.state['object_spectra'])    
+
+    for i in range(tc.state['object_norders']):
+
+        for j in range(tc.state['object_napertures']):
+
+            std_idx = tc.state['standard_orders'] == \
+                tc.state['object_orders'][i]
+            obj_idx = i + j*tc.state['object_napertures']
+            
+            ri, ru = linear_interp1d(telluric_spectra[std_idx,0,:],
+                                     telluric_spectra[std_idx,1,:],
+                                     object_spectra[obj_idx,0,:],
+                                     input_u=telluric_spectra[std_idx,2,:])
+
+            tmp[obj_idx,1,:] = ri
+            tmp[obj_idx,2,:] = ru
+
+            rm = linear_bitmask_interp1d(telluric_spectra[std_idx,0,:],
+                    telluric_spectra[std_idx,3,:].astype(np.uint8),
+                                         object_spectra[obj_idx,0,:])
+            tmp[obj_idx,3,:] = rm
+            
+    #
+    # Store the results.  Pre fill ewcorrected and shifted in case the
+    # user chooses to not correct the H lines or shift the standard.
+    #
+
+    tc.state['rawtc_spectra'] = tmp
+    tc.state['ewcorrectedtc_spectra'] = tmp
+    tc.state['shiftedtc_spectra'] = tmp        
 
     tc.state['make_done'] = True
     

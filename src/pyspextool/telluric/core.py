@@ -15,6 +15,7 @@ import astropy.units as u
 
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
+from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.utils.math import moments
 from pyspextool.utils.arrays import find_index
 from pyspextool.plot.limits import get_spectra_range
@@ -23,141 +24,141 @@ from pyspextool.utils.interpolate import linear_bitmask_interp1d
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
 
-def correct_spectrum(object_wavelength:npt.ArrayLike,
-                     object_intensity:npt.ArrayLike,
-                     correction_wavelength:npt.ArrayLike,
-                     correction_intensity:npt.ArrayLike,
-                     uncertainties:list=None,
-                     masks:list=None):
-
-    """
-    To correct a spectrum for telluric absorption and flux calibration.
-
-    The function also optionally corrects uncertainty arrays and will merge
-    bit masks.
-
-    Parameters
-    ----------
-
-    object_wavelength : ndarray
-        A (nwave1,) ndarray of wavelength values.
-    
-    object_intensity : ndarray
-        A (nwave1,) ndarray of intensity values, typically in units of ADU s-1
-        or DN s-1.
-
-    correction_wavelength : ndarray
-        A (nwave2,) ndarray of wavelength values.
-    
-    correction_intensity : ndarray
-        A (nwave2,) ndarray of intensity values, typically in units of ADU s-1
-        or DN s-1 per "flux density".
-
-    uncertainties : list, default=None
-        A (2,) list where uncertainties[0] is an (nwave1,) ndarray of
-        uncertainties associated with the object_intensity ndarray and
-        uncertainties[1] is an (nwave2,) ndarray of
-        uncertainties associated with the correction_intensity ndarray
-
-    masks : list, default=None
-        A (2,) list where masks[0] is an (nwave1,) ndarray mask associated
-        with the object_intensity ndarray and mask[1] is an (nwave2,) ndarray
-        mask associated with the correction_intensity ndarray
-       
-    Returns
-    -------
-    ndarray, ndarray, ndarray
-
-    
-   
-    """
-    
-    #
-    # Check the parameters
-    #
-
-    check_parameter('correct_spectrum', 'object_wavelength', object_wavelength,
-                    'ndarray')
-
-    check_parameter('correct_spectrum', 'object_intensity', object_intensity,
-                    'ndarray')
-
-    check_parameter('correct_spectrum', 'correction_wavelength',
-                    correction_wavelength, 'ndarray')
-
-    check_parameter('correct_spectrum', 'correction_intensity',
-                    correction_intensity, 'ndarray')
-
-    check_parameter('correct_spectrum', 'uncertainties', uncertainties,
-                    ['NoneType','list'], list_types=['ndarray', 'ndarray'])
-
-    check_parameter('correct_spectrum', 'masks', masks, ['ndarray', 'list'],
-                    list_types=['ndarray', 'ndarray'])
-
-
-    #
-    # Unpack the uncertainties
-    #
-
-    object_uncertainty = None
-    correction_uncertainty = None
-    
-    if uncertainties is not None:
-
-        object_uncertainty = uncertainties[0]
-        correction_uncertainty = uncertainties[1]
-
-    #
-    # Do the correction
-    #
-    
-    # Interpolate the correction spectrum onto to wavelength grid of 
-    
-    
-    rtc_i, rtc_u = linear_interp1d(correction_wavelength,
-                                   correction_intensity,
-                                   object_wavelength,
-                                   input_u=correction_uncertainty)
-
-    # Correct and propagate errors
-        
-    fluxdensity = object_intensity*rtc_i
-
-    if uncertainties is not None:
-    
-        fluxdensity_variance = object_intensity**2 * rtc_u**2 + \
-            rtc_i**2 * object_uncertainty**2
-        fluxdensity_uncertainty = np.sqrt(fluxdensity_variance)
-        
-    else:
-
-        fluxdensity_uncertainty = None
-        
-    #
-    # Do the masks
-    #
-
-    if masks is not None:
-
-        object_mask = masks[0]
-        correction_mask = masks[1]
-
-        # Interpolate the masks and combine
-    
-        rmask = linear_bitmask_interp1d(correction_wavelength,
-                                        correction_mask.astype(np.uint8),
-                                        object_wavelength)
-    
-        stack = np.stack((object_mask.astype(np.uint8),rmask))
-        fluxdensity_mask = combine_flag_stack(stack)
-
-
-    else:
-
-        fluxdensity_mask = None
-
-
-    return fluxdensity, fluxdensity_uncertainty, fluxdensity_mask
+#def correct_spectrum(object_wavelength:npt.ArrayLike,
+#                     object_intensity:npt.ArrayLike,
+#                     correction_wavelength:npt.ArrayLike,
+#                     correction_intensity:npt.ArrayLike,
+#                     uncertainties:list=None,
+#                     masks:list=None):
+#
+#    """
+#    To correct a spectrum for telluric absorption and flux calibration.
+#
+#    The function also optionally corrects uncertainty arrays and will merge
+#    bit masks.
+#
+#    Parameters
+#    ----------
+#
+#    object_wavelength : ndarray
+#        A (nwave1,) ndarray of wavelength values.
+#    
+#    object_intensity : ndarray
+#        A (nwave1,) ndarray of intensity values, typically in units of ADU s-1
+#        or DN s-1.
+#
+#    correction_wavelength : ndarray
+#        A (nwave2,) ndarray of wavelength values.
+#    
+#    correction_intensity : ndarray
+#        A (nwave2,) ndarray of intensity values, typically in units of ADU s-1
+#        or DN s-1 per "flux density".
+#
+#    uncertainties : list, default=None
+#        A (2,) list where uncertainties[0] is an (nwave1,) ndarray of
+#        uncertainties associated with the object_intensity ndarray and
+#        uncertainties[1] is an (nwave2,) ndarray of
+#        uncertainties associated with the correction_intensity ndarray
+#
+#    masks : list, default=None
+#        A (2,) list where masks[0] is an (nwave1,) ndarray mask associated
+#        with the object_intensity ndarray and mask[1] is an (nwave2,) ndarray
+#        mask associated with the correction_intensity ndarray
+#       
+#    Returns
+#    -------
+#    ndarray, ndarray, ndarray
+#
+#    
+#   
+#    """
+#    
+#    #
+#    # Check the parameters
+#    #
+#
+#    check_parameter('correct_spectrum', 'object_wavelength', object_wavelength,
+#                    'ndarray')
+#
+#    check_parameter('correct_spectrum', 'object_intensity', object_intensity,
+#                    'ndarray')
+#
+#    check_parameter('correct_spectrum', 'correction_wavelength',
+#                    correction_wavelength, 'ndarray')
+#
+#    check_parameter('correct_spectrum', 'correction_intensity',
+#                    correction_intensity, 'ndarray')
+#
+#    check_parameter('correct_spectrum', 'uncertainties', uncertainties,
+#                    ['NoneType','list'], list_types=['ndarray', 'ndarray'])
+#
+#    check_parameter('correct_spectrum', 'masks', masks, ['ndarray', 'list'],
+#                    list_types=['ndarray', 'ndarray'])
+#
+#
+#    #
+#    # Unpack the uncertainties
+#    #
+#
+#    object_uncertainty = None
+#    correction_uncertainty = None
+#    
+#    if uncertainties is not None:
+#
+#        object_uncertainty = uncertainties[0]
+#        correction_uncertainty = uncertainties[1]
+#
+#    #
+#    # Do the correction
+#    #
+#    
+#    # Interpolate the correction spectrum onto to wavelength grid of 
+#    
+#    
+#    rtc_i, rtc_u = linear_interp1d(correction_wavelength,
+#                                   correction_intensity,
+#                                   object_wavelength,
+#                                   input_u=correction_uncertainty)
+#
+#    # Correct and propagate errors
+#        
+#    fluxdensity = object_intensity*rtc_i
+#
+#    if uncertainties is not None:
+#    
+#        fluxdensity_variance = object_intensity**2 * rtc_u**2 + \
+#            rtc_i**2 * object_uncertainty**2
+#        fluxdensity_uncertainty = np.sqrt(fluxdensity_variance)
+#        
+#    else:
+#
+#        fluxdensity_uncertainty = None
+#        
+#    #
+#    # Do the masks
+#    #
+#
+#    if masks is not None:
+#
+#        object_mask = masks[0]
+#        correction_mask = masks[1]
+#
+#        # Interpolate the masks and combine
+#    
+#        rmask = linear_bitmask_interp1d(correction_wavelength,
+#                                        correction_mask.astype(np.uint8),
+#                                        object_wavelength)
+#    
+#        stack = np.stack((object_mask.astype(np.uint8),rmask))
+#        fluxdensity_mask = combine_flag_stack(stack)
+#
+#
+#    else:
+#
+#        fluxdensity_mask = None
+#
+#
+#    return fluxdensity, fluxdensity_uncertainty, fluxdensity_mask
 
 
 
@@ -537,6 +538,133 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
 
 
     return dict
+
+
+def find_shift(wavelength_object:npt.ArrayLike,
+               intensity_object:npt.ArrayLike,
+               intensity_telluric:npt.ArrayLike,
+               wavelength_range:list,
+               pixel_range:list=[-1.5,1.5],
+               nsteps:int=301,
+               qa_show=False,
+               qa_showblock=True):
+
+    """
+    To determine the shift between spectra that minimizes telluric noise.
+
+
+    Parameters
+    ----------
+    wavelength_object: ndarray
+        An (nwave,) array of wavelength values of the object spectrum.
+
+    intensity_object: ndarray
+        An (nwave,) array of intensity values  of the object spectrum.
+
+    intensity_telluric: ndarray
+        An (nwave,) array of intensity values  of the telluric spectrum.
+    
+    wavelength_range : list
+        An (2,) list of wavelengths over which the noise minimization is
+        desired.
+
+    pixel_range : list, default [-1.5,1.5]
+        A (2,) list giving the number of pixels over which to do the
+        noise minimization.
+
+    nsteps : int
+        The number of steps bewteen `pixel_range` to evaluate the rms at.
+
+    Returns
+    -------
+    float
+        The shift in pixels that minimizes the noise in `wavelength_range`
+
+
+    
+    """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('find_shift', 'wavelength_object', wavelength_object,
+                    'ndarray')
+
+    check_parameter('find_shift', 'intensity_object', intensity_object,
+                    'ndarray')
+
+    check_parameter('find_shift', 'intensity_telluric', intensity_telluric,
+                    'ndarray')
+    
+    check_parameter('find_shift', 'wavelength_range', wavelength_range,
+                    'list')
+
+    check_parameter('find_shift', 'nsteps', nsteps, 'int')
+
+
+    #
+    # Get set up
+    #
+
+    wrange = np.sort(wavelength_range)
+    
+    zdata = np.where((wavelength_object >= wrange[0]) &
+                     (wavelength_object <= wrange[1]))[0]
+    
+    shifts = np.linspace(pixel_range[0], pixel_range[1], num=nsteps)
+    nshifts = len(shifts)
+
+    rms = np.zeros(nshifts)
+    
+    x = np.arange(len(wavelength_object))
+
+    #
+    # Start the loop
+    #
+    
+    for i in range(nshifts):
+
+        xshift = x+shifts[i]
+
+        telluric_shifted = linear_interp1d(xshift,intensity_telluric,x)
+
+        ratio = np.multiply(intensity_object,telluric_shifted)
+
+        rms[i] = np.std(ratio[zdata])
+
+    #
+    # Find the shift
+        
+
+    # Find the minimum rms value
+    
+    minimum_idx = np.argmin(rms)
+
+    # Fit a 2nd order polynomial around this point
+    
+    result = polyfit_1d(shifts[(minimum_idx-5):(minimum_idx+6)],
+                        rms[(minimum_idx-5):(minimum_idx+6)],2)
+
+    # Set the derivative equal to zero to find the minimum shift
+    
+    shift = -result['coeffs'][1]/2./result['coeffs'][2]
+
+
+#    if qa_show is True:
+#
+#        plot_find_shift(wavelength_object,
+#                        intensity_object,
+#                        intensity_telluric,                        
+#                        wrange,
+#                        shifts,
+#                        rms,
+#                        1)
+#
+#        pl.show(block=qa_showblock)
+#        if qa_showblock is False: pl.pause(1)
+
+    return shift
 
 
     
@@ -1058,10 +1186,7 @@ def measure_linerv(data_wavelength:npt.ArrayLike,
 
         pl.savefig(qafile_info['file_fullpath'])
         pl.close()
-
-
-        
-        
+               
     return {'ew_scale':scale_ew, 'rv':velocity_shift, 'z':redshift,
             'plotnum':plotnum}
     
@@ -1522,6 +1647,61 @@ def plot_deconvolve_line(plot_number,
         # change all spines
     for axis in ['top','bottom','left','right']:
         axes1.spines[axis].set_linewidth(spine_linewidth)
+
+
+def plot_shifts(plot_number:int,
+                spectrum_size:tuple,
+                stack_max:int,
+                font_size:int,
+                spectrum_linewidth:int | float,
+                spine_linewidth:int | float,
+                subplot_size:tuple=(6,4),
+                subplot_stackmax:int=4,
+                object_orders:npt.ArrayLike,
+                object_napertures:int, 
+                object_spetra:npt.ArrayLike,
+                telluric_spetra:npt.ArrayLike,
+                shifts_ranges:npt.ArrayLike,
+                shifts:npt.ArrayLike):
+
+    """
+    To create a QA plot for the standard shifts
+
+    Parmaeters
+    ----------
+
+    Returns
+    -------
+    None
+    
+    """
+
+    # Set the fonts
+
+    font = {'family' : 'helvetica',
+            'weight' : 'normal',
+            'size'   : font_size}
+
+    rc('font', **font)
+    
+# Determine the plot size
+    
+    norders = len(profiles)
+
+    ncols = np.ceil(norders / stack_max).astype(int)
+
+    nrows = np.min([norders,stack_max]).astype(int)
+
+    plot_index = np.arange(1,nrows*ncols+1)
+    
+    plot_index = np.reshape(np.reshape(plot_index,(nrows,ncols)),
+                            ncols*nrows,order='F')
+    
+    figure_size = (spectrum_size[0]*ncols, spectrum_size[1]*nrows)
+    
+
+
+    
 
 
     

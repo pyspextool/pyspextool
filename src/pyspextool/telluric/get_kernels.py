@@ -120,7 +120,7 @@ def get_kernels(*args:int | float,
                           showblock=qa_showblock,
                           write=qa_write)
     
-    logging.info(f" Telluric method = "+tc.state['method'])
+    logging.info(" Telluric method = "+tc.state['method'])
 
     #
     # Create and load the kernels
@@ -128,7 +128,7 @@ def get_kernels(*args:int | float,
     
     if tc.state['method'] == 'deconvolution':
 
-        logging.info(f" Deconvolving line.")        
+        logging.info(" Deconvolving line.")        
 
         # Get the deconvolution range
 
@@ -220,7 +220,7 @@ def get_kernels(*args:int | float,
         # Now generate the kernels for each order
         #
 
-        logging.info(f" Generating the kernels.")        
+        logging.info(" Generating the kernels.")        
         
         kernels = []        
         for i in range(tc.state['standard_norders']):
@@ -241,7 +241,9 @@ def get_kernels(*args:int | float,
             
             # enforce oddity
             
-            if npixels % 2 == 0: npixels += 1
+            if npixels % 2 == 0:
+
+                npixels += 1
             
             vega_wavelengths = np.arange(-npixels//2+1,npixels//2+1)*\
                 tc.state['vega_dispersions'][i]
@@ -264,7 +266,7 @@ def get_kernels(*args:int | float,
 
     if tc.state['method'] == 'ip':
             
-        logging.info(f" Generating the kernels.")        
+        logging.info(" Generating the kernels.")        
 
         tc.state['rms_deviation'] = np.nan
         tc.state['max_deviation'] = np.nan
@@ -299,7 +301,9 @@ def get_kernels(*args:int | float,
             
             # enforce oddity
             
-            if nkernel % 2 == 0: nkernel += 1
+            if nkernel % 2 == 0:
+
+                nkernel += 1
             
             # Create x values
             

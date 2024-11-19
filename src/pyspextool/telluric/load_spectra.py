@@ -119,7 +119,6 @@ def load_spectra(object_file:str,
     # Clear the state variables
     #
 
-    tc.load.clear()
     tc.state.clear()    
     
     #
@@ -176,7 +175,9 @@ def load_spectra(object_file:str,
     tc.state['1+z'] = 0.0
     tc.state['rms_deviation'] = np.nan
     tc.state['max_deviation'] = np.nan    
-
+    tc.state['shift'] = np.zeros((tc.state['object_norders'],
+                                  tc.state['object_napertures']))
+    
     #
     # Set the done variables
     #
@@ -291,7 +292,8 @@ def load_data():
 
     #
     # Compute the minimum and maximum wavelengths and dispersions for each
-    # order (This may go away eventually once you implement mikeline_convolve).
+    # standard order (This may go away eventually once you implement
+    # mikeline_convolve).
     #
 
     nwavelengths = np.shape(tc.state['standard_spectra'])[-1]
@@ -312,15 +314,33 @@ def load_data():
                 
         fit = polyfit_1d(pixels,tc.state['standard_spectra'][i,0,:],1)
         dispersions[i] = fit['coeffs'][1]
-
+        
     # Store the results
 
     tc.state['standard_wavelengthranges'] = wavelength_ranges
     tc.state['standard_dispersions'] = dispersions
     tc.state['standard_fwhm'] = dispersions*standard_data['slitw_pix']
     tc.state['slitw_pix'] = standard_data['slitw_pix']    
+
+    #
+    # Now get the object ranges
+    #
     
+    wavelength_ranges = []
     
+    for i in range(tc.state['object_norders']):
+
+        idx = i*tc.state['object_napertures']
+        min = np.nanmin(tc.state['object_spectra'][idx,0,:])
+        max = np.nanmax(tc.state['object_spectra'][idx,0,:])
+
+        wavelength_ranges.append(np.array([min,max]))
+
+    # Store the results
+
+    tc.state['object_wavelengthranges'] = wavelength_ranges
+    
+
     
 def load_vegamodel():
 

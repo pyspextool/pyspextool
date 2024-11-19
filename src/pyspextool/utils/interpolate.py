@@ -1,28 +1,34 @@
 import numpy as np
+import numpy.typing as npt
 
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.arrays import find_index
 from pyspextool.utils.math import bit_set
+from pyspextool.utils.for_print import for_print
 
-def linear_interp1d(input_x, input_y, output_x, input_u=None, leave_nans=False):
+def linear_interp1d(input_x:npt.ArrayLike,
+                    input_y:npt.ArrayLike,
+                    output_x:npt.ArrayLike,
+                    input_u:npt.ArrayLike=None,
+                    leave_nans:bool=False):
 
     """
     To preform 1D linear interpolation with optional error propagation.
 
     Parameters
     ----------
-    input_x : array_like
+    input_x : ndarray
         An (ndat,) array of independent values.  Can include NaNs, but should 
         be monotonically increasing.
 
-    input_y : array_like
+    input_y : ndarray
         An (ndat,) array of dependent values.  Can include NaNs.
 
-    output_x : array_like, int, float
+    output_x : ndarray, int, float
         An (ndat,) array or scalar of requested independent values.  Can 
         include NaNs, but should be monotonically increasing.
 
-    input_u : array_like, optional
+    input_u : ndarray, optional
         An (ndat,) array of uncertainty values.  Can include NaNs.
 
     leave_nans : {False, True}
@@ -137,8 +143,8 @@ def linear_interp1d(input_x, input_y, output_x, input_u=None, leave_nans=False):
     if input_u is not None:
 
         result = nonan_interp1d(input_x, input_u**2, x, variance=True)    
-        
-        output_v = np.full_like(output_x, np.nan)
+
+        output_v = np.full_like(output_x, np.nan, dtype=np.float64)
         output_v[z_output_nonan] = result
 
     #
@@ -413,7 +419,7 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
             
             term1 = (1-dx/Deltax)**2 * input_y[floor[z_idx_differ]]**2
             term2 = (dx/Deltax)**2 * input_y[ceil[z_idx_differ]]**2
-                
+
             inrange_y[z_idx_differ] = term1 + term2
                 
     # Make an output array that is the same size as x.

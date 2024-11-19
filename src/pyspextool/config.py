@@ -33,5 +33,6 @@ plots = {"portrait_size":(7,9),
          'combine_spectra':7,
          'normalize_order':8,
          'radial_velocity':9,
-         'deconvolution':10}
+         'deconvolution':10,
+         'shifts':12}
 
