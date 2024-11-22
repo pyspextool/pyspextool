@@ -53,8 +53,8 @@ def check_path(path:str,
     
     if result is False:
 
-        test_path = os.path.expanduser('/tests/test_data/')
-        depth = 2
+        test_path = os.path.expanduser(cwd)
+        depth = 1
         for root,dirs,files in os.walk(test_path):
             if root[len(cwd):].count(os.sep) < depth:
                 for d in dirs:
