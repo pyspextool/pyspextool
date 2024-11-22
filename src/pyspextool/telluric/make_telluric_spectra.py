@@ -186,9 +186,13 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     # user chooses to not correct the H lines or shift the standard.
     #
 
-    tc.state['rawtc_spectra'] = tmp
-    tc.state['ewcorrectedtc_spectra'] = tmp
-    tc.state['shiftedtc_spectra'] = tmp        
-
+    tc.state['rawtc_spectra'] = np.array(tmp)
+    tc.state['ewcorrectedtc_spectra'] = np.array(tmp)
+    tc.state['shiftedtc_spectra'] = np.array(tmp)        
+    tc.state['shifts'] = np.zeros((tc.state['object_norders'],
+                                   tc.state['object_napertures']))
+    
     tc.state['make_done'] = True
+
+
     

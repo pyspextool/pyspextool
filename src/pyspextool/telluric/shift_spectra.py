@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 from os.path import join as osjoin
+import matplotlib.pyplot as pl
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
@@ -163,7 +164,10 @@ def shift_spectra(default_shiftranges:bool=True,
             if user_range is not None:
 
                 shift_ranges[z,:] = user_range
-                    
+
+    tc.state['shift_ranges'] = shift_ranges
+
+                
     #
     # Now do the shifts
     #
@@ -202,12 +206,12 @@ def shift_spectra(default_shiftranges:bool=True,
             x = np.arange(len(tc.state['object_spectra'][idx,0,:]))
             tc_f = tc.state['ewcorrectedtc_spectra'][idx,1,:]
             tc_u = tc.state['ewcorrectedtc_spectra'][idx,2,:]            
-        
+
             rtc_f, rtc_u = linear_interp1d(x+tc.state['shifts'][i,j],
                                            tc_f,
                                            x,
                                            input_u=tc_u)
-
+            
             tc.state['shiftedtc_spectra'][idx,1,:] = rtc_f
             tc.state['shiftedtc_spectra'][idx,2,:] = rtc_u
 
@@ -218,16 +222,17 @@ def shift_spectra(default_shiftranges:bool=True,
     if qa['show'] is True:
         
         plot_shifts(setup.plots['shifts'],
-                    setup.plot['
                     setup.plots['font_size']*qa['showscale'],
                     setup.plots['zoomspectrum_linewidth'],
                     setup.plots['spine_linewidth'],
                     tc.state['object_orders'],
-                    tc.state['objecct_napertures'],
+                    tc.state['object_napertures'],
                     tc.state['object_spectra'],
+                    tc.state['ewcorrectedtc_spectra'],
                     tc.state['shiftedtc_spectra'],
                     tc.state['shift_ranges'],
-                    tc.state['shifts'])
+                    tc.state['shifts'],
+                    xlabel=tc.state['xlabel'])
 
 
         

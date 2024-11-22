@@ -289,7 +289,8 @@ def load_data():
     tc.state['standard_norders'] = standard_data['norders']
     tc.state['object_orders'] = object_data['orders']
     tc.state['standard_orders'] = standard_data['orders']
-
+    tc.state['xlabel'] = object_hdrinfo['LXLABEL'][0]
+    
     #
     # Compute the minimum and maximum wavelengths and dispersions for each
     # standard order (This may go away eventually once you implement

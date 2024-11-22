@@ -2,6 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as pl
 import matplotlib
+from matplotlib import rc
 from matplotlib.ticker import (AutoMinorLocator)
 
 import logging
@@ -573,7 +574,7 @@ def find_shift(wavelength_object:npt.ArrayLike,
         noise minimization.
 
     nsteps : int
-        The number of steps bewteen `pixel_range` to evaluate the rms at.
+        The number of steps between `pixel_range` to evaluate the rms at.
 
     Returns
     -------
@@ -1650,19 +1651,19 @@ def plot_deconvolve_line(plot_number,
 
 
 def plot_shifts(plot_number:int,
-                spectrum_size:tuple,
-                stack_max:int,
                 font_size:int,
                 spectrum_linewidth:int | float,
                 spine_linewidth:int | float,
-                subplot_size:tuple=(6,4),
-                subplot_stackmax:int=4,
                 object_orders:npt.ArrayLike,
                 object_napertures:int, 
-                object_spetra:npt.ArrayLike,
-                telluric_spetra:npt.ArrayLike,
-                shifts_ranges:npt.ArrayLike,
-                shifts:npt.ArrayLike):
+                object_spectra:npt.ArrayLike,
+                rawtelluric_spectra:npt.ArrayLike,
+                shiftedtelluric_spectra:npt.ArrayLike,                
+                shift_ranges:npt.ArrayLike,
+                shifts:npt.ArrayLike,
+                subplot_size:tuple=(6,4),
+                subplot_stackmax:int=4,
+                xlabel=None):
 
     """
     To create a QA plot for the standard shifts
@@ -1676,6 +1677,15 @@ def plot_shifts(plot_number:int,
     
     """
 
+    #
+    # Determine which orders were shifted
+    #
+    
+    z = ~np.isnan(shift_ranges[:,0])
+
+    shifted_orders = object_orders[z]
+    shifted_norders = len(shifted_orders)
+    
     # Set the fonts
 
     font = {'family' : 'helvetica',
@@ -1686,22 +1696,99 @@ def plot_shifts(plot_number:int,
     
 # Determine the plot size
     
-    norders = len(profiles)
+    object_norders = len(shifted_orders)
 
-    ncols = np.ceil(norders / stack_max).astype(int)
+    ncols = np.ceil(shifted_norders / subplot_stackmax).astype(int)
 
-    nrows = np.min([norders,stack_max]).astype(int)
+    nrows = np.min([shifted_norders,subplot_stackmax]).astype(int)
 
     plot_index = np.arange(1,nrows*ncols+1)
     
     plot_index = np.reshape(np.reshape(plot_index,(nrows,ncols)),
                             ncols*nrows,order='F')
     
-    figure_size = (spectrum_size[0]*ncols, spectrum_size[1]*nrows)
+    figure_size = (subplot_size[0]*ncols, subplot_size[1]*nrows)
     
 
-
+    #
+    # Make the figure
+    #
     
+    pl.figure(num=plot_number,
+              figsize=figure_size)
+    pl.clf()    
+    pl.subplots_adjust(hspace=0.5,
+                       wspace=0.2,
+                       left=0.1,
+                       right=0.95,
+                       bottom=0.075,
+                       top=0.95)
+
+    for i in range(shifted_norders):
+
+        j = int(np.where(shifted_orders[i] == object_orders)[0])
+        
+        
+        for k in range(object_napertures):
+
+            idx = j+object_napertures*k
+
+            wavelength = object_spectra[idx,0,:]
+            object_flux = object_spectra[idx,1,:]
+            raw_telluric = rawtelluric_spectra[idx,1,:]
+            shifted_telluric = shiftedtelluric_spectra[idx,1,:]
+
+            raw_ratio = object_flux*raw_telluric
+            shifted_ratio = object_flux*shifted_telluric            
+
+            zshift = np.where((wavelength >= shift_ranges[j,0]) &
+                              (wavelength <= shift_ranges[j,1]))[0]
+
+
+            wavelength = wavelength[zshift]
+            raw_ratio = raw_ratio[zshift]
+            shifted_ratio = shifted_ratio[zshift]                        
+
+            raw_ratio /= np.nanmedian(shifted_ratio)
+            shifted_ratio /= np.nanmedian(shifted_ratio)            
+            
+            
+            # Get the plot range
+
+            xrange = get_spectra_range(wavelength)
+            yrange = get_spectra_range(shifted_ratio, raw_ratio, frac=0.1)
+
+            axe = pl.subplot(nrows, ncols, plot_index[i])
+
+            axe.step(wavelength,
+                     raw_ratio,
+                     color='grey',
+                     where='mid',
+                     label='Raw')
+            
+            axe.step(wavelength,
+                     shifted_ratio,
+                     color='green',
+                     where='mid',
+                     label='Shifted')
+
+
+            axe.set_xlim(xrange)
+            axe.set_ylim(yrange)
+
+            axe.set_title('Order ' + str(shifted_orders[i])+', aperture '+\
+                          str(k+1))
+            axe.set_ylabel('Relative Intensity')
+            axe.set_xlabel(xlabel)            
+
+            axe.xaxis.set_minor_locator(AutoMinorLocator())    
+            axe.tick_params(right=True, left=True, top=True, bottom=True,
+                            which='both', direction='in', width=1.5)
+            axe.tick_params(which='minor', length=3)
+            axe.tick_params(which='major', length=5)
+            axe.yaxis.set_minor_locator(AutoMinorLocator())
+
+            if i == 0: axe.legend()
 
 
     
