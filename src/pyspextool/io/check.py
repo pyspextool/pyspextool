@@ -53,7 +53,7 @@ def check_path(path:str,
     
     if result is False:
 
-        test_path = os.path.join(cwd, 'tests/test_data')
+        test_path = os.path.join(cwd, 'tests')
         depth = 1
         for root,dirs,files in os.walk(test_path):
             if root[len(cwd):].count(os.sep) < depth:
