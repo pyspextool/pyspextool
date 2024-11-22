@@ -50,7 +50,7 @@ def check_path(path:str,
 
     cwd = os.path.abspath(os.getcwd())
 
-    test_path = os.path.join(cwd,'tests/')
+    test_path = os.path.join(cwd,'tests/test_data/raw/')    
     with os.scandir(test_path) as it:
         for entry in it:
                 print(entry.name)
