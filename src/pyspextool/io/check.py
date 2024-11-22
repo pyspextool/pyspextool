@@ -50,16 +50,12 @@ def check_path(path:str,
 
     cwd = os.path.abspath(os.getcwd())
 
+    test_path = os.path.join(cwd,'tests/')
+    with os.scandir(test_path) as it:
+        for entry in it:
+                print(entry.name)
     
     if result is False:
-
-        test_path = cwd
-        depth = 1
-        for root,dirs,files in os.walk(test_path):
-            if root[len(cwd):].count(os.sep) < depth:
-                for d in dirs:
-                    print(os.path.join(root,d))
-
 
         message = f'The path {path} does not exist. '\
             f'The current working directory is {cwd}'
