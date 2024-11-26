@@ -135,7 +135,9 @@ def plot_allorders(plot_number,
     # Set the fonts
     #
     
-    font = {'family' : 'helvetica',
+    # removed helvetica - problem for windows OS
+    font = {
+    #'family' : 'helvetica',
             'weight' : 'normal',
             'size'   : font_size}
 
