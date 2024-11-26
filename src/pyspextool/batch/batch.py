@@ -123,7 +123,11 @@ BATCH_PARAMETERS = {
 	'OVERWRITE': False,
 }
 
+<<<<<<< HEAD
 EXTRACTION_MODES = ['A-B','A','A-SKY']
+=======
+EXTRACTION_MODES = ['A-B','A','A-Sky']
+>>>>>>> a01ad4a (several updates to fix improve batch reduction)
 
 # these are required parameters for target-calibration sequences
 OBSERVATION_PARAMETERS_REQUIRED = {
