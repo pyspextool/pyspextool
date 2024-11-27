@@ -22,7 +22,7 @@ def test_combine():
     )
 
     ps.combine.combine(["spectra", "1-8"], "cspectra1-8", statistic="mean")
-    ps.combine.combine(["spectra", "9-16"], "cspectra9-16", statistic="mean")
+    ps.combine.combine(["spectra", "11-16"], "cspectra11-16", statistic="mean")
     
 
     fits_files = glob.glob(os.path.join(proc_path, "cspectra*.fits"))

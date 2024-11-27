@@ -118,7 +118,7 @@ def read_spectra_fits(file):
            'lyunits': header['LYUNITS'],
            'lxlabel': header['LXLABEL'],
            'lylabel': header['LYLABEL'],
-           'lulabel': header['LULABEL'],           
+#           'lulabel': header['LULABEL'], # this was failing in pytest - missing keyword
            'slith_pix': header['SLTH_PIX'],
            'slith_arc': header['SLTH_ARC'],
            'slitw_pix': header['SLTW_PIX'],

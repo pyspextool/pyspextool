@@ -191,6 +191,13 @@ def prepare_line(order:int,
     continuum = poly_1d(wavelength, continuum_coefficients)    
     normalized_flux = flux/continuum
 
+    # added error message
+    if len(normalized_flux[np.isfinite(normalized_flux)==False]==0):
+        message = "Failure to fit a H I line in the fit range "+str(wavelength_range)+\
+            "; verify there is a line in this spectrum."
+        raise pySpextoolError(message)
+
+
     #
     # Store the reults
     #
@@ -350,7 +357,9 @@ def plot_normalization(plot_number:int,
     
     # Set the fonts
 
-    font = {'family' : 'helvetica',
+    # removed helvetica - problem for windows OS
+    font = {
+    #'family' : 'helvetica',
             'weight' : 'normal',
             'size'   : font_size}
 

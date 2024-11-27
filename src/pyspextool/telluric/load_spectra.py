@@ -239,6 +239,11 @@ def load_data():
     object_hdrinfo = get_headerinfo(header,
                                     keywords=setup.state['telluric_keywords'])
 
+    # temporary fix if we're applying calibration to a single extraction
+    if object_hdrinfo['AVE_AM'][0] == None:
+        object_hdrinfo2 = get_headerinfo(header,keywords=setup.state['combine_keywords'])
+        object_hdrinfo['AVE_AM'] = [object_hdrinfo2['AM'][0],'Average airmass']
+
     # Now the standard
 
     fullpath = make_full_path(setup.state['proc_path'],
@@ -606,8 +611,8 @@ def load_standard_info():
 
         standard_name = tc.state['standard_info']['id']
         standard_sptype = tc.state['standard_info']['sptype']
-        standard_vmag = float(tc.state['standard_info']['bmag'])
-        standard_bmag = float(tc.state['standard_info']['vmag'])
+        standard_vmag = float(tc.state['standard_info']['vmag'])
+        standard_bmag = float(tc.state['standard_info']['bmag'])
     
 
     #

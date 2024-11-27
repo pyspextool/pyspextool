@@ -36,6 +36,8 @@ class runBatch():
 			required=False, help='set log file prefix (default is "log")')
 		parser.add_argument('-d', metavar='driver-filename', nargs=1, default='',
 			required=False, help='set driver file name (default is "driver.txt")')
+		parser.add_argument('-f', metavar='folder-name', nargs=1, default='',
+			required=False, help='set to folder to be expanded (default is {} for legacy and {} for irsa'.format(batch.LEGACY_FOLDER,batch.IRSA_FOLDER))
 		parser.add_argument('--test', action='store_true',default=False,
 			required=False, help='set to test the pyspextool installation')
 		parser.add_argument('--organize', action='store_true',default=False,
