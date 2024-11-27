@@ -51,7 +51,8 @@ CODEDIR = ps.__path__[0]
 XMatch.TIMEOUT = 180 # time out for XMatch search
 Simbad.TIMEOUT = 60
 MOVING_MAXSEP = 15 # max separation for fixed target in arcsec
-MOVING_MAXRATE = 10 # max moving rate for fixed target in arcsec/hr
+MOVING_ANGRATE = 10 # max moving rate for fixed target in arcsec/hr
+SKIP_ANGSTEP = 60 # separation in arcsec indicating this is a movement wiout change in name
 INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
 ARC_NAME = 'arc lamp'
 FLAT_NAME = 'flat lamp'
@@ -122,7 +123,7 @@ BATCH_PARAMETERS = {
 	'OVERWRITE': False,
 }
 
-EXTRACTION_MODES = ['A-B','A','A-Sky']
+EXTRACTION_MODES = ['A-B','A','A-SKY']
 
 # these are required parameters for target-calibration sequences
 OBSERVATION_PARAMETERS_REQUIRED = {

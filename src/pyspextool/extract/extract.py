@@ -146,7 +146,7 @@ def extract(reduction_mode:str,
             "`reduction_mode`='A-B'."
         raise pySpextoolError(message)
 
-    if reduction_mode.upper() == 'A-B' or reduction_mode.upper() == 'A-SKY':
+    if reduction_mode.upper() == 'A-B':
 
         nloop = int(n_inputfiles / 2)
 
@@ -170,7 +170,7 @@ def extract(reduction_mode:str,
             input_subset = [input_fullpaths[i]]
             output_subset = [output_filenames[i]]            
         
-        if reduction_mode.upper() == 'A-B' or reduction_mode.upper() == 'A-SKY':
+        if reduction_mode.upper() == 'A-B':
 
             input_subset = input_fullpaths[i * 2:i * 2 + 2]
             output_subset = output_filenames[i * 2:i * 2 + 2]

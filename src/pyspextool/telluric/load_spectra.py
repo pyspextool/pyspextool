@@ -611,8 +611,8 @@ def load_standard_info():
 
         standard_name = tc.state['standard_info']['id']
         standard_sptype = tc.state['standard_info']['sptype']
-        standard_vmag = float(tc.state['standard_info']['bmag'])
-        standard_bmag = float(tc.state['standard_info']['vmag'])
+        standard_vmag = float(tc.state['standard_info']['vmag'])
+        standard_bmag = float(tc.state['standard_info']['bmag'])
     
 
     #
