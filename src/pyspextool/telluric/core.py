@@ -1720,7 +1720,7 @@ def plot_shifts(plot_number:int,
 
 
             axe.set_title('Order ' + str(orders[norders-k-1])+', aperture '+\
-                          str(j+1)+', $\Delta x$='+'$'+str(shifts[norders-k-1,j])+\
+                          str(j+1)+r', $\Delta x$='+'$'+str(shifts[norders-k-1,j])+\
                           '$ pixels')
             axe.set_ylabel('Relative Intensity')
             axe.set_xlabel(xlabel)            
