@@ -19,7 +19,6 @@ from pyspextool.extract.wavecal import read_wavecal_fits
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.math import combine_flag_stack
-from pyspextool.fit.polyfit import poly_1d
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
@@ -282,7 +281,7 @@ def load_image(files:str | list,
         raise pySpextoolError(message)
 
     if do_all_steps is False:
-        logging.info(f' Setting reduction mode to '+reduction_mode+'.')
+        logging.info(' Setting reduction mode to '+reduction_mode+'.')
         
     # Do we need to reorder because we are IRTF?
 
@@ -292,7 +291,7 @@ def load_image(files:str | list,
 
         tmp = np.array(output_filenames)
         tmp = tmp[indices]
-        output_files = tmp.tolist()
+        output_filenames = tmp.tolist()
                            
     extract.state['output_files'] = output_filenames
     
@@ -321,7 +320,7 @@ def load_image(files:str | list,
         # Load the flat field image and store important things
         #
 
-        logging.info(f' Loading the flat file '+flat_name+'.')
+        logging.info(' Loading the flat file '+flat_name+'.')
 
         flatinfo = read_flat_fits(full_flat_name)
 
@@ -361,7 +360,7 @@ def load_image(files:str | list,
         
         if dowavecal is True:
 
-            logging.info(f' Loading the wavecal file '+wavecal_name+'.')
+            logging.info(' Loading the wavecal file '+wavecal_name+'.')
             
             wavecalinfo = read_wavecal_fits(full_wavecal_name,
                                             rotate=True)
@@ -393,7 +392,7 @@ def load_image(files:str | list,
             deltas = rps - flatinfo['rp']
             z = deltas == np.min(np.abs(deltas))
 
-            logging.info(f' Loading the atmospheric tranmission at R='+\
+            logging.info(' Loading the atmospheric tranmission at R='+\
                          str(rps[z][0])+'.')
             
             # Load that file

@@ -7,6 +7,8 @@ from astropy.table.table import Table
 import astropy.units as u
 from astroquery.simbad import Simbad
 
+
+
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords
@@ -15,7 +17,7 @@ from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.pyspextoolerror import pySpextoolError
-
+from pyspextool.io.load_atmosphere import load_atmosphere
 
 def load_spectra(object_file:str,
                  standard_file:str,
@@ -340,6 +342,15 @@ def load_data():
     # Store the results
 
     tc.state['object_wavelengthranges'] = wavelength_ranges
+
+    #
+    # Load the atmospheric transmission
+    #
+
+    wavelengths, transmission = load_atmosphere(2000)
+
+    tc.state['atmospheric_transmission'] = [wavelengths,transmission]
+    
     
 
     
@@ -433,6 +444,7 @@ def load_modeinfo():
         tc.state['method']
         tc.state['model']
         tc.state['normalized_order']
+        tc.state['normalization_line']
         tc.state['normalization_window']
         tc.state['normalization_degree']
         tc.state['radialvelocity_nfwhm']
@@ -444,7 +456,7 @@ def load_modeinfo():
     file = os.path.join(setup.state['instrument_path'], 'telluric_modeinfo.dat')
 
     values = np.loadtxt(file, comments='#', delimiter='|', dtype='str')
-
+    
     # Deal with the fact that there might only be one mode
 
     if np.ndim(values) == 1:
@@ -466,31 +478,35 @@ def load_modeinfo():
 
     order = None if str(values[z,3][0]).strip() == '' else int(values[z,3][0])
 
-    if str(values[z,4][0]).strip() == '':
+    line = None if str(values[z,4][0]).strip() == '' else float(values[z,4][0])
+    
+    if str(values[z,5][0]).strip() == '':
 
         window = None
 
     else:
 
-        window = str(values[z,4][0]).split()
+        window = str(values[z,5][0]).split()
         window = [float(x) for x in window]
     
-    degree = None if str(values[z,5][0]).strip() == '' else int(values[z,5][0])
+    degree = None if str(values[z,6][0]).strip() == '' else \
+        int(values[z,6][0])
 
-    fittype = None if str(values[z,6][0]).strip() == '' else \
-        str(values[z,6][0]).strip()
+    fittype = None if str(values[z,7][0]).strip() == '' else \
+        str(values[z,7][0]).strip()
 
-    rv_nfwhm = None if str(values[z,7][0]).strip() == '' else \
-        float(values[z,7][0])    
-
-    dc_nfwhm = None if str(values[z,8][0]).strip() == '' else \
+    rv_nfwhm = None if str(values[z,8][0]).strip() == '' else \
         float(values[z,8][0])    
+
+    dc_nfwhm = None if str(values[z,9][0]).strip() == '' else \
+        float(values[z,9][0])    
     
     # Save the results
     
     tc.state['method'] = method
     tc.state['model'] = model
     tc.state['normalization_order'] = order
+    tc.state['normalization_line'] = line
     tc.state['normalization_window'] = window
     tc.state['normalization_degree'] = degree
     tc.state['normalization_fittype'] = fittype

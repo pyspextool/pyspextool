@@ -392,7 +392,7 @@ def poly_1d(x:int | float | npt.ArrayLike,
     # Get set up
     #
 
-    x = np.float64(x)
+    x = x.astype(np.float64)
     ncoeffs = np.size(coeffs)
     ndat = np.size(x)
     if talk is True: print('first', ncoeffs)

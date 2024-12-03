@@ -198,6 +198,8 @@ def telluric(object_file:str,
         if tc.state['normalization_order'] is not None:
     
             prepare_line(tc.state['normalization_order'],
+                         tc.state['normalization_line'],
+                         tc.state['resolving_power'],                         
                          tc.state['normalization_window'],
                          tc.state['normalization_fittype'],
                          tc.state['normalization_degree'],
@@ -206,7 +208,7 @@ def telluric(object_file:str,
                          qa_showscale=qa['showscale'],
                          qa_showblock=qa['showblock'],
                          qa_write=qa['write'])
-    
+
         #
         # Measure radial velocity
         #
@@ -252,7 +254,7 @@ def telluric(object_file:str,
     # Shift the spectra
     #
 
-    if shift_spectra is True or shift_info is not None:
+    if default_shiftranges is True or user_shiftranges is not None:
 
         shift_spectra(default_shiftranges=default_shiftranges,
                       user_shiftranges=user_shiftranges,

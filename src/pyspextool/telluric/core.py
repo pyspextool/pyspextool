@@ -10,7 +10,6 @@ from scipy import signal
 from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
 from scipy.special import erf
-from os.path import join as osjoin
 from dust_extinction.parameter_averages import G23
 import astropy.units as u
 
@@ -18,148 +17,9 @@ from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.utils.math import moments
-from pyspextool.utils.arrays import find_index
 from pyspextool.plot.limits import get_spectra_range
 from pyspextool.utils.interpolate import linear_interp1d
-from pyspextool.utils.interpolate import linear_bitmask_interp1d
-from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
-
-#def correct_spectrum(object_wavelength:npt.ArrayLike,
-#                     object_intensity:npt.ArrayLike,
-#                     correction_wavelength:npt.ArrayLike,
-#                     correction_intensity:npt.ArrayLike,
-#                     uncertainties:list=None,
-#                     masks:list=None):
-#
-#    """
-#    To correct a spectrum for telluric absorption and flux calibration.
-#
-#    The function also optionally corrects uncertainty arrays and will merge
-#    bit masks.
-#
-#    Parameters
-#    ----------
-#
-#    object_wavelength : ndarray
-#        A (nwave1,) ndarray of wavelength values.
-#    
-#    object_intensity : ndarray
-#        A (nwave1,) ndarray of intensity values, typically in units of ADU s-1
-#        or DN s-1.
-#
-#    correction_wavelength : ndarray
-#        A (nwave2,) ndarray of wavelength values.
-#    
-#    correction_intensity : ndarray
-#        A (nwave2,) ndarray of intensity values, typically in units of ADU s-1
-#        or DN s-1 per "flux density".
-#
-#    uncertainties : list, default=None
-#        A (2,) list where uncertainties[0] is an (nwave1,) ndarray of
-#        uncertainties associated with the object_intensity ndarray and
-#        uncertainties[1] is an (nwave2,) ndarray of
-#        uncertainties associated with the correction_intensity ndarray
-#
-#    masks : list, default=None
-#        A (2,) list where masks[0] is an (nwave1,) ndarray mask associated
-#        with the object_intensity ndarray and mask[1] is an (nwave2,) ndarray
-#        mask associated with the correction_intensity ndarray
-#       
-#    Returns
-#    -------
-#    ndarray, ndarray, ndarray
-#
-#    
-#   
-#    """
-#    
-#    #
-#    # Check the parameters
-#    #
-#
-#    check_parameter('correct_spectrum', 'object_wavelength', object_wavelength,
-#                    'ndarray')
-#
-#    check_parameter('correct_spectrum', 'object_intensity', object_intensity,
-#                    'ndarray')
-#
-#    check_parameter('correct_spectrum', 'correction_wavelength',
-#                    correction_wavelength, 'ndarray')
-#
-#    check_parameter('correct_spectrum', 'correction_intensity',
-#                    correction_intensity, 'ndarray')
-#
-#    check_parameter('correct_spectrum', 'uncertainties', uncertainties,
-#                    ['NoneType','list'], list_types=['ndarray', 'ndarray'])
-#
-#    check_parameter('correct_spectrum', 'masks', masks, ['ndarray', 'list'],
-#                    list_types=['ndarray', 'ndarray'])
-#
-#
-#    #
-#    # Unpack the uncertainties
-#    #
-#
-#    object_uncertainty = None
-#    correction_uncertainty = None
-#    
-#    if uncertainties is not None:
-#
-#        object_uncertainty = uncertainties[0]
-#        correction_uncertainty = uncertainties[1]
-#
-#    #
-#    # Do the correction
-#    #
-#    
-#    # Interpolate the correction spectrum onto to wavelength grid of 
-#    
-#    
-#    rtc_i, rtc_u = linear_interp1d(correction_wavelength,
-#                                   correction_intensity,
-#                                   object_wavelength,
-#                                   input_u=correction_uncertainty)
-#
-#    # Correct and propagate errors
-#        
-#    fluxdensity = object_intensity*rtc_i
-#
-#    if uncertainties is not None:
-#    
-#        fluxdensity_variance = object_intensity**2 * rtc_u**2 + \
-#            rtc_i**2 * object_uncertainty**2
-#        fluxdensity_uncertainty = np.sqrt(fluxdensity_variance)
-#        
-#    else:
-#
-#        fluxdensity_uncertainty = None
-#        
-#    #
-#    # Do the masks
-#    #
-#
-#    if masks is not None:
-#
-#        object_mask = masks[0]
-#        correction_mask = masks[1]
-#
-#        # Interpolate the masks and combine
-#    
-#        rmask = linear_bitmask_interp1d(correction_wavelength,
-#                                        correction_mask.astype(np.uint8),
-#                                        object_wavelength)
-#    
-#        stack = np.stack((object_mask.astype(np.uint8),rmask))
-#        fluxdensity_mask = combine_flag_stack(stack)
-#
-#
-#    else:
-#
-#        fluxdensity_mask = None
-#
-#
-#    return fluxdensity, fluxdensity_uncertainty, fluxdensity_mask
 
 
 
@@ -514,7 +374,9 @@ def deconvolve_line(data_wavelength:npt.ArrayLike,
                              plot_title=qashow_info['title'])
 
         pl.show(block=qashow_info['block'])
-        if qashow_info['block'] is False: pl.pause(1)
+        if qashow_info['block'] is False:
+
+            pl.pause(1)
 
     if qafile_info is not None:
 
@@ -650,20 +512,6 @@ def find_shift(wavelength_object:npt.ArrayLike,
     # Set the derivative equal to zero to find the minimum shift
     
     shift = -result['coeffs'][1]/2./result['coeffs'][2]
-
-
-#    if qa_show is True:
-#
-#        plot_find_shift(wavelength_object,
-#                        intensity_object,
-#                        intensity_telluric,                        
-#                        wrange,
-#                        shifts,
-#                        rms,
-#                        1)
-#
-#        pl.show(block=qa_showblock)
-#        if qa_showblock is False: pl.pause(1)
 
     return shift
 
@@ -1164,7 +1012,9 @@ def measure_linerv(data_wavelength:npt.ArrayLike,
                             plot_title=qashow_info['title'])
 
         pl.show(block=qashow_info['block'])
-        if qashow_info['block'] is False: pl.pause(1)
+        if qashow_info['block'] is False:
+
+            pl.pause(1)
 
     if qafile_info is not None:
 
@@ -1514,8 +1364,7 @@ def plot_deconvolve_line(plot_number,
        
     Returns
     -------
-    int
-    The plot number
+    None
 
     """
 
@@ -1651,26 +1500,73 @@ def plot_deconvolve_line(plot_number,
 
 
 def plot_shifts(plot_number:int,
+                subplot_size:tuple,
+                subplot_stackmax:int,
                 font_size:int,
+                scale:int | float,
                 spectrum_linewidth:int | float,
                 spine_linewidth:int | float,
-                object_orders:npt.ArrayLike,
-                object_napertures:int, 
+                xlabel:str,
+                orders:npt.ArrayLike,
                 object_spectra:npt.ArrayLike,
-                rawtelluric_spectra:npt.ArrayLike,
-                shiftedtelluric_spectra:npt.ArrayLike,                
+                rawtc_spectra:npt.ArrayLike,
+                shiftedtc_spectra:npt.ArrayLike,                
                 shift_ranges:npt.ArrayLike,
-                shifts:npt.ArrayLike,
-                subplot_size:tuple=(6,4),
-                subplot_stackmax:int=4,
-                xlabel=None):
+                shifts:npt.ArrayLike):
 
     """
     To create a QA plot for the standard shifts
 
     Parmaeters
     ----------
+    plot_number : int or None
+        The plot number to pass to matplotlib
 
+    subplot_size : tuple
+        A (2,) tuple giving the plot size for a single order.
+
+    subplot_stackmax : int
+        The maximum number of orders to plot in the vertical direction
+
+    font_size : int
+        An int giving the font size to pass to matplotlib
+
+    scale : int or float
+        A scale factor to multiple the font and final figure size by.
+    
+    spectrum_linewidth : int or float
+        An int or float giving the spectrum line width to pass to matplotlib
+
+    spine_linewidth : int or float
+        An int or float giving the spine line width to pass to matplotlib
+
+    xlabel : str
+        A string giving the x axis label.
+
+    orders : ndarray
+        An (norders,) array of order numbers.
+
+    object_spectra : ndarray
+        An (norders*napertures, 4, nwavelength) array of object spectra.
+    
+    rawtc_spectra : ndarray
+        An (norders*napertures, 4, nwavelength) array of raw telluric
+        correction spectra.
+
+    shiftedtc_spectra : ndarray
+        An (norders*napertures, 4, nwavelength) array of shifted
+        telluric correction spectra.
+
+    shift_ranges : ndarray
+        An (norders,2) array of shift ranges.  shift_ranges[0,:] gives the
+        lower and upper wavelength limit over which the shift was determined.
+        If no shift is requsted, the values are np.nan.
+
+    shifts : ndarray
+        An (norders,napertures) array of shift ranges.  shift_ranges[0,:]
+        gives the lower and upper wavelength limit over which the shift was
+        determined.  If no shift is requsted, the values are np.nan.
+      
     Returns
     -------
     None
@@ -1678,26 +1574,70 @@ def plot_shifts(plot_number:int,
     """
 
     #
-    # Determine which orders were shifted
+    # Check parameters
     #
-    
-    z = ~np.isnan(shift_ranges[:,0])
 
-    shifted_orders = object_orders[z]
-    shifted_norders = len(shifted_orders)
+    check_parameter('plot_shifts', 'plot_number', plot_number,
+                    ['int', 'NoneType'])
+
+    check_parameter('plot_shifts', 'subplot_size', subplot_size, 'tuple')
+
+    check_parameter('plot_shifts', 'subplot_stackmax', subplot_stackmax, 'int')
+
+    check_parameter('plot_shifts', 'font_size', font_size, 'int')
+
+    check_parameter('plot_shifts', 'scale', scale, ['int','float'])
+
+    check_parameter('plot_shifts', 'spectrum_linewidth', spectrum_linewidth,
+                    ['int','float'])        
+
+    check_parameter('plot_shifts', 'spine_linewidth', spine_linewidth,
+                    ['int','float'])        
+
+    check_parameter('plot_shifts', 'xlabel', xlabel, 'str')
+
+    check_parameter('plot_shifts', 'orders', orders, 'ndarray')
+    
+    check_parameter('plot_shifts', 'object_spectra', object_spectra, 'ndarray')
+
+    check_parameter('plot_shifts', 'rawtc_spectra', rawtc_spectra, 'ndarray')
+
+    check_parameter('plot_shifts', 'shiftedtc_spectra', shiftedtc_spectra,
+                    'ndarray')    
+    
+    check_parameter('plot_shifts', 'shift_ranges', shift_ranges, 'ndarray')
+
+    check_parameter('plot_shifts', 'shifts', shifts, 'ndarray')        
+
+    #
+    # Get important information
+    #
+
+    # Get norders and napertures for the object spectra.
+    
+    norders = len(orders)
+
+    napertures = int(np.shape(object_spectra)[0]/norders)
+           
+    # Determine which orders were shifted
+
+    zshifted = ~np.isnan(shift_ranges[:,0])    
+    shifted_norders = len(orders[zshifted])
+    
+    #
+    # Now start the plotting
+    #
     
     # Set the fonts
 
     font = {'family' : 'helvetica',
             'weight' : 'normal',
-            'size'   : font_size}
+            'size'   : font_size*scale}
 
     rc('font', **font)
     
-# Determine the plot size
+    # Determine the plot size
     
-    object_norders = len(shifted_orders)
-
     ncols = np.ceil(shifted_norders / subplot_stackmax).astype(int)
 
     nrows = np.min([shifted_norders,subplot_stackmax]).astype(int)
@@ -1707,9 +1647,8 @@ def plot_shifts(plot_number:int,
     plot_index = np.reshape(np.reshape(plot_index,(nrows,ncols)),
                             ncols*nrows,order='F')
     
-    figure_size = (subplot_size[0]*ncols, subplot_size[1]*nrows)
+    figure_size = (subplot_size[0]*ncols*scale, subplot_size[1]*nrows*scale)
     
-
     #
     # Make the figure
     #
@@ -1724,26 +1663,29 @@ def plot_shifts(plot_number:int,
                        bottom=0.075,
                        top=0.95)
 
-    for i in range(shifted_norders):
+    m = 0
+    for i in range(norders):
 
-        j = int(np.where(shifted_orders[i] == object_orders)[0])
+        # Did this order get shifted?
+
+        if not zshifted[norders-i-1]:
+
+            continue
         
-        
-        for k in range(object_napertures):
+        for j in range(napertures):
 
-            idx = j+object_napertures*k
+            k = i+j*napertures
 
-            wavelength = object_spectra[idx,0,:]
-            object_flux = object_spectra[idx,1,:]
-            raw_telluric = rawtelluric_spectra[idx,1,:]
-            shifted_telluric = shiftedtelluric_spectra[idx,1,:]
-
+            wavelength = object_spectra[norders-k-1,0,:]
+            object_flux = object_spectra[norders-k-1,1,:]
+            raw_telluric = rawtc_spectra[norders-k-1,1,:]
+            shifted_telluric = shiftedtc_spectra[norders-k-1,1,:]
+            
             raw_ratio = object_flux*raw_telluric
             shifted_ratio = object_flux*shifted_telluric            
-
-            zshift = np.where((wavelength >= shift_ranges[j,0]) &
-                              (wavelength <= shift_ranges[j,1]))[0]
-
+            
+            zshift = np.where((wavelength >= shift_ranges[norders-k-1,0]) &
+                              (wavelength <= shift_ranges[norders-k-1,1]))[0]
 
             wavelength = wavelength[zshift]
             raw_ratio = raw_ratio[zshift]
@@ -1758,7 +1700,7 @@ def plot_shifts(plot_number:int,
             xrange = get_spectra_range(wavelength)
             yrange = get_spectra_range(shifted_ratio, raw_ratio, frac=0.1)
 
-            axe = pl.subplot(nrows, ncols, plot_index[i])
+            axe = pl.subplot(nrows, ncols, plot_index[m])
 
             axe.step(wavelength,
                      raw_ratio,
@@ -1771,13 +1713,15 @@ def plot_shifts(plot_number:int,
                      color='green',
                      where='mid',
                      label='Shifted')
-
-
+           
             axe.set_xlim(xrange)
             axe.set_ylim(yrange)
 
-            axe.set_title('Order ' + str(shifted_orders[i])+', aperture '+\
-                          str(k+1))
+
+
+            axe.set_title('Order ' + str(orders[norders-k-1])+', aperture '+\
+                          str(j+1)+', $\Delta x$='+'$'+str(shifts[norders-k-1,j])+\
+                          '$ pixels')
             axe.set_ylabel('Relative Intensity')
             axe.set_xlabel(xlabel)            
 
@@ -1788,9 +1732,19 @@ def plot_shifts(plot_number:int,
             axe.tick_params(which='major', length=5)
             axe.yaxis.set_minor_locator(AutoMinorLocator())
 
-            if i == 0: axe.legend()
+#            axe2 = axe.twinx()
+#            axe2.plot(atmosphere_wavelength,
+#                      atmosphere_transmission,
+#                      color='grey',
+#                      label='Atmospheric Transmission')
+#            axe2.set_ylim((-1,1))
+            
+            
+            if m == 0:
 
+                axe.legend()
 
+            m += 1
     
 
 

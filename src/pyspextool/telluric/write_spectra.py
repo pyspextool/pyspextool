@@ -302,7 +302,7 @@ def write_spectra(write_model_spectra:bool=False,
     for i in range(tc.state['object_norders']):
 
             name = 'TC_SO' + str(orders[i]).zfill(3)
-            comment = ' Standard shift (pixels) for order ' + \
+            comment = 'Standard shift (pixels) for order ' + \
                 str(orders[i]).zfill(3)
             hdr[name] = (', '.join(tc.state['shifts'][i,:].astype(str)),
                          comment)

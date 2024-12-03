@@ -60,8 +60,12 @@ def shift_spectra(default_shiftranges:bool=True,
     
     Returns
     -------
-    None.
+    None
+    Loads data into memory:
 
+        tc.state['shift_ranges']
+        tc.state['shifts']
+        tc.state['shiftedtc_spectra']
     
     """
 
@@ -137,6 +141,11 @@ def shift_spectra(default_shiftranges:bool=True,
             #
             
             z = mode == tc.state['mode']
+            if not np.sum(z):
+
+                message = ' Default shift ranges for mode '+tc.state['mode']+\
+                    ' not found.  Skipping default shifts.'
+                logging.info(message)
             
             default_orders = order[z]
             minwave = minwave[z]
@@ -147,9 +156,9 @@ def shift_spectra(default_shiftranges:bool=True,
                 z = np.where(default_orders == shift_orders[i])[0]
                 if len(z) == 1:
                     
-                    shift_ranges[i,0] = minwave[z]
-                    shift_ranges[i,1] = maxwave[z]                    
-                    
+                    shift_ranges[i,0] = minwave[z][0]
+                    shift_ranges[i,1] = maxwave[z][0]                    
+                                       
     #
     # Update the shifts_ranges for the user values
     #
@@ -192,7 +201,6 @@ def shift_spectra(default_shiftranges:bool=True,
 
     tc.state['shifts'] = np.round(shifts, decimals=2)
 
-            
     #
     # Perform the shifts
     #
@@ -219,60 +227,57 @@ def shift_spectra(default_shiftranges:bool=True,
     # Do the QA plots
     #
 
-    if qa['show'] is True:
+    if qa['show'] is True and np.sum(tc.state['shifts']) != 0:
         
         plot_shifts(setup.plots['shifts'],
-                    setup.plots['font_size']*qa['showscale'],
-                    setup.plots['zoomspectrum_linewidth'],
+                    setup.plots['subplot_size'],
+                    setup.plots['stack_max'],
+                    setup.plots['font_size'],
+                    qa['showscale'],
+                    setup.plots['spectrum_linewidth'],
                     setup.plots['spine_linewidth'],
+                    tc.state['xlabel'],
                     tc.state['object_orders'],
-                    tc.state['object_napertures'],
                     tc.state['object_spectra'],
                     tc.state['ewcorrectedtc_spectra'],
                     tc.state['shiftedtc_spectra'],
                     tc.state['shift_ranges'],
-                    tc.state['shifts'],
-                    xlabel=tc.state['xlabel'])
-
-
+                    tc.state['shifts'])
         
         pl.show(block=qa['showblock'])
         if qa['showblock'] is False:
 
             pl.pause(1)
         
-#    if qa['write'] is True:
-#
-#        plot_normalization(None,
-#                           setup.plots['portrait_size'],
-#                           setup.plots['font_size'],
-#                           setup.plots['zoomspectrum_linewidth'],
-#                           setup.plots['spine_linewidth'],                     
-#                           wavelength,
-#                           flux,
-#                           result['fit'],
-#                           line_center,
-#                           line_halfwidth,
-#                           continuum,
-#                           plot_xlabel=xlabel,
-#                           plot_title=title)
-#
-#        pl.savefig(os.path.join(setup.state['qa_path'],
-#                                tc.state['output_filename']+ \
-#                                '_normalization' + \
-#                                setup.state['qa_extension']))
-#        pl.close()
+    if qa['write'] is True and np.sum(tc.state['shifts']) != 0:
 
+        plot_shifts(None,
+                    setup.plots['subplot_size'],
+                    setup.plots['stack_max'],
+                    setup.plots['font_size'],
+                    1,
+                    setup.plots['spectrum_linewidth'],
+                    setup.plots['spine_linewidth'],
+                    tc.state['xlabel'],
+                    tc.state['object_orders'],
+                    tc.state['object_spectra'],
+                    tc.state['ewcorrectedtc_spectra'],
+                    tc.state['shiftedtc_spectra'],
+                    tc.state['shift_ranges'],
+                    tc.state['shifts'])
+        
+        pl.savefig(osjoin(setup.state['qa_path'],
+                          tc.state['output_filename']+ \
+                          '_shifts' + \
+                          setup.state['qa_extension']))
+        pl.close()
 
             
-    
-
-
 def check_inrange(test:tuple,
                   verbose:bool=True):
 
     """
-    To determine if a user range falls within the order
+    To determine if a requested user shift range falls within the order
 
     Parameters
     ----------
@@ -287,7 +292,7 @@ def check_inrange(test:tuple,
     Returns
     -------
     None, tuple
-        If user wavelength range falls in the order, a tuple with the
+        If user wavelength range falls in the order, a numpy array with the
         wavelength range.
 
         If user wavelength range does not fall in the order, None.
@@ -295,12 +300,12 @@ def check_inrange(test:tuple,
     """
 
     #
-    # Check parameters and qa keywords
+    # Check parameters
     #
 
     check_parameter('check_inrange', 'test', test, 'tuple')
 
-    qa = check_qakeywords(verbose=verbose)
+    check_qakeywords(verbose=verbose)
     
     #
     # Do the check
@@ -344,7 +349,3 @@ def check_inrange(test:tuple,
         return None
         
     return np.array(test[1:3])
-        
-
-
-
