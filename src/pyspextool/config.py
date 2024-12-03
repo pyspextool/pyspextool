@@ -20,7 +20,9 @@ plots = {"portrait_size":(7,9),
          "font_size":12,
          "spectrum_linewidth":0.5,
          "zoomspectrum_linewidth":1.5,         
-         "spine_linewidth":1.5,         
+         "spine_linewidth":1.5,
+         "subplot_size":(6,3),
+         "stack_max":4,
          'flat':1,
          'locate_orders':1,
          'wavecal_image':1,
@@ -33,5 +35,6 @@ plots = {"portrait_size":(7,9),
          'combine_spectra':7,
          'normalize_order':8,
          'radial_velocity':9,
-         'deconvolution':10}
+         'deconvolution':10,
+         'shifts':12}
 

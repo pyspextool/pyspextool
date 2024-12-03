@@ -50,6 +50,11 @@ def check_path(path:str,
 
     cwd = os.path.abspath(os.getcwd())
 
+    test_path = os.path.join(cwd,'tests/test_data/raw/spex-SXD/')    
+    with os.scandir(test_path) as it:
+        for entry in it:
+                print(entry.name)
+    
     if result is False:
 
         message = f'The path {path} does not exist. '\
@@ -67,7 +72,8 @@ def check_path(path:str,
     return path
 
 
-def check_file(files:str):
+def check_file(files:str,
+               raise_error:bool=True):
 
     """
     To check whether a file exists, and to resolve wildcards in the name.
@@ -77,6 +83,10 @@ def check_file(files:str):
     files : str, list of str
         The path to a file or a list of paths to files.
 
+    raise_error : {True, False}
+        Set to True to raise a pySpextoolError if the file does not exist.
+        Set to False to not raise a pySpextoolError if the file does not exist.
+        
     Returns
     -------
     str, list of str
@@ -102,16 +112,29 @@ def check_file(files:str):
         test = glob.glob(file)
         if not test:
 
-            message = 'File '+file+' not found.'
-            raise pySpextoolError(message)
+            if raise_error is True:
+
+                message = 'File '+file+' not found.'
+                raise pySpextoolError(message)
+
+            else:
+
+                return None
+
             
         else:
 
             if len(test) > 1:
 
-                message = 'More than one file matches '+file+'.'
-                raise pySpextoolError(message)
+                if raise_error is True:
+                
+                    message = 'More than one file matches '+file+'.'
+                    raise pySpextoolError(message)
 
+                else:
+
+                    return None
+                
             else:
 
                 files[i] = test[0]

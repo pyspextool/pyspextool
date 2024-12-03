@@ -1,3 +1,4 @@
+import numpy as np
 from astropy.io import fits
 import os
 import logging
@@ -234,7 +235,7 @@ def write_spectra(write_model_spectra:bool=False,
                                  tc.state['output_filename']+\
                                  '_telluric.fits')    
 
-        fits.writeto(full_path, tc.state['telluric_spectra'], newhdr,
+        fits.writeto(full_path, tc.state['shiftedtc_spectra'], newhdr,
                      overwrite=True)
         
         logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
@@ -247,7 +248,7 @@ def write_spectra(write_model_spectra:bool=False,
     # Rename header for ease of reading
             
     hdr = tc.state['object_hdrinfo']
-
+    
     # Store the history
 
     old_history = hdr['HISTORY']
@@ -294,7 +295,18 @@ def write_spectra(write_model_spectra:bool=False,
 
         hdr['TC_RMS'] = [float('{:.5f}'.format(tc.state['rms_deviation'])),
                          'Telluric RMS deviation of Vega-data']
+        
+    # Deal with the shifts
 
+    orders = tc.state['object_orders']
+    for i in range(tc.state['object_norders']):
+
+            name = 'TC_SO' + str(orders[i]).zfill(3)
+            comment = 'Standard shift (pixels) for order ' + \
+                str(orders[i]).zfill(3)
+            hdr[name] = (', '.join(tc.state['shifts'][i,:].astype(str)),
+                         comment)
+                                
     # Deal with the units and plot labels
     
     hdr['YUNITS'][0] = tc.state['intensity_unit']

@@ -6,7 +6,8 @@ from pyspextool.fit.robust_savgol import robust_savgol
 from pyspextool.io.check import check_parameter
 
 
-def buffer_range(range, frac=0.1):
+def buffer_range(range:tuple,
+                 frac:float=0.1):
 
     """
     To expand a numerical range by a given fraction.
