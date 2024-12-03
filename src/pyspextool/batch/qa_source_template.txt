@@ -21,6 +21,7 @@
     <li>Standard: [STD_NAME] [STD_TYPE] [STD_SIMBAD_URL]
     <li>Target Airmass: [AIRMASS]
     <li>Standard Airmass: [STD_AIRMASS]
+    <li>Delta Airmass: [DELTA_AIRMASS]
     <li>UT time: [UT_START] to [UT_END]
     <li>Total Integration: [INTEGRATION] sec
     <li>Mode: [MODE]
@@ -41,14 +42,18 @@
 
 [TARGET_COMBINED_FILES]
 
-<h4>Individual Spectra</h4>
+<h4>Individual Extracted Spectra</h4>
 
 [TARGET_SPECTRA_FILES]
+
+<h4>Individual Calibrated Spectra</h4>
+
+[TARGET_CALIBRATED_FILES]
 
 </div>
 
 
-<!-- INDIVIDUAL TELLURIC SPECTRA -->
+<!-- INDIVIDUAL STANDARD SPECTRA -->
 
 <button type="button" class="collapsible">Calibrator Spectra</button>
 <div class="content">
@@ -58,9 +63,13 @@
 [STD_COMBINED_FILES]
 
 
-<h4>Individual Spectra</h4>
+<h4>Individual Extracted Spectra</h4>
 
 [STD_SPECTRA_FILES]
+
+<h4>Telluric Correction</h4>
+
+[STD_TELLURIC_FILES]
 
 </div>
 
