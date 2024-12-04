@@ -59,16 +59,6 @@ def plot_profiles(profiles:list,
     psf_radius : int or float
         The PSF radius used for optimal extraction (in arcseconds).
 
-    
-
-
-    
-    
-
-    
-
-    
-
     """
 
     #

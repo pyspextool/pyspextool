@@ -13,8 +13,11 @@ from pyspextool.io.check import check_parameter, check_range, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.plot.limits import get_spectra_range
+from pyspextool.utils.arrays import find_index
 
 def prepare_line(order:int,
+                 line_wavelength:float,
+                 resolving_power:int | float,
                  wavelength_range:npt.ArrayLike,
                  fit_type:str,
                  poly_degree:int,
@@ -32,6 +35,12 @@ def prepare_line(order:int,
     order : int
         The order number with the line to be fit.
 
+    line_wavelength : float
+        The wavelength of the line to be fit.
+
+    resolving_power : int or float
+        The resolving power of the spectrum.
+    
     wavelength_range : ndarray
         An (2,) array of wavelenths that encompose the region to be fit.
 
@@ -93,9 +102,15 @@ def prepare_line(order:int,
 
     check_parameter('prepare_line', 'order', order, 'int')
 
+    check_parameter('prepare_line', 'line_wavelength', line_wavelength,
+                    'float')
+
+    check_parameter('prepare_line', 'resolving_power', resolving_power,
+                    ['int', 'float'])
+    
     check_parameter('prepare_line', 'wavelength_range', wavelength_range,
                     ['ndarray','list'])
-
+    
     check_parameter('prepare_line', 'fit_type', fit_type, 'str',
                     possible_values=['gaussian','lorentzian'])    
     
@@ -123,7 +138,7 @@ def prepare_line(order:int,
     # log the operation
     #
     
-    logging.info(f" Normalizing continuum in order "+str(order)+".")
+    logging.info(" Normalizing continuum in order "+str(order)+".")
 
     #
     # Get set up for the normalization
@@ -138,7 +153,6 @@ def prepare_line(order:int,
     
     wavelength = np.squeeze(tc.state['standard_spectra'][z_order,0,:])
     flux = np.squeeze(tc.state['standard_spectra'][z_order,1,:])
-    robust = {'threshold':5, 'epsilon':0.1}
     xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
     title = tc.state['standard_name']+', '+\
         tc.state['mode']+' Order '+str(order)+', degree='+str(poly_degree)
@@ -178,10 +192,15 @@ def prepare_line(order:int,
     
     # Fit the line and continuum
 
+    idx = find_index(wavelength,line_wavelength)
+    p0 = np.array([flux[int(idx)],line_wavelength,1/float(resolving_power)])
+    p0 = np.pad(p0,(0,poly_degree+1),constant_values=0.0)
+
     result = fit_peak1d(wavelength,
                         flux,
                         type=fit_type,
                         negative=True,
+                        p0=p0,
                         nparms=3+poly_degree+1)
     
     continuum_coefficients = result['parms'][3:]
@@ -240,7 +259,9 @@ def prepare_line(order:int,
                            plot_title=title)
 
         pl.show(block=qa['showblock'])
-        if qa['showblock'] is False: pl.pause(1)
+        if qa['showblock'] is False:
+
+            pl.pause(1)
         
     if qa['write'] is True:
 

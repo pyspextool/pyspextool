@@ -351,7 +351,7 @@ def get_latex_fluxdensity(unit:str):
     
     z = units == unit
     
-    return lunits[z][0], ftype[z][0]+lunits[z][0], '$\sigma$'+lunits[z][0] 
+    return lunits[z][0], ftype[z][0]+lunits[z][0], r'$\sigma$'+lunits[z][0] 
     
 
 

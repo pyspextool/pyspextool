@@ -7,6 +7,8 @@ from astropy.table.table import Table
 import astropy.units as u
 from astroquery.simbad import Simbad
 
+
+
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords
@@ -15,7 +17,7 @@ from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.pyspextoolerror import pySpextoolError
-
+from pyspextool.io.load_atmosphere import load_atmosphere
 
 def load_spectra(object_file:str,
                  standard_file:str,
@@ -119,7 +121,6 @@ def load_spectra(object_file:str,
     # Clear the state variables
     #
 
-    tc.load.clear()
     tc.state.clear()    
     
     #
@@ -176,7 +177,9 @@ def load_spectra(object_file:str,
     tc.state['1+z'] = 0.0
     tc.state['rms_deviation'] = np.nan
     tc.state['max_deviation'] = np.nan    
-
+    tc.state['shift'] = np.zeros((tc.state['object_norders'],
+                                  tc.state['object_napertures']))
+    
     #
     # Set the done variables
     #
@@ -293,10 +296,12 @@ def load_data():
     tc.state['standard_norders'] = standard_data['norders']
     tc.state['object_orders'] = object_data['orders']
     tc.state['standard_orders'] = standard_data['orders']
-
+    tc.state['xlabel'] = object_hdrinfo['LXLABEL'][0]
+    
     #
     # Compute the minimum and maximum wavelengths and dispersions for each
-    # order (This may go away eventually once you implement mikeline_convolve).
+    # standard order (This may go away eventually once you implement
+    # mikeline_convolve).
     #
 
     nwavelengths = np.shape(tc.state['standard_spectra'])[-1]
@@ -317,15 +322,42 @@ def load_data():
                 
         fit = polyfit_1d(pixels,tc.state['standard_spectra'][i,0,:],1)
         dispersions[i] = fit['coeffs'][1]
-
+        
     # Store the results
 
     tc.state['standard_wavelengthranges'] = wavelength_ranges
     tc.state['standard_dispersions'] = dispersions
     tc.state['standard_fwhm'] = dispersions*standard_data['slitw_pix']
     tc.state['slitw_pix'] = standard_data['slitw_pix']    
+
+    #
+    # Now get the object ranges
+    #
+    
+    wavelength_ranges = []
+    
+    for i in range(tc.state['object_norders']):
+
+        idx = i*tc.state['object_napertures']
+        min = np.nanmin(tc.state['object_spectra'][idx,0,:])
+        max = np.nanmax(tc.state['object_spectra'][idx,0,:])
+
+        wavelength_ranges.append(np.array([min,max]))
+
+    # Store the results
+
+    tc.state['object_wavelengthranges'] = wavelength_ranges
+
+    #
+    # Load the atmospheric transmission
+    #
+
+    wavelengths, transmission = load_atmosphere(2000)
+
+    tc.state['atmospheric_transmission'] = [wavelengths,transmission]
     
     
+
     
 def load_vegamodel():
 
@@ -417,6 +449,7 @@ def load_modeinfo():
         tc.state['method']
         tc.state['model']
         tc.state['normalized_order']
+        tc.state['normalization_line']
         tc.state['normalization_window']
         tc.state['normalization_degree']
         tc.state['radialvelocity_nfwhm']
@@ -428,7 +461,7 @@ def load_modeinfo():
     file = os.path.join(setup.state['instrument_path'], 'telluric_modeinfo.dat')
 
     values = np.loadtxt(file, comments='#', delimiter='|', dtype='str')
-
+    
     # Deal with the fact that there might only be one mode
 
     if np.ndim(values) == 1:
@@ -450,31 +483,35 @@ def load_modeinfo():
 
     order = None if str(values[z,3][0]).strip() == '' else int(values[z,3][0])
 
-    if str(values[z,4][0]).strip() == '':
+    line = None if str(values[z,4][0]).strip() == '' else float(values[z,4][0])
+    
+    if str(values[z,5][0]).strip() == '':
 
         window = None
 
     else:
 
-        window = str(values[z,4][0]).split()
+        window = str(values[z,5][0]).split()
         window = [float(x) for x in window]
     
-    degree = None if str(values[z,5][0]).strip() == '' else int(values[z,5][0])
+    degree = None if str(values[z,6][0]).strip() == '' else \
+        int(values[z,6][0])
 
-    fittype = None if str(values[z,6][0]).strip() == '' else \
-        str(values[z,6][0]).strip()
+    fittype = None if str(values[z,7][0]).strip() == '' else \
+        str(values[z,7][0]).strip()
 
-    rv_nfwhm = None if str(values[z,7][0]).strip() == '' else \
-        float(values[z,7][0])    
-
-    dc_nfwhm = None if str(values[z,8][0]).strip() == '' else \
+    rv_nfwhm = None if str(values[z,8][0]).strip() == '' else \
         float(values[z,8][0])    
+
+    dc_nfwhm = None if str(values[z,9][0]).strip() == '' else \
+        float(values[z,9][0])    
     
     # Save the results
     
     tc.state['method'] = method
     tc.state['model'] = model
     tc.state['normalization_order'] = order
+    tc.state['normalization_line'] = line
     tc.state['normalization_window'] = window
     tc.state['normalization_degree'] = degree
     tc.state['normalization_fittype'] = fittype

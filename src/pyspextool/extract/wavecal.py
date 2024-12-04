@@ -244,7 +244,7 @@ def find_lines_1dxd(spectra:dict,
             title = 'Order '+str(line_info['order'][i])+r': $\lambda$='+\
                 line_info['wavelength'][i]+r' $\mu$m'
             
-            axes1.step(x, y, 'black')
+            axes1.step(x, y, 'black', where='mid')
             axes1.set_title(title)            
             axes1.set_ylim(ymin=0, ymax=yrange[1])
             axes1.set(xlabel='Column Number (pixels)',ylabel='Intensity')
@@ -256,13 +256,14 @@ def find_lines_1dxd(spectra:dict,
 
             goodbad = 'Good Fit' if line_goodbad[i] == 1 else 'Bad Fit'
             
-            axes2.step(x[zline], y[zline], 'black')
+            axes2.step(x[zline], y[zline], 'black', where='mid')
             axes2.set(xlabel='Column Number (pixels)',ylabel='Intensity')
             axes2.axvline(x=line_info['xguess'][i], linestyle='solid',
                           color='r')
-            axes2.axvline(x=line_xpos[i], linestyle='solid', color='g')            
+            axes2.axvline(x=line_xpos[i], linestyle='solid', color='g')
+            
             if type != 'centroid':
-                axes2.step(x[zline], fit['fit'], 'g')
+                axes2.step(x[zline], fit['fit'], 'g' , where='mid')
 
             axes2.set_title(goodbad)
             
@@ -552,7 +553,7 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
     
     r = fit_peak1d(fitlag, fitxcor, nparms=4, positive=True)
     offset = r['parms'][1]
-
+    
     #
     # Do the QA plotting
     #
@@ -1026,8 +1027,8 @@ def plot_spectral_pixelshift(plot_number:int,
     yrange = get_spectra_range([yanchor, ysource], frac=0.1)
 
     axes1.margins(x=0)
-    axes1.step(xanchor, yanchor, 'black')
-    axes1.step(xsource, ysource, 'r')
+    axes1.step(xanchor, yanchor, 'black', where='mid')
+    axes1.step(xsource, ysource, 'r', where='mid')
     axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
     axes1.set(xlabel='Column Number', ylabel='Relative Intensity')
 
@@ -1056,7 +1057,7 @@ def plot_spectral_pixelshift(plot_number:int,
     axes2.tick_params(axis='x')
     axes2.tick_params(axis='y')
     axes2.set_title('Cross Correlation')
-    axes2.step(lag, xcorrelation,color='black')
+    axes2.step(lag, xcorrelation,color='black', where='mid')
     axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
     axes2.set(xlabel='Lag (pixels)', ylabel='Relative Intensity')
 
@@ -1076,8 +1077,8 @@ def plot_spectral_pixelshift(plot_number:int,
     yrange = get_spectra_range([fit_xcorrelation, fit], frac=0.1)
 
     axes3.margins(x=0)
-    axes3.step(fit_lag, fit_xcorrelation, color='black')
-    axes3.step(fit_lag, fit, 'r')
+    axes3.step(fit_lag, fit_xcorrelation, color='black', where='mid')
+    axes3.step(fit_lag, fit, 'r', where='mid')
     axes3.set_title('Fit of Cross Correlation')
     axes3.set_ylim(ymin=yrange[0], ymax=yrange[1])
 

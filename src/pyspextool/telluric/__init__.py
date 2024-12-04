@@ -4,5 +4,6 @@ from .prepare_line import prepare_line
 from .get_radialvelocity import get_radialvelocity
 from .get_kernels import get_kernels
 from .make_telluric_spectra import make_telluric_spectra
+from .shift_spectra import shift_spectra
 from .correct_spectra import correct_spectra
 from .write_spectra import write_spectra

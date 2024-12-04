@@ -1,14 +1,13 @@
 import logging
 
-from pyspextool import config as setup
 from pyspextool.telluric import config as tc
-from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.telluric.load_spectra import load_spectra
 from pyspextool.telluric.prepare_line import prepare_line
 from pyspextool.telluric.get_radialvelocity import get_radialvelocity
 from pyspextool.telluric.get_kernels import get_kernels
 from pyspextool.telluric.make_telluric_spectra import make_telluric_spectra
+from pyspextool.telluric.shift_spectra import shift_spectra
 from pyspextool.telluric.correct_spectra import correct_spectra
 from pyspextool.telluric.write_spectra import write_spectra
 
@@ -21,6 +20,8 @@ def telluric(object_file:str,
              output_filename:str,
              output_units:str='W m-2 um-1',
              reflectance:bool=False,
+             default_shiftranges:bool=True,
+             user_shiftranges:list=None,
              write_telluric_spectra:bool=True,
              write_model_spectra:bool=False,                        
              verbose:bool=None,
@@ -68,7 +69,6 @@ def telluric(object_file:str,
       
     output_filename : str
         The output file name sans the suffix, e.g. 'Wolf359'.
-
   
     output_units : {'W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 
                     'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'}
@@ -80,14 +80,23 @@ def telluric(object_file:str,
         Set to simply divide by the standard and return a relative 
         reflectance spectrum.
 
+    default_shiftranges : {True, False}
+        Minimize telluric noise by shifting the telluric spectra relative
+        to the object spectra using the default wavelength ranges.
 
+    user_shiftranges : tuple, list, deafult None
+        If a tuple, then a (3,) tuple as
+        (order number, lower wavelength, upper wavelength).
+
+        If a list, then a (norders,) list of (3,) tuples as
+        (order number, lower wavelength, upper wavelength).
+       
     write_model_spectra : {False, True}
         Set to True to write the modified Vega model to disk.
 
     write_telluric_spectra : {False, True}
         Set to True to write the telluric correction spectrum to disk.
     
-
     verbose : {None, True, False}
         Set to True to report updates to the command line.
         Set to False to not report updates to the command line.
@@ -186,9 +195,11 @@ def telluric(object_file:str,
         # Prepare line
         #
 
-        if tc.state['normalization_order'] != None:
+        if tc.state['normalization_order'] is not None:
     
             prepare_line(tc.state['normalization_order'],
+                         tc.state['normalization_line'],
+                         tc.state['resolving_power'],                         
                          tc.state['normalization_window'],
                          tc.state['normalization_fittype'],
                          tc.state['normalization_degree'],
@@ -197,12 +208,12 @@ def telluric(object_file:str,
                          qa_showscale=qa['showscale'],
                          qa_showblock=qa['showblock'],
                          qa_write=qa['write'])
-    
+
         #
         # Measure radial velocity
         #
 
-        if tc.state['radialvelocity_nfwhm'] != None:    
+        if tc.state['radialvelocity_nfwhm'] is not None:    
 
             get_radialvelocity(tc.state['radialvelocity_nfwhm'],
                                verbose=qa['verbose'],
@@ -215,7 +226,7 @@ def telluric(object_file:str,
         # Get kernels
         #
 
-        if tc.state['deconvolution_nfwhm'] != None:
+        if tc.state['deconvolution_nfwhm'] is not None:
     
             get_kernels(tc.state['deconvolution_nfwhm'],
                         verbose=qa['verbose'],
@@ -239,6 +250,16 @@ def telluric(object_file:str,
     make_telluric_spectra(intensity_unit=output_units,
                           verbose=qa['verbose'])
 
+    #
+    # Shift the spectra
+    #
+
+    if default_shiftranges is True or user_shiftranges is not None:
+
+        shift_spectra(default_shiftranges=default_shiftranges,
+                      user_shiftranges=user_shiftranges,
+                      verbose=qa['verbose'])
+    
     #
     # Correct the spectra for telluric absorption and flux calibrate
     #

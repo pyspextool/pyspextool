@@ -1,6 +1,5 @@
 import numpy as np
 import scipy
-from scipy import optimize
 
 import warnings
 
@@ -157,7 +156,7 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
         fit['fit'] = f(x, *popt)
         fit['goodfit'] = True
             
-    except (RuntimeError, scipy.optimize.OptimizeWarning) as e:
+    except (RuntimeError, scipy.optimize.OptimizeWarning):
 
         fit = {'parms': np.full_like(p0, np.nan)}
         fit['fit'] = np.full_like(y, np.nan)

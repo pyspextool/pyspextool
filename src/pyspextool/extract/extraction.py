@@ -319,7 +319,7 @@ def extract_1dxd(image:npt.ArrayLike,
 
                 l = i * naps + k
                 wave = np.array(spectrum_wave[j], dtype='float', ndmin=1)
-                aperture_positions[k] = poly_1d(wave, trace_coefficients[l])
+                aperture_positions[k] = poly_1d(wave, trace_coefficients[l])[0]
 
             # Generate the aperture mask
 
