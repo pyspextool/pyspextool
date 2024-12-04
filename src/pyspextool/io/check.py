@@ -49,11 +49,6 @@ def check_path(path:str,
     result = os.path.exists(path)
 
     cwd = os.path.abspath(os.getcwd())
-
-    test_path = os.path.join(cwd,'tests/test_data/raw/spex-SXD/')    
-    with os.scandir(test_path) as it:
-        for entry in it:
-                print(entry.name)
     
     if result is False:
 
