@@ -1678,6 +1678,11 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0: 
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0:
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_COMBINED_FILES]'.format(x),ptxt)
 

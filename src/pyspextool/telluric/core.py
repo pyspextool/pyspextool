@@ -505,7 +505,12 @@ def find_shift(wavelength_object:npt.ArrayLike,
     minimum_idx = np.argmin(rms)
 
     # Fit a 2nd order polynomial around this point
-    
+
+    # temporary fix for end points
+    if minimum_idx<5 or minimum_idx>len(shifts)-6: 
+        logging.info(' find shift found minimum near end point {:.0f}, assuming zero shift '.format(minimum_idx))
+        return 0.    
+
     result = polyfit_1d(shifts[(minimum_idx-5):(minimum_idx+6)],
                         rms[(minimum_idx-5):(minimum_idx+6)],2)
 
