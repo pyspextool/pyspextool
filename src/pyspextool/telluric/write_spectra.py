@@ -1,4 +1,3 @@
-import numpy as np
 from astropy.io import fits
 import os
 import logging
@@ -112,7 +111,7 @@ def write_spectra(write_model_spectra:bool=False,
         new_hdrinfo['MODULE']=std_hdrinfo['MODULE']
         new_hdrinfo['MODULE'][0] = 'telluric'
         new_hdrinfo['VERSION'] = std_hdrinfo['VERSION']
-        filename = [tc.state['output_filename']+'_vega.fits', ' File name']
+        filename = [tc.state['output_filename']+'_model.fits', ' File name']
         new_hdrinfo['FILENAME'] = filename
 
         f = '{:.3f}'
@@ -157,7 +156,7 @@ def write_spectra(write_model_spectra:bool=False,
                                  tc.state['output_filename']+\
                                  '_vega.fits')    
 
-        fits.writeto(full_path, tc.state['vega_spectra'], newhdr,
+        fits.writeto(full_path, tc.state['model_spectra'], newhdr,
                      overwrite=True)
         
         logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
@@ -215,7 +214,7 @@ def write_spectra(write_model_spectra:bool=False,
             
             if keys[i] == 'COMMENT':
                 
-                junk = 1
+                pass
                 
             else:
                 
@@ -231,14 +230,17 @@ def write_spectra(write_model_spectra:bool=False,
         # Write the file out
         #
 
-        full_path = os.path.join(setup.state['proc_path'],
-                                 tc.state['output_filename']+\
-                                 '_telluric.fits')    
+        telluric_fullpath = os.path.join(setup.state['proc_path'],
+                                         tc.state['output_filename']+\
+                                         '_telluric.fits')    
 
-        fits.writeto(full_path, tc.state['shiftedtc_spectra'], newhdr,
+        fits.writeto(telluric_fullpath,
+                     tc.state['shiftedtc_spectra'],
+                     newhdr,
                      overwrite=True)
         
-        logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
+        logging.info(' Wrote file '+os.path.basename(telluric_fullpath) + \
+                     ' to proc/.')
         
     
     #
@@ -273,7 +275,11 @@ def write_spectra(write_model_spectra:bool=False,
 
     hdr['TC_STDID'] = [tc.state['standard_name'],'Telluric standard']
 
+    hdr['TC_STDST'] = [tc.state['standard_sptype'],'Telluric spectral type']
 
+    hdr['TC_STDT'] = [int(tc.state['standard_teff']),
+                      'Telluric effective temperature (K)']
+    
     hdr['TC_STDB'] = [float('{:.3f}'.format(tc.state['standard_bmag'])),
                        'Telluric standard B mag']
 
@@ -286,7 +292,12 @@ def write_spectra(write_model_spectra:bool=False,
     hdr['TC_dAM'] = [float('{:.2f}'.format(tc.state['delta_airmass'])),\
                        'Telluric Average airmass difference']    
 
-    hdr['TC_METH'] = [tc.state['method'],'Telluric method']
+    hdr['TC_dAN'] = [float('{:.2f}'.format(tc.state['delta_angle'])),\
+                       'Telluric angular separation of object and standard']    
+    
+    hdr['TC_TYPE'] = [tc.state['type'],'Telluric correction type']
+    
+    hdr['TC_METH'] = [tc.state['method'],'Kernel creation method']
 
     if tc.state['method'] == 'deconvolution':
     
@@ -334,7 +345,7 @@ def write_spectra(write_model_spectra:bool=False,
 
         if keys[i] == 'COMMENT':
 
-            junk = 1
+            pass
 
         else:
 
@@ -350,13 +361,16 @@ def write_spectra(write_model_spectra:bool=False,
     # Write the file out
     #
 
-    full_path = os.path.join(setup.state['proc_path'],
-                             tc.state['output_filename']+'.fits')
+    correct_fullpath = os.path.join(setup.state['proc_path'],
+                                    tc.state['output_filename']+'.fits')
     
-    fits.writeto(full_path, tc.state['corrected_spectra'], newhdr,
+    fits.writeto(correct_fullpath,
+                 tc.state['corrected_spectra'],
+                 newhdr,
                  overwrite=True)
 
-    logging.info(' Wrote file '+os.path.basename(full_path) + ' to proc/.')
+    logging.info(' Wrote file '+os.path.basename(correct_fullpath) + \
+                 ' to proc/.')
         
     #
     # Do the QA plotting
@@ -369,7 +383,7 @@ def write_spectra(write_model_spectra:bool=False,
 
         font_size = setup.plots['font_size']*qa['showscale']
         
-        plot_spectra(full_path,
+        plot_spectra(correct_fullpath,
                      ytype='flux and uncertainty',
                      spectrum_linewidth=setup.plots['spectrum_linewidth'],
                      spine_linewidth=setup.plots['spine_linewidth'],            
@@ -386,17 +400,32 @@ def write_spectra(write_model_spectra:bool=False,
                                      tc.state['output_filename']+\
                                      setup.state['qa_extension'])
 
-        plot_spectra(full_path,
+        plot_spectra(correct_fullpath,
                      ytype='flux and uncertainty',
                      spectrum_linewidth=setup.plots['spectrum_linewidth'],
                      spine_linewidth=setup.plots['spine_linewidth'],            
-                     title=os.path.basename(full_path),
+                     title=os.path.basename(correct_fullpath),
                      showblock=qa['showblock'],
                      output_fullpath=file_fullpath,
                      figure_size=setup.plots['landscape_size'],
                      font_size=setup.plots['font_size'],
                      colors=['green','black'])
+
+        if write_telluric_spectra is True:
         
+            file_fullpath = os.path.join(setup.state['qa_path'],
+                                         tc.state['output_filename']+\
+                                         '_telluric'+\
+                                         setup.state['qa_extension'])
 
 
-    
+            plot_spectra(telluric_fullpath,
+                         ytype='flux and uncertainty',
+                         spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                         spine_linewidth=setup.plots['spine_linewidth'],
+                         title=os.path.basename(telluric_fullpath),
+                         showblock=qa['showblock'],
+                         output_fullpath=file_fullpath,
+                         figure_size=setup.plots['landscape_size'],
+                         font_size=setup.plots['font_size'],
+                         colors=['green','black'])

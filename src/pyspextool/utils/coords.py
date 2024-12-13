@@ -7,7 +7,7 @@ def ten(val):
     Converts a sexigesimal number to a decimal
 
     Parameters
-    ----------------
+    ----------
     val : str or list or numpy.ndarray
           A sexigesimal number that is a colon-delimited string or 
           3-element list of numpy.npdarray
@@ -50,11 +50,6 @@ def ten(val):
     > ten(x)
 
     -0.0111234
-
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
 
     """
 

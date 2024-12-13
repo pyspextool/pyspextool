@@ -4,6 +4,7 @@ state = {"instruments": ['uspex', 'spex'],
          "units":['W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1',
                   'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'],
          "version": "1beta",
+         "telluric_correctiontypes":['A0 V', 'basic', 'reflectance'],
          }
 
 

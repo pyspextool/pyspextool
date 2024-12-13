@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import logging
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, angular_separation
 from astropy.io import fits
 from astropy.table.table import Table
 import astropy.units as u
@@ -11,6 +11,7 @@ from astroquery.simbad import Simbad
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
+from pyspextool.utils.coords import ten
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import make_full_path
 from pyspextool.io.fitsheader import get_headerinfo
@@ -18,12 +19,13 @@ from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.load_atmosphere import load_atmosphere
+from pyspextool.io.sptype2teff import sptype2teff
 
 def load_spectra(object_file:str,
                  standard_file:str,
                  standard_info:list | str | dict,
-                 output_filename:str,  
-                 reflectance:bool=False,
+                 output_filename:str,
+                 correction_type:list='A0 V',
                  verbose:bool=None):    
     
     """
@@ -65,8 +67,12 @@ def load_spectra(object_file:str,
     output_filename : str 
         A string giving the root of the output file name, e.g. 'Wolf359'.
 
-    refelectance : {False, True}
-        Set to True to perform a simple division of the object and standard.
+    correction_type : {'A0 V', 'reflectence', 'basic'}
+        The type of telluric correction requested.
+        type = 'A0 V' -> standard correction using an A0 V standard star
+        type = 'reflectence' -> ratio the object and standard.
+        type = 'basic' -> ratio the object and standard and multiply by a
+               Planck function of the appropriate temperature.
     
     verbose : {None, True, False}
         Set to True to report updates to the command line.
@@ -111,11 +117,12 @@ def load_spectra(object_file:str,
 
     check_parameter('load_spectra', 'output_filename', output_filename, 'str')
 
-    check_parameter('load_spectra', 'reflectance', reflectance, 'bool')
-
+    check_parameter('load_spectra', 'correction_type', correction_type, 'str',
+                    possible_values=setup.state['telluric_correctiontypes'])
+    
     check_parameter('load_spectra', 'verbose', verbose, ['NoneType', 'bool'])
     
-    qa = check_qakeywords(verbose=verbose)
+    check_qakeywords(verbose=verbose)
 
     #
     # Clear the state variables
@@ -131,9 +138,9 @@ def load_spectra(object_file:str,
     tc.state['standard_file'] = standard_file
     tc.state['standard_info'] = standard_info
     tc.state['output_filename'] = output_filename
-    tc.state['reflectance'] = reflectance
+    tc.state['type'] = correction_type.replace(' ', '')
 
-    logging.info(f" Telluric Correction\n--------------------------\n")
+    logging.info(" Telluric Correction\n--------------------------\n")
     
     #
     # Load the files into memory
@@ -163,7 +170,7 @@ def load_spectra(object_file:str,
     # Load Vega Model if required
     #
 
-    if reflectance is False:
+    if tc.state['type'] == 'A0V':
 
         load_vegamodel()
     
@@ -237,27 +244,37 @@ def load_data():
 
     object_spectra, object_data = read_spectra_fits(fullpath)
 
-    header = fits.getheader(fullpath)
-
-    object_hdrinfo = get_headerinfo(header,
+    object_hdrinfo = get_headerinfo(object_data['header'],
                                     keywords=setup.state['telluric_keywords'])
+    
+    # Check whether it was created by the extract or combine module -
+    # temporary fix
 
-    # temporary fix if we're applying calibration to a single extraction
     if object_hdrinfo['AVE_AM'][0] == None:
-        object_hdrinfo2 = get_headerinfo(header,keywords=setup.state['combine_keywords'])
+
+        object_hdrinfo2 = get_headerinfo(object_data['header'],
+                                    keywords=setup.state['combine_keywords'])
         object_hdrinfo['AVE_AM'] = [object_hdrinfo2['AM'][0],'Average airmass']
+        
+
+
+
+        
+
+
+
+#        object_hdrinfo2 = get_headerinfo(header,keywords=setup.state['combine_keywords'])
+#        object_hdrinfo['AVE_AM'] = [object_hdrinfo2['AM'][0],'Average airmass']
 
     # Now the standard
 
     fullpath = make_full_path(setup.state['proc_path'],
-                              tc.state['standard_file'], exist=True)
-
+                              tc.state['standard_file'], exist=False)
+    
     standard_spectra, standard_data = read_spectra_fits(fullpath)
-          
-    header = fits.getheader(fullpath)
 
-    standard_hdrinfo = \
-        get_headerinfo(header, keywords=setup.state['telluric_keywords'])
+    standard_hdrinfo = get_headerinfo(standard_data['header'],
+                                      keywords=setup.state['telluric_keywords'])
 
     # Does the standard have only one aperture?
     
@@ -277,6 +294,15 @@ def load_data():
         message = 'The standard lacks an order the object has.'
         raise pySpextoolError(message)
 
+    # Determine the angular separation between the object and standard
+
+    obj_long = ten(object_hdrinfo['RA'][0])*15*np.pi/180.
+    obj_lat = ten(object_hdrinfo['DEC'][0])*np.pi/180.
+    std_long = ten(standard_hdrinfo['RA'][0])*15*np.pi/180.
+    std_lat = ten(standard_hdrinfo['DEC'][0])*np.pi/180.   
+
+    angle = angular_separation(obj_long,obj_lat,std_long,std_lat)*180/np.pi
+
     #
     # Store the results
     #
@@ -284,6 +310,7 @@ def load_data():
     tc.state['standard_spectra'] = standard_spectra
     tc.state['standard_data'] = standard_data
     tc.state['standard_hdrinfo'] = standard_hdrinfo
+    tc.state['delta_angle'] = angle
     tc.state['delta_airmass'] = object_hdrinfo['AVE_AM'][0]-\
         standard_hdrinfo['AVE_AM'][0] 
     tc.state['object_spectra'] = object_spectra
@@ -382,7 +409,7 @@ def load_vegamodel():
     
     """
 
-    logging.info(f' Loading the Vega model.')
+    logging.info(' Loading the Vega model.')
 
     #
     # Determine which Vega model to use and load
@@ -576,18 +603,19 @@ def load_standard_info():
         tc.state['standard_sptype']
         tc.state['standard_vmag']
         tc.state['standard_bmag']
+        tc.state['standard_teff']
 
     """
 
     if isinstance(tc.state['standard_info'], str):
-
+                    
         #
         # user has passed the name of the standard
         #
         
         # Get SIMBAD information of the standard
 
-        logging.info(f' Querying SIMBAD for standard star '+\
+        logging.info(' Querying SIMBAD for standard star '+\
                      tc.state['standard_info']+' information.')
         
         Simbad.add_votable_fields('sptype', 'flux(B)', 'flux(V)')
@@ -604,17 +632,17 @@ def load_standard_info():
             message = 'Standard name "{}"" was not found in SIMBAD; provide '\
                 'the correct name, correct coordinates, or a dictionary '\
                 'containing keys "id", "sptype", "bmag", '\
-                'and "vmag".'.format(telluric.load['standard_name'])
+                'and "vmag".'.format(tc.state['standard_name'])
             
             raise pySpextoolError(message)
         
     if isinstance(tc.state['standard_info'], list):
-
+        
         #
         # user has passed the coordinates of the standard
         #
         
-        logging.info(f' Querying SIMBAD for standard star information...')
+        logging.info(' Querying SIMBAD for standard star information...')
         
         Simbad.add_votable_fields('id','sptype', 'flux(B)', 'flux(V)')
 
@@ -636,10 +664,10 @@ def load_standard_info():
             message = 'Standard coordiantes "{}"" were not found in SIMBAD; '\
                 'provide the correct name, correct coordinates, or a '\
                 'dictionary containing keys "id", "sptype", "bmag", '\
-                'and "vmag".'.format(telluric.load['standard_info'])
+                'and "vmag".'.format(tc.state['standard_info'])
             
             raise pySpextoolError(message)
-
+        
     if isinstance(tc.state['standard_info'], dict):
 
         #
@@ -650,7 +678,6 @@ def load_standard_info():
         standard_sptype = tc.state['standard_info']['sptype']
         standard_vmag = float(tc.state['standard_info']['vmag'])
         standard_bmag = float(tc.state['standard_info']['bmag'])
-    
 
     #
     # Store the results
@@ -660,4 +687,5 @@ def load_standard_info():
     tc.state['standard_sptype'] = standard_sptype
     tc.state['standard_vmag'] = standard_vmag
     tc.state['standard_bmag'] = standard_bmag
+    tc.state['standard_teff'] = sptype2teff(standard_sptype)
     

@@ -18,8 +18,8 @@ def telluric(object_file:str,
              standard_file:str,
              standard_info:list | str | dict,
              output_filename:str,
+             correction_type:str='A0 V',
              output_units:str='W m-2 um-1',
-             reflectance:bool=False,
              default_shiftranges:bool=True,
              user_shiftranges:list=None,
              write_telluric_spectra:bool=True,
@@ -69,16 +69,19 @@ def telluric(object_file:str,
       
     output_filename : str
         The output file name sans the suffix, e.g. 'Wolf359'.
-  
+
+    correction_type : {'A0 V', 'reflectance', 'basic'}
+        The type of telluric correction requested.
+        type = 'A0 V' -> standard correction using an A0 V standard star
+        type = 'reflectance' -> ratio the object and standard.
+        type = 'basic' -> ratio the object and standard and multiply by a
+               Planck function of the appropriate temperature.
+    
     output_units : {'W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1', 
                     'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'}
         The flux density units of the output.
 
-        If reflectance=True, this has no effect.
-
-    refelectence : {False, True} 
-        Set to simply divide by the standard and return a relative 
-        reflectance spectrum.
+        If `correction_type`=True, this has no effect.
 
     default_shiftranges : {True, False}
         Minimize telluric noise by shifting the telluric spectra relative
@@ -143,7 +146,8 @@ def telluric(object_file:str,
         
     check_parameter('telluric', 'output_filename', output_filename, 'str')
 
-    check_parameter('telluric', 'reflectance', reflectance, 'bool')
+    check_parameter('telluric', 'correction_type', correction_type, 'str',
+                    possible_values=setup.state['telluric_correctiontypes'])
 
     check_parameter('telluric', 'write_telluric_spectra',
                     write_telluric_spectra, 'bool')
@@ -179,15 +183,15 @@ def telluric(object_file:str,
     load_spectra(object_file,
                  standard_file,
                  standard_info,
-                 output_filename,  
-                 reflectance=reflectance,
+                 output_filename,
+                 correction_type=correction_type,
                  verbose=qa['verbose'])
 
     #
     # Are we doing a solar system object?
     #
 
-    if reflectance is False:
+    if tc.state['type'] == 'A0V':
 
         # Nope.  So do the full correction.
     

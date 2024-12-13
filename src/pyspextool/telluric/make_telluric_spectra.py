@@ -30,7 +30,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
 
         telluric.load['intensity_unit']
         telluric.state['telluric_spectra']
-        telluric.state['vega_spectra']
+        telluric.state['model_spectra']
         telluric.state['make_done']    
 
     """
@@ -68,15 +68,20 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     tc.state['intensity_unit'] = intensity_unit
     
     telluric_spectra = copy.deepcopy(tc.state['standard_spectra'])
-    
-    if tc.state['reflectance'] is False:
+
+    #
+    # Go by correction type
+    #
+
+    model_spectra = copy.deepcopy(tc.state['standard_spectra'])
+    model_spectra[:,1,:] = 1.0
+    model_spectra[:,2,:] = 1.0
+    model_spectra[:,3,:] = 0
         
+    if tc.state['type'] == 'A0V':
+
         tc.state['intensity_unit'] = intensity_unit
-        
-        vega_spectra = copy.deepcopy(tc.state['standard_spectra'])
-        vega_spectra[:,2,:] = 1.0
-        vega_spectra[:,3,:] = 0
-        
+                
         for i in range(tc.state['standard_norders']):    
             
             standard_wavelength = tc.state['standard_spectra'][i,0,:]
@@ -110,38 +115,92 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             #
             # Change units to those requested by the user
             #
-
-            flux = result[0]
-            unc = result[1]
-            vega = result[2]
             
             flux = convert_fluxdensity(standard_wavelength,
-                                       result[0],'um','erg s-1 cm-2 A-1',
+                                       result[0],
+                                       'um','erg s-1 cm-2 A-1',
                                        intensity_unit)
             
             unc = convert_fluxdensity(standard_wavelength,
-                                      result[1],'um','erg s-1 cm-2 A-1',
+                                      result[1],
+                                      'um','erg s-1 cm-2 A-1',
                                       intensity_unit)
             
             vega = convert_fluxdensity(standard_wavelength,
-                                       result[2],'um','erg s-1 cm-2 A-1',
+                                       result[2],
+                                       'um','erg s-1 cm-2 A-1',
                                        intensity_unit)
             
             # Updates labels
             
             telluric_spectra[i,1,:] = flux
             telluric_spectra[i,2,:] = unc
-            vega_spectra[i,1,:] = vega
+            model_spectra[i,1,:] = vega
             
-        #
-        # Store the Vega results
-        #
+    if tc.state['type'] == 'basic':
 
-        tc.state['vega_spectra'] = vega_spectra    
+        tc.state['intensity_unit'] = intensity_unit
+        
+        for i in range(tc.state['object_norders']):    
 
-    else:
+            standard_wavelength = tc.state['standard_spectra'][i,0,:]
+            standard_fluxdensity = tc.state['standard_spectra'][i,1,:]
+            standard_uncertainty = tc.state['standard_spectra'][i,2,:]
+
+        
+            telluric_spectrum = 1/standard_fluxdensity
+            telluric_unc = 1/standard_fluxdensity**2 * standard_uncertainty
+
+            # Flux calibrate using a Planck function
+
+            l5556 = 5556.e-4
+            bb_5556 = 1.1910e8 / l5556**5 / \
+            (np.exp(14387.7/l5556/tc.state['standard_teff'])-1)
+
+            scale =  3.46e-9*10**(-0.4*(tc.state['standard_vmag']-0.03)) / \
+                bb_5556
+            
+            wave = telluric_spectra[i,0,:]
+            planck = 1.1910e8 / wave**5 / \
+                (np.exp(14387.7/wave/tc.state['standard_teff'])-1)*scale
+            
+            telluric_spectrum *= planck 
+            telluric_unc *= planck
+
+
+            #
+            # Change units to those requested by the user
+            #
+            
+            flux = convert_fluxdensity(standard_wavelength,
+                                       telluric_spectrum,
+                                       'um','erg s-1 cm-2 A-1',
+                                       intensity_unit)
+            
+            unc = convert_fluxdensity(standard_wavelength,
+                                      telluric_unc,
+                                      'um','erg s-1 cm-2 A-1',
+                                      intensity_unit)
+            
+            planck = convert_fluxdensity(standard_wavelength,
+                                         planck,
+                                         'um','erg s-1 cm-2 A-1',
+                                         intensity_unit)
+            
+            # Updates labels
+            
+            telluric_spectra[i,1,:] = flux
+            telluric_spectra[i,2,:] = unc
+            model_spectra[i,1,:] = planck
+                               
+    if tc.state['type'] == 'reflectance':
 
         tc.state['intensity_unit'] = 'reflectance'
+
+        vega_spectra = copy.deepcopy(tc.state['standard_spectra'])
+        vega_spectra[:,1,:] = 1.0
+        vega_spectra[:,2,:] = 1.0
+        vega_spectra[:,3,:] = 0
         
         for i in range(tc.state['object_norders']):    
             
@@ -186,6 +245,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     # user chooses to not correct the H lines or shift the standard.
     #
 
+    tc.state['model_spectra'] = model_spectra
     tc.state['rawtc_spectra'] = np.array(tmp)
     tc.state['ewcorrectedtc_spectra'] = np.array(tmp)
     tc.state['shiftedtc_spectra'] = np.array(tmp)        

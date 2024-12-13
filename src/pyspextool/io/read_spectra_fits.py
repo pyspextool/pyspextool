@@ -2,6 +2,8 @@ import numpy as np
 from astropy.io import fits
 
 from pyspextool.io.check import check_parameter
+from pyspextool.pyspextoolerror import pySpextoolError
+from pyspextool.io.fitsheader import get_headerinfo
 
 
 def read_spectra_fits(file):
@@ -46,7 +48,7 @@ def read_spectra_fits(file):
                 
                 `'slitw_arc'`: float
                 
-                `'creationmodule'` : str 
+                `'module'` : str 
                 
                 `'history'` : astropy.io.fits.header._HeaderCommentaryCards
 
@@ -78,7 +80,7 @@ def read_spectra_fits(file):
         spectra = np.expand_dims(spectra, 0)
     
     #
-    # Check to see if it is a pySpextool  FITS file.
+    # Check to see if it is a (py)Spextool FITS file.
     #
 
     try:
@@ -88,30 +90,22 @@ def read_spectra_fits(file):
     except:
 
         message = file + ' is not a pySpextool FITS file.'
-        raise ValueError(message)
+        raise pySpextoolError(message)
 
     #
     # Start pulling the keywords
     #
 
-    dictionary = {'header': header, 'instr': header['INSTR'],
-                  'obsmode': header['MODE'], 'norders': header['NORDERS']}
+    dictionary = {'header': header,
+                  'instr': header['INSTR'],
+                  'obsmode': header['MODE'],
+                  'norders': header['NORDERS']}
 
     val = header['ORDERS'].split(',')
     orders = np.array([int(x) for x in val])
 
-#    dispersions = np.empty(dictionary['norders'])
-
-#    for i in range(dictionary['norders']):
-
-#        key = 'OR'+str(orders[i]).zfill(3)+'_DP'
-#        dispersions[i] = header[key]
-
-    
-
     add = {'orders': orders,
            'napertures': header['NAPS'],
-#           'dispersions':dispersions,
            'xunits': header['XUNITS'],
            'yunits': header['YUNITS'],
            'lxunits': header['LXUNITS'],
