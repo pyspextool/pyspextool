@@ -7,6 +7,7 @@ from pyspextool.telluric import config as tc
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.units import convert_fluxdensity
+from pyspextool.utils.irplanck import irplanck
 from pyspextool.telluric.core import make_telluric_spectrum
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.utils.interpolate import linear_bitmask_interp1d
@@ -153,20 +154,17 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
 
             # Flux calibrate using a Planck function
 
-            l5556 = 5556.e-4
-            bb_5556 = 1.1910e8 / l5556**5 / \
-            (np.exp(14387.7/l5556/tc.state['standard_teff'])-1)
+            planck_atzlambda = irplanck(setup.state['vega_zlambda'],
+                                        tc.state['standard_teff'])
 
-            scale =  3.46e-9*10**(-0.4*(tc.state['standard_vmag']-0.03)) / \
-                bb_5556
-            
-            wave = telluric_spectra[i,0,:]
-            planck = 1.1910e8 / wave**5 / \
-                (np.exp(14387.7/wave/tc.state['standard_teff'])-1)*scale
+            dmag = tc.state['standard_vmag']+setup.state['vega_zmag']
+            scale = setup.state['vega_zfd']*10**(-0.4*(dmag)) / planck_atzlambda
+
+            planck = irplanck(standard_wavelength,
+                              tc.state['standard_teff'])*scale
             
             telluric_spectrum *= planck 
             telluric_unc *= planck
-
 
             #
             # Change units to those requested by the user

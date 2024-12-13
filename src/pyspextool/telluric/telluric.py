@@ -1,5 +1,6 @@
 import logging
 
+from pyspextool import config as setup
 from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.telluric.load_spectra import load_spectra

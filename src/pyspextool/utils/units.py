@@ -1,9 +1,13 @@
 import numpy as np
+import numpy.typing as npt
 from astropy import units as u
 from pyspextool.io.check import check_parameter
 
-def convert_fluxdensity(wavelength, flux_density, input_wunit, input_funit,
-                        output_funit):
+def convert_fluxdensity(wavelength:npt.ArrayLike,
+                        flux_density:npt.ArrayLike,
+                        input_wunit:str,
+                        input_funit:str,
+                        output_funit:str):
 
     """
     To convert between flux density units
