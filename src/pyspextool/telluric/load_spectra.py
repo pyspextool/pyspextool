@@ -296,10 +296,10 @@ def load_data():
 
     # Determine the angular separation between the object and standard
 
-    obj_long = ten(object_hdrinfo['RA'][0])*15*np.pi/180.
-    obj_lat = ten(object_hdrinfo['DEC'][0])*np.pi/180.
-    std_long = ten(standard_hdrinfo['RA'][0])*15*np.pi/180.
-    std_lat = ten(standard_hdrinfo['DEC'][0])*np.pi/180.   
+    obj_long = 15*ten(object_hdrinfo['RA'][0],toradians=True)
+    obj_lat = ten(object_hdrinfo['DEC'][0],toradians=True)
+    std_long = 15*ten(standard_hdrinfo['RA'][0],toradians=True)
+    std_lat = ten(standard_hdrinfo['DEC'][0],toradians=True)
 
     angle = angular_separation(obj_long,obj_lat,std_long,std_lat)*180/np.pi
 

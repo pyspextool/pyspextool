@@ -293,7 +293,7 @@ def write_spectra(write_model_spectra:bool=False,
                        'Telluric Average airmass difference']    
 
     hdr['TC_dAN'] = [float('{:.2f}'.format(tc.state['delta_angle'])),\
-                       'Telluric angular separation of object and standard']    
+                       'Telluric angular separation (deg) of obj and std']    
     
     hdr['TC_TYPE'] = [tc.state['type'],'Telluric correction type']
     
