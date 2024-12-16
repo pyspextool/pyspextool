@@ -1,27 +1,35 @@
 import numpy as np
+import numpy.typing as npt
+
+from pyspextool.io.check import check_parameter
 
 
-def ten(val):
+def ten(val:str | list | npt.ArrayLike,
+        toradians=False):
 
     """
     Converts a sexigesimal number to a decimal
 
     Parameters
-    ----------------
-    val : str or list or numpy.ndarray
+    ----------
+    val : str, list or ndarray
           A sexigesimal number that is a colon-delimited string or 
-          3-element list of numpy.npdarray
+          3-element list or ndarray
 
+    toradians : {False, True}
+          Set to True to multiply by np.pi/180.
+          Set to False to not multiply by np.pi/180.    
+    
     Returns
-    --------
+    -------
     float
         The decimal number
 
-    Procedure
-    ---------
+    Notes
+    -----
     Based on the IDL Astronomy User's Library sixty program.  
     Basic manipulation and formatting
-
+    
     Examples
     --------
     > x = '-00:00:40.04424'
@@ -51,15 +59,20 @@ def ten(val):
 
     -0.0111234
 
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-
     """
 
-    # Figure out what the name is 
+    #
+    # Check parameter
+    #
 
+    check_parameter('ten', 'val', val, ['str', 'list', 'ndarray'])
+
+    check_parameter('ten', 'toradians', toradians, 'bool')    
+
+    #
+    # Figure out what the name is 
+    #
+    
     typ = type(val).__name__
 
     # String input
@@ -69,7 +82,8 @@ def ten(val):
         val0 = val.replace('++','+')
         hms = (val0.split(':'))
 
-        decimal = abs(float(hms[0])) + float(hms[1]) / 60. + float(hms[2]) / 3600.
+        decimal = abs(float(hms[0])) + float(hms[1]) / 60. + \
+            float(hms[2]) / 3600.
 
         # Grab the first element of the string to test for positivity 
 
@@ -77,42 +91,47 @@ def ten(val):
 
         if posneg == '+':
 
-            return decimal
-
+            pass 
+            
         elif posneg == '-':
 
-            return -1 * decimal
-
-        else:
-
-            return decimal
-
-            # A list of numpy array
+            decimal *= -1
+                
+        # A list of numpy array
 
     elif typ == 'list' or typ == 'ndarray':
 
         # Convert to positive (to deal with things like [-0.0,0.0.40]
 
-        decimal = abs(float(val[0]) + float(val[1]) / 60. + float(val[2]) / 3600.)
+        decimal = abs(float(val[0]) + float(val[1]) / 60. + \
+                      float(val[2]) / 3600.)
 
         # Check for negative
 
         prod = val[0] * val[1] * val[2]
         if prod == -0.0:
+            
             decimal *= -1
 
-        return decimal
+    if toradians is True:
+
+        decimal *= np.pi/180.
+
+            
+    return decimal
 
 
-def sixty(val, colons=None, trailsign=False):
+def sixty(val:int | float,
+          colons:dict=None,
+          trailsign:bool=False):
 
     """
     Converts a decimal number to sexigesmal
 
-    Input Parameters
-    ----------------
-    val : float 
-        A decimal number.
+    Parameters
+    ----------
+    val : int or float 
+        A decimal value
 
     colons: dict of {'dec':int, 'plus':int}, optional
         If given, the output is a colon-separated string.  'dec' gives 
@@ -125,13 +144,13 @@ def sixty(val, colons=None, trailsign=False):
         `trailsign` forces the first element to have the negative sign.  
 
     Returns
-    --------
+    -------
     list, str
         list: a 3-element list giving the sexigesimal values
         str: a string of the form hh:mm:ss 
 
-    Procedure
-    ---------
+    Note
+    ----
     Based on the IDL Astronomy User's Library sixty program.  
     Basic manipulation and formating
 
@@ -172,13 +191,18 @@ def sixty(val, colons=None, trailsign=False):
 
     00:00:40.044
 
-
-    Modification History
-    --------------------
-    2022-05-24 - Written by M. Cushing, University of Toledo.
-
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('sixty', 'val', val, ['int', 'float'])
+
+    check_parameter('sixty', 'colons', colons, ['NoneType', 'dict'])
+
+    check_parameter('sixty', 'trailsign', trailsign, 'bool')        
+    
     # First check to see if the value is negative
 
     neg = [0, 1][val < 0]

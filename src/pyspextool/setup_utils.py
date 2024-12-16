@@ -84,7 +84,30 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     Returns
     -------
     None
+    Loads data into:
 
+        setup.state["raw_path"]
+        setup.state["cal_path"]
+        setup.state["proc_path"]
+        setup.state["qa_path"]
+        setup.state["package_path"]
+        setup.state["instrument_path"]
+        setup.state["irtf"]
+        setup.state["suffix"]
+        setup.state["nint"]
+        setup.state["extract_keywords"]
+        setup.state["combine_keywords"]
+        setup.state["telluric_keywords"]
+        setup.state["lincormax"]
+        setup.state["linearity_info"]
+        setup.state["raw_bad_pixel_mask"]
+        setup.state["pyspextool_keywords"]
+        setup.state["qa_show"]
+        setup.state["qa_showblock"]
+        setup.state["qa_showscale"]
+        setup.state["qa_write"]
+        setup.state["qa_extension"]
+       
     """
 
     #

@@ -683,6 +683,7 @@ def write_apertures_fits(spectra,
     # Now create arrays into which the slices will be placed
 
     array = np.full((norders * naps, 4, max_npixels), np.nan)
+    array[:,3,:] = 0.0
 
     # Now fill in the arrays
 
