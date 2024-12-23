@@ -1,23 +1,25 @@
 import numpy as np
-from pyspextool.utils.coords import *
+from pyspextool.utils.coords import ten, sixty
 import math 
+import pytest
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
-def test_ten():
+@pytest.mark.parametrize('value,expected', 
+    [
+        ('-00:00:40.04424',-0.0111234), # ten('-00:00:40.04424')
+        ([-0.0,0.0,40.04424],-0.0111234), # ten([-0.0,0.0,40.04424])
+        ([0.0,0.0,-40.04424],-0.0111234), # ten([0.0,0.0,-40.04424])
+        (np.array([-0.0,0.0,40.04424]), -0.0111234), # ten(np.array([-0.0,0.0,40.04424]))
+        (np.array([0.0,0.0,-40.04424]), -0.0111234)  #ten(np.array([0.0,0.0,-40.04424]))
+    ])
+def test_ten(value, expected):
+    result = ten(value)
+    assert math.isclose(result,expected)
 
-    result = ten('-00:00:40.04424')
-    assert math.isclose(result,-0.0111234)
-
-    result = ten([-0.0,0.0,40.04424])
-    assert math.isclose(result,-0.0111234)
-
-    result = ten([0.0,0.0,-40.04424])
-    assert math.isclose(result,-0.0111234)
-
-    result = ten(np.array([-0.0,0.0,40.04424]))
-    assert math.isclose(result,-0.0111234)
-
-    result = ten(np.array([0.0,0.0,-40.04424]))
-    assert math.isclose(result,-0.0111234)
+    c = SkyCoord(ra=1, dec=value, unit=('hourangle', 'deg'))
+    assert math.isclose(c.dec.value,expected), f"dec provided: {value}, dec returned: {c.dec}"
+    assert c.dec.unit.is_equivalent(u.degree)
 
 def test_sixty():
 
