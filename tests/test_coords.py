@@ -23,26 +23,22 @@ def test_ten(input_ten, input_angle,expected):
     assert np.isclose(angle.value, expected), f"angle provided: {input_angle}, angle returned: {angle}"
     assert angle.unit.is_equivalent(u.degree)
 
-def test_sixty():
+@pytest.mark.parametrize('input_sixty, output_sixty,plus, trailsign,expected',
+    [
+        (-0.0111234, [0,0,-40.04424], 0, False, '-00:00:40.04'),
+        (-0.0111234, [-0,0,40.04424], 1, True, '-00:00:40.04'),
+        (0.0111234, [0,0,40.04424], 0, False,'00:00:40.04'),
+        (0.0111234, [0,0,40.04424], 1, True,'+00:00:40.04')
 
-    result = sixty(-0.0111234)
-    np.testing.assert_array_equal(result,[0,0,-40.04424])
+    ])
+def test_sixty(input_sixty, output_sixty, plus, trailsign, expected):
 
-    result = sixty(-0.0111234,trailsign=True)
-    np.testing.assert_array_equal(result,[-0,0,40.04424])
+    result = sixty(input_sixty, trailsign=trailsign)
+    np.testing.assert_array_equal(result,output_sixty)
 
-    result = sixty(-0.0111234, colons={'dec':2,'plus':1}, trailsign=True)
-    assert result == '-00:00:40.04'
+    result = sixty(input_sixty, colons={'dec':2,'plus':plus}, trailsign=trailsign)
+    assert result == expected
 
-    result = sixty(0.0111234)
-    np.testing.assert_array_equal(result,[0,0,40.04424])
-
-    result = sixty(0.0111234,trailsign=True)
-    np.testing.assert_array_equal(result,[0,0,40.04424])
-
-    result = sixty(0.0111234, colons={'dec':3,'plus':0}, trailsign=True)
-    assert result == '00:00:40.044'
-
-    result = sixty(0.0111234, colons={'dec':2,'plus':1}, trailsign=True)
-    assert result == '+00:00:40.04'        
-    
+    angle = Angle(input_sixty, unit=u.deg)
+    angle_string = angle.to_string(unit=u.degree, sep=':', alwayssign=trailsign,pad=True, precision=2)      
+    assert angle_string == expected
