@@ -211,10 +211,10 @@ def prepare_line(order:int,
     normalized_flux = flux/continuum
 
     # added error message
-    if len(normalized_flux[np.isfinite(normalized_flux)==False]==0):
-        message = "Failure to fit a H I line in the fit range "+str(wavelength_range)+\
-            "; verify there is a line in this spectrum."
-        raise pySpextoolError(message)
+#    if len(normalized_flux[np.isfinite(normalized_flux)==False]==0):
+#        message = "Failure to fit a H I line in the fit range "+str(wavelength_range)+\
+#            "; verify there is a line in this spectrum."
+#        raise pySpextoolError(message)
 
 
     #
