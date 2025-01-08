@@ -7,7 +7,7 @@ Python code to reduce data obtained with the SpeX spectrograph.
 
 2) Make a `pyspextool_3.13` conda environment and install necessary dependencies, including Python 3.13.
    ```
-   conda env create -f environment.yml
+   conda create -n pyspextool_3.13 python=3.13
    ```
 
 3) Activate the new environment
