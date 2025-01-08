@@ -27,8 +27,9 @@
  <li>Program: [PROGRAM]
  <li>Observer(s): [OBSERVER]
  <li>Instrument mode(s): [INSTRUMENT_MODES]
- <li>Data directory: <a href="[DATA_FOLDER]" target="_blank">[DATA_FOLDER]</a>
- <li>Processsed files directory: <a href="[PROC_FOLDER]" target="_blank">[PROC_FOLDER]</a>
+<!-- <li>Data directory: <a href="[DATA_FOLDER]" target="_blank">[DATA_FOLDER]</a>
+ <li>Processed files directory: <a href="[PROC_FOLDER]" target="_blank">[PROC_FOLDER]</a>
+-->  
  <li><a href="[LOG_HTML]" target="_blank">Observing Log</a>
  <li><a href="[WEATHER_HTML]" target="_blank">Mauna Kea Weather Record</a>
 </ul>

@@ -166,7 +166,7 @@ class runBatch():
 						logging.info('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
 					else:
 #						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
-						logging.info(log_file_prefix+x)
+#						logging.info(log_file_prefix+x)
 						batch.writeLog(dp,log_file=log_file_prefix+x)
 
 # query to pause and check log
