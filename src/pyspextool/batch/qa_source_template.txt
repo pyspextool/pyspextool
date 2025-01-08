@@ -22,6 +22,7 @@
     <li>Target Airmass: [AIRMASS]
     <li>Standard Airmass: [STD_AIRMASS]
     <li>Delta Airmass: [DELTA_AIRMASS]
+    <li>Delta Angle: [DELTA_ANGLE]
     <li>UT time: [UT_START] to [UT_END]
     <li>Total Integration: [INTEGRATION] sec
     <li>Mode: [MODE]

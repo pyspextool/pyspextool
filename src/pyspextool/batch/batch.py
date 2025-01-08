@@ -42,7 +42,7 @@ from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2024 Nov 23'
+VERSION = '2025 Jan 8'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -92,7 +92,7 @@ LOG_PARAMETERS = {
 	'FILENAME': 'log.csv',
 	'HTML_TEMPLATE_FILE' : os.path.join(DIR,'log_template.txt'),
 	'BASE_HTML': r'<!DOCTYPE html>\n<html lang="en">\n\n<head>\n<title>SpeX Log</title>\n</head>\n\n<body>\n<h1>SpeX Log</h1>\n\n[TABLE]\n\n</body>\n</html>',	
-	'COLUMNS' : ['FILE','BEAM','TARGET_NAME','TARGET_TYPE','FIXED-MOVING','RA','DEC','UT_DATE','UT_TIME','MJD','AIRMASS','INTEGRATION','COADDS','INSTRUMENT','SLIT','MODE','PROGRAM','OBSERVER'],
+	'COLUMNS' : ['FILE','BEAM','TARGET_NAME','TARGET_TYPE','FIXED-MOVING','RA','DEC','SHORTNAME','UT_DATE','UT_TIME','MJD','AIRMASS','INTEGRATION','COADDS','INSTRUMENT','SLIT','MODE','PROGRAM','OBSERVER'],
 }
 
 # these are default batch reduction parameters
@@ -120,6 +120,7 @@ BATCH_PARAMETERS = {
 	'FLUXTELL': True,
 	'REREDUCE': False,
 	'STITCH': True,
+	'RENAME': True,
 	'OVERWRITE': False,
 }
 
@@ -193,7 +194,7 @@ QA_PARAMETERS = {
 
 # SIMBAD COLS - first value is the votable name, second value is the returned name
 SIMBAD_COLS = {
-#	'SIMBAD_SEP': 'SEP',
+#	'SIMBAD_SEP': ['angDist','SEP'], # not returned by SIMBAD; added in later
 	'SIMBAD_NAME': ['main_id','MAIN_ID'],
 	'SIMBAD_TYPE': ['sptype','SP_TYPE'],
 	'SIMBAD_CLASS': ['otype','OTYPE'],
@@ -376,6 +377,44 @@ def test(verbose=ERROR_CHECKING):
 ####### AND ORGANIZED DATA #######
 ##################################
 
+def formatDate(date,output='YYYYMMDD'):
+	'''
+	Simple date conversion scheme
+	Output is format YYYYMMDD
+	'''
+	dt = str(date)
+	m,d,y = 0,0,0
+	if '/' in dt:
+		m,d,y = dt.split('/') 
+		y,m,d = int(y),int(m),int(d)
+	elif '-' in dt:
+		y,m,d = dt.split('-')
+		y,m,d = int(y),int(m),int(d)
+	else:
+		if len(dt)==6: y,m,d = int(dt[:2]),int(dt[2:4]),int(dt[-2:])
+		elif len(dt)==8: y,m,d = int(dt[:4]),int(dt[4:6]),int(dt[-2:])
+		else: pass
+# didn't work		
+	if d==0: 
+		logging.info('Could not convert date {}'.format(date))
+		return date
+	if output=='YYYYMMDD': 
+		if y<2000: y=y+2000
+		return '{}{}{}'.format(str(y).zfill(4),str(m).zfill(2),str(d).zfill(2))
+	elif output=='YYMMDD': 
+		if y>2000: y=y-2000
+		return '{}{}{}'.format(str(y).zfill(2),str(m).zfill(2),str(d).zfill(2))
+	elif output=='MM/DD/YY': 
+		if y>2000: y=y-2000
+		return '{}/{}/{}'.format(str(m).zfill(2),str(d).zfill(2),str(y).zfill(2))
+	elif output=='MM/DD/YYYY': 
+		if y<2000: y=y+2000
+		return '{}/{}/{}'.format(str(m).zfill(2),str(d).zfill(2),str(y).zfill(4))
+	else: 
+		logging.info('Do not recognize output format {}; try "YYMMDD","YYYYMMDD","MM/DD/YY", or "MM/DD/YYYY"'.format(output))
+		return date
+
+
 def processFolder(folder,verbose=False):
 	'''
 	Purpose
@@ -459,39 +498,18 @@ def processFolder(folder,verbose=False):
 		if 'flat' in dp.loc[i,'FILE']: 
 			dp.loc[i,'TARGET_NAME'] = FLAT_NAME
 			dp.loc[i,'TARGET_TYPE'] = 'calibration'
-# set standards based on integration time
-# this is not a great way to do this!
+# set target type based on integration time
+# NOTE: THIS IS NOT THE BEST WAY TO DO THIS			
 		if dp.loc[i,'TARGET_TYPE']=='': 
 			dp.loc[i,'TARGET_TYPE']='target'
 			if 'SXD' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<=30.: dp.loc[i,'TARGET_TYPE']='standard'
 			if 'Prism' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<=10.: dp.loc[i,'TARGET_TYPE']='standard'
-
-# if guess above was wrong, reset all standards back to targets
-	dpt = dp[dp['TARGET_TYPE']=='target']
-	dpt.reset_index(inplace=True)
-	if len(dpt)==0: 
-		dp.loc[dp['TARGET_TYPE']=='standard','TARGET_TYPE'] = 'target'
-	dpt = dp[dp['TARGET_TYPE']=='standard']
-	dpt.reset_index(inplace=True)
-	if len(dpt)==0: 
-		if verbose==True: logging.info('Warning: no standards present in list; be sure to check driver file carefully')
-
-# ignore certain modes
-	dp.loc[dp['MODE'].isin(IGNORE_MODES),'TARGET_TYPE'] = 'ignore'
-	# for igmode in IGNORE_MODES:
-	# 	dp.loc[dp['MODE']==igmode,'TARGET_TYPE'] = 'ignore'
-
-# ignore cases where the slit is 60"
-	# for i in range(len(dp)):
-	# 	if 'x60' in dp['SLIT'].iloc[i]: dp['TARGET_TYPE'].iloc[i] = 'ignore'
-	dp.loc[dp['SLIT'].isin(IGNORE_SLITS),'TARGET_TYPE'] = 'ignore'
 
 # fix to coordinates
 	for k in ['RA','DEC']:
 		dp[k] = [x.strip() for x in dp[k]]
 
 # generate ISO 8601 time string and sort
-# --> might need to do some work on this
 	dp['DATETIME'] = [dp.loc[i,'UT_DATE']+'T'+dp.loc[i,'UT_TIME'] for i in range(len(dp))]
 	dp['MJD'] = [Time(d,format='isot', scale='utc').mjd for d in dp['DATETIME']]
 	dp['INSTRUMENT'] = ['spex']*len(dp)
@@ -499,33 +517,69 @@ def processFolder(folder,verbose=False):
 	dp.sort_values('DATETIME',inplace=True)
 	dp.reset_index(inplace=True,drop=True)
 
-# fixed/moving - determined by range of position and motion of soruce
-# NOTE: THIS FAILS IF USER DOESN'T CHANGE NAME OF SOURCE
+# ignore certain modes
+	dp.loc[dp['MODE'].isin(IGNORE_MODES),'TARGET_TYPE'] = 'ignore'
+
+# ignore cases where the slit is 60"
+	dp.loc[dp['SLIT'].isin(IGNORE_SLITS),'TARGET_TYPE'] = 'ignore'
+
+# alternate shortname and replace target name if needed
+	dp['SHORTNAME'] = ['J{}{}'.format(((dp.loc[i,'RA']).replace(':','').replace('+',''))[:4],((dp.loc[i,'DEC']).replace(':',''))[:5]) for i in range(len(dp))]
+	dps = dp[dp['TARGET_NAME']=='']
+	dps.reset_index(inplace=True)
+	if len(dps)>0:
+		for i in range(len(dps)):
+			dp.loc[dp['FILE']==dps.loc[i,'FILE'],'TARGET_NAME'] = dps.loc[i,'SHORTNAME']
+
+# if standard guess was wrong, reset all standards back to targets
+	dpt = dp[dp['TARGET_TYPE']=='target']
+	if len(dpt)==0: 
+		dp.loc[dp['TARGET_TYPE']=='standard','TARGET_TYPE'] = 'target'
+	dpt = dp[dp['TARGET_TYPE']=='standard']
+	if len(dpt)==0: 
+		if verbose==True: logging.info('Warning: no standards present in list; be sure to check driver file carefully')
+
+# fixed/moving - determined by range of position and motion of source
+# uses SKIP_ANGSTEP to identify cases where user forgot to change source name
 	dp['FIXED-MOVING'] = ['fixed']*len(dp)
 	names = list(set(list(dp['TARGET_NAME'])))
 	if ARC_NAME in names: names.remove(ARC_NAME)
+	else: 
+		if verbose==True: logging.info('Warning: no arc lamp files identified in {}'.format(folder))
 	if FLAT_NAME in names: names.remove(FLAT_NAME)
+	else: 
+		if verbose==True: logging.info('Warning: no flat lamp files identified in {}'.format(folder))
+# critical failure - only calibration files
 	if len(names)==0:
 		if verbose==True: logging.info('Warning: no science files identified in {}'.format(folder))
 		return dp
-	else:
-		for n in names:
-			dps = dp[dp['TARGET_NAME']==n]
-			dpsa = dps[dps['BEAM']=='A']
-			dpsa.reset_index(inplace=True)
-			if len(dpsa)>1:	
-				try:
-					pos1 = SkyCoord(dpsa.loc[0,'RA']+' '+dpsa.loc[0,'DEC'],unit=(u.hourangle, u.deg))
-					pos2 = SkyCoord(dpsa.loc[len(dpsa)-1,'RA']+' '+dpsa.loc[len(dpsa)-1,'DEC'],unit=(u.hourangle, u.deg))
-					dx = pos1.separation(pos2).to(u.arcsec)
-					time1 = Time(dpsa.loc[0,'DATETIME'],format='isot', scale='utc')
-					time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
-					dt = (time2-time1).to(u.hour)
-					if dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
-						dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
-					if verbose==True: logging.info('{}: dx={:.1f} arc, dt={:.1f} hr, pm={:.2f} arc/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
-				except Exception as e:
-					if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
+
+	for n in names:
+		dps = dp[dp['TARGET_NAME']==n]
+		dps.reset_index(inplace=True)
+		dpsa = dps[dps['BEAM']=='A']
+		dpsa.reset_index(inplace=True)
+		if len(dpsa)>1:	
+			try:
+				pos1 = SkyCoord(dpsa.loc[0,'RA']+' '+dpsa.loc[0,'DEC'],unit=(u.hourangle, u.deg))
+				pos2 = SkyCoord(dpsa.loc[len(dpsa)-1,'RA']+' '+dpsa.loc[len(dpsa)-1,'DEC'],unit=(u.hourangle, u.deg))
+				dx = pos1.separation(pos2).to(u.arcsec)
+				time1 = Time(dpsa.loc[0,'DATETIME'],format='isot', scale='utc')
+				time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
+				dt = (time2-time1).to(u.hour)
+# very big move ==> likely failure to change name of target				
+				if dx.value > SKIP_ANGSTEP:
+					if verbose==True: logging.info('Detected a jump of dx={:.1f} arcsec implying name change from {} failure; substituting in additional names...'.format(dx,n))
+					for jjj in range(len(dps)-1):
+						pos2 = SkyCoord(dps.loc[jjj+1,'RA']+' '+dpsa.loc[jjj+1,'DEC'],unit=(u.hourangle, u.deg))
+						if pos1.separation(pos2).to(u.arcsec) > SKIP_ANGSTEP:
+							dp.loc[dp['FILE']==dps.loc[jjj,'FILE'],'TARGET_NAME'] = dps.loc[i,'SHORTNAME']
+				elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
+					dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
+					if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.1f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+				else: pass
+			except Exception as e:
+				if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
 
 # program and PI info (based on code by Evan Watson)
 # NOTE: in this realization we're assuming its the same program and PI for the entire folder
@@ -539,7 +593,7 @@ def processFolder(folder,verbose=False):
 		dp['PROGRAM'] = [obs_sch.loc[0,'PROGRAM']]*len(dp)
 		dp['OBSERVER'] = [obs_sch.loc[0,'PI']]*len(dp)
 
-# some additional cleanup
+# some additional formatting cleanup
 	dp['TARGET_NAME'] = [x.replace('.','_').replace(',','_') for x in dp['TARGET_NAME']]
 
 	return dp
@@ -956,6 +1010,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 
 # add in SIMBAD information using astroquery.simbad
 # try statement to catch cases where simbad is not accessible
+	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
 	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 	try:
 		sb = Simbad()
@@ -979,6 +1034,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 							t_match.sort(['SIMBAD_SEP'])
 							for x in list(SIMBAD_COLS.keys()):
 								dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x][1]][0]
+							dpout.loc[dpout['TARGET_NAME']==tnm,'SIMBAD_SEP'] = '{:.2f}'.format(t_match['SIMBAD_SEP'][0])
 				# t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
 			# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
 			# t_match.sort(['angDist'])
@@ -1283,12 +1339,8 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	for x in ['INSTRUMENT','UT_DATE','OBSERVER','PROGRAM']:
 		driver_param[x] = dpc.loc[0,x]
 
-# get rid of all ignored modes
-#	for ignm in IGNORE_MODES:
-#		dpc = dpc[dpc['MODE']!=ignm]
-
 # some file name work
-# THIS NEEDS TO BE UPDATED WITH INSTRUMENT SPECIFIC INFORMATION
+# THIS COULD BE UPDATED WITH INSTRUMENT SPECIFIC INFORMATION
 	dpc['PREFIX'] = [x.replace('.a.fits','').replace('.b.fits','') for x in dpc['FILE']]
 	n=4
 	if driver_param['INSTRUMENT']=='uspex': n=5
@@ -1326,18 +1378,27 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
-# cals - determine here but print below
-	# f.write('\n# Lamp calibrations\n')
-	# for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
-	# 	f.write('{} = {}\n'.format(x,driver_param[x]))
+# cal sets - determine here but print below
 	cal_sets=''
 	dpcal = dpc[dpc['TARGET_TYPE']=='calibration']
 	dpcal.reset_index(inplace=True)
 	fnum = np.array(dpcal['FILE NUMBER'])
 	calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
 	calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-	for i in range(len(calf1)): cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
-#	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
+	for i in range(len(calf1)): 
+		if calf1[i]!=calf2[i]: cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
+	cal_sets = cal_sets[:-1]
+
+# std sets - determine here but print below
+	std_sets=''
+	dpstd = dpc[dpc['TARGET_TYPE']=='standard']
+	dpstd.reset_index(inplace=True)
+	fnum = np.array(dpstd['FILE NUMBER'])
+	calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+	calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+	for i in range(len(calf1)): 
+		if calf1[i]!=calf2[i]: std_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
+	std_sets = std_sets[:-1]
 
 # observations
 	dps = dpc[dpc['TARGET_TYPE']=='target']
@@ -1381,7 +1442,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 			dpcals = dpcal[dpcal['MODE']==m]
 			dpcals.reset_index(inplace=True)
 			if len(dpcals)==0: 
-				if verbose==True: logging.info('WARNING: no calibration files associated with mode {} for source {}'.format(dpsrc.loc[0,'MODE'],n))
+				if verbose==True: logging.info('WARNING: no calibration files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
 				cs = cal_sets.split(',')[0]
 			else:
 				cnum = np.array(dpcals['FILE NUMBER'])
@@ -1391,65 +1452,62 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
 			line+='\tflat{}.fits\twavecal{}.fits'.format(cs,cs)
 
-# assign flux cals based on closest in airmass (0.2), time (2 hr) and position (10")
-			dpflux = dpc[dpc['TARGET_TYPE']=='standard']
-			dpflux = dpflux[dpflux['MODE']==dpsrc.loc[0,'MODE']]
-			dpflux.reset_index(inplace=True)
-			ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cal_sets.split(',')[ical],cal_sets.split(',')[ical])
-			if len(dpflux)==0: 
-				if verbose==True: logging.info('WARNING: no calibration files associated with mode {} for source {}'.format(dpsrc.loc[0,'MODE'],n))
+# assign flux stds based on closest in airmass (0.2), time (2 hr) and position (10 degree) for first std in set
+			dpstds = dpc[dpc['TARGET_TYPE']=='standard']
+			dpstds = dpstds[dpstds['MODE']==m]
+			dpstds.reset_index(inplace=True)
+			ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
+			if len(dpstds)==0: 
+				if verbose==True: logging.info('WARNING: no flux standard files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
 				line+=ftxt
 			else:
-				dpflux['DIFF1'] = [np.abs(float(x)-np.nanmedian(dpsrc['AIRMASS']))/0.2 for x in dpflux['AIRMASS']]
-				dpflux['DIFF2'] = [np.abs(float(x)-np.nanmedian(dpsrc['MJD']))*12. for x in dpflux['MJD']]
-				dpflux['DIFF3'] = [src_coord.separation(SkyCoord(dpflux.loc[i,'RA']+' '+dpflux.loc[i,'DEC'],unit=(u.hourangle, u.deg))).to(u.arcsecond).value/10. for i in range(len(dpflux))]
-				dpflux['DIFF'] = dpflux['DIFF1']+dpflux['DIFF2']+dpflux['DIFF3']
-				fref = dpflux.loc[np.argmin(dpflux['DIFF']),'FILE NUMBER']
-				tname = str(dpflux.loc[np.argmin(dpflux['DIFF']),'TARGET_NAME'])
+				# fnum = np.array(dpstds['FILE NUMBER'])
+				# calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+				ssets = np.array(std_sets.split(','))
+				fnum = np.array(dpstds['FILE NUMBER'])
+				stdf1 = np.array(fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)])
+#				calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+				# 
+				# stdf1 = [x.split('-')[0] for x in ssets]
+				diff = []
+				for fn in stdf1:
+					dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
+					dpstdx.reset_index(inplace=True)
+					diff.append(\
+						np.abs(float(dpstdx.loc[0,'AIRMASS'])-np.nanmedian(dpsrc['AIRMASS']))/0.2+\
+						np.abs(float(dpstdx.loc[0,'MJD'])-np.nanmedian(dpsrc['MJD']))*12.+\
+						src_coord.separation(SkyCoord(str(dpstdx.loc[0,'RA']).replace('+','')+' '+str(dpstdx.loc[0,'DEC']),unit=(u.hourangle, u.deg))).to(u.degree).value/10.)
+				fn = stdf1[np.argmin(diff)]
+				w = [x.split('-')[0]==str(fn) for x in ssets]
+				print(fn,w)
+				ss = ssets[w][0]
+				dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
+				dpstdx.reset_index(inplace=True)
+				print(len(dpstdx))
+				tname = str(dpstdx.loc[0,'TARGET_NAME'])
+				print(ss,tname)
 # temporary fix while sorting out why this doesn't work in testing				
-				if 'SIMBAD_TYPE' in list(dpflux.keys()): tspt =  str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_TYPE'])
+				if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
 				else: tspt = 'UNK'
-				if 'SIMBAD_BMAG' in list(dpflux.keys()): tbmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_BMAG'])
+				if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
 				else: tbmag = 0.
-				if 'SIMBAD_VMAG' in list(dpflux.keys()): tvmag = str(dpflux.loc[np.argmin(dpflux['DIFF']),'SIMBAD_VMAG'])
+				if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
 				else: tvmag = 0.
-				dpfluxs = dpflux[dpflux['TARGET_NAME']==tname]
-				dpfluxs.reset_index(inplace=True)
-				fnum = np.array(dpfluxs['FILE NUMBER'])
-				if len(fnum)<2: 
-					if verbose==True: logging.info('Fewer than 2 flux calibrator files for source {}'.format(tname))
-					line+=ftxt
-				else:				
-					if len(dpcals)>0: 
-						ical = np.argmin(np.abs(cnum1-np.median(dpfluxs['FILE NUMBER'])))
-#						ical = np.argmin(np.abs(np.array(dpcals['FILE NUMBER'])-np.median(dpfluxs['FILE NUMBER'])))
-						cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
-					line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpfluxs.loc[0,'PREFIX']),numberList(fnum),cs,cs)
-
-					# if len(fnum)==2: 
-					# 	line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),fnum[0],fnum[1],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
-					# else:
-					# 	telf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-					# 	telf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-					# 	if len(telf1)==0: line+=ftxt
-					# 	elif len(telf1)==1: line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[0]),telf1[0],telf2[0],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
-					# 	else:
-					# 		i = np.argmin(np.abs(fref-telf1))
-					# 		line+='\t{}\t{}\t{:.0f}-{:.0f}\tflat{}.fits\twavecal{}.fits'.format(tname,str(dpfluxs['PREFIX'].iloc[i]),telf1[i],telf2[i],cal_sets.split(',')[ical],cal_sets.split(',')[ical])
+				line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstds.loc[0,'PREFIX']),ss,cs,cs)
+				print(line)
 			f.write(line+'\n')
 
 # print out cal sets
 	f.write('\n# Lamp calibrations\n')
 	for x in ['FLAT_FILE_PREFIX','ARC_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,driver_param[x]))
-	f.write('CAL_SETS = {}\n'.format(cal_sets[:-1]))
+	f.write('CAL_SETS = {}\n'.format(cal_sets))
 
 # all other options
 		# if len(extraction_options)>0:
 		# 	for k in list(extraction_options.keys()): line+='\t{}={}'.format(k,extraction_options[k])
 
 # space for notes
-
 	f.write('\n# Notes\n')
 	for i in range(5): f.write('# \n')
 
@@ -1592,13 +1650,15 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		sci_log.reset_index(inplace=True)
 		tz = 0.
 		if len(sci_log)>0:
-			for x in ['RA','DEC','AIRMASS','SLIT']:
+			for x in ['RA','DEC','SLIT']:
 				stxt = stxt.replace('['+x+']',str(sci_log.loc[0,x]))
-				if x=='AIRMASS': tz = float(sci_log.loc[0,x])
+			tz = float(sci_log.loc[0,'AIRMASS'])
+			stxt = stxt.replace('[AIRMASS]','{:.2f}'.format(tz))
+			
 # nicer coordinates
-			s = SkyCoord(sci_log.loc[0,'RA']+' '+sci_log.loc[0,'DEC'], unit=(u.hourangle, u.deg))
-			coord = s.to_string('hmsdms',sep=':')
-			desig = 'J'+s.to_string('hmsdms',sep='',pad=True).replace('.','').replace(' ','')
+			srccoord = SkyCoord(sci_log.loc[0,'RA']+' '+sci_log.loc[0,'DEC'], unit=(u.hourangle, u.deg))
+			coord = srccoord.to_string('hmsdms',sep=':')
+			desig = 'J'+srccoord.to_string('hmsdms',sep='',pad=True).replace('.','').replace(' ','')
 			stxt = stxt.replace('[DESIGNATION]',desig)
 			if 'fixed' in sci_param['TARGET_TYPE']:
 				stxt = stxt.replace('[COORDINATE]',coord)
@@ -1625,9 +1685,14 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 		sci_log = obslog[obslog['TARGET_NAME']==sci_param['STD_NAME']]
 		sci_log.reset_index(inplace=True)
 		if len(sci_log)>0:
-			stxt = stxt.replace('[STD_AIRMASS]',str(sci_log.loc[0,'AIRMASS']))
+			stxt = stxt.replace('[STD_AIRMASS]','{:.2f}'.format(float(sci_log.loc[0,'AIRMASS'])))
 			stxt = stxt.replace('[STD_TYPE]','({})'.format(str(sci_log.loc[0,'SIMBAD_TYPE'])))
-			if tz>0: stxt = stxt.replace('[DELTA_AIRMASS]','{:2f}'.format(float(sci_log.loc[0,'AIRMASS'])-tz))
+			if tz>0: stxt = stxt.replace('[DELTA_AIRMASS]','{:.2f}'.format(float(sci_log.loc[0,'AIRMASS'])-tz))
+			else: stxt = stxt.replace('[DELTA_AIRMASS]','N/A')
+			stdcoord = SkyCoord(sci_log.loc[0,'RA']+' '+sci_log.loc[0,'DEC'], unit=(u.hourangle, u.deg))
+			sep = stdcoord.separation(srccoord).degree
+			stxt = stxt.replace('[DELTA_ANGLE]','{:.2f} deg'.format(sep))
+
 
 # final calibrated file (check for presence, otherwise combined file)
 		ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
@@ -1663,11 +1728,11 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # fix for distributed file list
 			tmp = re.split('[,-]',sci_param['{}_FILES'.format(x)])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)==0:
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)>0:
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+			# imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			# if len(imfile)==0:
+			# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			# if len(imfile)>0:
+			# 	ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)==0:
 				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
@@ -1680,7 +1745,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)==0:
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			if len(imfile)>0: 
 				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
@@ -1707,16 +1772,20 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 # in qa folder ==> move to image folder
 			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 			files = list(filter(lambda x: os.path.exists(x),files))
-			if len(files)>0:
-				for f in files: shutil.move(f,f.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
-# in proc folder ==> move to image folder
-			files = make_full_path(qa_parameters['PROC_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
-			files = list(filter(lambda x: os.path.exists(x),files))
-			if len(files)>0:
-				for f in files: shutil.move(f,f.replace(qa_parameters['PROC_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
-# plot everything in image folder
-			files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
-			files = list(filter(lambda x: os.path.exists(x),files))
+			if len(files)==0:
+				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
+				files = list(filter(lambda x: os.path.exists(x),files))
+			print(files)
+# 			if len(files)>0:
+# 				for f in files: shutil.move(f,f.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
+# # in proc folder ==> move to image folder
+# 			files = make_full_path(qa_parameters['PROC_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
+# 			files = list(filter(lambda x: os.path.exists(x),files))
+# 			if len(files)>0:
+# 				for f in files: shutil.move(f,f.replace(qa_parameters['PROC_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
+# # plot everything in image folder
+# 			files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
+# 			files = list(filter(lambda x: os.path.exists(x),files))
 			# 	files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 			# 	files = list(filter(lambda x: os.path.exists(x),files))
 			# if len(files)==0:
@@ -1734,54 +1803,57 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 			stxt = stxt.replace('[{}_CALIBRATED_FILES]'.format(x),ptxt)
 
-# telluric correction files - NOT CURRENTLY BEING MADE
-			# cnt=0
-			# ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
-			# imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)>0: 
-			# 	imfile.sort()
-			# 	ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			# 	cnt+=1
-			# 	if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+# telluric correction files
+			cnt=0
+			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_decon{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				imfile.sort()
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				cnt+=1
+				if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 
-			# imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			# if len(imfile)>0: 
-			# 	imfile.sort()
-			# 	ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			# 	cnt+=1
-			# 	if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_rv{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				imfile.sort()
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				cnt+=1
+				if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
 
-			# ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
-			# stxt = stxt.replace('[STD_TELLURIC_FILES]'.format(x),ptxt)
+			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfile)>0: 
+				imfile.sort()
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+				cnt+=1
+				if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
+
+			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[STD_TELLURIC_FILES]'.format(x),ptxt)
 
 
-# traces and apertures
+# traces and profiles
 			fnums = extract_filestring(sci_param['{}_FILES'.format(x)],'index')
 			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 			cnt = 0
 			for f in fnums:
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
-				if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_trace{}'.format(sci_param['{}_PREFIX'.format(x)],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(sci_param['{}_PREFIX'.format(x)],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
 					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
 					cnt+=1
 					if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
-				# imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
-				# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_apertureparms{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
-				# if len(imfile)>0: 
-				# 	imfile.sort()
-				# 	ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-				# 	cnt+=1
-				# 	if np.mod(cnt,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_profiles{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
-				if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_trace{}'.format(driver['SCIENCE_FILE_PREFIX'],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.a_*_profiles{}'.format(sci_param['{}_PREFIX'.format(x)],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
+				if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.a_*_profiles{}'.format(sci_param['{}_PREFIX'.format(x)],str(f).zfill(setup.state['nint']),qa_parameters['PLOT_TYPE'])))
 				if len(imfile)>0: 
 					imfile.sort()
 					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
@@ -2157,30 +2229,30 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 			outfile = '{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
 
-# check if combined file is present - skip if not overwriting
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
-			else:
 # check that all input files are present - skip any they are missing with a warning
-				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-				fnums =  extract_filestring(spar['TARGET_FILES'],'index')
-				fnumstr = ''
-				for nnn in fnums:
-					file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
-					if os.path.exists(file)==True: 
-						fnumstr+='{},'.format(int(nnn))
-					else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
-# combine
-				if fnumstr=='': 
-					if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
-				else:
-					fnumstr=fnumstr[:-1]
-					ps.combine.combine(
-						[spar['SPECTRA_FILE_PREFIX'],fnumstr],
-						outfile,
-						verbose=parameters['VERBOSE']
-					)
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+			fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+			fnumstr = ''
+			for nnn in fnums:
+				file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+				if os.path.exists(file)==True: 
+					fnumstr+='{},'.format(int(nnn))
+				else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
 
+# no files - skip
+			if fnumstr=='': 
+				if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
+# check if combined file is present - skip if not overwriting
+			elif os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
+				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
+# combine
+			else:
+				fnumstr=fnumstr[:-1]
+				ps.combine.combine(
+					[spar['SPECTRA_FILE_PREFIX'],fnumstr],
+					outfile,
+					verbose=parameters['VERBOSE']
+				)
 
 ### FLUX CAL ###
 
@@ -2189,30 +2261,30 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 			outfile = '{}{}'.format(spar['COMBINED_FILE_PREFIX'],fsuf)
 
-# check if combined file is present - skip if not overwriting
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
-			else:
-        
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+			fnums =  extract_filestring(spar['STD_FILES'],'index')
+			fnumstr = ''
 # check that all input files are present - skip any they are missing with a warning
-				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-				fnums =  extract_filestring(spar['STD_FILES'],'index')
-				fnumstr = ''
-				for nnn in fnums:
-					file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
-					if os.path.exists(file)==True: 
-						fnumstr+='{},'.format(int(nnn))
-					else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
+			for nnn in fnums:
+				file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+				if os.path.exists(file)==True: 
+					fnumstr+='{},'.format(int(nnn))
+				else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
+# no files - skip
+			if fnumstr=='': 
+				if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
+
+# check if combined file is present - skip if not overwriting
+			elif os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
+				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 # combine
-				if fnumstr=='': 
-					if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
-				else:
-					fnumstr=fnumstr[:-1]
-					ps.combine.combine(
-						[spar['SPECTRA_FILE_PREFIX'],fnumstr],
-						outfile,
-						verbose=parameters['VERBOSE']
-					)
+			else:        
+				fnumstr=fnumstr[:-1]
+				ps.combine.combine(
+					[spar['SPECTRA_FILE_PREFIX'],fnumstr],
+					outfile,
+					verbose=parameters['VERBOSE']
+				)
 
 ####################
 ## FLUX CALIBRATE ##
@@ -2234,39 +2306,40 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			csuf = '{}-{}'.format(tmp[0],tmp[-1])
 			outfile = '{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)
 
-# first check if file is present - skip if not overwriting <-- NOT NEEDED
-			# if os.path.exists(outfile)==True and parameters['OVERWRITE']==False:
-			# 	if parameters['VERBOSE']==True: print('\n{}{}.fits already created, skipping (use --overwrite option to remake)'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf))				
-			# else:
+# first check if file is present - skip if not overwriting
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
+				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 
+			else:
 # prep file names
-			objfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf)
-			stdfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf)
+				objfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf)
+				stdfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf)
 
 # depends on fixed or moving source which method we use
-			if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
-				if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
-				reflectance = False
-			elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
-				if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
-				reflectance = True
-			else: 
-				if parameters['VERBOSE']==True: logging.info('\nTarget type {} not recognized, skipping flux/telluric correction'.format(spar['TARGET_TYPE'].split('-')[0]))			
-				continue
+# ADD A CHOICE HERE WHEN BASIC CORRECTION DESIRED AS INPUT PARAMETER: E.G. TELLURIC=BASIC
+				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
+					if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
+					correction_type = 'A0 V'
+				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
+					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
+					correction_type = 'reflectance'
+				else: 
+					if parameters['VERBOSE']==True: logging.info('\nTarget type {} not recognized, skipping flux/telluric correction'.format(spar['TARGET_TYPE'].split('-')[0]))			
+					continue
 
 # NOTE: NEED TO PARAMETERIZE DEFAULTS FOR WRITE TELLURIC AND WRITE MODEL
-			ps.telluric.telluric(objfile,stdfile,standard_data,outfile,reflectance=reflectance,verbose=parameters['VERBOSE'])
+				ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,verbose=parameters['VERBOSE'])
 
 # Telluric calibrate all individual files
-			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-			fnums =  extract_filestring(spar['TARGET_FILES'],'index')
-			fnumstr = ''
-			for nnn in fnums:
-				objfile = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
-				if os.path.exists(objfile)==True: 
-					outfile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX']).replace('.fits','')
-					ps.telluric.telluric(objfile,stdfile,standard_data,outfile,reflectance=reflectance,verbose=parameters['VERBOSE'])
-				else: logging.info('WARNING: could not find file {}, not conductin telluric calibration'.format(os.path.basename(file)))
+				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+				fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+				fnumstr = ''
+				for nnn in fnums:
+					objfile = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+					if os.path.exists(objfile)==True: 
+						outfile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX']).replace('.fits','')
+						ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,qa_write=False,verbose=parameters['VERBOSE'])
+					else: logging.info('WARNING: could not find file {}, not conductin telluric calibration'.format(os.path.basename(file)))
 
 
 #####################
@@ -2285,6 +2358,51 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if parameters['VERBOSE']==True: 
 					logging.info('\n** NOTE: STITCHING HAS NOT BEEN IMPLEMENTED **')
 
+
+
+##################
+## RENAME FILES ##
+##################
+
+## CURRENTLY GOING FROM TELLURIC TO FINAL - SKIPPING STITCHING ##
+	if parameters['RENAME']==True:
+		for k in scikeys:
+			spar = parameters[k]
+			for kk in bkeys:
+				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
+
+# fix for distributed file list
+			tmp = re.split('[,-]',spar['TARGET_FILES'])
+			tsuf = '{}-{}'.format(tmp[0],tmp[-1])
+			infile = '{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)
+			name=spar['TARGET_NAME'].replace(' ','-').replace('_','-')
+			for x in [',',':',';','.']: name=name.replace(x,'')
+			date = formatDate(spar['UT_DATE'])
+			outfile = '{}-{}_{}_{}_{}_{}comb.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf)
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
+				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))
+			else:
+				shutil.copy2(os.path.join(parameters['PROC_FOLDER'],infile),os.path.join(parameters['PROC_FOLDER'],outfile))
+				if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(infile,outfile))
+
+# Repeat for all individual files
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+
+			fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+			fnumstr = ''
+			for nnn in fnums:
+				objfile = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+				infile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX'])
+				outfile = os.path.join(parameters['PROC_FOLDER'],'{}-{}_{}_{}_{}_{}.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],nnn))
+				if os.path.exists(outfile)==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created, skipping renaming (use --overwrite option to remake)'.format(os.path.basename(outfile)))
+				elif os.path.exists(infile)==False:
+					if parameters['VERBOSE']==True: logging.info(' input file {} does not exist, skipping renaming'.format(os.path.basename(infile)))
+				else:
+					shutil.copy2(infile,outfile)
+					if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(os.path.basename(infile),os.path.basename(outfile)))
+
+# END OF BATCH
 	return
 
 
@@ -2309,3 +2427,6 @@ if __name__ == '__main__':
 		logging.info('\nReducing spectra')
 		batchReduce(par)
 		logging.info('\nReduction complete: processed files are in {}'.format(sys.argv[3]))
+
+
+
