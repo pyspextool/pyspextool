@@ -5,7 +5,7 @@ Python code to reduce data obtained with the SpeX spectrograph.
 
 1) [Install miniconda](https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/index.html#), if you don't have it already.
 
-2) Make a `pyspextool_3.13` conda environment and install necessary dependencies, including Python 3.13.
+2) Make a `pyspextool_3.13` conda environment with Python 3.13.
    ```
    conda create -n pyspextool_3.13 python=3.13
    ```
@@ -15,12 +15,12 @@ Python code to reduce data obtained with the SpeX spectrograph.
    conda activate pyspextool_3.13
    ```
 
-4) Install the `pyspextool` package from PyPi
+4) Install the `pyspextool` package from PyPI using `pip`. This also installs the other Python packages that `pyspextool` depends upon.
    ```
    pip install pyspextool
    ```
 
-5) Optional - Install other Python packages
+5) Install other Python packages
 
    If you want to use Jupyter notebooks or other Python tools with `pyspextool`, you need to install them in the new environment. For example:
    ```
@@ -39,7 +39,7 @@ You will also need `pytest` and the test data in order to run the tests.
 
 3) Make and activate a dedicated virtual environment, ideally with Python 3.13.
 
-4) Make an editable install of pyspextool and install the extra packages needed for testing and developing. In the` pyspextool/` direcotry:
+4) Install and editable version of `pyspextool` and install the extra packages needed for testing and developing. In the` pyspextool/` direcotry:
 ```
 pip install -e ".[test]"
 
