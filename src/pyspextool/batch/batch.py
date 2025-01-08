@@ -1479,13 +1479,13 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 						src_coord.separation(SkyCoord(str(dpstdx.loc[0,'RA']).replace('+','')+' '+str(dpstdx.loc[0,'DEC']),unit=(u.hourangle, u.deg))).to(u.degree).value/10.)
 				fn = stdf1[np.argmin(diff)]
 				w = [x.split('-')[0]==str(fn) for x in ssets]
-				print(fn,w)
+#				print(fn,w)
 				ss = ssets[w][0]
 				dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
 				dpstdx.reset_index(inplace=True)
-				print(len(dpstdx))
+#				print(len(dpstdx))
 				tname = str(dpstdx.loc[0,'TARGET_NAME'])
-				print(ss,tname)
+#				print(ss,tname)
 # temporary fix while sorting out why this doesn't work in testing				
 				if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
 				else: tspt = 'UNK'
@@ -1494,7 +1494,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
 				else: tvmag = 0.
 				line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstds.loc[0,'PREFIX']),ss,cs,cs)
-				print(line)
+#				print(line)
 			f.write(line+'\n')
 
 # print out cal sets
@@ -1775,7 +1775,7 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			if len(files)==0:
 				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 				files = list(filter(lambda x: os.path.exists(x),files))
-			print(files)
+#			print(files)
 # 			if len(files)>0:
 # 				for f in files: shutil.move(f,f.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
 # # in proc folder ==> move to image folder
