@@ -23,6 +23,12 @@ dependencies = [
     "dust_extinction",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "ruff"
+    ]
+
 [tool.setuptools]
 include-package-data = true
 
