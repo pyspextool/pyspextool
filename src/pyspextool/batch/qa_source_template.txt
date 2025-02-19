@@ -13,7 +13,190 @@
 
 <table>
  <tr>
+
 [CALIBRATED_FILE]
+
+<!-- temporarily remove
+
+    <script>
+        // Get the dimensions of the viewport
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const margin = { top: 200, right: 200, bottom: 200, left: 200 }; // Increased margins for buffer space
+
+        // Create SVG container
+        const svg = d3.select("body")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const container = svg.append("g"); // Group for all elements
+
+        // Tooltip for displaying coordinates
+        const tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+        // Load the CSV data
+        d3.csv("[SPECTRUM CSV").then(function(data) {
+            // Assuming the CSV has columns "x" and "y"
+            data.forEach(d => {
+                d.wave = +d.wave; // Convert x to number
+                d.flux = +d.flux; // Convert y to number
+                d.unc = +d.unc; // Convert y to number
+            });
+
+            // Scales
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.wave))
+                .range([margin.left, width - margin.right]);
+
+            const yScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.flux))
+                .range([height - margin.bottom, margin.top]);
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale);
+            const yAxis = d3.axisLeft(yScale);
+
+            // Append axes to container
+            const xAxisGroup = container.append("g")
+                .attr("transform", `translate(0,${height - margin.bottom})`)
+                .attr("class", "x-axis")
+                .call(xAxis);
+
+            const yAxisGroup = container.append("g")
+                .attr("transform", `translate(${margin.left},0)`)
+                .attr("class", "y-axis")
+                .call(yAxis);
+
+            // Line generator
+            const line = d3.line()
+                .wave(d => xScale(d.wave))
+                .flux(d => yScale(d.flux))
+                .curve(d3.curveMonotoneX); // Smooth curve
+
+            // Add line path to container
+            const linePath = container.append("path")
+                .datum(data)
+                .attr("fill", "none")
+                .attr("stroke", "steelblue")
+                .attr("stroke-width", 2)
+                .attr("d", line);
+
+            // Add circles for data points with hover interaction
+            const circles = container.selectAll("circle")
+                .data(data)
+                .enter()
+                .append("circle")
+                .attr("cx", d => xScale(d.wave))
+                .attr("cy", d => yScale(d.flux))
+                .attr("r", 4)
+                .style("fill", "steelblue")
+                .style("opacity", 0.7)
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`x: ${d.wave.toFixed(2)}, y: ${d.flux.toFixed(2)}`)
+                        .style("left", `${event.pageX + 10}px`)
+                        .style("top", `${event.pageY - 20}px`);
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                });
+
+            // Create the clipping path
+            const clipPath = svg.append("defs")
+                .append("clipPath")
+                .attr("id", "clip")
+                .append("rect")
+                .attr("x", margin.left)
+                .attr("y", margin.top)
+                .attr("width", width - margin.left - margin.right)
+                .attr("height", height - margin.top - margin.bottom);
+
+            // Zooming behavior
+            const zoom = d3.zoom()
+                .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
+                .scaleExtent([1, 10]) // Constrain zooming scale between 1x and 10x
+                .translateExtent([
+                    [margin.left, margin.top], 
+                    [width - margin.right, height - margin.bottom]
+                ]) // Constrain panning within the bounds of the SVG container
+                .on("zoom", (event) => {
+                    const transform = event.transform;
+                    const newXScale = transform.rescaleX(xScale);
+                    const newYScale = transform.rescaleY(yScale);
+
+                    // Get the extent of the data (to prevent the graph from exceeding the axes)
+                    const xDomain = newXScale.domain();
+                    const yDomain = newYScale.domain();
+
+                    // Prevent the graph from going beyond the axes limits
+                    const xMin = Math.max(xDomain[0], xScale.domain()[0]);
+                    const xMax = Math.min(xDomain[1], xScale.domain()[1]);
+
+                    const yMin = Math.max(yDomain[0], yScale.domain()[0]);
+                    const yMax = Math.min(yDomain[1], yScale.domain()[1]);
+
+                    // Update the scales to ensure they don't extend beyond the axes
+                    newXScale.domain([xMin, xMax]);
+                    newYScale.domain([yMin, yMax]);
+
+                    // Update scales for axes
+                    xAxisGroup.call(xAxis.scale(newXScale));
+                    yAxisGroup.call(yAxis.scale(newYScale));
+
+                    // Update line path
+                    linePath.attr("d", line.wave(d => newXScale(d.wave)).flux(d => newYScale(d.flux)));
+
+                    // Update circles
+                    circles
+                        .attr("cx", d => newXScale(d.wave))
+                        .attr("cy", d => newYScale(d.flux));
+
+                    // Apply clip-path only to the graph elements (line and circles)
+                    linePath.attr("clip-path", "url(#clip)");
+                    circles.attr("clip-path", "url(#clip)");
+                });
+
+            // Apply zooming behavior to the SVG container
+            svg.call(zoom);
+
+            // Resize SVG when the window is resized
+            window.addEventListener("resize", () => {
+                const newWidth = window.innerWidth;
+                const newHeight = window.innerHeight;
+
+                d3.select("svg")
+                    .attr("width", newWidth)
+                    .attr("height", newHeight);
+
+                xScale.range([margin.left, newWidth - margin.right]);
+                yScale.range([newHeight - margin.bottom, margin.top]);
+
+                // Update the axes with the new scales
+                xAxisGroup
+                    .attr("transform", `translate(0,${newHeight - margin.bottom})`)
+                    .call(xAxis.scale(xScale));
+
+                yAxisGroup.call(yAxis.scale(yScale));
+
+                // Update line path
+                linePath.attr("d", line.wave(d => xScale(d.wave)).flux(d => yScale(d.flux)));
+
+                // Update circles
+                circles
+                    .attr("cx", d => xScale(d.wave))
+                    .attr("cy", d => yScale(d.flux));
+            });
+        }).catch(function(error) {
+            console.error("Error loading the CSV file: ", error);
+        });
+    </script>
+
+-->
+    
   <td align="left">
    <ul>
     <li>Source Name: [TARGET_NAME] ([TARGET_TYPE]) [SBDB]

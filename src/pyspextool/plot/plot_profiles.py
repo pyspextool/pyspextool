@@ -313,4 +313,8 @@ def doplot(plot_number,
                                yrange[1], color=psfradius_color,
                                linestyle='dotted')
 
+    # fix layout overlap
+    
+    pl.tight_layout()
+
 

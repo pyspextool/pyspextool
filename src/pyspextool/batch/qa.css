@@ -65,3 +65,15 @@ th, td {
   content: "\2796"; /* Unicode character for "minus" sign (-) */
 }
 
+.tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  height: auto;
+  padding: 5px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  pointer-events: none;
+}

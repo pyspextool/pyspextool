@@ -476,6 +476,10 @@ def doplot(spectra:npt.ArrayLike,
                 z  = mask == 1
                 axe.plot(xvalues[z], yvalues[z], marker='.',
                          markersize=2, color='blue', linestyle='')
+
+    # fix layout overlap
+    
+    pl.tight_layout()
                 
 
             
