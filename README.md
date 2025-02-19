@@ -43,10 +43,10 @@ You will also need `pytest` and the test data in order to run the tests.
 3) Make and activate a dedicated virtual environment, ideally with Python 3.13.
 
 4) Install and editable version of `pyspextool` and install the extra packages needed for testing and developing. In the` pyspextool/` direcotry:
-```
-pip install -e ".[test]"
+   ```
+   pip install -e ".[test]"
 
-```
+   ```
 
 5) Setup and download the `test_data/` submodule
    ```
