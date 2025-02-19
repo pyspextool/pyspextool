@@ -92,10 +92,15 @@ def write_spectra(write_model_spectra:bool=False,
                           showblock=qa_showblock,
                           write=qa_write)
     
+    full_path = os.path.join(setup.state['proc_path'],
+                             tc.state['output_filename']+\
+                             '_vega.fits')    
+
     #
     # Write the (Vega) model to disk if requested.
     #
 
+    print('TRUE?', write_model_spectra)
     if write_model_spectra is True:
 
         # Create the header. Make a new hdrinfo dictionary using the standard
@@ -151,10 +156,6 @@ def write_spectra(write_model_spectra:bool=False,
         #
         # Write the file out
         #
-
-        full_path = os.path.join(setup.state['proc_path'],
-                                 tc.state['output_filename']+\
-                                 '_vega.fits')    
 
         fits.writeto(full_path, tc.state['model_spectra'], newhdr,
                      overwrite=True)
