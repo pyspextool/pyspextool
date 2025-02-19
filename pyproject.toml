@@ -21,6 +21,7 @@ dependencies = [
     "astroquery",
     "specutils",
     "dust_extinction",
+    "jinja2",
 ]
 
 [tool.setuptools]
