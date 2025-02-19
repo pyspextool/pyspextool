@@ -2455,6 +2455,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 ## RENAME FILES ##
 ##################
 
+## CURRENTLY GOING FROM TELLURIC TO FINAL - SKIPPING STITCHING ##
 	if parameters['RENAME']==True:
 		for k in scikeys:
 			spar = parameters[k]
