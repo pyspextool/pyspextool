@@ -41,8 +41,9 @@ import pyspextool as ps
 from pyspextool import config as setup
 from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
+from pyspextool.io.read_spectra_fits import read_spectra_fits
 
-VERSION = '2025 Jan 8'
+VERSION = '2025 Feb 12'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,9 +51,9 @@ CODEDIR = ps.__path__[0]
 
 XMatch.TIMEOUT = 180 # time out for XMatch search
 Simbad.TIMEOUT = 60
-MOVING_MAXSEP = 15 # max separation for fixed target in arcsec
-MOVING_ANGRATE = 10 # max moving rate for fixed target in arcsec/hr
-SKIP_ANGSTEP = 60 # separation in arcsec indicating this is a movement wiout change in name
+MOVING_MAXSEP = 15. # max separation for fixed target in arcsec
+MOVING_ANGRATE = 10. # max moving rate for fixed target in arcsec/hr
+SKIP_ANGSTEP = 3600. # separation in arcsec indicating this is a movement without change in name
 INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
 ARC_NAME = 'arc lamp'
 FLAT_NAME = 'flat lamp'
@@ -62,7 +63,7 @@ BACKUP_INSTRUMENT_DATA_URL = 'https://drive.google.com/drive/folders/1hxWS9a4G41
 BACKUP_REDUCTION_DATA_URL = 'https://drive.google.com/drive/folders/1fK345gOCKHtffluiFjPLUuRYbS7tK_yl?usp=sharing'
 
 # modes to ignore
-IGNORE_MODES = ['LongXD2.3','LongXD2.1','LongXD1.9','LongSO','LXD2.3','LXD2.1','LXD1.9','LXD_short','LXD_long','LowRes60']
+IGNORE_MODES = ['LongXD2.3','LongXD2.1','LongXD1.9','LongSO','LXD2.3','LXD2.1','LXD1.9','LXD_short','LXD_long','LowRes60','ShortSO']
 IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60']
 
 # this is the data to extract from header, with options for header keywords depending on when file was written
@@ -160,7 +161,7 @@ OBSERVATION_PARAMETERS_OPTIONAL = {
 	'APERTURE': 1.5,
 	'PSF_RADIUS': 1.5,
 	'BACKGROUND_RADIUS': 2.5,
-	'BACKGROUND_WIDTH': 4,
+	'BACKGROUND_WIDTH': 4.,
 	'SCALE_RANGE': [1.0,1.5],
 }
 
@@ -214,6 +215,7 @@ LEGACY_FOLDER = 'irtfdata.ifa.hawaii.edu'
 IRSA_FOLDER = 'IRTF'
 IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
+DEFAULT_TARGET_NAMES = ['','Object_Observed']
 
 # observing schedule
 OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
@@ -508,6 +510,9 @@ def processFolder(folder,verbose=False):
 # fix to coordinates
 	for k in ['RA','DEC']:
 		dp[k] = [x.strip() for x in dp[k]]
+	for i in range(len(dp)):
+		if dp.loc[i,'DEC'][0] not in ['-','+']: dp.loc[i,'DEC'] = '+'+dp.loc[i,'DEC']
+#		if dp.loc[i,'RA'][0]=='+': dp.loc[i,'RA'] = dp.loc[i,'RA'][1:]
 
 # generate ISO 8601 time string and sort
 	dp['DATETIME'] = [dp.loc[i,'UT_DATE']+'T'+dp.loc[i,'UT_TIME'] for i in range(len(dp))]
@@ -523,13 +528,21 @@ def processFolder(folder,verbose=False):
 # ignore cases where the slit is 60"
 	dp.loc[dp['SLIT'].isin(IGNORE_SLITS),'TARGET_TYPE'] = 'ignore'
 
-# alternate shortname and replace target name if needed
+# alternate filename or shortname to replace target name if needed
 	dp['SHORTNAME'] = ['J{}{}'.format(((dp.loc[i,'RA']).replace(':','').replace('+',''))[:4],((dp.loc[i,'DEC']).replace(':',''))[:5]) for i in range(len(dp))]
-	dps = dp[dp['TARGET_NAME']=='']
-	dps.reset_index(inplace=True)
-	if len(dps)>0:
-		for i in range(len(dps)):
-			dp.loc[dp['FILE']==dps.loc[i,'FILE'],'TARGET_NAME'] = dps.loc[i,'SHORTNAME']
+	if dp.loc[0,'INSTRUMENT']=='uspex': nint=5
+	else: nint =4
+	dp['ALTNAME'] = [(x.replace('.a.fits','').replace('.b.fits','')[:-nint]).upper() for x in dp['FILE']]
+	altnames = list(set(list(dp['ALTNAME'])))
+	for x in ['ARC','FLAT']:
+		if x in altnames: altnames.remove(x)
+	if len(altnames)<=1: dp['ALTNAME'] = dp['SHORTNAME']
+	for x in DEFAULT_TARGET_NAMES:
+		dps = dp[dp['TARGET_NAME']==x]
+		dps.reset_index(inplace=True)
+		if len(dps)>0:
+			for i in range(len(dps)):
+				dp.loc[dp['FILE']==dps.loc[i,'FILE'],'TARGET_NAME'] = dps.loc[i,'ALTNAME']
 
 # if standard guess was wrong, reset all standards back to targets
 	dpt = dp[dp['TARGET_TYPE']=='target']
@@ -560,32 +573,33 @@ def processFolder(folder,verbose=False):
 		dpsa = dps[dps['BEAM']=='A']
 		dpsa.reset_index(inplace=True)
 		if len(dpsa)>1:	
-			try:
-				pos1 = SkyCoord(dpsa.loc[0,'RA']+' '+dpsa.loc[0,'DEC'],unit=(u.hourangle, u.deg))
-				pos2 = SkyCoord(dpsa.loc[len(dpsa)-1,'RA']+' '+dpsa.loc[len(dpsa)-1,'DEC'],unit=(u.hourangle, u.deg))
-				dx = pos1.separation(pos2).to(u.arcsec)
-				time1 = Time(dpsa.loc[0,'DATETIME'],format='isot', scale='utc')
-				time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
-				dt = (time2-time1).to(u.hour)
-# very big move ==> likely failure to change name of target				
-				if dx.value > SKIP_ANGSTEP:
-					if verbose==True: logging.info('Detected a jump of dx={:.1f} arcsec implying name change from {} failure; substituting in additional names...'.format(dx,n))
-					for jjj in range(len(dps)-1):
-						pos2 = SkyCoord(dps.loc[jjj+1,'RA']+' '+dpsa.loc[jjj+1,'DEC'],unit=(u.hourangle, u.deg))
-						if pos1.separation(pos2).to(u.arcsec) > SKIP_ANGSTEP:
-							dp.loc[dp['FILE']==dps.loc[jjj,'FILE'],'TARGET_NAME'] = dps.loc[i,'SHORTNAME']
-				elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_MAXRATE and dt.value > 0.1):
-					dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
-					if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.1f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
-				else: pass
-			except Exception as e:
-				if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
+#			try:
+			pos1 = SkyCoord(dpsa.loc[0,'RA']+' '+dpsa.loc[0,'DEC'],unit=(u.hourangle, u.deg))
+			pos2 = SkyCoord(dpsa.loc[len(dpsa)-1,'RA']+' '+dpsa.loc[len(dpsa)-1,'DEC'],unit=(u.hourangle, u.deg))
+			dx = pos1.separation(pos2).to(u.arcsec)
+			time1 = Time(dpsa.loc[0,'DATETIME'],format='isot', scale='utc')
+			time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
+			dt = (time2-time1).to(u.hour)
+# very big move ==> likely failure to change name of target	
+#			print(n,dx.value,MOVING_MAXSEP,(dx/dt).value,MOVING_ANGRATE,dt.value,dx.value > SKIP_ANGSTEP,dx.value > MOVING_MAXSEP,((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1))			
+			if dx.value > SKIP_ANGSTEP:
+				if verbose==True: logging.info('Detected a jump of dx={:.1f} arcsec implying name change from {} failure; substituting in additional names...'.format(dx,n))
+				for jjj in range(len(dps)-1):
+					pos2 = SkyCoord(dps.loc[jjj+1,'RA']+' '+dps.loc[jjj+1,'DEC'],unit=(u.hourangle, u.deg))
+					if pos1.separation(pos2).to(u.arcsec).value > SKIP_ANGSTEP:
+						dp.loc[dp['FILE']==dps.loc[jjj+1,'FILE'],'TARGET_NAME'] = dps.loc[jjj+1,'ALTNAME']
+			elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1):
+				dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
+				if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.1f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+			else: pass
+			# except Exception as e:
+			# 	if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
 
 # program and PI info (based on code by Evan Watson)
 # NOTE: in this realization we're assuming its the same program and PI for the entire folder
 # this overrules what is header
 	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE, usecols=['MJD START','MJD END','PROGRAM','PI'])
-	mjd = dp.loc[1,'MJD']
+	mjd = dp.loc[0,'MJD']
 	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
 	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
 	obs_sch.reset_index(inplace=True)
@@ -757,7 +771,7 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 # Look for 'irtfdata.ifa.hawaii.edu' folder in the current directory
 	base_folder = os.path.join(folder, expand)
 	if not os.path.exists(base_folder):
-		logging.info("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
+		logging.info(" Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
 		return
 
 # Generate a list of all unique folders containing fits files
@@ -765,51 +779,98 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 	fits_folders = [os.path.dirname(fits_file) for fits_file in fits_folders]
 	fits_folders = list(set(fits_folders))
 	fits_folders.sort()
+#	for f in fits_folders: print(f)
 
-# now go through each of the folders, generate data folders, and move the data 	
-	cntr,prefix0 = 1,''
+# go through each of the folders, determine the UT date and program number if available, to generate a sorted list
 	for i,f in enumerate(fits_folders):
-# generate file name from UT date of first fits file if not provided
-		if verbose==True: logging.info('\nOrganizing data folder {}'.format(f))
+		loop,cntr,skip,prefix = True,1,False,''
+		if verbose==True: logging.info(' Organizing data folder {}'.format(f))
+# check for files in original data folder
+		ofiles = glob.glob(os.path.join(f,'*.fits'))
+		if len(ofiles)==0: skip=True
+		else: ofile = np.random.choice(ofiles)
+# generate top level folder name from UT date of random fits file if outfolder not provided
 		if outfolder=='':
-			hdu = fits.open(glob.glob(os.path.join(f,'*.fits'))[0],ignore_missing_end=True)
+			hdu = fits.open(ofile,ignore_missing_end=True)
 			hd = hdu[0].header
 			hdu.close()
 			for k in HEADER_DATA['UT_DATE']:
 				if k in list(hd.keys()): prefix = hd[k].replace('/','').replace('-','')
-			prefix = os.path.join(folder,prefix)
-		else: prefix = os.path.join(folder,prefix)
-		if prefix!=prefix0:
-			prefix0 = copy.deepcopy(prefix)
-			cntr=1
-		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
-		cntr+=1
-		if os.path.exists(output_folder)== False: 
-			os.makedirs(output_folder)
-			if verbose==True: logging.info('Creating folder {}'.format(output_folder))
+		else: prefix = copy.deepcopy(outfolder)
+		prefix = os.path.join(folder,prefix)
+# iteratively add suffix, checking for repeat folders
+		while loop==True and skip==False:
+			output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
+			data_folder = os.path.join(output_folder,'data')
+			loop=False
+# folder present - check if random file from initial folder is in moved-to folder
+			if os.path.exists(data_folder) == True:
+				nfiles = glob.glob(os.path.join(data_folder,'*.fits'))
+# if file there and overwrite = False skip it
+				if os.path.basename(ofile) in [os.path.basename(n) for n in nfiles]:
+					if overwrite==False: 
+						if verbose==True: logging.info(' Found file {} in existing data folder {}; set overwrite to True to overwrite'.format(os.path.basename(ofile),data_folder))
+						skip=True
+# if file not there iterate on a new folder
+				else: 
+					cntr+=1
+					loop=True
 
-# if path exists, just move and rename fits folder, otherwise move files, being careful of overwriting 
-		data_folder = os.path.join(output_folder,'data')
-		if os.path.exists(data_folder) == False: 
-			if makecopy==False: shutil.move(f, data_folder)
-			else: shutil.copytree(f,data_folder)
-			if verbose==True: logging.info('Moved legacy data folder {} to {}'.format(f,data_folder))
-		else: 
-			if len(glob.glob(os.path.join(f,'*.fits')))==0 or overwrite==True:
+# move data
+		if skip==False:
+# make output folder
+			if os.path.exists(output_folder) == False:
+				os.makedirs(output_folder)
+				if verbose==True: logging.info(' Creating folder {}'.format(output_folder))
+# if path exists, just move/copy and rename fits folder
+			if os.path.exists(data_folder) == False: 
+				if makecopy==False: shutil.move(f, data_folder)
+				else: shutil.copytree(f,data_folder)
+# otherwise move files, being careful of overwriting 			
+			else: 
 				for df in glob.glob(os.path.join(f,'*.fits')): 
 					if makecopy==False: shutil.move(df,data_folder)
 					else: shutil.copy2(df,data_folder)
-				if verbose==True: logging.info('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
-			else: logging.info('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
+			if verbose==True: logging.info(' Moved/copied legacy data folder {} to {}'.format(f,data_folder))
+
+
+# 		if prefix!=prefix0:
+# 			prefix0 = copy.deepcopy(prefix)
+# 			cntr=1
+# 		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
+# 		cntr+=1
+# 		print(output_folder)
+# 		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(1))
+# 		while os.path.exists(output_folder) == True:
+# 			cntr+=1
+# 			output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
+# 		os.makedirs(output_folder)
+# 		if verbose==True: logging.info('Creating folder {}'.format(output_folder))
+
+# # if path exists, just move and rename fits folder, otherwise move files, being careful of overwriting 
+# 		data_folder = os.path.join(output_folder,'data')
+# 		if os.path.exists(data_folder) == False: 
+# 			if makecopy==False: shutil.move(f, data_folder)
+# 			else: shutil.copytree(f,data_folder)
+# 			if verbose==True: logging.info('Moved legacy data folder {} to {}'.format(f,data_folder))
+# 		else: 
+# 			if len(glob.glob(os.path.join(f,'*.fits')))==0 or overwrite==True:
+# 				for df in glob.glob(os.path.join(f,'*.fits')): 
+# 					if makecopy==False: shutil.move(df,data_folder)
+# 					else: shutil.copy2(df,data_folder)
+# 				if verbose==True: logging.info('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
+# 			else: logging.info('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
 
 # create other folders
-		for rf in REDUCTION_FOLDERS[1:]:
-			rfolder = os.path.join(output_folder,rf)
-			if os.path.exists(rfolder) == False:
-				os.makedirs(rfolder)
-				if verbose==True: logging.info('Creating folder {}'.format(rfolder))
+			for rf in REDUCTION_FOLDERS[1:]:
+				rfolder = os.path.join(output_folder,rf)
+				if os.path.exists(rfolder) == False:
+					os.makedirs(rfolder)
+					if verbose==True: logging.info(' Creating folder {}'.format(rfolder))
 
-		if verbose==True: logging.info('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+			if verbose==True: logging.info(' Organization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+		else:
+			if verbose==True: logging.info(' Skipping folder {}\n\n'.format(f))
 	return
 
 
@@ -867,6 +928,12 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 		logging.info("Error: {} folder not found in the directory {}, no action".format(expand,base_folder))
 		return
 
+# Generate a list of all unique folders containing fits files
+	# fits_folders = glob.glob(os.path.join(base_folder, '**', '*.fits'), recursive=True)
+	# fits_folders = [os.path.dirname(fits_file) for fits_file in fits_folders]
+	# fits_folders = list(set(fits_folders))
+	# fits_folders.sort()
+
 # Generate a list of all fits files
 	fits_paths = glob.glob(os.path.join(base_folder, '**', '*.fits'), recursive=True)
 	fits_paths.sort()
@@ -874,6 +941,7 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 # first check
 	if fits_files[0][:len(IRSA_PREFIX)]!=IRSA_PREFIX:
 		raise ValueError("ERROR: IRSA archive file prefix {} not found with first file".format(IRSA_PREFIX))
+
 
 # define folders based on program number and date based on typical fits file name
 	padstr = ''
@@ -884,7 +952,8 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 	fits_folders = list(set(list(fits_folders)))
 	fits_folders.sort()
 
-# make the necessary output folders
+
+# # make the necessary output folders
 	for f in fits_folders:
 		output_folder = os.path.join(folder,f)
 		if os.path.exists(output_folder)== False: 
@@ -909,7 +978,7 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 				else: shutil.copy2(fl,data_folder)
 			else: logging.info('WARNING: fits file {} already exists in {}; move this file or set overwrite to True'.format(os.path.basename(fl),data_folder))
 
-		if verbose==True: logging.info('\n\nOrganization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
+		if verbose==True: logging.info(' Organization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
 	return
 
 
@@ -1350,14 +1419,17 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 # set up default prefixes for flats and arcs
 	dps = dpc[dpc['TARGET_NAME']==FLAT_NAME]
 	dps.reset_index(inplace=True)
-	driver_param['FLAT_FILE_PREFIX'] = dps.loc[0,'PREFIX']
+	if len(dps)>0: driver_param['FLAT_FILE_PREFIX'] = dps.loc[0,'PREFIX']
+	else: logging.info(' WARNING: found no flat field frames')
 	dps = dpc[dpc['TARGET_NAME']==ARC_NAME]
 	dps.reset_index(inplace=True)
-	driver_param['ARC_FILE_PREFIX'] = dps.loc[0,'PREFIX']
+	if len(dps)>0: driver_param['ARC_FILE_PREFIX'] = dps.loc[0,'PREFIX']
+	else: logging.info(' WARNING: found no arc frames')
 	dps = dpc[dpc['TARGET_NAME']!=FLAT_NAME]
 	dps = dps[dps['TARGET_NAME']!=ARC_NAME]
 	dps.reset_index(inplace=True)
-	driver_param['SCIENCE_FILE_PREFIX'] = dps.loc[0,'PREFIX']
+	if len(dps)>0: driver_param['SCIENCE_FILE_PREFIX'] = dps.loc[0,'PREFIX']
+	else: logging.info(' WARNING: found no science files')
 
 # write out instructions
 	try: f = open(driver_file,'w')
@@ -1390,14 +1462,24 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	cal_sets = cal_sets[:-1]
 
 # std sets - determine here but print below
-	std_sets=''
+# we have a problem here
+	std_sets_set=[]
 	dpstd = dpc[dpc['TARGET_TYPE']=='standard']
 	dpstd.reset_index(inplace=True)
-	fnum = np.array(dpstd['FILE NUMBER'])
-	calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-	calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-	for i in range(len(calf1)): 
-		if calf1[i]!=calf2[i]: std_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
+	stdshnm = list(set(list(dpstd['TARGET_NAME'])))
+	for snm in stdshnm:
+		dpstdx = dpstd[dpstd['TARGET_NAME']==snm]
+		dpstdx.reset_index(inplace=True)
+		fnum = np.array(dpstdx['FILE NUMBER'])
+		calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+		calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+#		print(snm,fnum,calf1,calf2)
+		for i in range(len(calf1)): 
+			if calf1[i]!=calf2[i]: std_sets_set.append('{:.0f}-{:.0f},'.format(calf1[i],calf2[i]))
+#	print(std_sets_set)
+	std_sets_set.sort()
+	std_sets = ''
+	for x in std_sets_set: std_sets+=x
 	std_sets = std_sets[:-1]
 
 # observations
@@ -1412,9 +1494,15 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		fnums.append(int(dps.loc[0,'FILE NUMBER']))
 	tnames = [x for _,x in sorted(zip(fnums,tnames))]
 
+# no cal sets? close it up
+	if cal_sets=='':
+		if verbose==True: logging.info(' WARNING: no calibration files identified; check the observational logs')
+		f.close()
+		return
+
 # no names - close it up
 	if len(tnames)==0:
-		if verbose==True: logging.info('Warning: no science files identified; you may need to update the observational logs')
+		if verbose==True: logging.info(' WARNING: no science files identified; you may need to update the observational logs')
 		f.close()
 		return
 
@@ -1466,6 +1554,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				ssets = np.array(std_sets.split(','))
 				fnum = np.array(dpstds['FILE NUMBER'])
 				stdf1 = np.array(fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)])
+				if len(stdf1)==0: stdf1 = [fnum[0]]
 #				calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
 				# 
 				# stdf1 = [x.split('-')[0] for x in ssets]
@@ -1479,7 +1568,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 						src_coord.separation(SkyCoord(str(dpstdx.loc[0,'RA']).replace('+','')+' '+str(dpstdx.loc[0,'DEC']),unit=(u.hourangle, u.deg))).to(u.degree).value/10.)
 				fn = stdf1[np.argmin(diff)]
 				w = [x.split('-')[0]==str(fn) for x in ssets]
-#				print(fn,w)
+#				print(fn,w,ssets,std_sets)
 				ss = ssets[w][0]
 				dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
 				dpstdx.reset_index(inplace=True)
@@ -1493,7 +1582,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				else: tbmag = 0.
 				if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
 				else: tvmag = 0.
-				line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstds.loc[0,'PREFIX']),ss,cs,cs)
+				line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
 #				print(line)
 			f.write(line+'\n')
 
@@ -1530,7 +1619,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 #############################
 
 
-def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log_html_name='',options={},show_options=False,verbose=ERROR_CHECKING):
+def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spectra',output_folder='',log_html_name='',options={},show_options=False,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -1598,6 +1687,14 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 				logging.info('WARNING: could not generate image folder {}; reverting to qa folder {}'.format(image_folder,qa_parameters['QA_FOLDER']))
 				image_folder = ''
 
+# set up spectra folder
+	if spectra_folder!='':
+		spectra_folder+='/'
+		if os.path.exists(os.path.join(qa_parameters['QA_FOLDER'],spectra_folder))==False:
+			try: os.mkdir(os.path.join(qa_parameters['QA_FOLDER'],spectra_folder))
+			except:
+				logging.info('WARNING: could not generate spectra folder {}; reverting to qa folder {}'.format(spectra_folder,qa_parameters['QA_FOLDER']))
+				image_folder = ''
 
 # if necessary read in log
 	if isinstance(log_input,str)==True:
@@ -1898,14 +1995,6 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),qa_parameters['IMAGE_WIDTH'],os.path.basename(os.path.join(image_folder,os.path.basename(imfile[0]))))
 			cnt+=1
 			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
-		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'flat{}_normalized{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
-		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'flat{}_normalized{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
-		if len(imfile)>0: 
-			imfile.sort()
-			if qa_parameters['PLOT_TYPE']=='.pdf': loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
-			else: loopstr+='  <td align="center">\n   <img src="{}" width={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),qa_parameters['IMAGE_WIDTH'],os.path.basename(os.path.join(image_folder,os.path.basename(imfile[0]))))
-			cnt+=1
-			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 	loopstr+=' </tr>\n</table>\n\n'
 	index_bottom = index_bottom.replace('[FLATS]',loopstr)
 
@@ -1928,13 +2017,13 @@ def makeQApage(driver_input,log_input,image_folder='images',output_folder='',log
 			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
 			cnt+=1
 			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
-		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_residuals{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
-		if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}_residuals{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
-		if len(imfile)>0: 
-			imfile.sort()
-			loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
-			cnt+=1
-			if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
+		# imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'wavecal{}_residuals{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		# if len(imfile)==0: imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'wavecal{}_residuals{}'.format(cs,str(qa_parameters['PLOT_TYPE']))))
+		# if len(imfile)>0: 
+		# 	imfile.sort()
+		# 	loopstr+='  <td align="center">\n   <embed src="{}" width={} height={}>\n   <br>{}\n   </td>\n'.format(os.path.join(image_folder,os.path.basename(imfile[0])),str(qa_parameters['IMAGE_WIDTH']),str(qa_parameters['IMAGE_WIDTH']),os.path.join(image_folder,os.path.basename(imfile[0])))
+		# 	cnt+=1
+		# 	if np.mod(cnt,qa_parameters['NIMAGES'])==0: loopstr+=' </tr>\n <tr> \n'
 	loopstr+=' </tr>\n</table>\n'
 	index_bottom = index_bottom.replace('[WAVECALS]',loopstr)
 
@@ -2065,7 +2154,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['FLAT_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
 			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False)
-			input_files = list(filter(lambda x: os.path.exists(x),temp_files))
+			temp_files = list(filter(lambda x: os.path.exists(x),temp_files))
+			input_files = list(filter(lambda x: parameters['FLAT_FILE_PREFIX'] in x,temp_files))
 			if len(input_files)==0: raise ValueError('Cannot find any of the flat files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['FLAT_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
@@ -2080,7 +2170,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
 			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False)
-			input_files = list(filter(lambda x: os.path.exists(x),temp_files))
+			temp_files = list(filter(lambda x: os.path.exists(x),temp_files))
+			input_files = list(filter(lambda x: parameters['ARC_FILE_PREFIX'] in x,temp_files))
 			if len(input_files)==0: raise ValueError('Cannot find any of the arc files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['ARC_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
@@ -2297,7 +2388,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 			standard_data = {'id': spar['STD_NAME'], 'sptype': spar['STD_SPT'],'bmag': float(spar['STD_B']),'vmag': float(spar['STD_V'])}
-#			print(standard_data)
+			print(standard_data)
 
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
@@ -2374,16 +2465,42 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
 			tsuf = '{}-{}'.format(tmp[0],tmp[-1])
-			infile = '{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)
-			name=spar['TARGET_NAME'].replace(' ','-').replace('_','-')
+			name=spar['TARGET_NAME']
+			for x in [' ','_','/']: name=name.replace(x,'-')
 			for x in [',',':',';','.']: name=name.replace(x,'')
 			date = formatDate(spar['UT_DATE'])
+# fits files
+			infile = '{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)
 			outfile = '{}-{}_{}_{}_{}_{}comb.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf)
 			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
 				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],infile))==False:
+				logging.info(' WARNING: could not find file {} in {}'.format(infile,parameters['PROC_FOLDER']))
 			else:
 				shutil.copy2(os.path.join(parameters['PROC_FOLDER'],infile),os.path.join(parameters['PROC_FOLDER'],outfile))
+				if parameters['VERBOSE']==True: logging.info(' Copied {} to {} in {}'.format(infile,outfile,parameters['PROC_FOLDER']))
+# QA files
+			infile = '{}{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf,parameters['PLOT_TYPE'])
+			outfile = '{}-{}_{}_{}_{}_{}comb{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,parameters['PLOT_TYPE'])
+			if os.path.exists(os.path.join(parameters['QA_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
+				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))
+			infile_full = os.path.join(parameters['QA_FOLDER'],infile)
+			if os.path.exists(infile_full)==False:
+				infile_full = os.path.join(parameters['QA_FOLDER'],'images',infile)
+				if os.path.exists(infile_full)==False:
+					logging.info(' WARNING: could not find file {} in {} or {}'.format(infile,parameters['QA_FOLDER'],os.path.join(parameters['QA_FOLDER'],'images')))
+			if os.path.exists(infile_full)==True:
+				shutil.copy2(infile_full,os.path.join(parameters['QA_FOLDER'],outfile))
 				if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(infile,outfile))
+
+# QA CSV file
+			outfile = '{}-{}_{}_{}_{}_{}comb.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf)
+			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile.replace('.fits','.csv')))==True and parameters['OVERWRITE']==False:
+				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
+			else:
+				sp,_ = read_spectra_fits(os.path.join(parameters['PROC_FOLDER'],outfile))
+				np.savetxt(os.path.join(parameters['PROC_FOLDER'],outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+				if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
 
 # Repeat for all individual files
 			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
@@ -2412,7 +2529,7 @@ if __name__ == '__main__':
 	if len(sys.argv) < 4:
 		logging.info('Call this function from the command line as python batch.py [data_folder] [cals_folder] [proc_folder]')
 	else:
-		dp = processFolder(sys.argv[1])
+#		dp = processFolder(sys.argv[1])
 		dp = processFolder(sys.argv[1])
 		if len(sys.argv) > 4: log_file = sys.argv[4]
 		else: log_file = sys.argv[3]+'log.html'

@@ -319,3 +319,7 @@ def doplot(plot_number:int,
             pl.plot(x[i], np.polynomial.polynomial.polyval(x[i], coeffs[i]),
                     'r-', linewidth=0.3)
 
+    # fix layout overlap
+    
+    pl.tight_layout()
+

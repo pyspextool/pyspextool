@@ -117,7 +117,7 @@ def read_spectra_fits(file):
            'slith_arc': header['SLTH_ARC'],
            'slitw_pix': header['SLTW_PIX'],
            'slitw_arc': header['SLTW_ARC'],
-           'resolvingpower':header['RP'],
+#           'resolvingpower':header['RP'],
            'module': header['MODULE'],
            'history': header['HISTORY']}
 
