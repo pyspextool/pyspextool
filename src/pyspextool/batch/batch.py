@@ -43,7 +43,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 
-VERSION = '2025 Feb 12'
+VERSION = '2025 Feb 26'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +52,8 @@ CODEDIR = ps.__path__[0]
 XMatch.TIMEOUT = 180 # time out for XMatch search
 Simbad.TIMEOUT = 60
 MOVING_MAXSEP = 15. # max separation for fixed target in arcsec
-MOVING_ANGRATE = 10. # max moving rate for fixed target in arcsec/hr
+MOVING_ANGRATE = 15. # max moving rate for fixed target in arcsec/hr
+MOVING_MINTIME = 0.2 # min time for moving rate for fixed target in arcsec/hr
 SKIP_ANGSTEP = 3600. # separation in arcsec indicating this is a movement without change in name
 INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
 ARC_NAME = 'arc lamp'
@@ -581,17 +582,17 @@ def processFolder(folder,verbose=False):
 			time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
 			dt = (time2-time1).to(u.hour)
 # very big move ==> likely failure to change name of target	
-#			print(n,dx.value,MOVING_MAXSEP,(dx/dt).value,MOVING_ANGRATE,dt.value,dx.value > SKIP_ANGSTEP,dx.value > MOVING_MAXSEP,((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1))			
 			if dx.value > SKIP_ANGSTEP:
 				if verbose==True: logging.info('Detected a jump of dx={:.1f} arcsec implying name change from {} failure; substituting in additional names...'.format(dx,n))
 				for jjj in range(len(dps)-1):
 					pos2 = SkyCoord(dps.loc[jjj+1,'RA']+' '+dps.loc[jjj+1,'DEC'],unit=(u.hourangle, u.deg))
 					if pos1.separation(pos2).to(u.arcsec).value > SKIP_ANGSTEP:
 						dp.loc[dp['FILE']==dps.loc[jjj+1,'FILE'],'TARGET_NAME'] = dps.loc[jjj+1,'ALTNAME']
-			elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1):
+			elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_ANGRATE and dt.value > MOVING_MINTIME):
 				dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
-				if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.1f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+				if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.2f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
 			else: pass
+#			print('{} dx={:.1f} vs {:.1f} dx/dt={:.1f} vs {:.1f} dt={:.2f} dx? {} dx max?  {} dx/dt? {} label={}'.format(n,dx.value,MOVING_MAXSEP,(dx/dt).value,MOVING_ANGRATE,dt.value,dx.value > SKIP_ANGSTEP,dx.value > MOVING_MAXSEP,((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1),list(dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'])[0]))
 			# except Exception as e:
 			# 	if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
 
