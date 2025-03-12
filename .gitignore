@@ -24,6 +24,9 @@ develop-eggs
 .tox
 .idea/
 
+# backup files
+*~ 
+
 # Mac OSX
 .DS_Store
 
