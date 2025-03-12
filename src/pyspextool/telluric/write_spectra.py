@@ -96,10 +96,6 @@ def write_spectra(write_model_spectra:bool=False,
     # Write the (Vega) model to disk if requested.
     #
 
-    full_path = os.path.join(setup.state['proc_path'],
-                            tc.state['output_filename']+\
-                            '_vega.fits')    
-
     if write_model_spectra is True:
 
         # Create the header. Make a new hdrinfo dictionary using the standard
@@ -155,6 +151,10 @@ def write_spectra(write_model_spectra:bool=False,
         #
         # Write the file out
         #
+
+        full_path = os.path.join(setup.state['proc_path'],
+                                 tc.state['output_filename']+\
+                                 '_vega.fits')    
 
         fits.writeto(full_path, tc.state['model_spectra'], newhdr,
                      overwrite=True)
@@ -387,7 +387,7 @@ def write_spectra(write_model_spectra:bool=False,
                      ytype='flux and uncertainty',
                      spectrum_linewidth=setup.plots['spectrum_linewidth'],
                      spine_linewidth=setup.plots['spine_linewidth'],            
-                     title=os.path.basename(full_path),
+                     title=os.path.basename(correct_fullpath),
                      showblock=qa['showblock'],
                      plot_number=setup.plots['abeam_spectra'],
                      figure_size=figure_size,
