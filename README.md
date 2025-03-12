@@ -31,6 +31,19 @@ Python code to reduce data obtained with the SpeX spectrograph.
    ```
 
 
+## Instructions for using the example notebooks
+
+1) The Jupyter notebook tutorials are under `notebooks/` for preupgraded and upgraded SpeX Prism and SXD data.
+
+2) Follow the instructions above to download the test data which will be saved under `tests/test_data/`. To get the data used by the Jupyter notebooks, clone the [test_data](https://github.com/pyspextool/test_data) repository.
+
+   ```
+   git clone git@github.com:pyspextool/test_data.git
+   ```
+
+3) While users should be able to run the Jupyter notebook tutorials without changing the output paths, users are encouraged to move the data folder and rename the output paths.
+
+
 ## Developer Instructions
 
 If you plan to contribute code to `pyspextool`, you should clone a fork of this repo. 
@@ -52,11 +65,3 @@ You will also need `pytest` and the test data in order to run the tests.
    ```
    git submodule update --init --recursive 
    ```
-
-## Users Instructions
-
-1) The Jupyter notebook tutorials are under `notebooks/` for preupgraded and upgraded SpeX Prism and SXD data.
-
-2) Follow the instructions above to download the test data which will be saved under `tests/test_data/`
-
-3) While users should be able to run the Jupyter notebook tutorials without changing the output paths, users are encouraged to move the data foldre and rename the output paths.
