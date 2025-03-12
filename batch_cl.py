@@ -13,9 +13,10 @@ import os
 import pandas
 import sys
 from pyspextool.batch import batch
+import logging
 
 LOG_FILE_PREFIX_DEFAULT = 'log'
-DRIVER_FILE_DEFAULT = 'driver.txt'
+DRIVER_FILE_PREFIX_DEFAULT = 'driver'
 VERSION = batch.VERSION
 #VERSION = '2024.02.25'
 AUTHORS = [
@@ -95,7 +96,7 @@ class runBatch():
 		# raise()
 
 # give version number (only)
-		if args['quiet']==False: print('\npyspextool batch reduction code version {}\n'.format(VERSION))
+		if args['quiet']==False: logging.info('\npyspextool batch reduction code version {}\n'.format(VERSION))
 		if args['version']==True: return
 
 # test
@@ -119,13 +120,13 @@ class runBatch():
 # organize legacy data?
 		if args['organize']==True or args['organize_legacy']==True:
 			batch.organizeLegacy(base_folder,verbose=(not args['quiet']),overwrite=args['overwrite'],makecopy=True)
-			if args['quiet']==False: print('\n\nFinished IRTF Legacy archive file organization\n\n')
+			if args['quiet']==False: logging.info('\n\nFinished IRTF Legacy archive file organization\n\n')
 			return
 
 # organize irsa data?
 		if args['organize_irsa']==True:
 			batch.organizeIRSA(base_folder,verbose=(not args['quiet']),overwrite=args['overwrite'],makecopy=True)
-			if args['quiet']==False: print('\n\nFinished IRTF IRSA archive file organization\n\n')
+			if args['quiet']==False: logging.info('\n\nFinished IRTF IRSA archive file organization\n\n')
 			return
 
 # two inputs - assume to be data folder and base folder 
@@ -142,7 +143,7 @@ class runBatch():
 #			folders[i] = os.path.abspath(folders[i])
 			if os.path.exists(folders[i])==False:
 				os.mkdir(folders[i])
-				if args['quiet']==False: print('\nCreated {} folder {}'.format(nm,folders[i]))
+				if args['quiet']==False: logging.info('\nCreated {} folder {}'.format(nm,folders[i]))
 
 # check folders 
 #		folders = [os.path.abspath(f) for f in folders]
@@ -151,41 +152,46 @@ class runBatch():
 			if os.path.exists(f)==False: raise ValueError('Cannot find {} folder {}'.format(batch.REDUCTION_FOLDERS[i],f)) 
 
 # generate log csv and html files and put in qa folder
-		if log_file_prefix=='': log_file_prefix = copy.deepcopy(LOG_FILE_PREFIX_DEFAULT)
+# modification to give log a unique name
+		if log_file_prefix=='': log_file_prefix = '{}_{}'.format(LOG_FILE_PREFIX_DEFAULT,(os.path.abspath(base_folder)).split(os.sep)[-1])
+#		if log_file_prefix=='': log_file_prefix = copy.deepcopy(LOG_FILE_PREFIX_DEFAULT)
 		log_file_prefix = os.path.join(folders[3],log_file_prefix)
 		if os.path.exists(log_file_prefix+'.html')==True and os.path.exists(log_file_prefix+'.csv')==True and args['overwrite']==False and args['rebuild_log']==False:
-			print('\nWARNING: html log file {} and csv log file {} already exists; use --overwrite if you want to overwrite or --rebuild-log to rebuild'.format(log_file_prefix+'.html',log_file_prefix+'.csv'))
+			logging.info('\nWARNING: html log file {} and csv log file {} already exists; use --overwrite if you want to overwrite or --rebuild-log to rebuild'.format(log_file_prefix+'.html',log_file_prefix+'.csv'))
 		else:
 			if args['driver_only']==False and args['reduce_only']==False and args['qa_only']==False:
 				dp = batch.processFolder(folders[0])
 				for x in ['.csv','.html']:
 					if os.path.exists(log_file_prefix+x) and args['overwrite']==False and args['rebuild_log']==False:
-						print('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
+						logging.info('\nWARNING: {} log file {} already exists so not saving; use --overwrite to overwrite'.format(x,log_file_prefix+x))
 					else:
 #						if args['quiet']==False: print('\nWriting log to {}'.format(log_file_prefix+x))
-						batch.writeLog(dp,log_file_prefix+x)
+#						logging.info(log_file_prefix+x)
+						batch.writeLog(dp,log_file=log_file_prefix+x)
 
 # query to pause and check log
 			if args['no_pause']==False and args['log_only']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
 
 		if args['log_only']==True: 
-			print('\n\nLog files {} and {} created.'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
+			logging.info('\n\nLog files {} and {} created.'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
 			return
 
 
 # generate driver file and put in proc folder
-		if driver_file=='': driver_file = copy.deepcopy(DRIVER_FILE_DEFAULT)
+# modification to give log a unique name
+#		if driver_file=='': driver_file = copy.deepcopy(DRIVER_FILE_DEFAULT)
+		if driver_file=='': driver_file = '{}_{}.txt'.format(DRIVER_FILE_PREFIX_DEFAULT,(os.path.abspath(base_folder)).split(os.sep)[-1])
 		driver_file = os.path.join(folders[2],driver_file)
 		if os.path.exists(driver_file)==True and args['overwrite']==False and args['rebuild_driver']==False:
-			print('\nWARNING: driver file {} already exists so not saving; use --overwrite to overwrite or --rebuild-driver to rebuild'.format(driver_file))
+			logging.info('\nWARNING: driver file {} already exists so not saving; use --overwrite to overwrite or --rebuild-driver to rebuild'.format(driver_file))
 		else:
 			if args['reduce_only']==False and args['qa_only']==False:
 				if os.path.exists(log_file_prefix+'.csv')==True:
 					dp = pandas.read_csv(log_file_prefix+'.csv')
 				else:
 					dp = batch.processFolder(folders[0])
-					print('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
-				if args['quiet']==False: print('\nGenerating driver file and writing to {}'.format(driver_file))
+					logging.info('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
+				if args['quiet']==False: logging.info('\nGenerating driver file and writing to {}'.format(driver_file))
 #				print(driver_file,folders[0])
 				batch.writeDriver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True)
 
@@ -193,7 +199,7 @@ class runBatch():
 			if args['no_pause']==False and args['driver_only']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
 
 		if args['driver_only']==True: 
-			print('\n\nDriver file {} created.'.format(driver_file))
+			logging.info('\n\nDriver file {} created.'.format(driver_file))
 			return
 
 # reduction - only need the driver file for this
@@ -210,10 +216,10 @@ class runBatch():
 #			print(par)
 #			if 'OBS_SET' not in list(par.keys()):
 			if 'OBS_SET' not in [x[:7] for x in list(par.keys())]:
-				print('No science files listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
+				logging.info('No science files listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
 				return
 			if 'CAL_SETS' not in list(par.keys()):
-				print('No calibration sets listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
+				logging.info('No calibration sets listed in the driver file {}; recheck this file before proceeding'.format(driver_file))
 				return
 
 # add in additional keywords for specific reduction steps:
@@ -225,11 +231,11 @@ class runBatch():
 			if args['rereduce']==True: par['REREDUCE']=True
 			if args['overwrite']==True: par['OVERWRITE']=False
 
-			if args['quiet']==False: print('\n\nReducing spectra\n\n')
+			if args['quiet']==False: logging.info('\n\nReducing spectra\n\n')
 			batch.batchReduce(par,verbose=(not args['quiet']))
 
 		if args['reduce_only']==True: 
-			print('\n\nReduction completed!\n\n')
+			logging.info('\n\nReduction completed!\n\n')
 			return
 
 # make qa plots
@@ -251,7 +257,7 @@ class runBatch():
 
 		batch.makeQApage(driver_file,log_file_prefix+'.csv',verbose=(not args['quiet']))
 
-		print('\n\nQA page created, please review\n\n')
+		logging.info('\n\nQA page created, please review\n\n')
 
 		return
 

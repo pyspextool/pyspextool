@@ -158,7 +158,10 @@ def read_fits(files:list,
 
         linearity_file = join(setup.state['instrument_path'],
                               'uspex_lincorr.fits')
-        lc_coeffs = fits.getdata(linearity_file)
+        try:
+            lc_coeffs = fits.getdata(linearity_file)
+        except FileNotFoundError:
+            lc_coeffs = fits.getdata("https://pyspextool.s3.us-east-1.amazonaws.com/uspex_lincorr.fits")
 
     else:
 
