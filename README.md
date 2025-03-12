@@ -52,3 +52,11 @@ You will also need `pytest` and the test data in order to run the tests.
    ```
    git submodule update --init --recursive 
    ```
+
+## Users Instructions
+
+1) The Jupyter notebook tutorials are under `notebooks/` for preupgraded and upgraded SpeX Prism and SXD data.
+
+2) Follow the instructions above to download the test data which will be saved under `tests/test_data/`
+
+3) While users should be able to run the Jupyter notebook tutorials without changing the output paths, users are encouraged to move the data foldre and rename the output paths.
