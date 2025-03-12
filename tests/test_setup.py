@@ -68,13 +68,18 @@ def test_pyspextool_setup_defaults():
     "paths", [spex_prism_paths, spex_sxd_paths, uspex_prism_paths, uspex_sxd_paths]
 )
 def test_set_paths(paths):
+    cwd = os.path.abspath(os.getcwd())
+    logging.debug(f"Current working directory: {cwd}")
+    logging.debug(f"ls cwd: {os.listdir()}")
+    path = "tests/test_data/raw/spex-SXD/"
+    logging.debug(f"ls raw/spex-SXD: {os.listdir(path)}")
+
     set_paths(
         paths["raw_path"], paths["cal_path"], paths["proc_path"], paths["qa_path"]
     )
-    cwd = os.path.abspath(os.getcwd())
+    
 
-    logging.debug(f"Current working directory: {cwd}")
-    logging.debug(f"ls: {os.listdir()}")
+    
 
     assert setup.state["raw_path"] == os.path.abspath(paths["raw_path"])
     assert setup.state["cal_path"] == os.path.abspath(paths["cal_path"])
