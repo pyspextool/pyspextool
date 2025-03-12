@@ -12,7 +12,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 # TODO:  test logging works as expected. run some commands in the REPL
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
 try:

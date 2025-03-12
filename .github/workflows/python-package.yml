@@ -15,7 +15,7 @@ jobs:
 
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         python-version: ["3.10","3.11","3.12","3.13"]
         
@@ -58,5 +58,4 @@ jobs:
     
     - name: Test with pytest
       run: |
-        # pytest -o log_cli=true
-        pytest -o log_cli=true --log-level=DEBUG tests/test_setup.py::test_set_paths
+        pytest -o log_cli=true --log-level=DEBUG 
