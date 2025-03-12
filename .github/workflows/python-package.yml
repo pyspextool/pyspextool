@@ -58,4 +58,5 @@ jobs:
     
     - name: Test with pytest
       run: |
-        pytest -o log_cli=true
+        # pytest -o log_cli=true
+        pytest -o log_cli=true --log-level=DEBUG tests/test_setup.py::test_set_paths
