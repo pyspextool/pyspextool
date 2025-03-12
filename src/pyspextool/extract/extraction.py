@@ -3,6 +3,9 @@ import numpy.typing as npt
 from scipy.interpolate import interp1d
 from astropy.io import fits
 from os.path import basename
+import matplotlib.pyplot as pl
+from pyspextool.utils.interpolate import sinc_interpolation_fft, sinc_interpolation
+
 
 from pyspextool.extract.profiles import make_2d_profile, make_aperture_mask
 from pyspextool.fit.polyfit import polyfit_1d, poly_1d
@@ -75,7 +78,8 @@ def extract_1dxd(image:npt.ArrayLike,
             An (norders,) array of rectified order dictionaries.  Each entry has
 
                 '`image`': ndarray
-                    An (nangles, nwavelengths) array of an rectified order.
+                    An (nangles, nwavelengths) profile array of an rectified 
+                    order.
 
                 '`angle`': ndarray
                     An (nangles,) array of spatial angles.
@@ -101,7 +105,8 @@ def extract_1dxd(image:npt.ArrayLike,
         '`images`' : ndarray
             An (norders,) array of rectified order dictionaries.  Each entry has
                 '`image`': ndarray
-                    An (nangles, nwavelengths) array of an rectified order.
+                    An (nangles, nwavelengths) profile array of an rectified 
+                    order.
 
                 '`angle`': ndarray
                     An (nangles,) array of spatial angles.
@@ -173,7 +178,7 @@ def extract_1dxd(image:npt.ArrayLike,
                     ['dict','NoneType'])
 
     check_parameter('extract_1dxd', 'verbose',progressbar, 'bool')
-    
+
     #
     # Get basic information
     #
@@ -246,7 +251,7 @@ def extract_1dxd(image:npt.ArrayLike,
                   
     spectrum_list = []
     background_list = []
-    
+
     for i in range(norders):
 
         if use_profile is True:
@@ -294,23 +299,18 @@ def extract_1dxd(image:npt.ArrayLike,
             slit_var = variance[zslit, xmin + j]
             slit_bpm = badpixel_mask[zslit, xmin + j]
             slit_lmm = linmax_bitmask[zslit, xmin + j]
-
-#            print(xmin+j)
-#            for_print(slit_pix, slit_arc, slit_img)
-#
-#            if j == 1:
-#
-#                return
             
             if use_profile is True:
 
-                function = interp1d(profile_angles,
-                                    profile_map[:,i],
-                                    fill_value=0.0,
-                                    bounds_error=False)
-
-                slit_prof = function(slit_arc)
+#                function = interp1d(profile_angles,
+#                                    profile_map[:,j],
+#                                    fill_value=0.0,
+#                                    bounds_error=False,kind='quadratic')
+#            
+#                slit_prof = function(slit_arc)
                 
+                slit_prof = sinc_interpolation(profile_map[:,j],profile_angles, slit_arc)
+
             # Gernerate the aperture positions using the tracecoeffs
         
             aperture_positions = np.empty(naps)
@@ -352,6 +352,7 @@ def extract_1dxd(image:npt.ArrayLike,
 
                     result = moments(slit_img[z_background],
                                      robust=4,
+                                     goodbad=slit_bpm[z_background],
                                      silent=True)
                     slit_bg = np.full_like(slit_img, result['mean'])
 
@@ -362,14 +363,11 @@ def extract_1dxd(image:npt.ArrayLike,
                     result = polyfit_1d(slit_arc[z_background],
                                         slit_img[z_background],
                                         bg_fitdegree,
+                                        goodbad=slit_bpm[z_background],
                                         yunc=np.sqrt(slit_var[z_background]),
                                         robust={'thresh': 4, 'eps': 0.1},
                                         silent=True)
 
-#                    print(xmin+j)
-#                    print(result['coeffs'])
-#                    print(result['coeffs_covar'])
-                
                     # Generate a background slit 
 
                     slit_bg, slit_bgvar = poly_1d(slit_arc, result['coeffs'],
@@ -381,8 +379,24 @@ def extract_1dxd(image:npt.ArrayLike,
                 slit_img -= slit_bg
                 slit_var += slit_bgvar
 
-#                print(slit_bgvar)
-#                print(' ')
+
+#                if j > 150:
+#                    print(j, slit_bpm)
+#                    z = np.where(slit_bpm == 0)[0]
+#                    fig = pl.figure(figsize=(15,10))    
+#                    axes1 = pl.subplot(2,1,1)
+#                    
+#                    axes1.step(slit_arc, slit_img,where='mid',label='data')
+#                    axes1.plot(slit_arc[z], slit_img[z],'or')
+#                    axes1.step(slit_arc, slit_bg,where='mid',color='red',
+#                               label='BG fits')
+#                    axes1.set_title(str(j)+' '+str(spectrum_wave[j]))
+#                    axes1.legend()
+#                    pl.pause(0.1)
+#                    pl.clf()
+                    
+#                pl.show()
+                
                 
             #
             # Scale the profile to the data
@@ -390,11 +404,48 @@ def extract_1dxd(image:npt.ArrayLike,
 
             if use_profile is True:
 
+#                if j > 192:
+#
+#                    silent = False
+#                
+#                else:
+#
+#                    silent = True
+
                 fit_img = polyfit_1d(slit_prof,
                                      slit_img,
                                      1,
                                      goodbad=slit_bpm,
-                                     robust={'thresh':thresh, 'eps':0.1})
+                                     robust={'thresh':thresh, 'eps':0.1},
+                                     silent=True)
+
+                z = np.where(fit_img['goodbad'] == 0)[0]
+
+#                if j > 192:
+#
+#                    fig = pl.figure(figsize=(15,10))    
+##                    fig = pl.figure(figsize=(15,10))    
+##                    print(slit_bpm)
+##                    print(z)
+##                    print(xmin+j)
+#                    axes1 = pl.subplot(2,1,1)
+#
+#                    scaled = poly_1d(slit_prof, fit_img['coeffs'])
+#                    min = np.min([scaled,slit_img])
+#                    max = np.max([scaled,slit_img])
+#                    axes1.step(slit_arc, slit_img,where='mid',label='data')
+#                    axes1.step(slit_arc, scaled,where='mid',color='green',
+#                               label='profile')
+#                    axes1.step(slit_arc[z], slit_img[z],'ro')
+#                    axes1.set_ylim(min,max)
+#                    axes1.set_title(str(j)+' '+str(spectrum_wave[j]))
+#                    axes1.legend()
+#                    pl.show()
+##                    pl.draw()
+##                    pl.pause(1)
+##                    pl.clf()
+
+
 
             #
             # Fix bad pixels if requested
@@ -446,7 +497,7 @@ def extract_1dxd(image:npt.ArrayLike,
                         
                     aperture_psf = aperture_signs[k]*\
                                    np.abs(slit_psf/np.nansum(slit_psf[z_psf]))
-
+                    
                     # Determine the pixels to actually use
                     
                     z_aperture = (aperture_mask > float(k)) & \
@@ -459,6 +510,19 @@ def extract_1dxd(image:npt.ArrayLike,
                         # Scale the data and variances
                         
                         vals = slit_img[z_aperture]/aperture_psf[z_aperture]
+
+                        vals2 = slit_img[z_aperture]
+
+ #                       if j > 480 and k == 0:
+ #
+ #                           axes2 = pl.subplot(2,1,2,sharex=axes1)
+ #                           axes2.plot(slit_arc[z_aperture],vals,'or')        
+ #
+ #                           #pl.draw()
+ #                           #pl.pause(0.5)
+ #                           #pl.clf()
+                            
+
                         vars = slit_var[z_aperture]/aperture_psf[z_aperture]**2
 
                         # Compute the optimal estimate
@@ -466,6 +530,24 @@ def extract_1dxd(image:npt.ArrayLike,
                         weights = 1/vars
                         wmean = np.sum(weights*vals)/np.sum(weights)
                         wvar = 1/np.sum(weights)
+
+#                        if j > 480 and k == 0:
+#
+#                            print(j,wmean, wavecal[zslit, xmin + j][0]) 
+#                         
+#                            print('data', slit_img[z_aperture])
+#                            print()
+#                            print('var', slit_var[z_aperture])
+#                            print()
+#                            print('psf', aperture_psf[z_aperture])
+#                            print()
+#                            print('estimates', vals)
+#                            print()
+#                            print('estimates', vars)
+#                            print()
+#                            print()
+#                            print()
+#                            pl.show()
 
                         spectrum_flux[k, j] = wmean
                         spectrum_unc[k, j] = np.sqrt(wvar)
@@ -489,12 +571,6 @@ def extract_1dxd(image:npt.ArrayLike,
 
                     spectrum_flux[k, j] = np.sum(slit_img[z_aperture]*partial)*\
                                           aperture_signs[k]
-
-#                    if xmin+j == 70 and k == 0:
-#
-#                        for_print(slit_pix, slit_arc, slit_img, aperture_mask)
-#                        print(slit_img[z_aperture])
-#                        print(aperture_positions-1,aperture_positions+1, spectrum_flux[k, j])
                     
                     spectrum_var = np.sum(slit_var[z_aperture] * partial ** 2)
 

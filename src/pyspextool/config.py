@@ -8,7 +8,8 @@ state = {"instruments": ['uspex', 'spex'],
          "vega_zmag":-0.03,
          "vega_zfd":3.46e-9*10, # ergs s-1 cm-2 A-1
          "vega_zlambda":5556e-4, # microns
-         }
+         "xunits":'um',
+         "lxunits":'$\mu$m'}
 
 
 plotwindows = {'telluric_deconvolution':None,
@@ -40,5 +41,6 @@ plots = {"portrait_size":(7,9),
          'normalize_order':8,
          'radial_velocity':9,
          'deconvolution':10,
-         'shifts':12}
+         'shifts':12,
+         'ewscales':13}
 

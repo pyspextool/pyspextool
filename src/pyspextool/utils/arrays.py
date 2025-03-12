@@ -1,27 +1,30 @@
 import numpy as np
+import numpy.typing as npt
 import re
 
+from pyspextool.io.check import check_parameter
 
-def find_index(x,
-               x_want,
-               ends_to_nan=False):
+
+def find_index(x:npt.ArrayLike,
+               x_want:npt.ArrayLike | int | float,
+               ends_to_nan:bool=False):
 
     """
-    Finds the effective index of a function value in an ordered array.
+    Finds the effective index of a value(s) in an ordered array.
 
     Parameters
     ----------
-    x : array_like
-        (N,) The array of floats or integers to be searched,
+    x : ndarray
+        An (n,) array of floats or integers to be searched,
         must be monotonically increasing or decreasing.
 
-    x_want : array_like or float or int
-        (M,) The value or values whose indices are required.
+    x_want : ndarray or float or int
+        An int or float value or (m,) array whose indices are desired.  
 
     Returns
     -------
     ndarray or float
-        Effective indices in `x_array` for `x`.
+        Effective indices in `x` for `x_want`.
 
     Raises
     ------
@@ -38,7 +41,7 @@ def find_index(x,
     linear interpolation between I and I+1.
     IEFF = I + (X-XARR(I)) / (XARR(I+1)-XARR(I)).
 
-    IEFF values outside `xarr` are set to NaN.
+    IEFF values outside `x` are set to NaN.
 
     Examples
     --------
@@ -124,14 +127,16 @@ def find_index(x,
     return ieff[0] if single is True else ieff
 
 
-def make_image_indices(nrows, ncols, dtype=int):
+def make_image_indices(nrows:int,
+                       ncols:int,
+                       dtype=int):
 
     """
 
-    To generate indice grids for an image
+    To generate pixel indice arrays for an image
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     nrows : int
         The number of rows in the image
 
@@ -139,14 +144,12 @@ def make_image_indices(nrows, ncols, dtype=int):
         The number of columns in the image
 
     dtype : dtype, default, `int`, optional
-        The type of the output grids
-
+        The data type of the output arrays
 
     Returns
     --------
     ximg, yimg : numpy.ndnarray, numpy.ndnarray of `dtype`
          A list of integers giving the individual file numbers
-
 
     Notes
     -----
@@ -166,13 +169,21 @@ def make_image_indices(nrows, ncols, dtype=int):
       [1 1 1 1 1]
       [2 2 2 2 2]]
 
-    Modification History
-    --------------------
-    2022-06-17 - Written by M. Cushing, University of Toledo.
-    Just the old reform/rebin trick from IDL.
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('make_image_indices', 'nrows', nrows, 'int')
+
+    check_parameter('make_image_indices', 'ncols', ncols, 'int')    
+
+    #
+    # The old IDL rebin/reform trick
+    # 
+        
     ximg = np.tile(np.arange(ncols, dtype=dtype), (nrows, 1))
     yimg = np.tile(np.reshape(np.arange(nrows, dtype=dtype),
                    (nrows, 1)), (1, ncols))
@@ -180,36 +191,35 @@ def make_image_indices(nrows, ncols, dtype=int):
     return ximg, yimg
 
 
-def trim_nan(arr, flag=0, trim=False):
+
+def trim_nan(arr:npt.ArrayLike,
+             flag:int=0,
+             trim:bool=False):
 
     """
     To clip NaNs from an array.
 
 
-    Input Parameters
-    ----------------
-    arr : array_like
+    Parameters
+    ----------
+    arr : ndarray
         An (ndat,) array
 
-    flag : {0,1,2,3}, optional
+    flag : {0,1,2,3}
         0 - The trailing NaNs are removed (default).
         1 - The leading NaNs are removed.
         2 - Both leading and trailing NaNs are removed.
-        3 -  All NaNs are removed.
-
-    trim : {False, True}, optional
+        3 - All NaNs are removed.
+    
+    trim : {False, True} 
         If True, the program will return the trimmed array instead of a bool
         array.
 
     Returns
     -------
-    numpy.ndarray
+    ndarray
          A bool array where True indicates the number is not a NaN and False
          indicates the number is a NaN.
-
-    Notes
-    -----
-    None
 
     Examples
     --------

@@ -93,15 +93,21 @@ def correct_linearity(image:npt.ArrayLike,
 
     mean_pedestal_1 = image*np.squeeze(tread[z])*(ndr+1)/2/itime
     mean_signal_1 = image + mean_pedestal_1
-    
+
     # Do the corrections
 
     correction = c0/spex_linearity_imagepoly(mean_pedestal_1,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_pedestal_1 = mean_pedestal_1*correction
 
     correction = c0/spex_linearity_imagepoly(mean_signal_1,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_signal_1 = mean_signal_1*correction    
 
     # Create a new estimate of the image
@@ -115,16 +121,22 @@ def correct_linearity(image:npt.ArrayLike,
     # Estimate the mean pedistal and signal images
 
     mean_pedestal_2 = image_2*np.squeeze(tread[z])*(ndr+1)/2/itime
-    mean_signal_2 = image_2 + mean_pedestal_2
+    mean_signal_2 = image + mean_pedestal_2
 
     # Do the corrections
     
     correction = c0/spex_linearity_imagepoly(mean_pedestal_2,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_pedestal_2 = mean_pedestal_2*correction
 
     correction = c0/spex_linearity_imagepoly(mean_signal_2,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_signal_2 = mean_signal_2*correction    
 
     # Create a new estimate of the image
