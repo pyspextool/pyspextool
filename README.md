@@ -1,34 +1,29 @@
 # pySpextool
 Python code to reduce data obtained with the SpeX spectrograph.
 
-# Installation Instructions
-1) [Install miniconda](https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/index.html#), if you don't have it already.
+# Recommended Installation Instructions
 
-2) Clone the pyspextool repository to your local computer
-    ```
-    git clone https://github.com/pyspextool/pyspextool.git
-    ```
+1) Setup your computer and install miniforge, if you haven't already.
 
-3) Navigate into the `pyspextool/` directory
-   ```
-   cd pyspextool/
-   ```
+   Follow Steps 0-2 of the [Astropy Workshop Setup instructions](https://github.com/astropy/astropy-workshop/tree/main/00-Install_and_Setup) to install WSL (for Windows) and install conda with miniforge.
 
-4) Make a `pyspextool_3.11` conda environment and install necessary dependencies, including Python 3.11.
+
+2) Make a `pyspextool_3.13` conda environment with Python 3.13.
    ```
-   conda env create -f environment.yml
+   conda create -n pyspextool_3.13 python=3.13
    ```
 
-5) Activate the new environment
+3) Activate the new environment
    ```
-   conda activate pyspextool_3.11
-   ```
-6) Install the `pyspextool` package
-   ```
-   pip install -e ./
+   conda activate pyspextool_3.13
    ```
 
-7) Optional - Install other Python packages
+4) Install the `pyspextool` package from PyPI using `pip`. This also installs the other Python packages that `pyspextool` depends upon.
+   ```
+   pip install pyspextool
+   ```
+
+5) Install other Python packages
 
    If you want to use Jupyter notebooks or other Python tools with `pyspextool`, you need to install them in the new environment. For example:
    ```
@@ -38,14 +33,22 @@ Python code to reduce data obtained with the SpeX spectrograph.
 
 ## Developer Instructions
 
-If you plan to contribute code to `pyspextool`, you'll need `pytest` and the test data in order to run the tests.
+If you plan to contribute code to `pyspextool`, you should clone a fork of this repo. 
+You will also need `pytest` and the test data in order to run the tests.
 
-8) Install pytest
+1) Make your own fork of this repository.
+
+2) Clone the fork to your computer.
+
+3) Make and activate a dedicated virtual environment, ideally with Python 3.13.
+
+4) Install and editable version of `pyspextool` and install the extra packages needed for testing and developing. In the` pyspextool/` direcotry:
    ```
-   pip install pytest
+   pip install -e ".[test]"
+
    ```
 
-9) Setup and download the `test_data/` submodule
+5) Setup and download the `test_data/` submodule
    ```
    git submodule update --init --recursive 
    ```

@@ -229,7 +229,7 @@ def trace_spectrum_1dxd(image:npt.ArrayLike,
                 if not fit['goodfit']:
                     continue
 
-                if np.abs(fit['parms'][1] - guesss) <= centroid_threshold:
+                if np.abs(fit['parms'][1] - guesss) <= centroid_threshold and fit['parms'][1] > 0 and fit['parms'][1] < np.max(slits):
                     peaks_arc[j, k] = fit['parms'][1]
                     f = interpolate.interp1d(slits, slity)
                     peaks_pix[j, k] = f(fit['parms'][1])
