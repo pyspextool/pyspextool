@@ -11,7 +11,8 @@ from importlib.resources import files  # Python 3.10+
 
 # TODO:  test logging works as expected. run some commands in the REPL
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
 
 
 def pyspextool_setup(instrument=setup.state["instruments"][0],
@@ -163,7 +164,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     
     if verbose is True:
 
-        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.DEBUG)
         setup.state["verbose"] = True
 
     elif verbose is False:

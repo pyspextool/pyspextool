@@ -7,7 +7,9 @@ from pyspextool.setup_utils import (
     set_instrument,
     set_qa_state,
 )
+import logging
 
+LOGGER = logging.getLogger(__name__)
 
 cwd = os.path.abspath(os.getcwd())
 
@@ -69,6 +71,9 @@ def test_set_paths(paths):
     set_paths(
         paths["raw_path"], paths["cal_path"], paths["proc_path"], paths["qa_path"]
     )
+    cwd = os.path.abspath(os.getcwd())
+
+    logging.debug(f"Current working directory: {cwd}")
 
     assert setup.state["raw_path"] == os.path.abspath(paths["raw_path"])
     assert setup.state["cal_path"] == os.path.abspath(paths["cal_path"])
