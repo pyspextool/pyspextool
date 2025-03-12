@@ -74,6 +74,7 @@ def test_set_paths(paths):
     cwd = os.path.abspath(os.getcwd())
 
     logging.debug(f"Current working directory: {cwd}")
+    logging.debug(f"ls: {os.listdir()}")
 
     assert setup.state["raw_path"] == os.path.abspath(paths["raw_path"])
     assert setup.state["cal_path"] == os.path.abspath(paths["cal_path"])
