@@ -431,3 +431,50 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
     y[z_idx_nonan] = inrange_y
     
     return y 
+
+
+def sinc_interpolation_fft(x: np.ndarray, s: np.ndarray, u: np.ndarray) -> np.ndarray:
+    """
+    Fast Fourier Transform (FFT) based sinc or bandlimited interpolation.
+    
+    Args:
+        x (np.ndarray): signal to be interpolated, can be 1D or 2D
+        s (np.ndarray): time points of x (*s* for *samples*) 
+        u (np.ndarray): time points of y (*u* for *upsampled*)
+        
+    Returns:
+        np.ndarray: interpolated signal at time points *u*
+    """
+    num_output = len(u)
+
+    # Compute the FFT of the input signal
+    X = np.fft.rfft(x)
+
+    # Create a new array for the zero-padded frequency spectrum
+    X_padded = np.zeros(num_output // 2 + 1, dtype=complex)
+
+    # Copy the original frequency spectrum into the zero-padded array
+    X_padded[:X.shape[0]] = X
+
+    # Compute the inverse FFT of the zero-padded frequency spectrum
+    x_interpolated = np.fft.irfft(X_padded, n=num_output)
+
+    return x_interpolated * (num_output / len(s))
+
+def sinc_interpolation(x, s, u):
+            """Whittaker–Shannon or sinc or bandlimited interpolation.
+            Args:
+                x (NDArray): signal to be interpolated, can be 1D or 2D
+                s (NDArray): time points of x (*s* for *samples*) 
+                u (NDArray): time points of y (*u* for *upsampled*)
+            Returns:
+                NDArray: interpolated signal at time points *u*
+            Reference:
+                This code is based on https://gist.github.com/endolith/1297227
+                and the comments therein.
+            TODO:
+                * implement FFT based interpolation for speed up
+            """
+            sinc_ = np.sinc((u - s[:, None])/(s[1]-s[0]))
+
+            return np.dot(x, sinc_)

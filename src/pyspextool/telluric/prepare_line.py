@@ -201,8 +201,9 @@ def prepare_line(order:int,
                         type=fit_type,
                         negative=True,
                         p0=p0,
-                        nparms=3+poly_degree+1)
-    
+                        nparms=3+poly_degree+1,
+                        robust={'thresh':4, 'eps':0.1})
+
     continuum_coefficients = result['parms'][3:]
     line_center = float(result['parms'][1])
     line_halfwidth = float(result['parms'][2])
@@ -252,6 +253,7 @@ def prepare_line(order:int,
                            wavelength,
                            flux,
                            result['fit'],
+                           result['goodbad'],
                            line_center,
                            line_halfwidth,
                            continuum,
@@ -273,6 +275,7 @@ def prepare_line(order:int,
                            wavelength,
                            flux,
                            result['fit'],
+                           result['goodbad'],
                            line_center,
                            line_halfwidth,
                            continuum,
@@ -300,6 +303,7 @@ def plot_normalization(plot_number:int,
                        wavelength:npt.ArrayLike,
                        intensity:npt.ArrayLike,
                        fit:npt.ArrayLike,
+                       goodbad:npt.ArrayLike,
                        line_center:float,
                        line_halfwidth:float,
                        continuum:npt.ArrayLike,
@@ -426,6 +430,9 @@ def plot_normalization(plot_number:int,
     axes1.yaxis.set_minor_locator(AutoMinorLocator())
     axes1.step(wavelength, fit, 'red')
 
+    z = goodbad == 0
+    axes1.plot(wavelength[z], intensity[z], 'or')
+
     
     # change all spines
     for axis in ['top','bottom','left','right']:
@@ -462,6 +469,7 @@ def plot_normalization(plot_number:int,
     axes2.tick_params(which='major', length=5)
     axes2.yaxis.set_minor_locator(AutoMinorLocator())    
     axes2.axhline(y=1, linestyle='--', color='green')
+
 
     # change all spines
     for axis in ['top','bottom','left','right']:

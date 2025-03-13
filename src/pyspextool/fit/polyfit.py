@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 from numpy.polynomial.polynomial import polyval
+import matplotlib.pyplot as pl
 
 from pyspextool.io.check import check_parameter
 
@@ -128,7 +129,7 @@ def image_poly(img:npt.ArrayLike,
 
     n = coeffs.shape[0] - 1
 
-    y = coeffs[n, :, :]
+    y = coeffs[n, :, :].copy()
 
     for i in range(n - 1, -1, -1):
         y = y * img + coeffs[i, :, :]
@@ -678,6 +679,14 @@ def polyfit_1d(x:npt.ArrayLike,
 
         # Now check for residual points that are outside the threshhold
 
+#        if silent is False:
+#            
+#            pl.figure()
+#            pl.plot(np.abs((residual - mean) / stddev),'or')
+#            pl.axhline(y=robust['thresh'])
+#            pl.title('test')
+#            pl.show()
+        
         z_good = np.abs((residual - mean) / stddev) <= robust['thresh']
         n_bad = np.sum(~z_good)
 

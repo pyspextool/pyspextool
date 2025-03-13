@@ -181,7 +181,7 @@ def get_kernels(*args:int | float,
         
         # Build the qafile_info dictionary.        
         
-            qafile_info = {'figure_size':setup.plots['portrait_size'],
+            qafile_info = {'figure_size':setup.plots['landscape_size'],
                            'font_size':setup.plots['font_size'],
                     'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
                            'spine_linewidth':setup.plots['spine_linewidth'],
@@ -320,6 +320,31 @@ def get_kernels(*args:int | float,
         
     tc.state['kernels'] = kernels
 
+    #
+    # Generate the control points for the EW scale factors
+    #
+
+    control_points = []        
+    for i in range(tc.state['standard_norders']):
+
+        minw = tc.state['standard_wavelengthranges'][i][0]
+        maxw = tc.state['standard_wavelengthranges'][i][1]
+
+        zlines = np.where((tc.state['H_wavelengths'] >= minw) &
+                          (tc.state['H_wavelengths'] <= maxw))[0]
+
+        
+        points = tc.state['H_wavelengths'][zlines]
+        points = np.insert(points,0, minw)
+        points = np.append(points, maxw)        
+
+        scales = np.full_like(points, tc.state['ew_scale'])
+
+        stack = np.stack((points, scales))
+        control_points.append(stack)
+        
+    tc.state['control_points'] = control_points
+        
     # Set the done variable
     
     tc.state['kernel_done'] = True

@@ -12,11 +12,11 @@
 # RV N_FWHM            : The number of FWHMs around which to do the xcorrelation
 # Deconvolution N_FWHM : The number of FWHMs around which to do the deconvolution
 #
-#=======================================================================================================================================================================
-# Instrument Mode  | Method        | Vega Model  | Order  | Deconvolution Line    | Normalization Ranges  | Poly Deg  | Fit Type   |RV N_FWHM   | Deconvolution N_FWHM |
-#=======================================================================================================================================================================
-ShortXD            | deconvolution | 50000       | 6      | 1.0052128             | 0.975 1.04            | 6         | lorentzian | 6          | 4                    |
-LowRes15           | ip            | 5000        |        |                       |                       |           |            |            |                      |
-LongXD1.9          | ip            | 50000       |        |                       |                       |           |            |            |                      |
-LongXD2.1          | ip            | 50000       |        |                       |                       |           |            |            |                      |
-LongXD2.3          | ip            | 50000       |        |                       |                       |           |            |            |                      |
+#===========================================================================================================================================================
+# Instrument Mode  | Method        | Vega Model  | Order  |  Line     | Normalization Ranges  | Poly Deg  | Fit Type   |RV N_FWHM   | Deconvolution N_FWHM |
+#===========================================================================================================================================================
+ShortXD            | deconvolution | 50000       | 6      | 1.0052128 | 0.975 1.04            | 6         | lorentzian | 6          | 4                    |
+LowRes15           | ip            | 5000        |        |           |                       |           |            |            |                      | 
+LongXD1.9          | ip            | 50000       | 9      | 2.166120  | 2.14  2.19            | 4         | lorentzian | 6          |                      |
+LongXD2.1          | ip            | 50000       |        |           |                       |           |            |            |                      |
+LongXD2.3          | ip            | 50000       |        |           |                       |           |            |            |                      |
