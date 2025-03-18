@@ -573,31 +573,65 @@ def get_uspexheader(hdr,
     
     # Airmass 
 
-    hdrinfo['AM'] = [hdr['TCS_AM'], ' Airmass']
+    try:
+
+        airmass = hdr['TCS_AM']
+
+    except KeyError as e:
+
+        airmass = np.nan
+
+    hdrinfo['AM'] = [airmass, ' Airmass']
 
     # Hour angle
 
-    val = hdr['TCS_HA']
-    m = re.search('[-]', '[' + val + ']')
+    try:
+
+        hourangle = hdr['TCS_HA']
+
+    except KeyError as e:
+
+        hourangle = 'nan:nan:nan'
+        
+    m = re.search('[-]', '[' + hourangle + ']')
     if not m:
-        val = '+' + val.strip()
-    hdrinfo['HA'] = [val, ' Hour angle (hours)']
+        hourangle = '+' + hourangle.strip()
+
+    hdrinfo['HA'] = [hourangle, ' Hour angle (hours)']
 
     # Position Angle
 
     hdrinfo['PA'] = [hdr['POSANGLE'], ' Position Angle E of N (deg)']
 
-    # Dec 
 
-    val = hdr['TCS_DEC']
-    m = re.search('[-]', '[' + val + ']')
+    # Declination
+
+    try:
+
+        declination = hdr['TCS_DEC']
+
+    except KeyError as e:
+
+        declination = 'nan:nan:nan'
+
+
+    m = re.search('[-]', '[' + declination + ']')
     if not m:
-        val = '+' + val.strip()
-    hdrinfo['DEC'] = [val, ' Declination, FK5 J2000']
+        declination = '+' + declination.strip()
+    hdrinfo['DEC'] = [declination, ' Declination, FK5 J2000']
 
-    # RA
 
-    hdrinfo['RA'] = [hdr['TCS_RA'].strip(), ' Right Ascension, FK5 J2000']
+    # Right Ascension
+
+    try:
+
+        ra = hdr['TCS_RA'].strip()
+
+    except KeyError as e:
+
+        declination = 'nan:nan:nan'        
+
+    hdrinfo['RA'] = [declination, ' Right Ascension, FK5 J2000']
 
     # COADDS, ITIME
 
