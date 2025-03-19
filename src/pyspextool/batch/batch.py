@@ -43,7 +43,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 
-VERSION = '2025 Mar 12'
+VERSION = '2025 Mar 19'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
