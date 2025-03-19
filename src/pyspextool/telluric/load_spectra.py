@@ -1,4 +1,4 @@
-import os
+from os.path import join as osjoin
 import numpy as np
 import logging
 from astropy.coordinates import SkyCoord, angular_separation
@@ -20,13 +20,15 @@ from pyspextool.fit.polyfit import polyfit_1d
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.load_atmosphere import load_atmosphere
 from pyspextool.io.sptype2teff import sptype2teff
+from pyspextool.utils.interpolate import linear_interp1d
 
 def load_spectra(object_file:str,
                  standard_file:str,
                  standard_info:list | str | dict,
                  output_filename:str,
                  correction_type:list='A0 V',
-                 verbose:bool=None):    
+                 verbose:bool=None,
+                 new=False):    
     
     """
 
@@ -172,7 +174,7 @@ def load_spectra(object_file:str,
 
     if tc.state['type'] == 'A0V':
 
-        load_vegamodel()
+        load_vegamodel(new=new)
     
     #
     # Set variables that need to be set to a default value.
@@ -230,12 +232,14 @@ def load_data():
         tc.state['standard_dispersions']
         tc.state['standard_fwhm']
         tc.state['slitw_pix']
-    
+        tc.state['H_wavelengths']
+        tc.state['H_ids'] 
+
 
     
     """
 
-    logging.info("Loading the spectra.")
+    logging.info(" Loading the spectra.")
             
     # Object first
     
@@ -379,14 +383,37 @@ def load_data():
     # Load the atmospheric transmission
     #
 
+    atmospheric_transmission = np.copy(tc.state['standard_spectra'])
     wavelengths, transmission = load_atmosphere(2000)
 
-    tc.state['atmospheric_transmission'] = [wavelengths,transmission]
+    for i in range(tc.state['standard_norders']):
+        
+        atmosphere = linear_interp1d(wavelengths, 
+                                     transmission, 
+                                     tc.state['standard_spectra'][i,0,:])
+        atmospheric_transmission[i,1,:] = atmosphere
+
+    # Store the results
+        
+    tc.state['atmospheric_transmission'] = atmospheric_transmission
+
+    #
+    # Load the Hydrogen lines
+    #
+
+    fullpath = osjoin(setup.state["package_path"], "data","HI.dat")
     
-    
+    wavelength, lineid = np.loadtxt(fullpath, comments='#', unpack=True,
+                                    dtype='str', delimiter='|')
+
+    # Store the results
+
+    tc.state['H_wavelengths'] = np.array(wavelength).astype(float)
+    tc.state['H_ids'] = lineid
 
     
-def load_vegamodel():
+        
+def load_vegamodel(new=False):
 
     """
     Loads the proper Vega model given the observing mode
@@ -415,8 +442,16 @@ def load_vegamodel():
     # Determine which Vega model to use and load
     #
 
-    root = 'Vega'+tc.state['model']+'.fits'
-    file = os.path.join(setup.state['package_path'],'data',root)
+    if new is True:
+
+        
+        root = 'Vega'+tc.state['model']+'_new.fits'
+
+    else:
+
+        root = 'Vega'+tc.state['model']+'.fits'
+
+    file = osjoin(setup.state['package_path'],'data',root)
     
     hdul = fits.open(file) 
     data  = hdul[1].data
@@ -485,7 +520,7 @@ def load_modeinfo():
 
     """
     
-    file = os.path.join(setup.state['instrument_path'], 'telluric_modeinfo.dat')
+    file = osjoin(setup.state['instrument_path'], 'telluric_modeinfo.dat')
 
     values = np.loadtxt(file, comments='#', delimiter='|', dtype='str')
     
@@ -568,7 +603,7 @@ def load_ipcoefficients():
     
     # Get the file name
         
-    file = os.path.join(setup.state['instrument_path'],'IP_coefficients.dat')
+    file = osjoin(setup.state['instrument_path'],'IP_coefficients.dat')
 
     # Read the file
         

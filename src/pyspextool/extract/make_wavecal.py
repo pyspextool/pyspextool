@@ -296,7 +296,9 @@ def make_wavecal(arc_files:str | list,
                                      qa_show=qa['show'],
                                      qa_showscale=qa['showscale'],
                                      qa_showblock=qa['showblock'],
-                                     qa_fullpath=fullpath)
+                                     qa_fullpath=fullpath,
+                                     anchor_label='Stored Spectrum', 
+                                     source_label='Observed Spectrum')
 
     #
     # Are we using the stored solution?
@@ -416,7 +418,7 @@ def make_wavecal(arc_files:str | list,
         # Going to use the stored solution.  
         #
         
-        logging.info(' Using stored solution.')
+        logging.info(' Using stored wavelength solution.')
 
         solution = {'coeffs': wavecalinfo['coeffs'],
                     'covar': wavecalinfo['covar'],
@@ -570,7 +572,7 @@ def make_arcsky_image(arc_files:str | list,
                              rotate=flatinfo['rotation'],
                              linearity_correction=linearity_correction,
                              extra=detector_info,
-                             verbose=verbose)
+                             verbose=False)
     
     imgs = result[0]
     vars = result[1]

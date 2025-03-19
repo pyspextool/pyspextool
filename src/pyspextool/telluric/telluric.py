@@ -11,6 +11,7 @@ from pyspextool.telluric.make_telluric_spectra import make_telluric_spectra
 from pyspextool.telluric.shift_spectra import shift_spectra
 from pyspextool.telluric.correct_spectra import correct_spectra
 from pyspextool.telluric.write_spectra import write_spectra
+from pyspextool.telluric.adjust_ews import adjust_ews
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
@@ -29,7 +30,8 @@ def telluric(object_file:str,
              qa_show:bool=None,
              qa_showscale:float=None,
              qa_showblock:bool=None,
-             qa_write:bool=None):
+             qa_write:bool=None,
+             new=False):
 
                         
     """
@@ -186,7 +188,8 @@ def telluric(object_file:str,
                  standard_info,
                  output_filename,
                  correction_type=correction_type,
-                 verbose=qa['verbose'])
+                 verbose=qa['verbose'],
+                 new=new)
 
     #
     # Are we doing a solar system object?
@@ -226,7 +229,7 @@ def telluric(object_file:str,
                                qa_showscale=qa['showscale'],
                                qa_showblock=qa['showblock'],
                                qa_write=qa['write'])
-    
+
         #
         # Get kernels
         #
@@ -248,12 +251,23 @@ def telluric(object_file:str,
                         qa_showblock=qa['showblock'],
                         qa_write=qa['write'])
 
+        #
+        # Get EW scales
+        #
+
+        adjust_ews(verbose=qa['verbose'],
+                   qa_show=qa['show'],
+                   qa_showscale=qa['showscale'],
+                   qa_showblock=qa['showblock'],
+                   qa_write=qa['write'])
+
     #
     # Construct the telluric correction spectra
     #
 
     make_telluric_spectra(intensity_unit=output_units,
-                          verbose=qa['verbose'])
+                          verbose=qa['verbose'],
+                          new=new)
 
     #
     # Shift the spectra

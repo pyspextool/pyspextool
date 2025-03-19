@@ -3,12 +3,13 @@ state = {"instruments": ['uspex', 'spex'],
          "search_extensions": ['.fits*', '.fits','.fits.gz'],         
          "units":['W m-2 um-1', 'erg s-1 cm-2 A-1', 'W m-2 Hz-1',
                   'ergs s-1 cm-2 Hz-1', 'Jy', 'mJy', 'uJy'],
-         "version": "1beta",
+         "version": None,
          "telluric_correctiontypes":['A0 V', 'basic', 'reflectance'],
          "vega_zmag":-0.03,
          "vega_zfd":3.46e-9*10, # ergs s-1 cm-2 A-1
          "vega_zlambda":5556e-4, # microns
-         }
+         "xunits":'um',
+         "lxunits":'$\mu$m'}
 
 
 plotwindows = {'telluric_deconvolution':None,
@@ -40,5 +41,6 @@ plots = {"portrait_size":(7,9),
          'normalize_order':8,
          'radial_velocity':9,
          'deconvolution':10,
-         'shifts':12}
+         'shifts':12,
+         'ewscales':13}
 

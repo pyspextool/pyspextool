@@ -1,16 +1,27 @@
 import numpy as np
+import numpy.typing as npt
 import scipy
 
+from pyspextool.fit.polyfit import goodbad_init
+from pyspextool.io.check import check_parameter
+from pyspextool.pyspextoolerror import pySpextoolError
 import warnings
 
-def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
-              negative=False, nan=True, ignore_optimizewarning=False):
+def fit_peak1d(x:npt.ArrayLike, 
+               y:npt.ArrayLike, 
+               type:str='gaussian', 
+               nparms:int=4, 
+               p0:npt.ArrayLike| list=None, 
+               positive:bool=False,
+               negative:bool=False, 
+               ignore_optimizewarning:bool=False,
+               robust:dict=None):
 
     """
-    To fit 1D data with either a Gaussian/Lorentzian+polynomial function.
+    To (robustly) fit a peak in 1D data.
 
-
-    At the moment, very basic.  Will add complexity as necessary.
+    The function fits either a Gaussian/Lorentzian+polynomial function to 1D 
+    data.  At the moment, very basic.  Will add complexity as necessary.
     
     Parameters
     ----------
@@ -43,23 +54,38 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
         `p0` is not given, and `positive` or `negative` is not given, 
         the function determines it automatically. 
 
-    nan : {True, False}, optional
-        Set to True to ignore NaN values.
-
     ignore_optimizewarning : {False, True}, optional
         Set to True to suppress any OptimizeWarning messages.
+
+    robust : dict of {str:int or float, str:int or float}, optional
+
+        `"thresh"` : int or float
+            The standard deviation threshold over which to identify pixels as
+            an outlier.
+
+        `"eps"` : int or float
+            The epsilon value to decide when to stop trying to identify
+            outliers.  If (stddev_i-1 - stddev_i) / stddev_i < `"eps"` then
+            the search is ended.
+
+        If given, an attempt will be made to robustly determine the fit.  
 
     Returns
     -------
     dict
-        `"fit"` : numpy.ndarray of float
-            (nx,) array of fitted values to `y`.  
+        `"fit"` : ndarray of float
+            An (nx,) array of fitted values to `y`.  
 
         `"parms"` : numpy.ndarray of float
-            (ncoeffs,) array of fitted parameters.
+            An (ncoeffs,) array of fitted parameters.
 
         `"goodfit"` : bool
             Set to True if the fit is good.
+            Set to False if the fit is bad.
+
+        `"goodbad"` : ndarray of int
+            An (nx,) array where 0=bad, 1=good, 2=NaN.
+
 
     Notes
     -----
@@ -85,16 +111,56 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('fit_peak1d','x', x, 'ndarray')
+
+    check_parameter('fit_peak1d','y', y, 'ndarray')
+
+    check_parameter('fit_peak1d','type', type, 'str')
+
+    check_parameter('fit_peak1d','nparms', nparms, 'int')
+
+    check_parameter('fit_peak1d','p0', p0, ['list', 'ndarray', 'NoneType'])
+
+    check_parameter('fit_peak1d','positive', positive, 'bool')
+
+    check_parameter('fit_peak1d','negative', negative, 'bool')
+
+    check_parameter('fit_peak1d','ignore_optimizewarning', 
+                    ignore_optimizewarning, 'bool')
+
+    check_parameter('fit_peak1d','robust', robust, ['dict','NoneType'])
+
+    #
+    # Get setup
+    #
+    
     # Convert inputs to numpy arrays
 
     x = np.array(x)
     y = np.array(y)
+
+    # Create a goodbad array and clip inputs
+
+    goodbad = goodbad_init(y)
+    z_initgood = goodbad == 1
+    xx = x[z_initgood]
+    yy = y[z_initgood]
     
+    # Get the star parameters
+
     if p0 is None:
 
-        # Estimate the start parameters
+        # Estimate the start parameters from the data
         
-        p0 = cmest(x, y, positive=positive, negative=negative, nan=nan)
+        p0 = cmest(x, 
+                   y, 
+                   positive=positive, 
+                   negative=negative, 
+                   nan=True)
 
         if nparms == 3:
 
@@ -112,15 +178,15 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
 
         p0 = np.array(p0)
         
-        # Check to make sure the number of user parameter estimates equals
-        # the number of parameters reqeusted.
+    # Check to make sure the number of user parameter estimates equals
+    # the number of parameters reqeusted.
 
     if len(p0) != nparms:
 
         exception = 'fitpeak1d: number parameter estimates must ' + \
           'equal the number of parameters.'
 
-        raise Exception(exception)
+        raise pySpextoolError(exception)
 
     # Select the function
 
@@ -135,37 +201,137 @@ def fit_peak1d(x, y, type='gaussian', nparms=4, p0=None, positive=False,
     else:
 
         exception = 'fitpeak1d: Unknown type.'
-        raise Exception(exception)        
+        raise pySpextoolError(exception)        
 
-    # Now do the call
+    # Create a goodbad array
+
+    goodbad = goodbad_init(y)
+
+    #
+    # Fit the data
+    #
     
+    warning =  scipy.optimize.OptimizeWarning
     try:
 
         if ignore_optimizewarning is True:
 
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore", scipy.optimize.OptimizeWarning)
+                warnings.simplefilter("ignore",warning)
 
-                popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)
+                popt, pcov = scipy.optimize.curve_fit(f, xx, yy, p0=p0)
 
         else:
 
-            popt, pcov = scipy.optimize.curve_fit(f, x, y, p0=p0)            
+            popt, pcov = scipy.optimize.curve_fit(f, xx, yy, p0=p0)            
                 
         fit = {'parms': popt}
         fit['fit'] = f(x, *popt)
         fit['goodfit'] = True
+        fit['goodbad'] = goodbad
             
     except (RuntimeError, scipy.optimize.OptimizeWarning):
 
         fit = {'parms': np.full_like(p0, np.nan)}
         fit['fit'] = np.full_like(y, np.nan)
         fit['goodfit']=False
+        fit['goodbad'] = np.full_like(y, np.nan)
         
+        return fit
+
+    # 
+    # Do a robust version if requested.
+    #
+
+    if robust is not None:
+
+        # Search for bad points
+
+        residual = yy - f(xx, *popt)
+
+        mean = np.mean(residual)
+        stddev = np.std(residual)
+
+        z_good = np.abs((residual - mean) / stddev) <= robust['thresh']
+        n_bad = np.sum(~z_good)
+
+        if n_bad != 0:
+
+            # Found a bad data point, so start looping
+
+            itter = 0
+
+            for i in range(11):
+
+                itter += 1
+                
+                old_stddev = stddev
+            
+                try:
+
+                    if ignore_optimizewarning is True:
+                        
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", warning)
+                            
+                            popt, pcov = scipy.optimize.curve_fit(f, 
+                                                                  xx[z_good], 
+                                                                  yy[z_good], 
+                                                                  p0=p0)
+                            
+                    else:
+                        
+                        popt, pcov = scipy.optimize.curve_fit(f, 
+                                                              xx[z_good], 
+                                                              yy[z_good], 
+                                                              p0=p0)            
+                        
+                        fit = {'parms': popt}
+                        fit['fit'] = f(x, *popt)
+                        fit['goodfit'] = True
+                        
+                        # Let's reconstuct the goodbad array
+                        
+                        tmp = np.zeros(len(xx))
+                        tmp[z_good] = 1
+                        goodbad[z_initgood] = tmp
+                        
+                        fit['goodbad'] = goodbad
+                        
+                except (RuntimeError, scipy.optimize.OptimizeWarning):
+                    
+                    fit = {'parms': np.full_like(p0, np.nan)}
+                    fit['fit'] = np.full_like(y, np.nan)
+                    fit['goodfit']=False
+                    fit['goodbad'] = np.full_like(y, np.nan)
+                    
+                    return fit
+                                
+                residual = yy[z_good] - f(xx[z_good], *popt)
+                
+                mean = np.mean(residual)
+                stddev = np.std(residual)
+
+                # Check to see if the new stddev isn't much of a change
+                # from the old one
+                
+                if (old_stddev - stddev) / old_stddev < robust['eps']:
+                    break
+                
+                # Create full residual array and search for bad ones
+                
+                residual = yy - f(xx, *popt)
+                z_good = np.abs((residual - mean) / stddev) <= robust['thresh']
+                
+
     return fit
     
         
-def lorentz1d(x, amp, mean, hwhm, *args):
+def lorentz1d(x:npt.ArrayLike, 
+              amp:float, 
+              mean:float, 
+              hwhm:float, 
+              *args):
 
     """
     Computes values of a lorentzian function given user parameters.
@@ -177,7 +343,7 @@ def lorentz1d(x, amp, mean, hwhm, *args):
 
     Parameters
     ----------
-    x : array-like
+    x : ndarray
         (nx,) array of independent variables.
 
     amp: float
@@ -197,7 +363,7 @@ def lorentz1d(x, amp, mean, hwhm, *args):
 
     Returns
     -------
-    numpy.ndarray
+    ndarray
         The lorentzian function evaluated at `x`. 
 
     Notes
@@ -219,24 +385,20 @@ def lorentz1d(x, amp, mean, hwhm, *args):
 
     # Deal with the baseline
         
-    nargs = len(args)
-
     bl = 0
     for i, coeff in enumerate(args):
         bl += coeff * x**i
-
-    
-
-#    bl = args[0] if nargs >= 1 else 0
-#    if nargs == 2:
-#        bl = bl + args[1]*x
 
     #   Compute the values and return 
 
     return bl + amp/(u**2 + 1)
 
 
-def gauss1d(x, amp, mean, sigma, *args):
+def gauss1d(x:npt.ArrayLike, 
+            amp:float, 
+            mean:float, 
+            sigma:float, 
+            *args):
 
     """
     Computes values of a gaussian function given user parameters.
@@ -248,7 +410,7 @@ def gauss1d(x, amp, mean, sigma, *args):
 
     Parameters
     ----------
-    x : array-like
+    x : ndarray
         (nx,) array of independent variables.
 
     amp: float
@@ -268,7 +430,7 @@ def gauss1d(x, amp, mean, sigma, *args):
 
     Returns
     -------
-    numpy.ndarray
+    ndarray
         The gaussian function evaluated at `x`. 
 
     Notes
@@ -300,7 +462,11 @@ def gauss1d(x, amp, mean, sigma, *args):
     return bl + amp*uz
 
 
-def cmest(x, y, nan=False, positive=False, negative=False):
+def cmest(x:npt.ArrayLike, 
+          y:npt.ArrayLike, 
+          nan:bool=False, 
+          positive:bool=False, 
+          negative:bool=False):
 
     """
     To estimate the parameters for peak fitting.
@@ -308,10 +474,10 @@ def cmest(x, y, nan=False, positive=False, negative=False):
 
     Parameters
     ----------
-    x : arrqy-like
+    x : ndarray
         (nx,) array of independent variables.
 
-    y : arrqy-like
+    y : ndarray
         (nx,) array of dependent variables.
 
     nan : {False, True}, optional
@@ -327,7 +493,7 @@ def cmest(x, y, nan=False, positive=False, negative=False):
 
     Returns
     -------
-    numpy.ndarray of float
+    ndarray of float
         array[0] : the peak value 
 
         array[1] : the centroid location 

@@ -9,8 +9,6 @@ from pyspextool.setup_utils import (
 )
 
 
-cwd = os.path.abspath(os.getcwd())
-
 spex_prism_paths = {
     "raw_path": "tests/test_data/raw/spex-prism/data/",
     "cal_path": "tests/test_data/raw/spex-prism/cals/",
@@ -69,7 +67,7 @@ def test_set_paths(paths):
     set_paths(
         paths["raw_path"], paths["cal_path"], paths["proc_path"], paths["qa_path"]
     )
-
+    
     assert setup.state["raw_path"] == os.path.abspath(paths["raw_path"])
     assert setup.state["cal_path"] == os.path.abspath(paths["cal_path"])
     assert setup.state["proc_path"] == os.path.abspath(paths["proc_path"])

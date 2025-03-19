@@ -8,10 +8,23 @@ from pyspextool.io.read_instrument_file import read_instrument_file
 from pyspextool.io.check import check_parameter, check_path, check_file
 from pyspextool.pyspextoolerror import pySpextoolError
 from importlib.resources import files  # Python 3.10+
+from importlib.metadata import version, PackageNotFoundError
 
 # TODO:  test logging works as expected. run some commands in the REPL
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+
+try:
+    __version__ = version("pyspextool")
+except PackageNotFoundError:
+    # package is not installed
+    pass
+
+
+def set_version():
+    setup.state["version"] = __version__
+    logger.debug(f"Version set to {setup.state['version']}")
 
 
 def pyspextool_setup(instrument=setup.state["instruments"][0],
@@ -26,7 +39,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
                      qa_showblock:bool=False,
                      qa_write:bool=False,
                      qa_extension:str=setup.state["qa_extensions"][0]):
-    
+
     """
     Set the pyspextool instrument, paths, and quality assurance settings
 
@@ -116,16 +129,16 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     check_parameter('pyspextool_setup', 'instrument', instrument, 'str',
                     possible_values=setup.state['instruments'])
-    
+
     check_parameter('pyspextool_setup', 'raw_path', raw_path,
                     ['NoneType', 'str'])
-    
+
     check_parameter('pyspextool_setup', 'cal_path', cal_path,
                     ['NoneType', 'str'])
-                    
+
     check_parameter('pyspextool_setup', 'proc_path', proc_path, 
                     ['NoneType', 'str'])
-                    
+
     check_parameter('pyspextool_setup', 'qa_path', qa_path, 
                     ['NoneType', 'str'])
 
@@ -136,9 +149,9 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     check_parameter('pyspextool_setup', 'qa_showscale', qa_showscale,
                     ['float','int'])
-    
+
     check_parameter('pyspextool_setup', 'qa_showblock', qa_showblock, 'bool')
-    
+
     check_parameter('pyspextool_setup', 'qa_write', qa_write, 'bool')
 
     check_parameter('pyspextool_setup', 'qa_extensioan', qa_extension,
@@ -147,10 +160,10 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
     # Report what you are doing
     #
-    
+
     message = ' pySpextool Setup'
     logging.info(message+'\n'+'-'*(len(message)+5)+'\n')
-    
+
     #
     # Store the search extension
     #
@@ -160,7 +173,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
     # Set up verbose scale and logging
     #
-    
+
     if verbose is True:
 
         logging.getLogger().setLevel(logging.INFO)
@@ -171,12 +184,15 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-    logging.info(f" Verbose set to {setup.state['verbose']}")
+    logging.info(
+        f" Verbose set to {setup.state['verbose']}. \n"
+        f" Logging level set to {logging.getLogger().getEffectiveLevel()}"
+    )
 
     #
     # Set the instrument
     #
-    
+
     set_instrument(instrument)
 
     logging.info(f" Instrument set to {setup.state['instrument']}")
@@ -184,7 +200,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
     # Set the paths
     #
-    
+
     set_paths(raw_path, cal_path, proc_path, qa_path)
 
     logging.info(" Paths set")
@@ -194,6 +210,10 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     set_qa_state(qa_show, qa_showscale, qa_showblock, qa_write, qa_extension)
 
     logging.info(" QA settings set")
+
+    # Set the version number
+    set_version()
+
 
     msg = f"""
     Pyspextool Setup
@@ -211,6 +231,8 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     QA Extension: {setup.state['qa_extension']}
 
     Verbose: {setup.state['verbose']}
+
+    Version: {setup.state['version']}
     """
 
     logging.debug(msg)

@@ -266,8 +266,8 @@ def fiterpolate(img, ncg, nrg):
 
             # Create coordinate images
 
-            ximg, yimg = make_image_indices(gridinfo[k]['ysize'],
-                                            gridinfo[k]['xsize'])
+            ximg, yimg = make_image_indices(int(gridinfo[k]['ysize']),
+                                            int(gridinfo[k]['xsize']))
 
             nimg = bicuval(vals[idx, 0], vals[idx, 1], vals[idx, 2],
                            vals[idx, 3], 0.0, gridinfo[k]['xsize'], 0.0,
