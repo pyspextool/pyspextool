@@ -13,10 +13,10 @@
 # Deconvolution N_FWHM : The number of FWHMs around which to do the deconvolution
 #
 #=======================================================================================================================================================================
-# Instrument Mode  | Method        | Vega Model  | Order  | Deconvolution Line    | Normalization Ranges  | Poly Deg  | Fit Type   |RV N_FWHM   | Deconvolution N_FWHM |
+# Instrument Mode  | Method        | Vega Model  | Order  |  Line      | Normalization Ranges  | Poly Deg  | Fit Type   |RV N_FWHM   | Deconvolution N_FWHM |
 #=======================================================================================================================================================================
-ShortXD            | deconvolution | 50000       | 6      | 1.0052128             | 0.975 1.04            | 6         | lorentzian | 6          | 4                    |
-Prism              | IP            | 5000        |        |                       |                       |           |            |            |                      |
-LXD_short          | IP            | 50000       |        |                       |                       |           |            |            |                      |
-LXD_long           | IP            | 50000       |        |                       |                       |           |            |            |                      |
+ShortXD            | deconvolution | 50000       | 6      | 1.0052128  | 0.975 1.04            | 6         | lorentzian | 6          | 4                    |
+Prism              | IP            | 5000        |        |            |                       |           |            |            |                      |
+LXD_short          | IP            | 50000       |        |            |                       |           |            |            |                      |
+LXD_long           | IP            | 50000       |        |            |                       |           |            |            |                      |
 

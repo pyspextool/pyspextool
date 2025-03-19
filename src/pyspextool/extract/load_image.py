@@ -18,6 +18,7 @@ from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.extract.wavecal import read_wavecal_fits
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.arrays import idl_rotate
+from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
 
@@ -564,7 +565,7 @@ def load_image(files:str | list,
     indices = extract.state['rectindices']
     for i in range(extract.state['norders']):
 
-
+        loop_progress(i,0,extract.state['norders'])
         result = rectify_order(img,
                                indices[i]['xidx'],
                                indices[i]['yidx'],
