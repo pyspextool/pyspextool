@@ -43,7 +43,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.utils.arrays import numberList
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 
-VERSION = '2025 Feb 26'
+VERSION = '2025 Mar 12'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -2456,10 +2456,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 ## RENAME FILES ##
 ##################
 
-<<<<<<< HEAD
 ## CURRENTLY GOING FROM TELLURIC TO FINAL - SKIPPING STITCHING ##
-=======
->>>>>>> batch
 	if parameters['RENAME']==True:
 		for k in scikeys:
 			spar = parameters[k]
