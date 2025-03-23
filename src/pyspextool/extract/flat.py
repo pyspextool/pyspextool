@@ -5,6 +5,7 @@ from scipy.signal import medfilt2d
 from scipy import interpolate
 from astropy.io import fits
 import os
+import matplotlib.pyplot as pl
 
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.utils.add_entry import add_entry
@@ -19,6 +20,7 @@ from pyspextool.plot.plot_image import plot_image
 from pyspextool.extract.wavecal import make_interp_indices_1d
 from pyspextool.extract.images import rectify_order
 from pyspextool.fit.fiterpolate import *
+from pyspextool.plot.limits import get_image_range
 
 
 def find_top_bot(fcol:npt.ArrayLike,
@@ -35,7 +37,14 @@ def find_top_bot(fcol:npt.ArrayLike,
     To identify the top and bottom of the slit in a given column.
 
     Called from within locate_orders as a subroutine
-    
+
+    Parameters
+    ----------
+    fcol : 
+
+    rownum : 
+
+    imgcol
 
     """
 
@@ -87,17 +96,35 @@ def find_top_bot(fcol:npt.ArrayLike,
     else:
         com_bot = np.nan
 
-    if debug is not False:
-        plotfig = pl.figure(2)
+    if debug is True:
+
+        plotfig2 = pl.figure(2)
         pl.plot(rownum, sobcol)
-        pl.xlim([com_bot - 10, com_top + 10])
+
+        pl.axvline(yguess, color='g')
         pl.axvline(com_top, color='r')
         pl.axvline(com_bot, color='r')
-        pl.axvline(yguess, color='g')
         pl.title(fcol)
-        pl.pause(0.1)
-        #        val = input("-->")
-        plotfig.clear()
+
+        plotfig3 = pl.figure(3)
+        pl.plot(rownum, imgcol)
+
+        pl.axvline(yguess, color='g')
+        pl.axvline(com_top, color='r')
+        pl.axvline(com_bot, color='r')
+        pl.title(fcol)
+
+
+#        z = np.where((rownum > com_bot - 10) & 
+#                     (rownum < com_top + 10))[0]
+#        pl.plot(rownum[z], sobcol[z])
+##        pl.xlim([com_bot - 10, com_top + 10])
+
+
+##        pl.pause(1)
+        val = input("-->")
+        plotfig2.clear()
+        plotfig3.clear()
 
     return com_bot, com_top
 
@@ -234,9 +261,6 @@ def locate_orders(img:npt.ArrayLike,
                           showblock=qa_showblock,
                           showscale=qa_showscale)
 
-    
-    debug = False
-
     # Get set up to collect plotting info 
 
     plguesspos = []
@@ -264,14 +288,38 @@ def locate_orders(img:npt.ArrayLike,
     simg2 = ndimage.sobel(img / scl, axis=1)
     simg = np.sqrt(simg1 ** 2 + simg2 ** 2)
 
+    debug = False
     if debug is not False:
+
+        
+
+
         pl.ion()
-        plotfig = pl.figure(2, figsize=(6, 6))
+        plotfig2 = pl.figure(2, figsize=(6, 6)) # sobel profile
+        plotfig3 = pl.figure(3, figsize=(6, 6)) # image profile
+
+#        minmax = get_image_range(simg, 'zscale')
+#        if minmax[0] > minmax[1]:
+#
+#            minmax = (np.min(simg), np.max(simg))
+#        
+#        cmap = pl.cm.gray
+#
+#
+#
+#        plotfig3 = pl.figure(4, figsize=(10, 10)) # sobel image
+#
+#        pl.imshow(simg, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
+#              origin='lower')
+        
 
     # Start looping over each order
 
     for i in range(0, norders):
 
+#        debug = False
+#        if i == 4: debug = True
+    
         # Collect the guess positions for plotting
 
         plguesspos.append(list(guess_positions[i, :]))
@@ -299,6 +347,12 @@ def locate_orders(img:npt.ArrayLike,
 
         cens[(gpidx - poly_degree):(gpidx + poly_degree)] = \
             guess_positions[i, 1]
+        cens_mask = ~np.isnan(cens)
+
+#        if debug is True:
+#
+#            plotfig3 = pl.figure(4)
+#            pl.plot(fcols,cens,'ro',markersize=0.5)
 
         #
         # Now move left from the guess position
@@ -311,12 +365,25 @@ def locate_orders(img:npt.ArrayLike,
 
             # Fit the centers, so you can project away from the guess position
 
-            r = polyfit_1d(fcols, cens, max(1, poly_degree - 2), justfit=True,
+            r = polyfit_1d(fcols, 
+                           cens, 
+                           max(1, poly_degree - 2), 
+                           justfit=True,
                            silent=True)
 
             # Find the new guess position yguess 
 
             yguess = np.polynomial.polynomial.polyval(fcols[j], r['coeffs'])
+
+#            if debug is True:
+#
+#                plotfig2 = pl.figure(3)
+#                pl.plot(fcols[j],yguess,'ro',markersize=0.5)
+#
+#
+#            if debug is True:
+#
+#                print(yguess)
 
             # Clip it to avoid the edges
 
@@ -327,6 +394,10 @@ def locate_orders(img:npt.ArrayLike,
                                     iguess, intensity_fraction, halfwin,
                                     debug=debug)
 
+#            if debug is True:
+
+#                print('Bot/Top', bot, top)
+
             # Confirm that both COMs were computed
 
             if np.isfinite(bot):
@@ -334,10 +405,26 @@ def locate_orders(img:npt.ArrayLike,
                 # Now check to make sure calculated slit height falls within the
                 # parameter slith_pix
 
+#                print('fcol',fcols[j])
+#                print(slit_height_range)
+#                print(top-bot)
+
                 if slit_height_range[0] <= top - bot <= slit_height_range[1]:
+
                     # Store the results, update the cens array
                     edges[:, j] = np.array([bot, top])
-                    cens[j] = (bot + top) / 2
+#                    cens[j] = (bot + top) / 2
+
+
+                    z = np.where((fcols <= fcols[j]) & 
+                              (cens_mask == 1))[0]
+                    if z.size == 0:
+
+                        cens[j] = (bot + top) / 2
+
+                    else:
+
+                        cens[z] = (bot + top) / 2
 
         #
         # Now move right from the guess position
@@ -549,6 +636,9 @@ def normalize_flat(img:npt.ArrayLike,
     
     for i in range(norders):
 
+        if verbose is True and i == 0:
+            loop_progress(0, 0, norders, message='')
+
         #
         # Rectify the order
         #
@@ -631,10 +721,9 @@ def normalize_flat(img:npt.ArrayLike,
         z = np.where(mask == 1)
         m = moments(nimg[z], robust=4.5)
         rms[i] = m['stddev']
-
     
         if verbose:
-            loop_progress(i, 0, norders, message='Normalizing the flat.')
+            loop_progress(i, 0, norders)
 
     return nimg, nvar, rms
 

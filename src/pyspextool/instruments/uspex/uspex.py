@@ -589,14 +589,14 @@ def get_uspexheader(hdr,
 
         hourangle = hdr['TCS_HA']
 
+        m = re.search('[-]', '[' + hourangle + ']')
+        if not m:
+            hourangle = '+' + hourangle.strip()
+            
     except KeyError as e:
 
-        hourangle = 'nan:nan:nan'
+        hourangle = 'nan'
         
-    m = re.search('[-]', '[' + hourangle + ']')
-    if not m:
-        hourangle = '+' + hourangle.strip()
-
     hdrinfo['HA'] = [hourangle, ' Hour angle (hours)']
 
     # Position Angle
@@ -610,16 +610,16 @@ def get_uspexheader(hdr,
 
         declination = hdr['TCS_DEC']
 
+        m = re.search('[-]', '[' + declination + ']')
+        if not m:
+            declination = '+' + declination.strip()
+            
+
     except KeyError as e:
 
-        declination = 'nan:nan:nan'
+        declination = 'nan'
 
-
-    m = re.search('[-]', '[' + declination + ']')
-    if not m:
-        declination = '+' + declination.strip()
     hdrinfo['DEC'] = [declination, ' Declination, FK5 J2000']
-
 
     # Right Ascension
 
@@ -629,7 +629,7 @@ def get_uspexheader(hdr,
 
     except KeyError as e:
 
-        declination = 'nan:nan:nan'        
+        declination = 'nan'
 
     hdrinfo['RA'] = [declination, ' Right Ascension, FK5 J2000']
 
