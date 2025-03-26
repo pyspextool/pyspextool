@@ -244,6 +244,7 @@ def make_flat(files:list | str,
         
     edgecoeffs = result[0]
     xranges = result[1]
+    print(edgecoeffs)
 
     #
     # Normalize the flat if requested

@@ -144,7 +144,7 @@ def locate_orders(img:npt.ArrayLike,
                   qa_fontsize:int=12,
                   qa_show:bool=None,
                   qa_showscale:int | float=1,
-                  qa_showblock:bool=None,
+                  qa_showblock:bool=False,
                   qa_fullpath:str=None):
 
     """
