@@ -2,6 +2,7 @@ import importlib
 import numpy as np
 import pyspextool as ps
 from pyspextool import config as setup
+from pyspextool.extract.flat import read_flatcal_file, locate_orders
 
 
 def test_locate_orders():
@@ -22,7 +23,8 @@ def test_locate_orders():
     # Get flat info
 
     # Load a single flat frame
-    # This flat had a weird thing that made it break
+    # This flat is missing the TCS-AM keyword and didn't work with previous version
+    # of locate_orders. https://github.com/pyspextool/pyspextool/issues/221
     file = setup.state["raw_path"] + "/sbd.2023B006.231021.flat.00293.a.fits"
 
     module = (
@@ -41,9 +43,9 @@ def test_locate_orders():
     mode = hdr[0]["MODE"][0]
     modefile = setup.state["instrument_path"] + "/" + mode + "_flatinfo.fits"
 
-    modeinfo = ps.extract.flat.read_flatcal_file(modefile)
+    modeinfo = read_flatcal_file(modefile)
 
-    result = ps.extract.flat.locate_orders(
+    result = locate_orders(
         data[0],
         modeinfo["guesspos"],
         modeinfo["xranges"],
