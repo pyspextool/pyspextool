@@ -1,12 +1,13 @@
-import re
+import numpy as np
 import fnmatch
+
 
 from pyspextool.io.check import check_parameter
 from pyspextool.utils import coords
 from pyspextool.utils.add_entry import add_entry
 
-def average_headerinfo(hdrs,
-                       pair=False):
+def average_headerinfo(hdrs:list,
+                       pair:bool=False):
 
     """
     Averages a pySpextool header lists
@@ -14,16 +15,16 @@ def average_headerinfo(hdrs,
     Parameters
     ----------
     hdrs : list
-        list of dictionaries where each element is of the form:
-        {key:[val,com]} where key is the FITS keyword, "val" is the 
+        (nheaders,) list of dictionaries where each dictionary element is of 
+        the form: {key:[val,com]} where key is the FITS keyword, "val" is the 
         value, and "com" is the comment.
 
     pair : {False, True}
         Set to True if the Spextool header list was generated for 
-        pair subtraced images
+        pair subtraced images.
 
     Returns
-    --------
+    -------
     dict
         a pySpextool header list with the values for TIME,
         DATE, HA, MJD, AIRMASS replaced with start, average, and end 
@@ -32,6 +33,16 @@ def average_headerinfo(hdrs,
 
 
     """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('average_headerinfo', 'hdrs', hdrs, 'list')
+
+    check_parameter('average_headerinfo', 'pair', pair, 'bool')
+
+
     # Store the first hdrinfo
 
     hdrinfo = hdrs[0]
@@ -134,25 +145,49 @@ def average_headerinfo(hdrs,
     # Convert to decimal hours
 
     dvals = []
+    nhourangles = 0
     for i in range(0, nfiles):
-        dvals.append(coords.ten(vals[i]))
+    
+        if vals[i].strip() == 'nan':
 
-    ave = sum(dvals) / nfiles
+            continue
 
-    # Convert back to sexigesimal
+        else:
+            
+            dvals.append(coords.ten(vals[i]))
+            nhourangles += 1
 
-    avetime = coords.sixty(ave, colons={'dec': 2, 'plus': 1})
+    if nhourangles == 0:
+
+        # All nans
+
+        start = 'nan'
+        ave = 'nan'
+        end = 'nan'
+
+    else:
+
+        ave = sum(dvals) / nhourangles
+
+        # Convert back to sexigesimal
+
+        ave = coords.sixty(ave, colons={'dec': 2, 'plus': 1})
+
+        start = vals[0]
+        end = vals[-1]
+
+
 
     # Add the new keywords
 
     hdrinfo = add_entry(hdrinfo, 'HA', 'after', 'SRT_HA',
-                        [vals[0], 'Start hour angle (hours)'])
+                        [start, 'Start hour angle (hours)'])
 
     hdrinfo = add_entry(hdrinfo, 'SRT_HA', 'after', 'AVE_HA',
-                        [avetime, 'Average hour angle (hours)'])
+                        [ave, 'Average hour angle (hours)'])
 
     hdrinfo = add_entry(hdrinfo, 'AVE_HA', 'after', 'END_HA',
-                        [vals[-1], 'End hour angle (hours)'])
+                        [end, 'End hour angle (hours)'])
 
     # Remove the current keyword
 
@@ -191,22 +226,42 @@ def average_headerinfo(hdrs,
     # Grab the values
 
     vals = [item["AM"][0] for item in hdrs]
+    nvals = len(vals)
+    nanmask = np.isnan(vals)
 
-    # Get the number of significant digits
+    if nvals == np.sum(nanmask):
 
-    junk = str(vals[0]).split('.')
-    ndigits = len(junk[1])
+        # They are all NaNs 
+
+        start = np.nan
+        ave = np.nan
+        end = np.nan
+        ndigits = 1
+
+    else:
+
+        # At least 1 isn't a NaN
+        
+        start = vals[0]
+        ave = np.nanmean(vals)
+        end = vals[-1]
+
+        junk = str(vals[int(~nanmask[0])]).split('.')
+        ndigits = len(junk[1])
+        
+    # Add the results 
+    
     fmt = '{:.' + str(ndigits) + 'f}'
 
     hdrinfo = add_entry(hdrinfo, 'AM', 'after', 'SRT_AM',
-                        [vals[0], 'Start airmass'])
+                        [start, 'Start airmass'])
 
     hdrinfo = add_entry(hdrinfo, 'SRT_AM', 'after', 'AVE_AM',
-                        [float(fmt.format(sum(vals) / nfiles)),
+                        [float(fmt.format(ave)),
                          'Average airmass'])
 
     hdrinfo = add_entry(hdrinfo, 'AVE_AM', 'after', 'END_AM',
-                        [vals[-1], 'End airmass'])
+                        [end, 'End airmass'])
 
     # Remove the current keyword
 

@@ -8,7 +8,6 @@ from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
-
 def plot_image(image:npt.ArrayLike,
                mask:npt.ArrayLike=None,
                orders_plotinfo:dict=None,
@@ -246,6 +245,10 @@ def doplot(plot_number:int,
     axes1.tick_params(which='minor', length=3)
     axes1.tick_params(which='major', length=5)
     axes1.yaxis.set_minor_locator(AutoMinorLocator())
+
+    # Disable autoscaling
+    axes1.autoscale(False)
+
        
     #
     # Overplot orders if requested
@@ -311,14 +314,16 @@ def doplot(plot_number:int,
             pl.plot(guess[i][0], guess[i][1], 'go')
 
         for i in range(len(x)):
+
             pl.plot(x[i], y[i], 'go', markersize=1)
 
             bad = goodbad[i] == 0
             pl.plot(x[i][bad], y[i][bad], 'bo', markersize=1)
 
-            pl.plot(x[i], np.polynomial.polynomial.polyval(x[i], coeffs[i]),
-                    'r-', linewidth=0.3)
-
+            pl.plot(x[i], 
+                    np.polynomial.polynomial.polyval(x[i], coeffs[i]),
+                    'r-',linewidth=0.5)
+                
     # fix layout overlap
     
     pl.tight_layout()
