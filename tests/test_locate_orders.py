@@ -67,7 +67,6 @@ def test_locate_orders():
     assert np.isclose(coeffs[5][0][0], 1928.40968)
     assert np.isclose(coeffs[6][0][0], 2468.47831)
 
-
     xranges = result[1]
     assert (xranges[0] == (4, 2043)).all()
     assert (xranges[1] == (4, 2043)).all()
