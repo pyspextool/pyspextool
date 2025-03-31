@@ -15,11 +15,10 @@ from pyspextool.utils.math import moments
 from pyspextool.utils.loop_progress import loop_progress
 
 from pyspextool.fit.polyfit import polyfit_1d, poly_1d
-from pyspextool.io.check import check_parameter
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.extract.wavecal import make_interp_indices_1d
 from pyspextool.extract.images import rectify_order
-from pyspextool.fit.fiterpolate import *
+from pyspextool.fit.fiterpolate import fiterpolate
 from pyspextool.plot.limits import get_image_range
 
 
@@ -114,20 +113,10 @@ def find_top_bot(fcol:npt.ArrayLike,
         pl.axvline(com_bot, color='r')
         pl.title(fcol)
 
-
-#        z = np.where((rownum > com_bot - 10) & 
-#                     (rownum < com_top + 10))[0]
-#        pl.plot(rownum[z], sobcol[z])
-##        pl.xlim([com_bot - 10, com_top + 10])
-
-
-##        pl.pause(1)
-        val = input("-->")
         plotfig2.clear()
         plotfig3.clear()
 
     return com_bot, com_top
-
 
 
 def locate_orders(img:npt.ArrayLike,
@@ -145,7 +134,8 @@ def locate_orders(img:npt.ArrayLike,
                   qa_show:bool=None,
                   qa_showscale:int | float=1,
                   qa_showblock:bool=False,
-                  qa_fullpath:str=None):
+                  qa_fullpath:str=None,
+                  debug:bool=False):
 
     """
     Locates orders in a (cross-dispersed) spectral image
@@ -201,6 +191,7 @@ def locate_orders(img:npt.ArrayLike,
 
     Returns
     -------
+    (edgecoeffs, xranges) : tuple
     edgecoeffs : ndarray
         (norders, 2, ncoeffs) array giving the polynomial coefficients
         delineating the top and bottom of each order.  edgecoeffs[0,0,:]
@@ -279,7 +270,7 @@ def locate_orders(img:npt.ArrayLike,
     halfwin = int(com_width / 2.)
 
     edgecoeffs = np.empty((norders, 2, poly_degree + 1))
-    xranges = np.empty((norders,2),dtype=int)
+    xranges = np.empty((norders,2), dtype=int)
     
     # Sobel the image
 
@@ -288,37 +279,25 @@ def locate_orders(img:npt.ArrayLike,
     simg2 = ndimage.sobel(img / scl, axis=1)
     simg = np.sqrt(simg1 ** 2 + simg2 ** 2)
 
-    debug = False
-    if debug is not False:
-
-        
-
-
+    if debug is True:
         pl.ion()
-        plotfig2 = pl.figure(2, figsize=(6, 6)) # sobel profile
-        plotfig3 = pl.figure(3, figsize=(6, 6)) # image profile
+        # plotfig2 = pl.figure(2, figsize=(6, 6)) # sobel profile
+        # plotfig3 = pl.figure(3, figsize=(6, 6)) # image profile
 
-#        minmax = get_image_range(simg, 'zscale')
-#        if minmax[0] > minmax[1]:
-#
-#            minmax = (np.min(simg), np.max(simg))
-#        
-#        cmap = pl.cm.gray
-#
-#
-#
-#        plotfig3 = pl.figure(4, figsize=(10, 10)) # sobel image
-#
-#        pl.imshow(simg, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
-#              origin='lower')
+        minmax = get_image_range(simg, 'zscale')
+        if minmax[0] > minmax[1]:
+
+           minmax = (np.min(simg), np.max(simg))
+       
+        cmap = pl.cm.gray
+        # plotfig3 = pl.figure(4, figsize=(10, 10)) # sobel image
+        pl.imshow(simg, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
+             origin='lower')
         
 
     # Start looping over each order
 
     for i in range(0, norders):
-
-#        debug = False
-#        if i == 4: debug = True
     
         # Collect the guess positions for plotting
 
@@ -349,11 +328,6 @@ def locate_orders(img:npt.ArrayLike,
             guess_positions[i, 1]
         cens_mask = ~np.isnan(cens)
 
-#        if debug is True:
-#
-#            plotfig3 = pl.figure(4)
-#            pl.plot(fcols,cens,'ro',markersize=0.5)
-
         #
         # Now move left from the guess position
         #
@@ -375,16 +349,6 @@ def locate_orders(img:npt.ArrayLike,
 
             yguess = np.polynomial.polynomial.polyval(fcols[j], r['coeffs'])
 
-#            if debug is True:
-#
-#                plotfig2 = pl.figure(3)
-#                pl.plot(fcols[j],yguess,'ro',markersize=0.5)
-#
-#
-#            if debug is True:
-#
-#                print(yguess)
-
             # Clip it to avoid the edges
 
             yguess = int(np.clip(yguess, ybuffer, (nrows - ybuffer - 1)))
@@ -394,9 +358,8 @@ def locate_orders(img:npt.ArrayLike,
                                     iguess, intensity_fraction, halfwin,
                                     debug=debug)
 
-#            if debug is True:
-
-#                print('Bot/Top', bot, top)
+            if debug is True:
+                print('Bot/Top:', bot, top)
 
             # Confirm that both COMs were computed
 
@@ -517,7 +480,6 @@ def locate_orders(img:npt.ArrayLike,
 
 
     return edgecoeffs, xranges
-
 
 
 def normalize_flat(img:npt.ArrayLike,
@@ -658,7 +620,7 @@ def normalize_flat(img:npt.ArrayLike,
         model = fiterpolate(medfilt2d(order['image'], kernel_size=(5, 5)),
                             nxgrid, nygrid)
 
-        # Now normalize the raw data using the fiterpolated model
+        # Normalize the raw data using the fiterpolated model
 
         # Get useful things and set up
         
@@ -697,7 +659,6 @@ def normalize_flat(img:npt.ArrayLike,
             # Do the linterpolation
 
             f = interpolate.interp1d(spatmap[:,0], model[:, j])
-            tmp = np.polynomial.polynomial.polyval(ypix_slit, [m, b])
 
             slit_model = f(np.polynomial.polynomial.polyval(ypix_slit, [m, b]))
 
@@ -726,8 +687,6 @@ def normalize_flat(img:npt.ArrayLike,
             loop_progress(i, 0, norders)
 
     return nimg, nvar, rms
-
-
 
 
 def read_flat_fits(filename:str):
@@ -916,7 +875,7 @@ def read_flat_fits(filename:str):
 
             rms[i] = hdr[root + 'RMS']
 
-        except KeyError as err:
+        except KeyError:
 
             rms[i] = np.nan
 
@@ -1045,7 +1004,6 @@ def read_flatcal_file(filename:str):
     # Open the file, grab the mask
 
     hdul = fits.open(filename)
-    omask = hdul[0].data
 
     # Clean the header and grab important keywords
 
@@ -1397,7 +1355,5 @@ def write_flat(flat:npt.ArrayLike,
     flg_hdu = fits.ImageHDU(idl_unrotate(flag, rotate))
     ord_hdu = fits.ImageHDU(idl_unrotate(order_mask, rotate))    
 
-
-    
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu, ord_hdu])
     hdu.writeto(oname, overwrite=overwrite)
