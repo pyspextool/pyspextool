@@ -1,16 +1,14 @@
 import numpy as np
 import numpy.typing as npt
-from scipy import ndimage
+from scipy import ndimage, interpolate
 from scipy.signal import medfilt2d
-from scipy import interpolate
 from astropy.io import fits
 import os
 import matplotlib.pyplot as pl
 
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.utils.add_entry import add_entry
-from pyspextool.utils.arrays import idl_rotate
-from pyspextool.utils.arrays import idl_unrotate
+from pyspextool.utils.arrays import idl_rotate, idl_unrotate
 from pyspextool.utils.math import moments
 from pyspextool.utils.loop_progress import loop_progress
 
@@ -22,16 +20,17 @@ from pyspextool.fit.fiterpolate import fiterpolate
 from pyspextool.plot.limits import get_image_range
 
 
-def find_top_bot(fcol:npt.ArrayLike,
-                 rownum:int,
-                 imgcol:npt.ArrayLike,
-                 sobcol:npt.ArrayLike,
-                 yguess,
-                 imgguess,
-                 frac:int | float,
-                 halfwin:int,
-                 debug:bool=False):
-
+def find_top_bot(
+    fcol: npt.ArrayLike,
+    rownum: int,
+    imgcol: npt.ArrayLike,
+    sobcol: npt.ArrayLike,
+    yguess,
+    imgguess,
+    frac: int | float,
+    halfwin: int,
+    debug: bool = False,
+):
     """
     To identify the top and bottom of the slit in a given column.
 
@@ -39,9 +38,9 @@ def find_top_bot(fcol:npt.ArrayLike,
 
     Parameters
     ----------
-    fcol : 
+    fcol :
 
-    rownum : 
+    rownum :
 
     imgcol
 
@@ -100,43 +99,43 @@ def find_top_bot(fcol:npt.ArrayLike,
         plotfig2 = pl.figure(2)
         pl.plot(rownum, sobcol)
 
-        pl.axvline(yguess, color='g')
-        pl.axvline(com_top, color='r')
-        pl.axvline(com_bot, color='r')
+        pl.axvline(yguess, color="g")
+        pl.axvline(com_top, color="r")
+        pl.axvline(com_bot, color="r")
         pl.title(fcol)
 
         plotfig3 = pl.figure(3)
         pl.plot(rownum, imgcol)
 
-        pl.axvline(yguess, color='g')
-        pl.axvline(com_top, color='r')
-        pl.axvline(com_bot, color='r')
+        pl.axvline(yguess, color="g")
+        pl.axvline(com_top, color="r")
+        pl.axvline(com_bot, color="r")
         pl.title(fcol)
-
         plotfig2.clear()
         plotfig3.clear()
 
     return com_bot, com_top
 
 
-def locate_orders(img:npt.ArrayLike,
-                  guess_positions:npt.ArrayLike,
-                  search_ranges:npt.ArrayLike,
-                  step_size:int,
-                  slit_height_range:npt.ArrayLike,
-                  poly_degree:int,
-                  ybuffer:int,
-                  intensity_fraction:int or float,
-                  com_width:int,
-                  qa_plotnumber:int=None,
-                  qa_figuresize:tuple=(7,7),
-                  qa_fontsize:int=12,
-                  qa_show:bool=None,
-                  qa_showscale:int | float=1,
-                  qa_showblock:bool=False,
-                  qa_fullpath:str=None,
-                  debug:bool=False):
-
+def locate_orders(
+    img: npt.ArrayLike,
+    guess_positions: npt.ArrayLike,
+    search_ranges: npt.ArrayLike,
+    step_size: int,
+    slit_height_range: npt.ArrayLike,
+    poly_degree: int,
+    ybuffer: int,
+    intensity_fraction: int or float,
+    com_width: int,
+    qa_plotnumber: int = None,
+    qa_figuresize: tuple = (7, 7),
+    qa_fontsize: int = 12,
+    qa_show: bool = None,
+    qa_showscale: int | float = 1,
+    qa_showblock: bool = False,
+    qa_fullpath: str = None,
+    debug: bool = False,
+):
     """
     Locates orders in a (cross-dispersed) spectral image
 
@@ -189,6 +188,9 @@ def locate_orders(img:npt.ArrayLike,
     qa_fullpath : str, optional
         The fullpath to write the QA file to disk.
 
+    debug : bool, default=False
+        If True, the function will plot the results of the order
+
     Returns
     -------
     (edgecoeffs, xranges) : tuple
@@ -201,9 +203,9 @@ def locate_orders(img:npt.ArrayLike,
 
     xranges : ndarray
         An (norders, 2) array giving the columns where the orders fall entirely.
-        xranges[0, 0] is the left column of the order nearest the bottom of the 
+        xranges[0, 0] is the left column of the order nearest the bottom of the
         array and xranges[0, 1] is the right column of the same order.
-        
+
     Notes
     -----
         The IDL sobel function is used to enhance the edges of the orders.
@@ -222,37 +224,30 @@ def locate_orders(img:npt.ArrayLike,
     #
     # Check parameters
     #
-    
-    check_parameter('locate_orders', 'img', img, 'ndarray', 2)
 
-    check_parameter('locate_orders', 'guess_positions', guess_positions,
-                    'ndarray', 2)
+    check_parameter("locate_orders", "img", img, "ndarray", 2)
 
-    check_parameter('locate_orders', 'search_ranges', search_ranges,
-                    'ndarray', 2)
+    check_parameter("locate_orders", "guess_positions", guess_positions, "ndarray", 2)
 
-    check_parameter('locate_orders', 'step_size', step_size, 'int')
+    check_parameter("locate_orders", "search_ranges", search_ranges, "ndarray", 2)
 
-    check_parameter('locate_orders', 'slit_height_range', slit_height_range,
-                    'ndarray')
+    check_parameter("locate_orders", "step_size", step_size, "int")
 
-    check_parameter('locate_orders', 'poly_degree', poly_degree, 'int')
+    check_parameter("locate_orders", "slit_height_range", slit_height_range, "ndarray")
 
-    check_parameter('locate_orders', 'ybuffer', ybuffer, 'int')
+    check_parameter("locate_orders", "poly_degree", poly_degree, "int")
 
-    check_parameter('locate_orders', 'intensity_fraction',
-                    intensity_fraction, 'float')
+    check_parameter("locate_orders", "ybuffer", ybuffer, "int")
 
-    check_parameter('locate_orders', 'com_width', com_width, 'int')
+    check_parameter("locate_orders", "intensity_fraction", intensity_fraction, "float")
 
-    check_parameter('locate_orders', 'qa_figuresize', qa_figuresize,
-                    'tuple')        
+    check_parameter("locate_orders", "com_width", com_width, "int")
 
-    qa = check_qakeywords(show=qa_show,
-                          showblock=qa_showblock,
-                          showscale=qa_showscale)
+    check_parameter("locate_orders", "qa_figuresize", qa_figuresize, "tuple")
 
-    # Get set up to collect plotting info 
+    qa = check_qakeywords(show=qa_show, showblock=qa_showblock, showscale=qa_showscale)
+
+    # Get set up to collect plotting info
 
     plguesspos = []
     plcols = []
@@ -267,38 +262,37 @@ def locate_orders(img:npt.ArrayLike,
 
     rownum = np.arange(nrows)
 
-    halfwin = int(com_width / 2.)
+    halfwin = int(com_width / 2.0)
 
     edgecoeffs = np.empty((norders, 2, poly_degree + 1))
-    xranges = np.empty((norders,2), dtype=int)
-    
+    xranges = np.empty((norders, 2), dtype=int)
+
     # Sobel the image
 
     scl = np.max(img)
     simg1 = ndimage.sobel(img / scl, axis=0)
     simg2 = ndimage.sobel(img / scl, axis=1)
-    simg = np.sqrt(simg1 ** 2 + simg2 ** 2)
+    simg = np.sqrt(simg1**2 + simg2**2)
 
     if debug is True:
+
         pl.ion()
-        # plotfig2 = pl.figure(2, figsize=(6, 6)) # sobel profile
-        # plotfig3 = pl.figure(3, figsize=(6, 6)) # image profile
+        # plotfig2 = pl.figure(2, figsize=(6, 6))  # sobel profile
+        # plotfig3 = pl.figure(3, figsize=(6, 6))  # image profile
 
-        minmax = get_image_range(simg, 'zscale')
+        minmax = get_image_range(simg, "zscale")
         if minmax[0] > minmax[1]:
+            minmax = (np.min(simg), np.max(simg))
 
-           minmax = (np.min(simg), np.max(simg))
-       
+        # plotfig3 = pl.figure(4, figsize=(10, 10))  # sobel image
+
         cmap = pl.cm.gray
-        # plotfig3 = pl.figure(4, figsize=(10, 10)) # sobel image
-        pl.imshow(simg, vmin=minmax[0], vmax=minmax[1], cmap=cmap,
-             origin='lower')
-        
+        pl.imshow(simg, vmin=minmax[0], vmax=minmax[1], cmap=cmap, origin="lower")
 
     # Start looping over each order
 
     for i in range(0, norders):
-    
+
         # Collect the guess positions for plotting
 
         plguesspos.append(list(guess_positions[i, :]))
@@ -321,12 +315,16 @@ def locate_orders(img:npt.ArrayLike,
         # Fill the first few points in the cens array with the guess position
 
         delta = fcols - guess_positions[i, 0]
-        gpidx = np.ndarray.item(np.where(np.absolute(delta) ==
-                                         np.absolute(delta).min())[0])
+        gpidx = np.ndarray.item(
+            np.where(np.absolute(delta) == np.absolute(delta).min())[0]
+        )
 
-        cens[(gpidx - poly_degree):(gpidx + poly_degree)] = \
-            guess_positions[i, 1]
+        cens[(gpidx - poly_degree) : (gpidx + poly_degree)] = guess_positions[i, 1]
         cens_mask = ~np.isnan(cens)
+
+        if debug is True:
+            # plotfig3 = pl.figure(4)
+            pl.plot(fcols, cens, "ro", markersize=0.5)
 
         #
         # Now move left from the guess position
@@ -339,27 +337,41 @@ def locate_orders(img:npt.ArrayLike,
 
             # Fit the centers, so you can project away from the guess position
 
-            r = polyfit_1d(fcols, 
-                           cens, 
-                           max(1, poly_degree - 2), 
-                           justfit=True,
-                           silent=True)
+            r = polyfit_1d(
+                fcols, cens, max(1, poly_degree - 2), justfit=True, silent=True
+            )
 
-            # Find the new guess position yguess 
+            # Find the new guess position yguess
 
-            yguess = np.polynomial.polynomial.polyval(fcols[j], r['coeffs'])
+            yguess = np.polynomial.polynomial.polyval(fcols[j], r["coeffs"])
+
+            if debug is True:
+
+                # plotfig2 = pl.figure(3)
+                pl.plot(fcols[j], yguess, "ro", markersize=0.5)
 
             # Clip it to avoid the edges
 
             yguess = int(np.clip(yguess, ybuffer, (nrows - ybuffer - 1)))
             iguess = imgcol[yguess]
 
-            bot, top = find_top_bot(fcols[j], rownum, imgcol, sobcol, yguess,
-                                    iguess, intensity_fraction, halfwin,
-                                    debug=debug)
+            if debug is True:
+                print(f"yguess: {yguess}")
+
+            bot, top = find_top_bot(
+                fcols[j],
+                rownum,
+                imgcol,
+                sobcol,
+                yguess,
+                iguess,
+                intensity_fraction,
+                halfwin,
+                debug=debug,
+            )
 
             if debug is True:
-                print('Bot/Top:', bot, top)
+                print("Bot/Top", bot, top)
 
             # Confirm that both COMs were computed
 
@@ -368,19 +380,17 @@ def locate_orders(img:npt.ArrayLike,
                 # Now check to make sure calculated slit height falls within the
                 # parameter slith_pix
 
-#                print('fcol',fcols[j])
-#                print(slit_height_range)
-#                print(top-bot)
+                if debug is True:
+                    print(f"fcols: {fcols}, fcols[j]: {fcols[j]}")
+                    print("Slit height range", slit_height_range)
+                    print("Top-Bot", top - bot)
 
                 if slit_height_range[0] <= top - bot <= slit_height_range[1]:
 
                     # Store the results, update the cens array
                     edges[:, j] = np.array([bot, top])
-#                    cens[j] = (bot + top) / 2
 
-
-                    z = np.where((fcols <= fcols[j]) & 
-                              (cens_mask == 1))[0]
+                    z = np.where((fcols <= fcols[j]) & (cens_mask == 1))[0]
                     if z.size == 0:
 
                         cens[j] = (bot + top) / 2
@@ -400,20 +410,29 @@ def locate_orders(img:npt.ArrayLike,
 
             # Fit the centers, so you can project away from the guess position
 
-            r = polyfit_1d(fcols, cens, max(1, poly_degree - 2), silent=True)
+            print(f"debug: {debug}")
+            r = polyfit_1d(fcols, cens, max(1, poly_degree - 2), silent=not debug)
 
             # Find the new guess position yguess
 
-            yguess = np.polynomial.polynomial.polyval(fcols[j], r['coeffs'])
+            yguess = np.polynomial.polynomial.polyval(fcols[j], r["coeffs"])
 
             # Clip it to avoid the edges
 
             yguess = int(np.clip(yguess, ybuffer, (nrows - ybuffer - 1)))
             iguess = imgcol[yguess]
 
-            bot, top = find_top_bot(fcols[j], rownum, imgcol, sobcol, yguess,
-                                    iguess, intensity_fraction, halfwin,
-                                    debug=debug)
+            bot, top = find_top_bot(
+                fcols[j],
+                rownum,
+                imgcol,
+                sobcol,
+                yguess,
+                iguess,
+                intensity_fraction,
+                halfwin,
+                debug=debug,
+            )
 
             # Confirm that both COMs were computed
 
@@ -432,67 +451,83 @@ def locate_orders(img:npt.ArrayLike,
 
         tmp = np.empty([2, poly_degree + 1])
         for j in range(0, 2):
-            fit = polyfit_1d(fcols, edges[j, :], poly_degree,
-                             robust={'thresh': 4, 'eps': 0.1},
-                             justfit=True, silent=True)
-            tmp[j, :] = fit['coeffs']
+            fit = polyfit_1d(
+                fcols,
+                edges[j, :],
+                poly_degree,
+                robust={"thresh": 4, "eps": 0.1},
+                justfit=True,
+                silent=not debug,
+            )
+            tmp[j, :] = fit["coeffs"]
 
-            # Store the results for possible plotting         
+            # Store the results for possible plotting
 
             plcols.append(fcols)
             pledges.append(edges[j, :])
-            pledgecoeffs.append(fit['coeffs'])
-            plgoodbad.append(fit['goodbad'])
+            pledgecoeffs.append(fit["coeffs"])
+            plgoodbad.append(fit["goodbad"])
 
         edgecoeffs[i, :, :] = tmp
 
         #
-        # Now confirm the orders fall on the arrays within search_ranges
+        # Confirm the orders fall on the arrays within search_ranges
         #
 
-        xs = np.arange(search_ranges[i,0],search_ranges[i,1]+1)
-        top = poly_1d(xs,edgecoeffs[i,1,:])
-        z = top <= nrows-1
-        xranges[i,:] = [np.min(xs[z]),np.max(xs[z])]
-            
+        xs = np.arange(search_ranges[i, 0], search_ranges[i, 1] + 1)
+        top = poly_1d(xs, edgecoeffs[i, 1, :])
+        z = top <= nrows - 1
+        xranges[i, :] = [np.min(xs[z]), np.max(xs[z])]
+
     # Make the plotinfo dictionary
 
-    plotinfo = {'guess_positions': plguesspos, 'x': plcols, 'y': pledges,
-                'goodbad': plgoodbad, 'edgecoeffs': pledgecoeffs}
+    plotinfo = {
+        "guess_positions": plguesspos,
+        "x": plcols,
+        "y": pledges,
+        "goodbad": plgoodbad,
+        "edgecoeffs": pledgecoeffs,
+    }
 
-    if qa['show'] is True:
+    if qa["show"] is True:
 
-        plot_image(img,
-                   plot_number=qa_plotnumber,
-                   figure_size=(qa_figuresize[0]*qa_showscale,
-                                qa_figuresize[1]*qa_showscale),
-                   font_size=qa_fontsize*qa_showscale,
-                   showblock=qa_showblock,
-                   locateorders_plotinfo=plotinfo)
+        plot_image(
+            img,
+            plot_number=qa_plotnumber,
+            figure_size=(
+                qa_figuresize[0] * qa_showscale,
+                qa_figuresize[1] * qa_showscale,
+            ),
+            font_size=qa_fontsize * qa_showscale,
+            showblock=qa_showblock,
+            locateorders_plotinfo=plotinfo,
+        )
 
     if qa_fullpath is not None:
 
-        plot_image(img,
-                   figure_size=qa_figuresize,
-                   font_size=qa_fontsize,
-                   output_fullpath=qa_fullpath,
-                   locateorders_plotinfo=plotinfo)
-
+        plot_image(
+            img,
+            figure_size=qa_figuresize,
+            font_size=qa_fontsize,
+            output_fullpath=qa_fullpath,
+            locateorders_plotinfo=plotinfo,
+        )
 
     return edgecoeffs, xranges
 
 
-def normalize_flat(img:npt.ArrayLike,
-                   edgecoeffs:npt.ArrayLike,
-                   xranges:npt.ArrayLike,
-                   slith_arc:int | float,
-                   nxgrid:int,
-                   nygrid:int,
-                   var:npt.ArrayLike=None,
-                   oversamp:int=1,
-                   ybuffer:int=0,
-                   verbose:bool=False):
-    
+def normalize_flat(
+    img: npt.ArrayLike,
+    edgecoeffs: npt.ArrayLike,
+    xranges: npt.ArrayLike,
+    slith_arc: int | float,
+    nxgrid: int,
+    nygrid: int,
+    var: npt.ArrayLike = None,
+    oversamp: int = 1,
+    ybuffer: int = 0,
+    verbose: bool = False,
+):
     """
     Normalize spectral flat field image using Tonry's fiterpolate routine
 
@@ -513,7 +548,7 @@ def normalize_flat(img:npt.ArrayLike,
         bottom of `img` and edgecoeffs[0,1,:] gives the coefficients for
         the top of said order.
 
-    xranges : ndarray 
+    xranges : ndarray
         An (norders,2) array giving the column numbers over which to
         operate.  xranges[0,0] gives the starting column number for the
         order nearest the bottom of `img` and xranges[0,1] gives the end
@@ -562,24 +597,24 @@ def normalize_flat(img:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('normalize_flat','img', img, 'ndarray', 2)
+    check_parameter("normalize_flat", "img", img, "ndarray", 2)
 
-    check_parameter('normalize_flat','edgecoeffs', edgecoeffs, 'ndarray')
+    check_parameter("normalize_flat", "edgecoeffs", edgecoeffs, "ndarray")
 
-    check_parameter('normalize_flat','xranges', xranges, 'ndarray')
+    check_parameter("normalize_flat", "xranges", xranges, "ndarray")
 
-    check_parameter('normalize_flat','slith_arc', slith_arc, ['int','float'])
+    check_parameter("normalize_flat", "slith_arc", slith_arc, ["int", "float"])
 
-    check_parameter('normalize_flat','nxgrid', nxgrid, 'int')
+    check_parameter("normalize_flat", "nxgrid", nxgrid, "int")
 
-    check_parameter('normalize_flat','nygrid', nygrid, 'int')
+    check_parameter("normalize_flat", "nygrid", nygrid, "int")
 
-    check_parameter('normalize_flat','ybuffer', ybuffer, 'int')                        
+    check_parameter("normalize_flat", "ybuffer", ybuffer, "int")
 
     #
     # Get basic info and do basic things
     #
-    
+
     nrows, ncols = img.shape
 
     ndimen = edgecoeffs.ndim
@@ -595,11 +630,11 @@ def normalize_flat(img:npt.ArrayLike,
     #
     # Start the loop
     #
-    
+
     for i in range(norders):
 
         if verbose is True and i == 0:
-            loop_progress(0, 0, norders, message='')
+            loop_progress(0, 0, norders, message="")
 
         #
         # Rectify the order
@@ -607,9 +642,9 @@ def normalize_flat(img:npt.ArrayLike,
 
         # Get the rectification indices
 
-        xidx,yidx,wavemap,spatmap = make_interp_indices_1d(edgecoeffs[i, :, :],
-                                                           xranges[i,:],
-                                                           slith_arc)
+        xidx, yidx, wavemap, spatmap = make_interp_indices_1d(
+            edgecoeffs[i, :, :], xranges[i, :], slith_arc
+        )
 
         # Do the rectification
 
@@ -617,23 +652,22 @@ def normalize_flat(img:npt.ArrayLike,
 
         # Fiterpolate the results after median smoothing to minimize bad pixels
 
-        model = fiterpolate(medfilt2d(order['image'], kernel_size=(5, 5)),
-                            nxgrid, nygrid)
+        model = fiterpolate(
+            medfilt2d(order["image"], kernel_size=(5, 5)), nxgrid, nygrid
+        )
 
         # Normalize the raw data using the fiterpolated model
 
         # Get useful things and set up
-        
+
         startcol = xranges[i, 0]
         stopcol = xranges[i, 1]
 
         order_ncols = stopcol - startcol + 1
         order_cols = np.arange(order_ncols, dtype=int) + startcol
 
-        botedge = np.polynomial.polynomial.polyval(order_cols,
-                                                   edgecoeffs[i, 0, :])
-        topedge = np.polynomial.polynomial.polyval(order_cols,
-                                                   edgecoeffs[i, 1, :])
+        botedge = np.polynomial.polynomial.polyval(order_cols, edgecoeffs[i, 0, :])
+        topedge = np.polynomial.polynomial.polyval(order_cols, edgecoeffs[i, 1, :])
         dif = topedge - botedge
 
         # Loop over each column, interpolate the model onto the data
@@ -651,46 +685,49 @@ def normalize_flat(img:npt.ArrayLike,
 
             # get range over which the slit falls and create y values
 
-            yrange = [np.ceil(botedge[j]).astype('int') + ybuffer,
-                      np.floor(topedge[j]).astype('int') - ybuffer]
+            yrange = [
+                np.ceil(botedge[j]).astype("int") + ybuffer,
+                np.floor(topedge[j]).astype("int") - ybuffer,
+            ]
 
             ypix_slit = np.arange(yrange[0], yrange[1] + 1)
 
             # Do the linterpolation
 
-            f = interpolate.interp1d(spatmap[:,0], model[:, j])
+            f = interpolate.interp1d(spatmap[:, 0], model[:, j])
 
             slit_model = f(np.polynomial.polynomial.polyval(ypix_slit, [m, b]))
 
             # divide the data by the interpolated model
 
-            nimg[yrange[0]:yrange[1] + 1, j + startcol] = \
-                img[yrange[0]:yrange[1] + 1, j + startcol] / slit_model
+            nimg[yrange[0] : yrange[1] + 1, j + startcol] = (
+                img[yrange[0] : yrange[1] + 1, j + startcol] / slit_model
+            )
 
             # divide the variance by the interpolated model if need be
 
             if var is not None:
-                nvar[yrange[0]:yrange[1] + 1, j + startcol] = \
-                    var[yrange[0]:yrange[1] + 1, j + startcol] / slit_model
+                nvar[yrange[0] : yrange[1] + 1, j + startcol] = (
+                    var[yrange[0] : yrange[1] + 1, j + startcol] / slit_model
+                )
 
                 # fill the mask
 
-            mask[yrange[0]:yrange[1] + 1, j + startcol] = 1
+            mask[yrange[0] : yrange[1] + 1, j + startcol] = 1
 
         # Compute the RMS of the result
 
         z = np.where(mask == 1)
         m = moments(nimg[z], robust=4.5)
-        rms[i] = m['stddev']
-    
+        rms[i] = m["stddev"]
+
         if verbose:
             loop_progress(i, 0, norders)
 
     return nimg, nvar, rms
 
 
-def read_flat_fits(filename:str):
-    
+def read_flat_fits(filename: str):
     """
     To read a pySpextool FITS flat image into memory.
 
@@ -779,7 +816,7 @@ def read_flat_fits(filename:str):
 
             The directions follow the IDL rotate function convention.
             Choices in brackets, default first when optional.
-    
+
         'edgecoeffs' : ndarray
             An (norders, `edgedeg`+1, 2) array giving the polynomial
             coefficients delineating the top and bottom of each order.
@@ -793,65 +830,65 @@ def read_flat_fits(filename:str):
             order nearest the bottom of the image and xranges[0,1] gives the
             end column number for said order.
 
-        'rms' : list 
+        'rms' : list
             An (norders,) list of RMS values for each order.
 
     """
-    
+
     #
     # Check parameters
     #
-    
-    check_parameter('read_flat_fits', 'filename', filename, 'str')
+
+    check_parameter("read_flat_fits", "filename", filename, "str")
 
     #
-    # Read the data 
+    # Read the data
     #
-    
+
     hdul = fits.open(filename)
-    hdul[0].verify('silentfix')
+    hdul[0].verify("silentfix")
 
     hdr = hdul[0].header
 
-    flat = idl_rotate(hdul[1].data, hdr['ROTATION'])
-    var = idl_rotate(hdul[2].data, hdr['ROTATION'])
-    mask = idl_rotate(hdul[3].data, hdr['ROTATION'])
-    ordermask = idl_rotate(hdul[4].data, hdr['ROTATION'])    
+    flat = idl_rotate(hdul[1].data, hdr["ROTATION"])
+    var = idl_rotate(hdul[2].data, hdr["ROTATION"])
+    mask = idl_rotate(hdul[3].data, hdr["ROTATION"])
+    ordermask = idl_rotate(hdul[4].data, hdr["ROTATION"])
 
     hdul.close()
 
     #
     # create flatinfo dictionary and add values
     #
-    
-    flatinfo = {'flat': flat}
-    flatinfo.update({'var': var})
-    flatinfo.update({'bitmask': np.uint8(mask)})
+
+    flatinfo = {"flat": flat}
+    flatinfo.update({"var": var})
+    flatinfo.update({"bitmask": np.uint8(mask)})
 
     shape = np.shape(flat)
-    flatinfo.update({'ncols': shape[1]})
-    flatinfo.update({'nrows': shape[0]})
+    flatinfo.update({"ncols": shape[1]})
+    flatinfo.update({"nrows": shape[0]})
 
-    flatinfo.update({'mode': hdr['MODE']})
+    flatinfo.update({"mode": hdr["MODE"]})
 
-    norders = hdr['NORDERS']
-    flatinfo.update({'norders': norders})
+    norders = hdr["NORDERS"]
+    flatinfo.update({"norders": norders})
 
-    orders = hdr['ORDERS'].split(',')
+    orders = hdr["ORDERS"].split(",")
     orders = [int(o) for o in orders]
-    flatinfo.update({'orders': np.array(orders, dtype=int)})
+    flatinfo.update({"orders": np.array(orders, dtype=int)})
 
-    edgedeg = hdr['EDGEDEG']
-    flatinfo.update({'edgedeg': edgedeg})
+    edgedeg = hdr["EDGEDEG"]
+    flatinfo.update({"edgedeg": edgedeg})
 
-    flatinfo.update({'ps': hdr['PLTSCALE']})
-    flatinfo.update({'ybuffer': hdr['YBUFFER']})    
-    flatinfo.update({'slith_arc': hdr['SLTH_ARC']})
-    flatinfo.update({'slith_pix': hdr['SLTH_PIX']})
-    flatinfo.update({'slitw_arc': hdr['SLTW_ARC']})
-    flatinfo.update({'slitw_pix': hdr['SLTW_PIX']})
-    flatinfo.update({'rp': round(hdr['RP'])})
-    flatinfo.update({'rotation': hdr['ROTATION']})
+    flatinfo.update({"ps": hdr["PLTSCALE"]})
+    flatinfo.update({"ybuffer": hdr["YBUFFER"]})
+    flatinfo.update({"slith_arc": hdr["SLTH_ARC"]})
+    flatinfo.update({"slith_pix": hdr["SLTH_PIX"]})
+    flatinfo.update({"slitw_arc": hdr["SLTW_ARC"]})
+    flatinfo.update({"slitw_pix": hdr["SLTW_PIX"]})
+    flatinfo.update({"rp": round(hdr["RP"])})
+    flatinfo.update({"rotation": hdr["ROTATION"]})
 
     # Grab the edge coeffiecients, xranges, and rms values
 
@@ -861,35 +898,34 @@ def read_flat_fits(filename:str):
 
     for i in range(norders):
 
-        root = 'OR' + str(orders[i]).zfill(3)
+        root = "OR" + str(orders[i]).zfill(3)
 
         for j in range(edgedeg):
-            edgecoeffs[i, 0, j] = hdr[root + '_B*'][j]
-            edgecoeffs[i, 1, j] = hdr[root + '_T*'][j]
+            edgecoeffs[i, 0, j] = hdr[root + "_B*"][j]
+            edgecoeffs[i, 1, j] = hdr[root + "_T*"][j]
 
-        xranges[i, :] = [int(x) for x in hdr[root + '_XR'].split(',')]
+        xranges[i, :] = [int(x) for x in hdr[root + "_XR"].split(",")]
 
         #  May not have an RMS if it wasn't normalized
 
         try:
 
-            rms[i] = hdr[root + 'RMS']
+            rms[i] = hdr[root + "RMS"]
 
         except KeyError:
 
             rms[i] = np.nan
 
-    flatinfo.update({'edgecoeffs': edgecoeffs})
-    flatinfo.update({'xranges': xranges})
-    flatinfo.update({'rms': rms})
+    flatinfo.update({"edgecoeffs": edgecoeffs})
+    flatinfo.update({"xranges": xranges})
+    flatinfo.update({"rms": rms})
 
-    flatinfo = add_entry(flatinfo, 'bitmask', 'after', 'ordermask', ordermask)
+    flatinfo = add_entry(flatinfo, "bitmask", "after", "ordermask", ordermask)
 
     return flatinfo
 
 
-def read_flatcal_file(filename:str):
-    
+def read_flatcal_file(filename: str):
     """
     Reads a Spextool flatinfo calibration file.
 
@@ -905,7 +941,7 @@ def read_flatcal_file(filename:str):
        A dictionary with the following keywords:
 
        'rotation' : int
-           IDL rotation command for the order numbers to increase 
+           IDL rotation command for the order numbers to increase
            upwards and wavelength increase to the right
 
            Direction  Transpose?  Rotation Counterclockwise
@@ -944,8 +980,8 @@ def read_flatcal_file(filename:str):
        'flatfrac' : float
            see findorders.py
 
-       'comwidth' : int 
-           The window in units of pixels used to compute the 
+       'comwidth' : int
+           The window in units of pixels used to compute the
            center-of-mass (COM) (see findorders.py)
 
        'edgedeg' : int
@@ -959,7 +995,7 @@ def read_flatcal_file(filename:str):
            See normspecflat.py and fiterpolate.py
 
        'oversamp' : float
-           See normspecflat.py 
+           See normspecflat.py
 
        'ybuffer'  : int
            See normspecflat.py
@@ -968,23 +1004,23 @@ def read_flatcal_file(filename:str):
            See adjustguesspos.py
 
        'xranges' : ndarray of int
-           An (norders,2) array giving the column numbers over which to 
-           search.  sranges[0,0] gives the starting column number for 
-           the first order and sranges[0,1] gives the end column number 
+           An (norders,2) array giving the column numbers over which to
+           search.  sranges[0,0] gives the starting column number for
+           the first order and sranges[0,1] gives the end column number
            for the first order.
 
        'edgecoeffs' : ndarray
-           (norders,2,ncoeffs) array giving the polynomial 
-           coefficients delineating the top and bottom of each order.  
-           edgecoeffs[0,0,:] gives the coefficients for the bottom of 
-           the order closests to the bottom of `img` and 
-           edgecoeffs[0,1,:] gives the coefficients for the top of said 
-           order.  
+           (norders,2,ncoeffs) array giving the polynomial
+           coefficients delineating the top and bottom of each order.
+           edgecoeffs[0,0,:] gives the coefficients for the bottom of
+           the order closests to the bottom of `img` and
+           edgecoeffs[0,1,:] gives the coefficients for the top of said
+           order.
 
        'guesspos' : ndarray
-           An (norders,2) array giving the positions to start the 
-           search.  guesspos[0,0] gives the column number for the 
-           first order and guesspos[0,1] gives the row number for the 
+           An (norders,2) array giving the positions to start the
+           search.  guesspos[0,0] gives the column number for the
+           first order and guesspos[0,1] gives the row number for the
            first order.  Typically, the positions are near the center
            of the image and center of the slit.
 
@@ -997,75 +1033,69 @@ def read_flatcal_file(filename:str):
     #
     # Check parameters
     #
-    
-    check_parameter('read_flatcal_file', 'filename', filename, 'str')
 
-    
+    check_parameter("read_flatcal_file", "filename", filename, "str")
+
     # Open the file, grab the mask
 
     hdul = fits.open(filename)
 
     # Clean the header and grab important keywords
 
-    hdul[0].verify('silentfix')  # this was needed for to correct hdr problems
+    hdul[0].verify("silentfix")  # this was needed for to correct hdr problems
 
-    val = hdul[0].header['ROTATION']
-    result = {'rotation': val}
+    val = hdul[0].header["ROTATION"]
+    result = {"rotation": val}
 
-    val = hdul[0].header['SLTH_ARC']
-    result.update({'slith_arc': val})
+    val = hdul[0].header["SLTH_ARC"]
+    result.update({"slith_arc": val})
 
-    val = hdul[0].header['SLTH_PIX']
-    result.update({'slith_pix': val})
+    val = hdul[0].header["SLTH_PIX"]
+    result.update({"slith_pix": val})
 
-    val = hdul[0].header['SLTH_RNG'].split(',')
+    val = hdul[0].header["SLTH_RNG"].split(",")
     val = [int(x) for x in val]
-    result.update({'slith_range': np.array(val)})
+    result.update({"slith_range": np.array(val)})
 
-    val = hdul[0].header['ORDERS'].split(',')
+    val = hdul[0].header["ORDERS"].split(",")
     orders = [int(x) for x in val]
     norders = len(orders)
-    result.update({'orders': np.array(orders)})
+    result.update({"orders": np.array(orders)})
 
-    val = hdul[0].header['RPPIX']
-    result.update({'rpppix': val})
+    val = hdul[0].header["RPPIX"]
+    result.update({"rpppix": val})
 
-    val = hdul[0].header['PLTSCALE']
-    result.update({'ps': val})
+    val = hdul[0].header["PLTSCALE"]
+    result.update({"ps": val})
 
-    #    val = hdul[0].header['FIXED']
-    #    result.update({'fixed':val})        
+    val = hdul[0].header["STEP"]
+    result.update({"step": val})
 
-    #    if not val:
+    val = hdul[0].header["FLATFRAC"]
+    result.update({"flatfrac": val})
 
-    val = hdul[0].header['STEP']
-    result.update({'step': val})
+    val = hdul[0].header["COMWIN"]
+    result.update({"comwidth": val})
 
-    val = hdul[0].header['FLATFRAC']
-    result.update({'flatfrac': val})
+    deg = int(hdul[0].header["EDGEDEG"])
+    result.update({"edgedeg": deg})
 
-    val = hdul[0].header['COMWIN']
-    result.update({'comwidth': val})
+    val = hdul[0].header["NORM_NXG"]
+    result.update({"nxgrid": int(val)})
 
-    deg = int(hdul[0].header['EDGEDEG'])
-    result.update({'edgedeg': deg})
+    val = hdul[0].header["NORM_NYG"]
+    result.update({"nygrid": int(val)})
 
-    val = hdul[0].header['NORM_NXG']
-    result.update({'nxgrid': int(val)})
+    val = hdul[0].header["OVERSAMP"]
+    result.update({"oversamp": val})
 
-    val = hdul[0].header['NORM_NYG']
-    result.update({'nygrid': int(val)})
+    val = hdul[0].header["YBUFFER"]
+    result.update({"ybuffer": val})
 
-    val = hdul[0].header['OVERSAMP']
-    result.update({'oversamp': val})
+    val = hdul[0].header["YCORORDR"]
+    result.update({"ycororder": val})
 
-    val = hdul[0].header['YBUFFER']
-    result.update({'ybuffer': val})
-
-    val = hdul[0].header['YCORORDR']
-    result.update({'ycororder': val})
-
-    # Now get the edge coefficients and the xranges
+    # Get the edge coefficients and the xranges
 
     xranges = np.empty((norders, 2), dtype=int)
     edgecoeffs = np.empty((norders, 2, deg + 1))
@@ -1075,7 +1105,7 @@ def read_flatcal_file(filename:str):
 
         # Get the xrange and guess position x position
 
-        val = hdul[0].header['OR' + str(orders[i]).zfill(3) + '_XR'].split(',')
+        val = hdul[0].header["OR" + str(orders[i]).zfill(3) + "_XR"].split(",")
         val = [int(x) for x in val]
         xranges[i, :] = val
 
@@ -1084,53 +1114,52 @@ def read_flatcal_file(filename:str):
         # Now grab the edgecoefficients
 
         for j in range(0, deg + 1):
-            keyt = 'OR' + str(orders[i]).zfill(3) + '_T' + str(j + 1).zfill(1)
-            keyb = 'OR' + str(orders[i]).zfill(3) + '_B' + str(j + 1).zfill(1)
+            keyt = "OR" + str(orders[i]).zfill(3) + "_T" + str(j + 1).zfill(1)
+            keyb = "OR" + str(orders[i]).zfill(3) + "_B" + str(j + 1).zfill(1)
 
             edgecoeffs[i, 0, j] = hdul[0].header[keyb]
             edgecoeffs[i, 1, j] = hdul[0].header[keyt]
 
-        # Now determine the guess position y position 
+        # Now determine the guess position y position
 
-        bot = np.polynomial.polynomial.polyval(guesspos[i, 0],
-                                               edgecoeffs[i, 0, :])
-        top = np.polynomial.polynomial.polyval(guesspos[i, 0],
-                                               edgecoeffs[i, 1, :])
+        bot = np.polynomial.polynomial.polyval(guesspos[i, 0], edgecoeffs[i, 0, :])
+        top = np.polynomial.polynomial.polyval(guesspos[i, 0], edgecoeffs[i, 1, :])
 
         guesspos[i, 1] = int((bot + top) / 2)
 
-    result.update({'xranges': xranges})
-    result.update({'edgecoeffs': edgecoeffs})
-    result.update({'guesspos': guesspos})
+    result.update({"xranges": xranges})
+    result.update({"edgecoeffs": edgecoeffs})
+    result.update({"guesspos": guesspos})
     hdul.close()
 
     return result
 
 
-def write_flat(flat:npt.ArrayLike,
-               var:npt.ArrayLike,
-               flag:npt.ArrayLike,
-               order_mask:npt.ArrayLike,
-               hdrinfo:dict,
-               rotate:int,
-               orders:npt.ArrayLike,
-               edgecoeffs:npt.ArrayLike,
-               xranges:npt.ArrayLike,
-               ybuffer:int,
-               ps:int | float,
-               slith_pix:int | float,
-               slith_arc:int | float,
-               slitw_pix:int | float,
-               slitw_arc:int | float,
-               modename:str,
-               rms:float,
-               rp:int | float,
-               version:str,
-               history:list,
-               oname:str,
-               linmax:int | float=None,
-               overwrite:bool=True):
-    
+def write_flat(
+    flat: npt.ArrayLike,
+    var: npt.ArrayLike,
+    flag: npt.ArrayLike,
+    order_mask: npt.ArrayLike,
+    hdrinfo: dict,
+    rotate: int,
+    orders: npt.ArrayLike,
+    edgecoeffs: npt.ArrayLike,
+    xranges: npt.ArrayLike,
+    ybuffer: int,
+    ps: int | float,
+    slith_pix: int | float,
+    slith_arc: int | float,
+    slitw_pix: int | float,
+    slitw_arc: int | float,
+    modename: str,
+    rms: float,
+    rp: int | float,
+    version: str,
+    history: list,
+    oname: str,
+    linmax: int | float = None,
+    overwrite: bool = True,
+):
     """
     To write a Spextool flat FITS file to disk.
 
@@ -1149,7 +1178,7 @@ def write_flat(flat:npt.ArrayLike,
     hdrinfo : dict
 
     rotate : {0, 1, 2, 3, 4, 5, 6, 7}, optional
-    
+
         Direction to rotate a raw image so that the dispersion direction
         roughly aligns with the columns of the array and wavelength
         increases to the right, and the spatial axis roughly aligns with
@@ -1169,7 +1198,7 @@ def write_flat(flat:npt.ArrayLike,
 
         The directions follow the IDL rotate function convention.
         Choices in brackets, default first when optional.
-    
+
     orders : list of int
         The order numbers.  orders[0] is the order number of the
         order nearest the bottom of the image after rotation.
@@ -1240,7 +1269,7 @@ def write_flat(flat:npt.ArrayLike,
 
     Examples
     --------
-    Later
+    TODO: add example
 
     """
 
@@ -1259,54 +1288,54 @@ def write_flat(flat:npt.ArrayLike,
     keys = hdrinfo.keys()
     for key in keys:
 
-        if key == 'COMMENT':
+        if key == "COMMENT":
 
-            comments = hdrinfo['COMMENT']
+            comments = hdrinfo["COMMENT"]
 
-        elif key != 'HISTORY':  # probably not necessary, just in case
+        elif key != "HISTORY":  # probably not necessary, just in case
 
             hdr[key] = tuple(hdrinfo[key])
 
         # Now add new ones
 
-        hdr['FILENAME'] = (os.path.basename(oname), ' Filename')
-        hdr['MODE'] = (modename, ' Instrument Mode')
-        hdr['NORDERS'] = (norders, ' Number of orders identified')
-        hdr['ORDERS'] = (','.join(str(o) for o in orders), ' Orders identified')
-        hdr['PLTSCALE'] = (ps, ' Plate scale (arcseconds per pixel)')
-        hdr['YBUFFER'] = (ybuffer, ' y buffer (pixels)')
-        hdr['SLTH_PIX'] = (slith_pix, ' Nominal slit length (pixels)')
-        hdr['SLTH_ARC'] = (slith_arc, ' Slit length (arcseconds)')
-        hdr['SLTW_PIX'] = (slitw_pix, ' Slit width (pixels)')
-        hdr['SLTW_ARC'] = (slitw_arc, ' Slit width (arcseconds)')
-        hdr['RP'] = (rp, ' Nominal resolving power')
-        hdr['ROTATION'] = (rotate, ' IDL rotate value')
-        hdr['VERSION'] = (version, ' Spextool version')
+        hdr["FILENAME"] = (os.path.basename(oname), " Filename")
+        hdr["MODE"] = (modename, " Instrument Mode")
+        hdr["NORDERS"] = (norders, " Number of orders identified")
+        hdr["ORDERS"] = (",".join(str(o) for o in orders), " Orders identified")
+        hdr["PLTSCALE"] = (ps, " Plate scale (arcseconds per pixel)")
+        hdr["YBUFFER"] = (ybuffer, " y buffer (pixels)")
+        hdr["SLTH_PIX"] = (slith_pix, " Nominal slit length (pixels)")
+        hdr["SLTH_ARC"] = (slith_arc, " Slit length (arcseconds)")
+        hdr["SLTW_PIX"] = (slitw_pix, " Slit width (pixels)")
+        hdr["SLTW_ARC"] = (slitw_arc, " Slit width (arcseconds)")
+        hdr["RP"] = (rp, " Nominal resolving power")
+        hdr["ROTATION"] = (rotate, " IDL rotate value")
+        hdr["VERSION"] = (version, " Spextool version")
 
-    # Record linearity maximum if given 
+    # Record linearity maximum if given
 
     if linmax is not None:
-        hdr['LINMAX'] = (linmax, ' Linearity maximum')
+        hdr["LINMAX"] = (linmax, " Linearity maximum")
 
     # Add the RMS values.  Check to make sure not NaN
 
     if np.sum(np.isnan(rms)) == 0:
 
         for i in range(norders):
-            name = 'OR' + str(orders[i]).zfill(3) + 'RMS'
-            comment = ' RMS of normalized order ' + str(orders[i]).zfill(3)
+            name = "OR" + str(orders[i]).zfill(3) + "RMS"
+            comment = " RMS of normalized order " + str(orders[i]).zfill(3)
             hdr[name] = (rms[i], comment)
 
     # Add the xranges
 
     for i in range(norders):
-        name = 'OR' + str(orders[i]).zfill(3) + '_XR'
-        comment = ' Extraction range for order ' + str(orders[i]).zfill(3)
-        hdr[name] = (','.join(str(x) for x in xranges[i, :]), comment)
+        name = "OR" + str(orders[i]).zfill(3) + "_XR"
+        comment = " Extraction range for order " + str(orders[i]).zfill(3)
+        hdr[name] = (",".join(str(x) for x in xranges[i, :]), comment)
 
     # Add the edgecoeffs
 
-    hdr['EDGEDEG'] = (edgedeg, ' Degree of the polynomial fit to order edges')
+    hdr["EDGEDEG"] = (edgedeg, " Degree of the polynomial fit to order edges")
     for i in range(norders):
 
         for j in range(2):
@@ -1314,46 +1343,52 @@ def write_flat(flat:npt.ArrayLike,
             for k in range(edgedeg):
 
                 if j == 0:
-                    name = 'OR' + str(orders[i]).zfill(3) + '_B' + str(k + 1)
-                    comment = ' a' + str(k) + \
-                              ' edge coefficient for bottom of order ' + \
-                              str(orders[i]).zfill(3)
+                    name = "OR" + str(orders[i]).zfill(3) + "_B" + str(k + 1)
+                    comment = (
+                        " a"
+                        + str(k)
+                        + " edge coefficient for bottom of order "
+                        + str(orders[i]).zfill(3)
+                    )
 
                     hdr[name] = (edgecoeffs[i, j, k], comment)
 
                 if j == 1:
-                    name = 'OR' + str(orders[i]).zfill(3) + '_T' + str(k + 1)
-                    comment = ' a' + str(k) + \
-                              ' edge coefficient for top of order ' + \
-                              str(orders[i]).zfill(3)
+                    name = "OR" + str(orders[i]).zfill(3) + "_T" + str(k + 1)
+                    comment = (
+                        " a"
+                        + str(k)
+                        + " edge coefficient for top of order "
+                        + str(orders[i]).zfill(3)
+                    )
 
                     hdr[name] = (edgecoeffs[i, j, k], comment)
 
-    # Now add the comments 
+    # Now add the comments
 
-    if 'comments' in locals():
+    if "comments" in locals():
 
         for com in comments:
-            hdr['COMMENT'] = com
+            hdr["COMMENT"] = com
 
     # and then the history
 
-    label = '         ============ Spextool History ============'
-    hdr['HISTORY'] = label
+    label = "         ============ Spextool History ============"
+    hdr["HISTORY"] = label
     for hist in history:
-        hdr['HISTORY'] = hist
+        hdr["HISTORY"] = hist
 
     # Write the results
 
     flat = np.float32(flat)
     var = np.float32(var)
     flag = np.int8(flag)
-    order_mask = np.int8(order_mask)            
-        
-    img_hdu = fits.ImageHDU(idl_unrotate(flat,rotate))
-    var_hdu = fits.ImageHDU(idl_unrotate(var,rotate))
+    order_mask = np.int8(order_mask)
+
+    img_hdu = fits.ImageHDU(idl_unrotate(flat, rotate))
+    var_hdu = fits.ImageHDU(idl_unrotate(var, rotate))
     flg_hdu = fits.ImageHDU(idl_unrotate(flag, rotate))
-    ord_hdu = fits.ImageHDU(idl_unrotate(order_mask, rotate))    
+    ord_hdu = fits.ImageHDU(idl_unrotate(order_mask, rotate))
 
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu, ord_hdu])
     hdu.writeto(oname, overwrite=overwrite)
