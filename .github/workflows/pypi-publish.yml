@@ -7,6 +7,7 @@ name: Publish to PyPI
 on:
   release:
     types: [created]
+  workflow_dispatch:
     
 jobs:
   build:
@@ -14,7 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout the code
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
