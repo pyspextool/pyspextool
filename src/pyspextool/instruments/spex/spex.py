@@ -4,6 +4,7 @@ from astropy.io import fits
 from astropy.time import Time
 import re
 import os
+import sys
 
 from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
@@ -11,7 +12,6 @@ from pyspextool.io.check import check_parameter
 from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils import math
-from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
 
 
@@ -485,7 +485,10 @@ def read_fits(files,
 
         linearity_file = os.path.join(setup.state['instrument_path'],
                                       'spex_lincorr.fits')
-        linearity_coeffs = fits.getdata(linearity_file)
+        try:
+            linearity_coeffs = fits.getdata(linearity_file)
+        except FileNotFoundError:
+            linearity_coeffs = fits.getdata("https://pyspextool.s3.us-east-1.amazonaws.com/spex_lincorr.fits")
 
     else:
 
@@ -603,5 +606,3 @@ def spex_linearity_imagepoly(image, coefficients):
     result = image_poly(corrected_image, coefficients)
 
     return result
-
-
