@@ -171,7 +171,11 @@ def read_fits(files:list,
 
     bias_file = join(setup.state['instrument_path'],'uspex_bias.fits')
     
-    hdul = fits.open(bias_file)
+    try:
+        hdul = fits.open(bias_file)
+    except FileNotFoundError:  
+        hdul = fits.open("https://pyspextool.s3.us-east-1.amazonaws.com/uspex_bias.fits")
+    
     divisor = hdul[0].header['DIVISOR']
     bias = hdul[0].data / divisor
     hdul.close()
