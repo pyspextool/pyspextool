@@ -1,6 +1,7 @@
 from astropy.io import fits
 import os
 import logging
+import numpy as np
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
@@ -327,6 +328,28 @@ def write_spectra(write_model_spectra:bool=False,
     hdr['LYUNITS'][0] = latex[0]    
     hdr['LYLABEL'][0] = latex[1]
     hdr['LULABEL'][0] = latex[2]    
+
+
+    # Add the S/N ratio 
+
+    for i in range(tc.state['object_norders']):
+
+        name = 'SNRO' + str(tc.state['object_orders'][i]).zfill(3)
+        comment = ' Median S/N values for order ' + \
+            str(tc.state['object_orders'][i]).zfill(3)
+
+        values = []
+        for j in range(tc.state['object_napertures']):        
+
+            idx = i*tc.state['object_napertures']+j
+        
+            signal = tc.state['corrected_spectra'][idx,1,:]
+            noise = tc.state['corrected_spectra'][idx,2,:]
+            
+            values.append(str(int(np.round(np.nanmedian(signal/noise)))))
+
+        hdr[name] = [", ".join(values), comment]
+
     
     #
     # Create the header
@@ -393,6 +416,18 @@ def write_spectra(write_model_spectra:bool=False,
                      figure_size=figure_size,
                      font_size=font_size,
                      colors=['green','black'])
+
+        plot_spectra(correct_fullpath,
+                     ytype='snr',
+                     spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                     spine_linewidth=setup.plots['spine_linewidth'],            
+                     title=os.path.basename(correct_fullpath),
+                     showblock=qa['showblock'],
+                     plot_number=setup.plots['abeam_snr'],
+                     figure_size=figure_size,
+                     font_size=font_size,
+                     colors=['green','black'])
+
         
     if qa['write'] is True:
 
@@ -410,6 +445,24 @@ def write_spectra(write_model_spectra:bool=False,
                      figure_size=setup.plots['landscape_size'],
                      font_size=setup.plots['font_size'],
                      colors=['green','black'])
+
+        file_fullpath = os.path.join(setup.state['qa_path'],
+                                     tc.state['output_filename']+\
+                                     '_snr'+\
+                                     setup.state['qa_extension'])
+
+        plot_spectra(correct_fullpath,
+                     ytype='snr',
+                     spectrum_linewidth=setup.plots['spectrum_linewidth'],
+                     spine_linewidth=setup.plots['spine_linewidth'],            
+                     title=os.path.basename(correct_fullpath),
+                     showblock=qa['showblock'],
+                     output_fullpath=file_fullpath,
+                     figure_size=setup.plots['landscape_size'],
+                     font_size=setup.plots['font_size'],
+                     colors=['green','black'])
+
+
 
         if write_telluric_spectra is True:
         

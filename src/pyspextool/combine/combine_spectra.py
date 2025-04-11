@@ -253,9 +253,29 @@ def combine_spectra(statistic:str='robust weighted mean',
                           'Combination statistic']
 
     avehdr['CMB_THSH'] = [robust_sigma,
-                         'Combination robust threshold (if used)']            
+                         'Combination robust threshold (if used)']   
 
+    # Add the S/N ratio 
+
+    for i in range(combine.state['norders']):
+
+        name = 'SNRO' + str(combine.state['orders'][i]).zfill(3)
+        comment = ' Median S/N values for order ' + \
+            str(combine.state['orders'][i]).zfill(3)
+
+        values = []
+        for j in range(combine.state['final_napertures']):        
+
+            idx = i*combine.state['final_napertures']+j
         
+            signal = array[idx,1,:]
+            noise = array[idx,2,:]
+            
+            values.append(str(int(np.round(np.nanmedian(signal/noise)))))
+
+        avehdr[name] = [", ".join(values), comment]
+
+                
     #
     # Create the header
     #

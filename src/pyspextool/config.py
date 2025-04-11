@@ -37,10 +37,12 @@ plots = {"portrait_size":(7,9),
          'profiles':4,
          'abeam_spectra':5,
          'bbeam_spectra':6,
-         'combine_spectra':7,
-         'normalize_order':8,
-         'radial_velocity':9,
-         'deconvolution':10,
-         'shifts':12,
-         'ewscales':13}
+         'abeam_snr':7,
+         'bbeam_shr':8,
+         'combine_spectra':9,
+         'normalize_order':10,
+         'radial_velocity':11,
+         'deconvolution':12,
+         'shifts':13,
+         'ewscales':14}
 
