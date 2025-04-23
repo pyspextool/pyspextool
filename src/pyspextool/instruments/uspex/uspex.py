@@ -2,20 +2,17 @@ import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
 import re
-from os.path import join, basename
+import os
 import logging
-import pooch
 
-from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
-from pyspextool.io.fitsheader import get_headerinfo, average_headerinfo
+from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.math import combine_flag_stack
-from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.pyspextoolerror import pySpextoolError
-from pyspextool.setup_utils import setup_pooch_cache
+from pyspextool.setup_utils import mishu # pooch class for caching files
 
 def correct_uspexbias(img:npt.ArrayLike):
 
@@ -153,33 +150,17 @@ def read_fits(files:list,
     naxis2 = 2048
 
     nfiles = len(files)
-    mishu = setup_pooch_cache()
 
     # Correct for non-linearity?
-
     if linearity_correction is True:
-
-        linearity_file = join(setup.state['instrument_path'],
-                              'uspex_lincorr.fits')
-        try:
-            lc_coeffs = fits.getdata(linearity_file)
-        except FileNotFoundError:
-            linearity_file = mishu.fetch('uspex_lincorr.fits')
-            lc_coeffs = fits.getdata(linearity_file)
-
+        linearity_file = mishu.fetch('uspex_lincorr.fits')
+        lc_coeffs = fits.getdata(linearity_file)
     else:
-
         lc_coeffs = None
 
     # Get set up for linearity check
-
-    bias_file = join(setup.state['instrument_path'],'uspex_bias.fits')
-
-    try:
-        hdul = fits.open(bias_file)
-    except FileNotFoundError:  
-        bias_file = mishu.fetch('uspex_bias.fits')
-        hdul = fits.open(bias_file)
+    bias_file = mishu.fetch('uspex_bias.fits')   
+    hdul = fits.open(bias_file)
     
     divisor = hdul[0].header['DIVISOR']
     bias = hdul[0].data / divisor
@@ -200,9 +181,9 @@ def read_fits(files:list,
         list_filenames = []    
         for file in files:
 
-            list_filenames.append(basename(file))
+            list_filenames.append(os.path.basename(file))
             
-            file_names = ', '.join(list_filenames)+','
+            file_names = ", ".join(list_filenames)
 
         
         message = ' Loading images(s) '+file_names

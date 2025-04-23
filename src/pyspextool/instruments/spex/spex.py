@@ -3,16 +3,15 @@ import numpy.typing as npt
 from astropy.io import fits
 from astropy.time import Time
 import re
-import os
 import sys
 
-from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
 from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils import math
 from pyspextool.utils.loop_progress import loop_progress
+from pyspextool.setup_utils import mishu
 
 
 def correct_linearity(image:npt.ArrayLike,
@@ -480,18 +479,10 @@ def read_fits(files,
     #
     # Correct for non-linearity?
     #
-    
     if linearity_correction is True:
-
-        linearity_file = os.path.join(setup.state['instrument_path'],
-                                      'spex_lincorr.fits')
-        try:
-            linearity_coeffs = fits.getdata(linearity_file)
-        except FileNotFoundError:
-            linearity_coeffs = fits.getdata("https://pyspextool.s3.us-east-1.amazonaws.com/spex_lincorr.fits")
-
+        linearity_file = mishu.fetch("spex_lincorr.fits")
+        linearity_coeffs = fits.getdata(linearity_file)
     else:
-
         linearity_coeffs = None
 
     #
