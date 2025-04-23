@@ -23,6 +23,17 @@ except PackageNotFoundError:
     pass
 
 
+mishu = pooch.create(
+        path=pooch.os_cache("pyspextool"),
+        base_url="https://pyspextool.s3.us-east-1.amazonaws.com/",
+        registry={
+            "uspex_lincorr.fits": "9ba8c54dc9de08aab81a67cd37ee7d5c6aaad2aec6a13537cc8c412b896aca58",
+            "uspex_bias.fits": "d1dbbffc882123de5f3e877ca14dbc6740e2e751d1c31d0647583305c6163cc6",
+            "spex_lincorr.fits": "47fcbd6b854f1b80fc65615978dffdcfa793af24d12b3ce3b199efae6d78040f",
+            "Vega50000.fits": "517f38feaaabe35443fcbd9a2670085b61af0e7dfd05a28a6c3c4f79ed7d7737",
+        },
+    )
+
 def set_version():
     setup.state["version"] = __version__
     logger.debug(f"Version set to {setup.state['version']}")
@@ -214,7 +225,6 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     # Set the version number
     set_version()
-
 
     msg = f"""
     Pyspextool Setup
@@ -514,14 +524,3 @@ def set_qa_state(qa_show:bool,
 #    logging.debug(msg)
 
     return
-
-def setup_pooch_cache():
-    mishu = pooch.create(
-        path=pooch.os_cache("pyspextool"),
-        base_url="https://pyspextool.s3.us-east-1.amazonaws.com/",
-        registry={
-            "uspex_lincorr.fits": None,
-            "uspex_bias.fits": None,
-        },
-    )
-    return mishu

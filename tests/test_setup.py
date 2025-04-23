@@ -6,6 +6,7 @@ from pyspextool.setup_utils import (
     set_paths,
     set_instrument,
     set_qa_state,
+    mishu
 )
 
 
@@ -106,3 +107,13 @@ def test_set_qa_state():
     assert setup.state["qa_show"] is False
     assert setup.state["qa_write"] is False
     assert setup.state["qa_extension"] == ".pdf"
+
+
+@pytest.mark.parametrize("file", [
+    "uspex_lincorr.fits",
+    "uspex_bias.fits",
+    "spex_lincorr.fits",
+    "Vega50000.fits",
+])
+def test_pooch_cache(file):
+    assert mishu.is_available(file)
