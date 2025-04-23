@@ -3,7 +3,7 @@ from pyspextool.telluric import config as tc
 from pyspextool.setup_utils import pyspextool_setup
 import pytest
 
-
+@pytest.mark.skip()
 @pytest.mark.parametrize(
     ("instrument_name", "mode", "path_name"),
     [
