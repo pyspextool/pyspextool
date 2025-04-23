@@ -2,6 +2,7 @@ import os
 from astropy.io import fits
 import numpy as np
 import logging
+import pooch
 
 from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
@@ -513,3 +514,14 @@ def set_qa_state(qa_show:bool,
 #    logging.debug(msg)
 
     return
+
+def setup_pooch_cache():
+    mishu = pooch.create(
+        path=pooch.os_cache("pyspextool"),
+        base_url="https://pyspextool.s3.us-east-1.amazonaws.com/",
+        registry={
+            "uspex_lincorr.fits": None,
+            "uspex_bias.fits": None,
+        },
+    )
+    return mishu

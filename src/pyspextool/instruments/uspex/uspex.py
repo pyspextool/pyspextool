@@ -4,6 +4,7 @@ from astropy.io import fits
 import re
 from os.path import join, basename
 import logging
+import pooch
 
 from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
@@ -14,6 +15,7 @@ from pyspextool.utils.math import combine_flag_stack
 from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.pyspextoolerror import pySpextoolError
+from pyspextool.setup_utils import setup_pooch_cache
 
 def correct_uspexbias(img:npt.ArrayLike):
 
@@ -151,6 +153,7 @@ def read_fits(files:list,
     naxis2 = 2048
 
     nfiles = len(files)
+    mishu = setup_pooch_cache()
 
     # Correct for non-linearity?
 
@@ -161,7 +164,8 @@ def read_fits(files:list,
         try:
             lc_coeffs = fits.getdata(linearity_file)
         except FileNotFoundError:
-            lc_coeffs = fits.getdata("https://pyspextool.s3.us-east-1.amazonaws.com/uspex_lincorr.fits")
+            linearity_file = mishu.fetch('uspex_lincorr.fits')
+            lc_coeffs = fits.getdata(linearity_file)
 
     else:
 
@@ -170,11 +174,12 @@ def read_fits(files:list,
     # Get set up for linearity check
 
     bias_file = join(setup.state['instrument_path'],'uspex_bias.fits')
-    
+
     try:
         hdul = fits.open(bias_file)
     except FileNotFoundError:  
-        hdul = fits.open("https://pyspextool.s3.us-east-1.amazonaws.com/uspex_bias.fits")
+        bias_file = mishu.fetch('uspex_bias.fits')
+        hdul = fits.open(bias_file)
     
     divisor = hdul[0].header['DIVISOR']
     bias = hdul[0].data / divisor
