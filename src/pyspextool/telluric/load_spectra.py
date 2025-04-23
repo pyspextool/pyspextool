@@ -1,4 +1,4 @@
-from os.path import join as osjoin
+import os
 import numpy as np
 import logging
 from astropy.coordinates import SkyCoord, angular_separation
@@ -21,6 +21,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.load_atmosphere import load_atmosphere
 from pyspextool.io.sptype2teff import sptype2teff
 from pyspextool.utils.interpolate import linear_interp1d
+from pyspextool.setup_utils import mishu
 
 def load_spectra(object_file:str,
                  standard_file:str,
@@ -401,7 +402,7 @@ def load_data():
     # Load the Hydrogen lines
     #
 
-    fullpath = osjoin(setup.state["package_path"], "data","HI.dat")
+    fullpath = os.path.join(setup.state["package_path"], "data","HI.dat")
     
     wavelength, lineid = np.loadtxt(fullpath, comments='#', unpack=True,
                                     dtype='str', delimiter='|')
@@ -451,9 +452,12 @@ def load_vegamodel(new=False):
 
         root = 'Vega'+tc.state['model']+'.fits'
 
-    file = osjoin(setup.state['package_path'],'data',root)
-    
-    hdul = fits.open(file) 
+    vega_file = os.path.join(setup.state['package_path'],'data',root)
+
+    if os.path.isfile(vega_file) is False:
+        vega_file = mishu.fetch(root)
+
+    hdul = fits.open(vega_file) 
     data  = hdul[1].data
     
     vega_wavelength = data['wavelength']
@@ -520,7 +524,7 @@ def load_modeinfo():
 
     """
     
-    file = osjoin(setup.state['instrument_path'], 'telluric_modeinfo.dat')
+    file = os.path.join(setup.state['instrument_path'], 'telluric_modeinfo.dat')
 
     values = np.loadtxt(file, comments='#', delimiter='|', dtype='str')
     
@@ -603,7 +607,7 @@ def load_ipcoefficients():
     
     # Get the file name
         
-    file = osjoin(setup.state['instrument_path'],'IP_coefficients.dat')
+    file = os.path.join(setup.state['instrument_path'],'IP_coefficients.dat')
 
     # Read the file
         
