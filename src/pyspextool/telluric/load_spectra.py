@@ -175,8 +175,17 @@ def load_spectra(object_file:str,
 
     if tc.state['type'] == 'A0V':
 
-        load_vegamodel(new=new)
+        result = load_vegamodel(tc.state['model'], 
+                                new=new)
     
+        tc.state['vega_wavelength'] = result['vega_wavelength']
+        tc.state['vega_fluxdensity'] = result['vega_fluxdensity']
+        tc.state['vega_continuum'] = result['vega_continuum']
+        tc.state['vega_fitted_continuum'] = result['vega_fitted_continuum']
+        tc.state['vega_normalized_fluxdensity'] = \
+            result['vega_normalized_fluxdensity']
+        tc.state['vega_dispersions'] = result['vega_dispersions']
+
     #
     # Set variables that need to be set to a default value.
     #
@@ -414,30 +423,49 @@ def load_data():
 
     
         
-def load_vegamodel(new=False):
+def load_vegamodel(model:str,
+                   new=False):
 
     """
     Loads the proper Vega model given the observing mode
 
     Parameters
     ----------
-    None
+    model : str
+        The resolving power of the Vega model, e.g. '5000', '50000'
 
     Returns
     -------
-    None
-    Loads data into memory.
+    dict
+        `"vega_wavelength"` : ndarray
+            The wavelengths of the Vega model in microns.
 
-        tc.state['vega_wavelength']
-        tc.state['vega_fluxdensity']
-        tc.state['vega_continuum']
-        tc.state['vega_fitted_continuum']
-        tc.state['vega_normalized_fluxdensity']
-        tc.state['vega_dispersions']
+        `"vega_fluxdensity"` : ndarray
+            The flux density of the Vega model in erg s- cm-2 A-1
+
+        `"vega_continuum"` : ndarray
+            The continuum of the Vega model in erg s- cm-2 A-1
+
+        `"vega_fitted_continuum"` : ndarray
+            The fitted continuum of the Vega model in erg s- cm-2 A-1
+
+        `"vega_normalized_fluxdensity"` : ndarray
+            The normalized flux density of the Vega model.  
+            = `"vega_fluxdensity"/ `"vega_fitted_continuum"`
+
+        `"vega_dispersions"` : ndarray
+            The average dispersion (microns pixel-1) of the vega model 
+            over the wavelength range of each order.
     
     """
 
     logging.info(' Loading the Vega model.')
+
+    # 
+    # Check paramater
+    #
+
+    check_parameter('load_vegamodel', 'model', model, 'str')
 
     #
     # Determine which Vega model to use and load
@@ -446,11 +474,11 @@ def load_vegamodel(new=False):
     if new is True:
 
         
-        root = 'Vega'+tc.state['model']+'_new.fits'
+        root = 'Vega'+model+'_new.fits'
 
     else:
 
-        root = 'Vega'+tc.state['model']+'.fits'
+        root = 'Vega'+model+'.fits'
 
     vega_file = os.path.join(setup.state['package_path'],'data',root)
 
@@ -461,25 +489,17 @@ def load_vegamodel(new=False):
     data  = hdul[1].data
     
     vega_wavelength = data['wavelength']
-    vega_flux = data['flux density']
+    vega_fluxdensity = data['flux density']
     vega_continuum = data['continuum flux density']
     vega_fitted_continuum = data['fitted continuum flux density']
     
     hdul.close()
-            
-    # Store the results
-
-    tc.state['vega_wavelength'] = vega_wavelength
-    tc.state['vega_fluxdensity'] = vega_flux
-    tc.state['vega_continuum'] = vega_continuum
-    tc.state['vega_fitted_continuum'] = vega_fitted_continuum
-    tc.state['vega_normalized_fluxdensity'] = vega_flux/vega_fitted_continuum
-    
+                
     #
     # Compute the dispersions over the order wavelengths
     #
 
-    dispersions = np.empty(tc.state['standard_norders'])            
+    vega_dispersions = np.empty(tc.state['standard_norders'])            
     for i in range(tc.state['standard_norders']):
 
         zleft = (vega_wavelength > \
@@ -492,10 +512,23 @@ def load_vegamodel(new=False):
         pixels = np.arange(np.sum(zselection))
         
         fit = polyfit_1d(pixels,vega_wavelength[zselection],1)
-        dispersions[i] = fit['coeffs'][1]
+        vega_dispersions[i] = fit['coeffs'][1]
 
-    tc.state['vega_dispersions'] = dispersions
-    
+
+    #
+    # Create the output and return
+    #
+
+    normalized = vega_fluxdensity/vega_fitted_continuum
+    output = {'vega_wavelength':vega_wavelength,
+              'vega_fluxdensity':vega_fluxdensity,
+              'vega_continuum':vega_continuum,
+              'vega_fitted_continuum':vega_fitted_continuum,
+              'vega_normalized_fluxdensity':normalized,
+              'vega_dispersions':vega_dispersions}
+
+    return output
+
 
     
 def load_modeinfo():
