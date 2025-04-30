@@ -910,6 +910,26 @@ def write_apertures_fits(spectra,
     else:
 
         hdr['BDPXFIX'] = (False, ' Bad pixels fixed?')        
+
+    # Add the S/N ratio 
+
+    for i in range(norders):
+
+        name = 'SNRO' + str(orders[i]).zfill(3)
+        comment = ' Median S/N values for order ' + \
+                  str(orders[i]).zfill(3)
+
+        values = []
+        for j in range(naps):
+
+            idx = i*naps+j
+        
+            signal = array[idx,1,:]
+            noise = array[idx,2,:]
+            
+            values.append(str(int(np.round(np.nanmedian(signal/noise)))))
+
+        hdr[name] = (", ".join(values), comment)
                 
     # Deal with units
         
