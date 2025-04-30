@@ -182,14 +182,17 @@ def load_spectra(
 
     if tc.state["type"] == "A0V":
 
-        result = load_vegamodel(tc.state["model"], new=new)
-
-        tc.state["vega_wavelength"] = result["vega_wavelength"]
-        tc.state["vega_fluxdensity"] = result["vega_fluxdensity"]
-        tc.state["vega_continuum"] = result["vega_continuum"]
-        tc.state["vega_fitted_continuum"] = result["vega_fitted_continuum"]
-        tc.state["vega_normalized_fluxdensity"] = result["vega_normalized_fluxdensity"]
-        tc.state["vega_dispersions"] = result["vega_dispersions"]
+        result = load_vegamodel(tc.state['model'], 
+                                tc.state['standard_wavelengthranges'],
+                                new=new)
+    
+        tc.state['vega_wavelength'] = result['vega_wavelength']
+        tc.state['vega_fluxdensity'] = result['vega_fluxdensity']
+        tc.state['vega_continuum'] = result['vega_continuum']
+        tc.state['vega_fitted_continuum'] = result['vega_fitted_continuum']
+        tc.state['vega_normalized_fluxdensity'] = \
+            result['vega_normalized_fluxdensity']
+        tc.state['vega_dispersions'] = result['vega_dispersions']
 
     #
     # Set variables that need to be set to a default value.
@@ -420,11 +423,15 @@ def load_data():
 
     # Store the results
 
-    tc.state["H_wavelengths"] = np.array(wavelength).astype(float)
-    tc.state["H_ids"] = lineid
+    tc.state['H_wavelengths'] = np.array(wavelength).astype(float)
+    tc.state['H_ids'] = lineid
 
+    
+        
+def load_vegamodel(model:str,
+                   dispersion_ranges,                   
+                   new=False):
 
-def load_vegamodel(model: str, new=False):
     """
     Loads the proper Vega model given the observing mode
 
@@ -432,6 +439,11 @@ def load_vegamodel(model: str, new=False):
     ----------
     model : str
         The resolving power of the Vega model, e.g. '5000', '50000'
+
+    dispersion_ranges : list
+        A list where each element is a 2-element list giving a wavelength 
+        range over which the average dispersion of the Vega model is to be
+        determined.
 
     Returns
     -------
@@ -497,13 +509,14 @@ def load_vegamodel(model: str, new=False):
     # Compute the dispersions over the order wavelengths
     #
 
-    vega_dispersions = np.empty(tc.state["standard_norders"])
-    for i in range(tc.state["standard_norders"]):
+    norders = len(dispersion_ranges)
+    vega_dispersions = np.empty(norders)            
+    for i in range(norders):
 
-        zleft = vega_wavelength > tc.state["standard_wavelengthranges"][i][0]
-        zright = vega_wavelength < tc.state["standard_wavelengthranges"][i][1]
-
-        zselection = np.logical_and(zleft, zright)
+        zleft = (vega_wavelength > dispersion_ranges[i][0])
+        zright = (vega_wavelength < dispersion_ranges[i][1])
+        
+        zselection = np.logical_and(zleft,zright)
 
         pixels = np.arange(np.sum(zselection))
 
