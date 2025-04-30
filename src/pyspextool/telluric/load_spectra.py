@@ -189,17 +189,7 @@ def load_spectra(
     #
 
     if tc.state["type"] == "A0V":
-
-        result = _load_vegamodel(
-            tc.state["model"], tc.state["standard_wavelengthranges"], new=new
-        )
-
-        tc.state["vega_wavelength"] = result["vega_wavelength"]
-        tc.state["vega_fluxdensity"] = result["vega_fluxdensity"]
-        tc.state["vega_continuum"] = result["vega_continuum"]
-        tc.state["vega_fitted_continuum"] = result["vega_fitted_continuum"]
-        tc.state["vega_normalized_fluxdensity"] = result["vega_normalized_fluxdensity"]
-        tc.state["vega_dispersions"] = result["vega_dispersions"]
+        _load_vegamodel(new=new)
 
     #
     # Set variables that need to be set to a default value.
@@ -535,25 +525,23 @@ def _compare_object_standard(
     tc.state["delta_airmass"] = delta_airmass
 
 
-def _load_vegamodel(
-    modeinfo_path: Union[os.PathLike, str] = None, standard_path: str = None, new=False
-):
+def _load_vegamodel(standard_filename: str = None, new=False):
     """
-    Loads the proper Vega model given the observing mode
+    Loads the proper Vega model given the observing setup. 
+    The observing setup is determined by the standard spectrum.
 
     Parameters
     ----------
-    path : str
-        The path to the modeinfo file.
-
-    dispersion_ranges : list
-        A list where each element is a 2-element list giving a wavelength
-        range over which the average dispersion of the Vega model is to be
-        determined.
+    standard_filename : str
+        The filename of a standard spectrum.
 
     Returns
     -------
     dict
+        A dictionary containing the Vega model data.
+        "vega_file" : str
+            The name of the Vega model file.
+
         `"vega_wavelength"` : ndarray
             The wavelengths of the Vega model in microns.
 
@@ -584,18 +572,15 @@ def _load_vegamodel(
     try:
         mode = tc.state["mode"]
     except KeyError:
-        if standard_path is not None:
-            _load_standard_data(standard_path)
+        if standard_filename is not None:
+            _load_standard_data(standard_filename)
         else:
             _load_standard_data()
     
     try:
         model = tc.state["model"]
     except KeyError:        
-        if modeinfo_path is not None:
-            _load_modeinfo(modeinfo_path)
-        else:
-            _load_modeinfo()
+        _load_modeinfo()
         model = tc.state["model"]
 
     if new is True:
@@ -646,16 +631,25 @@ def _load_vegamodel(
     #
 
     normalized = vega_fluxdensity / vega_fitted_continuum
-    output = {
-        "vega_wavelength": vega_wavelength,
-        "vega_fluxdensity": vega_fluxdensity,
-        "vega_continuum": vega_continuum,
-        "vega_fitted_continuum": vega_fitted_continuum,
-        "vega_normalized_fluxdensity": normalized,
-        "vega_dispersions": vega_dispersions,
+
+    result = {
+    "vega_file": root,
+    "vega_wavelength": vega_wavelength,
+    "vega_fluxdensity": vega_fluxdensity,
+    "vega_continuum": vega_continuum,
+    "vega_fitted_continuum": vega_fitted_continuum,
+    "vega_normalized_fluxdensity": normalized,
+    "vega_dispersions": vega_dispersions,
     }
 
-    return output
+    tc.state["vega_wavelength"] = result["vega_wavelength"]
+    tc.state["vega_fluxdensity"] = result["vega_fluxdensity"]
+    tc.state["vega_continuum"] = result["vega_continuum"]
+    tc.state["vega_fitted_continuum"] = result["vega_fitted_continuum"]
+    tc.state["vega_normalized_fluxdensity"] = result["vega_normalized_fluxdensity"]
+    tc.state["vega_dispersions"] = result["vega_dispersions"]
+    
+    return result
 
 
 def _load_modeinfo(file: str = None):
