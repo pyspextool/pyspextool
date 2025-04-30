@@ -10,8 +10,8 @@ from pyspextool.setup_utils import (
 )
 
 
-def test_pyspextool_setup_defaults(paths):
-    spex_prism_paths = paths["spex_prism"]
+def test_pyspextool_setup_defaults(raw_paths):
+    spex_prism_paths = raw_paths["spex_prism"]
     pyspextool_setup(
         raw_path=spex_prism_paths["raw_path"],
         cal_path=spex_prism_paths["cal_path"],
@@ -36,7 +36,8 @@ def test_pyspextool_setup_defaults(paths):
 @pytest.mark.parametrize(
     "path_name", ["spex_prism", "spex_sxd", "uspex_prism", "uspex_sxd"]
 )
-def test_set_paths(path_name, paths):
+def test_set_paths(path_name, raw_paths):
+    paths=raw_paths
     set_paths(
         paths[path_name["raw_path"]],
         paths[path_name["cal_path"]],
