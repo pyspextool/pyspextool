@@ -156,12 +156,15 @@ def load_spectra(
     # Load the files into memory
     #
 
-    load_data()
+    #load_data()
+    load_object_data()
+
 
     #
     # Load the standard star information
     #
-
+    load_H_lines()
+    load_standard_data()
     load_standard_info()
 
     #
@@ -182,17 +185,16 @@ def load_spectra(
 
     if tc.state["type"] == "A0V":
 
-        result = load_vegamodel(tc.state['model'], 
-                                tc.state['standard_wavelengthranges'],
-                                new=new)
-    
-        tc.state['vega_wavelength'] = result['vega_wavelength']
-        tc.state['vega_fluxdensity'] = result['vega_fluxdensity']
-        tc.state['vega_continuum'] = result['vega_continuum']
-        tc.state['vega_fitted_continuum'] = result['vega_fitted_continuum']
-        tc.state['vega_normalized_fluxdensity'] = \
-            result['vega_normalized_fluxdensity']
-        tc.state['vega_dispersions'] = result['vega_dispersions']
+        result = load_vegamodel(
+            tc.state["model"], tc.state["standard_wavelengthranges"], new=new
+        )
+
+        tc.state["vega_wavelength"] = result["vega_wavelength"]
+        tc.state["vega_fluxdensity"] = result["vega_fluxdensity"]
+        tc.state["vega_continuum"] = result["vega_continuum"]
+        tc.state["vega_fitted_continuum"] = result["vega_fitted_continuum"]
+        tc.state["vega_normalized_fluxdensity"] = result["vega_normalized_fluxdensity"]
+        tc.state["vega_dispersions"] = result["vega_dispersions"]
 
     #
     # Set variables that need to be set to a default value.
@@ -218,108 +220,54 @@ def load_spectra(
     tc.state["kernel_done"] = False
 
 
-def load_data():
+def load_standard_data(fullpath: str = None):
     """
-    Loads the observations.
+    Loads the standard observations.
 
     Parameters
     ----------
     None
 
+    Uses
+    - fullpath: str
+        Path to the standard spectrum file.
+
     Returns
     -------
     None
+
     Loads data into memory.
 
         tc.state['standard_spectra']
-        tc.state['standard_info']
+        tc.state['standard_data']
         tc.state['standard_hdrinfo']
-        tc.state['delta_airmass']
-        tc.state['object_spectra']
-        tc.state['object_info']
-        tc.state['object_hdrinfo']
         tc.state['mode']
         tc.state['resolving_power']
-        tc.state['object_norders']
-        tc.state['object_napertures']
         tc.state['standard_norders']
-        tc.state['object_orders']
         tc.state['standard_orders']
         tc.state['standard_wavelengthranges']
         tc.state['standard_dispersions']
         tc.state['standard_fwhm']
         tc.state['slitw_pix']
-        tc.state['H_wavelengths']
-        tc.state['H_ids']
-
-
+        tc.state['atmospheric_transmission']
 
     """
 
-    logging.info(" Loading the spectra.")
-
-    # Object first
-
-    fullpath = make_full_path(
-        setup.state["proc_path"], tc.state["object_file"], exist=True
-    )
-
-    object_spectra, object_data = read_spectra_fits(fullpath)
-
-    object_hdrinfo = get_headerinfo(
-        object_data["header"], keywords=setup.state["telluric_keywords"]
-    )
-
-    # Check whether it was created by the extract or combine module -
-    # temporary fix
-
-    if object_hdrinfo["AVE_AM"][0] == None:
-
-        object_hdrinfo2 = get_headerinfo(
-            object_data["header"], keywords=setup.state["combine_keywords"]
-        )
-        object_hdrinfo["AVE_AM"] = [object_hdrinfo2["AM"][0], "Average airmass"]
-
-    #        object_hdrinfo2 = get_headerinfo(header,keywords=setup.state['combine_keywords'])
-    #        object_hdrinfo['AVE_AM'] = [object_hdrinfo2['AM'][0],'Average airmass']
-
+    logging.info(" Loading the standard spectrum.")
+    
     # Now the standard
 
-    fullpath = make_full_path(
-        setup.state["proc_path"], tc.state["standard_file"], exist=False
-    )
+    if fullpath is None:
+        fullpath = make_full_path(
+            setup.state["proc_path"], tc.state["standard_file"], exist=False
+        )
 
     standard_spectra, standard_data = read_spectra_fits(fullpath)
 
     standard_hdrinfo = get_headerinfo(
         standard_data["header"], keywords=setup.state["telluric_keywords"]
     )
-
-    # Does the standard have only one aperture?
-
-    if standard_data["napertures"] != 1:
-
-        message = "The standard has more than one aperture and can only " + "have one."
-        raise pySpextoolError(message)
-
-    # Does the standard have at least the order numbers of the object?
-
-    intersection = np.intersect1d(object_data["orders"], standard_data["orders"])
-
-    if np.size(intersection) != object_data["norders"]:
-
-        message = "The standard lacks an order the object has."
-        raise pySpextoolError(message)
-
-    # Determine the angular separation between the object and standard
-
-    obj_long = 15 * ten(object_hdrinfo["RA"][0], toradians=True)
-    obj_lat = ten(object_hdrinfo["DEC"][0], toradians=True)
-    std_long = 15 * ten(standard_hdrinfo["RA"][0], toradians=True)
-    std_lat = ten(standard_hdrinfo["DEC"][0], toradians=True)
-
-    angle = angular_separation(obj_long, obj_lat, std_long, std_lat) * 180 / np.pi
-
+    
     #
     # Store the results
     #
@@ -327,21 +275,11 @@ def load_data():
     tc.state["standard_spectra"] = standard_spectra
     tc.state["standard_data"] = standard_data
     tc.state["standard_hdrinfo"] = standard_hdrinfo
-    tc.state["delta_angle"] = angle
-    tc.state["delta_airmass"] = (
-        object_hdrinfo["AVE_AM"][0] - standard_hdrinfo["AVE_AM"][0]
-    )
-    tc.state["object_spectra"] = object_spectra
-    tc.state["object_data"] = object_data
-    tc.state["object_hdrinfo"] = object_hdrinfo
     tc.state["mode"] = standard_hdrinfo["MODE"][0]
     tc.state["resolving_power"] = standard_hdrinfo["RP"][0]
-    tc.state["object_norders"] = object_data["norders"]
-    tc.state["object_napertures"] = object_data["napertures"]
     tc.state["standard_norders"] = standard_data["norders"]
-    tc.state["object_orders"] = object_data["orders"]
     tc.state["standard_orders"] = standard_data["orders"]
-    tc.state["xlabel"] = object_hdrinfo["LXLABEL"][0]
+    
 
     #
     # Compute the minimum and maximum wavelengths and dispersions for each
@@ -376,24 +314,6 @@ def load_data():
     tc.state["slitw_pix"] = standard_data["slitw_pix"]
 
     #
-    # Now get the object ranges
-    #
-
-    wavelength_ranges = []
-
-    for i in range(tc.state["object_norders"]):
-
-        idx = i * tc.state["object_napertures"]
-        min = np.nanmin(tc.state["object_spectra"][idx, 0, :])
-        max = np.nanmax(tc.state["object_spectra"][idx, 0, :])
-
-        wavelength_ranges.append(np.array([min, max]))
-
-    # Store the results
-
-    tc.state["object_wavelengthranges"] = wavelength_ranges
-
-    #
     # Load the atmospheric transmission
     #
 
@@ -411,11 +331,24 @@ def load_data():
 
     tc.state["atmospheric_transmission"] = atmospheric_transmission
 
+
+def load_H_lines(fullpath: str = None):
+    """
     #
     # Load the Hydrogen lines
     #
+    Parameters
+    ----------
+    fullpath : Path 
+        The path to the H1.dat file. 
+        Expected to be  pyspextool/data/H1.dat
 
-    fullpath = os.path.join(setup.state["package_path"], "data", "HI.dat")
+    Sets:
+    - tc.state['H_wavelengths']
+    - tc.state['H_ids']
+    """
+    if fullpath is None:
+        fullpath = os.path.join(setup.state["package_path"], "data", "HI.dat")
 
     wavelength, lineid = np.loadtxt(
         fullpath, comments="#", unpack=True, dtype="str", delimiter="|"
@@ -423,15 +356,148 @@ def load_data():
 
     # Store the results
 
-    tc.state['H_wavelengths'] = np.array(wavelength).astype(float)
-    tc.state['H_ids'] = lineid
+    tc.state["H_wavelengths"] = np.array(wavelength).astype(float)
+    tc.state["H_ids"] = lineid
 
-    
-        
-def load_vegamodel(model:str,
-                   dispersion_ranges,                   
-                   new=False):
 
+
+def load_object_data(fullpath: str = None):
+    """
+    Loads the object spectrum.
+
+    Parameters
+    ----------
+    None
+
+    Uses
+    - fullpath
+        Path to the object spectrum file.
+
+    Returns
+    -------
+    None
+
+    Loads data into memory.
+        tc.state['object_spectra']
+        tc.state['object_data']
+        tc.state['object_hdrinfo']
+        tc.state['object_norders']
+        tc.state['object_napertures']
+        tc.state['object_orders']
+        tc.state['xlabel']
+        tc.state['H_wavelengths']
+        tc.state['H_ids']
+
+
+    """
+    logging.info(" Loading the object spectrum.")
+
+    # Object first
+
+    if fullpath is None:
+        fullpath = make_full_path(
+            setup.state["proc_path"], tc.state["object_file"], exist=True
+        )
+
+    object_spectra, object_data = read_spectra_fits(fullpath)
+
+    object_hdrinfo = get_headerinfo(
+        object_data["header"], keywords=setup.state["telluric_keywords"]
+    )
+
+    # Check whether it was created by the extract or combine module -
+    # temporary fix
+
+    if object_hdrinfo["AVE_AM"][0] is None:
+
+        object_hdrinfo2 = get_headerinfo(
+            object_data["header"], keywords=setup.state["combine_keywords"]
+        )
+        object_hdrinfo["AVE_AM"] = [object_hdrinfo2["AM"][0], "Average airmass"]
+
+    #        object_hdrinfo2 = get_headerinfo(header,keywords=setup.state['combine_keywords'])
+    #        object_hdrinfo['AVE_AM'] = [object_hdrinfo2['AM'][0],'Average airmass']
+
+    #
+    # Store the results
+    #
+    tc.state["object_spectra"] = object_spectra
+    tc.state["object_data"] = object_data
+    tc.state["object_hdrinfo"] = object_hdrinfo
+    tc.state["object_norders"] = object_data["norders"]
+    tc.state["object_napertures"] = object_data["napertures"]
+    tc.state["object_orders"] = object_data["orders"]
+    tc.state["xlabel"] = object_hdrinfo["LXLABEL"][0]
+
+    #
+    # Now get the object ranges
+    #
+
+    wavelength_ranges = []
+
+    for i in range(tc.state["object_norders"]):
+
+        idx = i * tc.state["object_napertures"]
+        min = np.nanmin(tc.state["object_spectra"][idx, 0, :])
+        max = np.nanmax(tc.state["object_spectra"][idx, 0, :])
+
+        wavelength_ranges.append(np.array([min, max]))
+
+    # Store the results
+
+    tc.state["object_wavelengthranges"] = wavelength_ranges
+
+
+def compare_object_standard(standard_full_path, object_full_path):
+    standard_spectra, standard_data = read_spectra_fits(fullpath)
+
+    standard_hdrinfo = get_headerinfo(
+        standard_data["header"], keywords=setup.state["telluric_keywords"]
+    )
+
+    object_spectra, object_data = read_spectra_fits(fullpath)
+
+    object_hdrinfo = get_headerinfo(
+        object_data["header"], keywords=setup.state["telluric_keywords"]
+    )
+
+    # Does the standard have only one aperture?
+
+    if standard_data["napertures"] != 1:
+
+        message = "The standard has more than one aperture and can only " + "have one."
+        raise pySpextoolError(message)
+
+    # Does the standard have at least the order numbers of the object?
+
+    intersection = np.intersect1d(object_data["orders"], standard_data["orders"])
+
+    if np.size(intersection) != object_data["norders"]:
+
+        message = "The standard lacks an order the object has."
+        raise pySpextoolError(message)
+
+    # Determine the angular separation between the object and standard
+
+    obj_long = 15 * ten(object_hdrinfo["RA"][0], toradians=True)
+    obj_lat = ten(object_hdrinfo["DEC"][0], toradians=True)
+    std_long = 15 * ten(standard_hdrinfo["RA"][0], toradians=True)
+    std_lat = ten(standard_hdrinfo["DEC"][0], toradians=True)
+
+    angle = angular_separation(obj_long, obj_lat, std_long, std_lat) * 180 / np.pi
+
+    #
+    # Store the results
+    #
+
+    tc.state["delta_angle"] = angle
+    tc.state["delta_airmass"] = (
+        object_hdrinfo["AVE_AM"][0] - standard_hdrinfo["AVE_AM"][0]
+    )
+
+
+
+def load_vegamodel(model: str, dispersion_ranges, new=False):
     """
     Loads the proper Vega model given the observing mode
 
@@ -441,7 +507,7 @@ def load_vegamodel(model:str,
         The resolving power of the Vega model, e.g. '5000', '50000'
 
     dispersion_ranges : list
-        A list where each element is a 2-element list giving a wavelength 
+        A list where each element is a 2-element list giving a wavelength
         range over which the average dispersion of the Vega model is to be
         determined.
 
@@ -510,13 +576,13 @@ def load_vegamodel(model:str,
     #
 
     norders = len(dispersion_ranges)
-    vega_dispersions = np.empty(norders)            
+    vega_dispersions = np.empty(norders)
     for i in range(norders):
 
-        zleft = (vega_wavelength > dispersion_ranges[i][0])
-        zright = (vega_wavelength < dispersion_ranges[i][1])
-        
-        zselection = np.logical_and(zleft,zright)
+        zleft = vega_wavelength > dispersion_ranges[i][0]
+        zright = vega_wavelength < dispersion_ranges[i][1]
+
+        zselection = np.logical_and(zleft, zright)
 
         pixels = np.arange(np.sum(zselection))
 
