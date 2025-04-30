@@ -20,6 +20,7 @@ dependencies = [
     "astroquery",
     "specutils",
     "dust_extinction",
+    "jinja2",
     "pooch",
 ]
 dynamic = ["version"]
