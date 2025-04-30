@@ -176,6 +176,7 @@ def load_spectra(object_file:str,
     if tc.state['type'] == 'A0V':
 
         result = load_vegamodel(tc.state['model'], 
+                                tc.state['standard_wavelengthranges'],
                                 new=new)
     
         tc.state['vega_wavelength'] = result['vega_wavelength']
@@ -424,6 +425,7 @@ def load_data():
     
         
 def load_vegamodel(model:str,
+                   dispersion_ranges,                   
                    new=False):
 
     """
@@ -433,6 +435,11 @@ def load_vegamodel(model:str,
     ----------
     model : str
         The resolving power of the Vega model, e.g. '5000', '50000'
+
+    dispersion_ranges : list
+        A list where each element is a 2-element list giving a wavelength 
+        range over which the average dispersion of the Vega model is to be
+        determined.
 
     Returns
     -------
@@ -499,13 +506,12 @@ def load_vegamodel(model:str,
     # Compute the dispersions over the order wavelengths
     #
 
-    vega_dispersions = np.empty(tc.state['standard_norders'])            
-    for i in range(tc.state['standard_norders']):
+    norders = len(dispersion_ranges)
+    vega_dispersions = np.empty(norders)            
+    for i in range(norders):
 
-        zleft = (vega_wavelength > \
-                 tc.state['standard_wavelengthranges'][i][0])
-        zright = (vega_wavelength < \
-                  tc.state['standard_wavelengthranges'][i][1])
+        zleft = (vega_wavelength > dispersion_ranges[i][0])
+        zright = (vega_wavelength < dispersion_ranges[i][1])
         
         zselection = np.logical_and(zleft,zright)
 
