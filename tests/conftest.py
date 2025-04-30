@@ -23,10 +23,10 @@ def raw_paths():
             "qa_path": "tests/test_data/raw/uspex-prism/qa/",
         },
         "uspex_sxd": {
-            "raw_path": "tests/test_data/raw/uspex-sxd/data/",
-            "cal_path": "tests/test_data/raw/uspex-sxd/cals/",
-            "proc_path": "tests/test_data/raw/uspex-sxd/proc/",
-            "qa_path": "tests/test_data/raw/uspex-sxd/qa/",
+            "raw_path": "tests/test_data/raw/uspex-SXD/data/",
+            "cal_path": "tests/test_data/raw/uspex-SXD/cals/",
+            "proc_path": "tests/test_data/raw/uspex-SXD/proc/",
+            "qa_path": "tests/test_data/raw/uspex-SXD/qa/",
         },
     }
     return raw_paths
@@ -54,10 +54,10 @@ def proc_paths():
             "qa_path": "tests/test_data/processed/uspex-prism/qa/",
         },
         "uspex_sxd": {
-            "raw_path": "tests/test_data/raw/uspex-sxd/data/",
-            "cal_path": "tests/test_data/raw/uspex-sxd/cals/",
-            "proc_path": "tests/test_data/processed/uspex-sxd/proc/",
-            "qa_path": "tests/test_data/processed/uspex-sxd/qa/",
+            "raw_path": "tests/test_data/raw/uspex-SXD/data/",
+            "cal_path": "tests/test_data/raw/uspex-SXD/cals/",
+            "proc_path": "tests/test_data/processed/uspex-SXD/proc/",
+            "qa_path": "tests/test_data/processed/uspex-SXD/qa/",
         },
     }
     return proc_paths
