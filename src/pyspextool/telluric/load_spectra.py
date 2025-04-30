@@ -6,6 +6,7 @@ from astropy.io import fits
 from astropy.table.table import Table
 import astropy.units as u
 from astroquery.simbad import Simbad
+from typing import Union
 
 
 from pyspextool import config as setup
@@ -156,28 +157,32 @@ def load_spectra(
     # Load the files into memory
     #
 
-    #load_data()
-    load_object_data()
-
+    # load_data()
+    _load_object_data()
 
     #
     # Load the standard star information
     #
-    load_H_lines()
-    load_standard_data()
-    load_standard_info()
+    _load_H_lines()
+    _load_standard_data()
+    _load_standard_info()
+
+    # Compare the object and standard spectra to make sure they
+    # are compatible and to determine the angular
+    # separation and airmass difference
+    _compare_object_standard()
 
     #
     # Get the mode info and store pertinent information
     #
 
-    load_modeinfo()
+    _load_modeinfo()
 
     #
     # Load the instrument profile parameters
     #
 
-    load_ipcoefficients()
+    _load_ipcoefficients()
 
     #
     # Load Vega Model if required
@@ -185,7 +190,7 @@ def load_spectra(
 
     if tc.state["type"] == "A0V":
 
-        result = load_vegamodel(
+        result = _load_vegamodel(
             tc.state["model"], tc.state["standard_wavelengthranges"], new=new
         )
 
@@ -220,7 +225,7 @@ def load_spectra(
     tc.state["kernel_done"] = False
 
 
-def load_standard_data(fullpath: str = None):
+def _load_standard_data(standard_filename: str = None):
     """
     Loads the standard observations.
 
@@ -229,8 +234,8 @@ def load_standard_data(fullpath: str = None):
     None
 
     Uses
-    - fullpath: str
-        Path to the standard spectrum file.
+    - standard_filename: str
+        Filename of a standard spectrum file.
 
     Returns
     -------
@@ -254,20 +259,26 @@ def load_standard_data(fullpath: str = None):
     """
 
     logging.info(" Loading the standard spectrum.")
-    
-    # Now the standard
 
-    if fullpath is None:
+    # Read in the standard file
+
+    if standard_filename is None:
         fullpath = make_full_path(
             setup.state["proc_path"], tc.state["standard_file"], exist=False
         )
+    else:
+        fullpath = make_full_path(
+            setup.state["proc_path"], standard_filename, exist=False
+        )
+    
+    print(fullpath)
 
     standard_spectra, standard_data = read_spectra_fits(fullpath)
 
     standard_hdrinfo = get_headerinfo(
         standard_data["header"], keywords=setup.state["telluric_keywords"]
     )
-    
+
     #
     # Store the results
     #
@@ -279,7 +290,13 @@ def load_standard_data(fullpath: str = None):
     tc.state["resolving_power"] = standard_hdrinfo["RP"][0]
     tc.state["standard_norders"] = standard_data["norders"]
     tc.state["standard_orders"] = standard_data["orders"]
-    
+
+    # Does the standard have only one aperture?
+
+    if standard_data["napertures"] != 1:
+
+        message = "The standard has more than one aperture and can only " + "have one."
+        raise pySpextoolError(message)
 
     #
     # Compute the minimum and maximum wavelengths and dispersions for each
@@ -332,15 +349,15 @@ def load_standard_data(fullpath: str = None):
     tc.state["atmospheric_transmission"] = atmospheric_transmission
 
 
-def load_H_lines(fullpath: str = None):
+def _load_H_lines(fullpath: str = None):
     """
     #
     # Load the Hydrogen lines
     #
     Parameters
     ----------
-    fullpath : Path 
-        The path to the H1.dat file. 
+    fullpath : Path
+        The path to the H1.dat file.
         Expected to be  pyspextool/data/H1.dat
 
     Sets:
@@ -360,8 +377,7 @@ def load_H_lines(fullpath: str = None):
     tc.state["H_ids"] = lineid
 
 
-
-def load_object_data(fullpath: str = None):
+def _load_object_data(fullpath: str = None):
     """
     Loads the object spectrum.
 
@@ -448,25 +464,46 @@ def load_object_data(fullpath: str = None):
     tc.state["object_wavelengthranges"] = wavelength_ranges
 
 
-def compare_object_standard(standard_full_path, object_full_path):
-    standard_spectra, standard_data = read_spectra_fits(fullpath)
+def _compare_object_standard(
+    standard_fullpath: str = None, object_fullpath: str = None
+):
+    """
+    Compare the object and standard spectra to determine the angular
+    separation and airmass difference.
 
-    standard_hdrinfo = get_headerinfo(
-        standard_data["header"], keywords=setup.state["telluric_keywords"]
-    )
+    Parameters
+    ----------
+    standard_full_path : str
+        The full path to the standard spectrum file.
+    object_full_path : str
+        The full path to the object spectrum file.
 
-    object_spectra, object_data = read_spectra_fits(fullpath)
+    Returns
+    -------
+    None
 
-    object_hdrinfo = get_headerinfo(
-        object_data["header"], keywords=setup.state["telluric_keywords"]
-    )
+    Loads data into memory:
+        tc.state['delta_angle']
+        tc.state['delta_airmass']
 
-    # Does the standard have only one aperture?
+    """
+    if standard_fullpath is not None:
+        standard_data = read_spectra_fits(standard_fullpath)(1)
+        standard_hdrinfo = get_headerinfo(
+            standard_data["header"], keywords=setup.state["telluric_keywords"]
+        )
+    else:
+        standard_data = tc.state["standard_data"]
+        standard_hdrinfo = tc.state["standard_hdrinfo"]
 
-    if standard_data["napertures"] != 1:
-
-        message = "The standard has more than one aperture and can only " + "have one."
-        raise pySpextoolError(message)
+    if object_fullpath is not None:
+        object_data = read_spectra_fits(object_fullpath)(1)
+        object_hdrinfo = get_headerinfo(
+            object_data["header"], keywords=setup.state["telluric_keywords"]
+        )
+    else:
+        object_data = tc.state["object_data"]
+        object_hdrinfo = tc.state["object_hdrinfo"]
 
     # Does the standard have at least the order numbers of the object?
 
@@ -486,25 +523,28 @@ def compare_object_standard(standard_full_path, object_full_path):
 
     angle = angular_separation(obj_long, obj_lat, std_long, std_lat) * 180 / np.pi
 
+    # Determine the airmass difference
+
+    delta_airmass = object_hdrinfo["AVE_AM"][0] - standard_hdrinfo["AVE_AM"][0]
+
     #
     # Store the results
     #
 
     tc.state["delta_angle"] = angle
-    tc.state["delta_airmass"] = (
-        object_hdrinfo["AVE_AM"][0] - standard_hdrinfo["AVE_AM"][0]
-    )
+    tc.state["delta_airmass"] = delta_airmass
 
 
-
-def load_vegamodel(model: str, dispersion_ranges, new=False):
+def _load_vegamodel(
+    modeinfo_path: Union[os.PathLike, str] = None, standard_path: str = None, new=False
+):
     """
     Loads the proper Vega model given the observing mode
 
     Parameters
     ----------
-    model : str
-        The resolving power of the Vega model, e.g. '5000', '50000'
+    path : str
+        The path to the modeinfo file.
 
     dispersion_ranges : list
         A list where each element is a 2-element list giving a wavelength
@@ -539,14 +579,24 @@ def load_vegamodel(model: str, dispersion_ranges, new=False):
     logging.info(" Loading the Vega model.")
 
     #
-    # Check paramater
-    #
-
-    check_parameter("load_vegamodel", "model", model, "str")
-
-    #
     # Determine which Vega model to use and load
     #
+    try:
+        mode = tc.state["mode"]
+    except KeyError:
+        if standard_path is not None:
+            _load_standard_data(standard_path)
+        else:
+            _load_standard_data()
+    
+    try:
+        model = tc.state["model"]
+    except KeyError:        
+        if modeinfo_path is not None:
+            _load_modeinfo(modeinfo_path)
+        else:
+            _load_modeinfo()
+        model = tc.state["model"]
 
     if new is True:
 
@@ -575,12 +625,14 @@ def load_vegamodel(model: str, dispersion_ranges, new=False):
     # Compute the dispersions over the order wavelengths
     #
 
-    norders = len(dispersion_ranges)
-    vega_dispersions = np.empty(norders)
+    vega_dispersions = np.empty(tc.state["standard_norders"])
+    wavelength_ranges = tc.state["standard_wavelengthranges"]
+    norders = len(vega_dispersions)
+
     for i in range(norders):
 
-        zleft = vega_wavelength > dispersion_ranges[i][0]
-        zright = vega_wavelength < dispersion_ranges[i][1]
+        zleft = vega_wavelength > wavelength_ranges[i][0]
+        zright = vega_wavelength < wavelength_ranges[i][1]
 
         zselection = np.logical_and(zleft, zright)
 
@@ -606,17 +658,20 @@ def load_vegamodel(model: str, dispersion_ranges, new=False):
     return output
 
 
-def load_modeinfo():
+def _load_modeinfo(file: str = None):
     """
     Load the mode info given
 
     Parameters
     ----------
-    None
+    path : str
+        The path to the modeinfo file.
+        Expected to be  pyspextool/instruments/<spex | uspex>/telluric_modeinfo.dat
 
     Returns
     -------
     None
+
     Loads data into memory:
 
         tc.state['method']
@@ -630,8 +685,8 @@ def load_modeinfo():
 
 
     """
-
-    file = os.path.join(setup.state["instrument_path"], "telluric_modeinfo.dat")
+    if file is None:
+        file = os.path.join(setup.state["instrument_path"], "telluric_modeinfo.dat")
 
     values = np.loadtxt(file, comments="#", delimiter="|", dtype="str")
 
@@ -689,7 +744,7 @@ def load_modeinfo():
     tc.state["deconvolution_nfwhm"] = dc_nfwhm
 
 
-def load_ipcoefficients():
+def _load_ipcoefficients():
     """
     Load the mode info given
 
@@ -723,7 +778,7 @@ def load_ipcoefficients():
     tc.state["ip_coefficients"] = ip_coefficients
 
 
-def load_standard_info():
+def _load_standard_info():
     """
     Load the standard star spectral type, B-, and V-band magnitudes.
 
