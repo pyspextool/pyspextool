@@ -18,7 +18,7 @@ import logging
 LOG_FILE_PREFIX_DEFAULT = 'log'
 DRIVER_FILE_PREFIX_DEFAULT = 'driver'
 VERSION = batch.VERSION
-#VERSION = '2024.02.25'
+#VERSION = '2025.04.16'
 AUTHORS = [
 	'Adam Burgasser',
 	'Jean Marroquin',
