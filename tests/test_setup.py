@@ -10,8 +10,8 @@ from pyspextool.setup_utils import (
 )
 
 
-def test_pyspextool_setup_defaults(raw_paths):
-    spex_prism_paths = raw_paths["spex_prism"]
+def test_pyspextool_setup_defaults(raw_setup):
+    spex_prism_paths = raw_setup["spex_prism"]
     pyspextool_setup(
         raw_path=spex_prism_paths["raw_path"],
         cal_path=spex_prism_paths["cal_path"],
@@ -32,22 +32,22 @@ def test_pyspextool_setup_defaults(raw_paths):
     assert setup.state["qa_show"] is False
     assert setup.state["qa_write"] is False
 
-@pytest.mark.skip()
+
 @pytest.mark.parametrize(
-    "path_name", ["spex_prism", "spex_sxd", "uspex_prism", "uspex_sxd"]
+    "setup_name", ["spex_lxd","spex_prism", "spex_sxd", "uspex_lxd","uspex_prism", "uspex_sxd"]
 )
-def test_set_paths(path_name, raw_paths):
-    paths=raw_paths
+def test_set_paths(setup_name, raw_setup):
+    setup_dict = raw_setup[setup_name]
     set_paths(
-        paths[path_name["raw_path"]],
-        paths[path_name["cal_path"]],
-        paths[path_name["proc_path"]],
-        paths[path_name["qa_path"]],
+        setup_dict["raw_path"],
+        setup_dict["cal_path"],
+        setup_dict["proc_path"],
+        setup_dict["qa_path"],
     )
 
-    assert setup.state["raw_path"] == os.path.abspath(paths[path_name["raw_path"]])
-    assert setup.state["cal_path"] == os.path.abspath(paths[path_name["cal_path"]])
-    assert setup.state["proc_path"] == os.path.abspath(paths[path_name["proc_path"]])
+    assert setup.state["raw_path"] == os.path.abspath(setup_dict["raw_path"])
+    assert setup.state["cal_path"] == os.path.abspath(setup_dict["cal_path"])
+    assert setup.state["proc_path"] == os.path.abspath(setup_dict["proc_path"])
 
 
 #  # TODO: add tests for bad paths

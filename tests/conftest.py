@@ -4,6 +4,13 @@ import pytest
 @pytest.fixture
 def raw_setup():
     raw_setup = {
+        "spex_lxd": {
+            "instrument": "spex",
+            "raw_path": "tests/test_data/raw/spex-LXD/data/",
+            "cal_path": "tests/test_data/raw/spex-LXD/cals/",
+            "proc_path": "tests/test_data/raw/spex-LXD/proc/",
+            "qa_path": "tests/test_data/raw/spex-LXD/qa/",
+        },
         "spex_prism": {
             "instrument": "spex",
             "raw_path": "tests/test_data/raw/spex-prism/data/",
@@ -17,6 +24,13 @@ def raw_setup():
             "cal_path": "tests/test_data/raw/spex-SXD/cals/",
             "proc_path": "tests/test_data/raw/spex-SXD/proc/",
             "qa_path": "tests/test_data/raw/spex-SXD/qa/",
+        },
+        "uspex_lxd": {
+            "instrument": "uspex",
+            "raw_path": "tests/test_data/raw/uspex-LXD/data/",
+            "cal_path": "tests/test_data/raw/uspex-LXD/cals/",
+            "proc_path": "tests/test_data/raw/uspex-LXD/proc/",
+            "qa_path": "tests/test_data/raw/uspex-LXD/qa/",
         },
         "uspex_prism": {
             "instrument": "uspex",

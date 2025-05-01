@@ -21,13 +21,13 @@ import pytest
     ],
 )
 def test_load_vegamodel(setup_name, new, vega_file, proc_setup):
-    setup = proc_setup[setup_name]
+    setup_dict = proc_setup[setup_name]
     pyspextool_setup(
-        instrument=setup["instrument"],
-        raw_path=setup["raw_path"],
-        cal_path=setup["cal_path"],
-        proc_path=setup["proc_path"],
-        qa_path=setup["qa_path"],
+        instrument=setup_dict["instrument"],
+        raw_path=setup_dict["raw_path"],
+        cal_path=setup_dict["cal_path"],
+        proc_path=setup_dict["proc_path"],
+        qa_path=setup_dict["qa_path"],
     )
-    result = _load_vegamodel(setup["standard_file"], new=new)
+    result = _load_vegamodel(setup_dict["standard_file"], new=new)
     assert result["vega_file"] == vega_file
