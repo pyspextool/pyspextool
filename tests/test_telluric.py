@@ -4,23 +4,30 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    ("instrument_name", "mode", "path_name", "standard_file", "new", "vega_file"),
+    ("setup_name", "new", "vega_file"),
     [
-        ("uspex", "ShortXD", "uspex_sxd","spectra00011.fits",False,"Vega50000.fits"),
-        ("uspex", "ShortXD", "uspex_sxd","spectra00011.fits",True,"Vega50000_new.fits"),
-        #("uspex", "Prism", "uspex_prism",""),
-        #("spex", "ShortXD", "spex_sxd",""),
-        #("spex", "LowRes15", "spex_prism",""),
+        ("spex_lxd", False, "Vega50000.fits"),
+        ("spex_lxd", True, "Vega50000_new.fits"),
+        ("spex_prism", False, "Vega50000.fits"),
+        ("spex_prism", True, "Vega50000_new.fits"),
+        ("spex_sxd", False, "Vega50000.fits"),
+        ("spex_sxd", True, "Vega50000_new.fits"),
+        ("uspex_lxd", False, "Vega50000.fits"),
+        ("uspex_lxd", True, "Vega50000_new.fits"),
+        ("uspex_prism", False, "Vega50000.fits"),
+        ("uspex_prism", True, "Vega50000_new.fits"),
+        ("uspex_sxd",False,"Vega50000.fits"),
+        ("uspex_sxd",True,"Vega50000_new.fits"),
     ],
 )
-def test_load_vegamodel(instrument_name, mode, path_name, standard_file, new, vega_file, proc_paths):
-    path = proc_paths[path_name]
+def test_load_vegamodel(setup_name, new, vega_file, proc_setup):
+    setup = proc_setup[setup_name]
     pyspextool_setup(
-        instrument=instrument_name,
-        raw_path=path["raw_path"],
-        cal_path=path["cal_path"],
-        proc_path=path["proc_path"],
-        qa_path=path["qa_path"],
+        instrument=setup["instrument"],
+        raw_path=setup["raw_path"],
+        cal_path=setup["cal_path"],
+        proc_path=setup["proc_path"],
+        qa_path=setup["qa_path"],
     )
-    result = _load_vegamodel(standard_file, new=new)
+    result = _load_vegamodel(setup["standard_file"], new=new)
     assert result["vega_file"] == vega_file
