@@ -188,7 +188,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     if verbose is True:
 
-        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.DEBUG)
         setup.state["verbose"] = True
 
     elif verbose is False:

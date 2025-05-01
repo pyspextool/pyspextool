@@ -2,7 +2,6 @@ from pyspextool.telluric.load_spectra import _load_vegamodel
 from pyspextool.setup_utils import pyspextool_setup
 import pytest
 
-
 @pytest.mark.parametrize(
     ("setup_name", "new", "vega_file"),
     [
@@ -30,4 +29,6 @@ def test_load_vegamodel(setup_name, new, vega_file, proc_setup):
         qa_path=setup_dict["qa_path"],
     )
     result = _load_vegamodel(setup_dict["standard_file"], new=new)
+    
+    
     assert result["vega_file"] == vega_file

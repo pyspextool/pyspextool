@@ -6,8 +6,6 @@ from astropy.io import fits
 from astropy.table.table import Table
 import astropy.units as u
 from astroquery.simbad import Simbad
-from typing import Union
-
 
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
@@ -23,6 +21,7 @@ from pyspextool.io.sptype2teff import sptype2teff
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.setup_utils import mishu
 
+logger = logging.getLogger(__name__)
 
 def load_spectra(
     object_file: str,
@@ -576,12 +575,17 @@ def _load_vegamodel(standard_filename: str = None, new=False):
             _load_standard_data(standard_filename)
         else:
             _load_standard_data()
-    
+        mode = tc.state["mode"]
+
+    logging.debug(f"Mode: {mode}")
+
     try:
         model = tc.state["model"]
     except KeyError:        
         _load_modeinfo()
         model = tc.state["model"]
+
+    logging.debug(f"Model: {model}")
 
     if new is True:
 
