@@ -81,9 +81,9 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
         The file extension used to search for files in `raw_path`.
     
     verbose : bool, default True
-        verbose = True sets the logging level to DEBUG
+        verbose = True sets the logging level to INFO
             Lots of information will be printed to the screen.
-        verbose = False sets the logging level to INFO
+        verbose = False sets the logging level to ERROR
             Only important information will be printed to the screen.
 
     qa_show : {False, True}, optional
@@ -188,7 +188,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     if verbose is True:
 
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.INFO)
         setup.state["verbose"] = True
 
     elif verbose is False:
