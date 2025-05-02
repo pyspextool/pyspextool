@@ -12,18 +12,16 @@ def test_make_wavecal():
     inst = 'uspex-prism'
     ps.pyspextool_setup(
         raw_path=os.path.join(rawfold,inst,'data'),
-        qa_path=os.path.join(rawfold,inst,'qa'),
-        cal_path=os.path.join(rawfold,inst,'cals'),
-        proc_path=os.path.join(rawfold,inst,'proc'),
+        cal_path=os.path.join(procfold,inst,'cals'),
+        proc_path=os.path.join(procfold,inst,'proc'),
+        qa_path=os.path.join(procfold,inst,'qa'),
         verbose=True,
         qa_show=False,
         qa_write=True,
         qa_extension=".png",
     )
 
-    ps.extract.make_flat(
-        ["sbd.2022B046.221019.flat.", "15-19"], "flat15-19", verbose=True
-    )
+    # expecting to find flat15-19.fits in the processed cals directory
 
     ps.extract.make_wavecal(
         ["sbd.2022B046.221019.arc.", "20"],
@@ -32,9 +30,9 @@ def test_make_wavecal():
         use_stored_solution=False,
     )
 
-    fits_files = glob.glob(os.path.join(rawfold,inst,'cals',"wavecal*.fits"))
+    fits_files = glob.glob(os.path.join(procfold,inst,'cals',"wavecal*.fits"))
 
-    png_files = glob.glob(os.path.join(rawfold,inst,'qa',"wavecal*.png"))    
+    png_files = glob.glob(os.path.join(procfold,inst,'qa',"wavecal*.png"))    
 
     assert len(fits_files) == 1
     assert len(png_files) == 2
