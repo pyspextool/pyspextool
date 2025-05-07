@@ -2109,6 +2109,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			else:
 				aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
 
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
 			fnums = extract_filestring(spar['STD_FILES'],'index')
 			nim = 2
 			if spar['STD_REDUCTION_MODE'] in ['A']: nim = 1
@@ -2118,11 +2119,12 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			for loop in range(nloop):
 				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
 # check if first file of pair is present - skip if not overwriting
-				fnum = '{}'.format(fnums[loop*nim])
-				if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
+				print(files[0],os.path.exists(files[0]))
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
-					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnum))
+					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
 				else:
+					fnum = '{}'.format(fnums[loop*nim])
+					if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
 					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
 
 					ps.extract.extract(spar['STD_REDUCTION_MODE'],
@@ -2164,6 +2166,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			nloop = int(len(fnums)/nim)
 			for loop in range(nloop):
 				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
+				print(files[0],os.path.exists(files[0]))
 # check if first file of pair is present - skip if not overwriting
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
