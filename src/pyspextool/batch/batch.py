@@ -66,7 +66,7 @@ BACKUP_REDUCTION_DATA_URL = 'https://drive.google.com/drive/folders/1fK345gOCKHt
 
 # modes to ignore
 IGNORE_MODES = ['LongSO','LowRes60','ShortSO']
-IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60']
+IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60','Mirror']
 
 # this is the data to extract from header, with options for header keywords depending on when file was written
 HEADER_DATA={
@@ -2119,7 +2119,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			for loop in range(nloop):
 				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
 # check if first file of pair is present - skip if not overwriting
-				print(files[0],os.path.exists(files[0]))
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
 				else:
@@ -2166,7 +2165,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			nloop = int(len(fnums)/nim)
 			for loop in range(nloop):
 				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
-				print(files[0],os.path.exists(files[0]))
 # check if first file of pair is present - skip if not overwriting
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
