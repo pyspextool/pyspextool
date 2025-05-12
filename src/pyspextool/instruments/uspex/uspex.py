@@ -372,7 +372,7 @@ def load_uspeximage(file:list,
     readnoise = 12.0  # per single read
     gain = 1.5  # electrons per DN
 
-    hdul = fits.open(file)
+    hdul = fits.open(file, ignore_missing_data=True)
     hdul[0].verify('silentfix')  # this was needed for to correct hdr problems
 
     itime = hdul[0].header['ITIME']
