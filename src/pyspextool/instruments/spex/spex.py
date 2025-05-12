@@ -337,7 +337,7 @@ def load_data(file,
     # Open the file and grab important values 
     #
     
-    hdul = fits.open(file)
+    hdul = fits.open(file, ignore_missing_end=True)
     hdul[0].verify('silentfix')  # this was needed to correct hdr problems
 
     itime = hdul[0].header['ITIME']
