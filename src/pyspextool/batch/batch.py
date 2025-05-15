@@ -219,11 +219,7 @@ IRSA_FOLDER = 'IRTF'
 IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 DEFAULT_TARGET_NAMES = ['','Object_Observed']
-
-# observing schedule
 OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
-
-
 
 ###################################
 ######### HELPER FUNCTIONS ########
@@ -267,6 +263,10 @@ def formatDate(date,output='YYYYMMDD'):
 		return date
 
 
+
+#########################################
+######### ORGANIZE ARCHIVE DATA #########
+#########################################
 
 #########################################
 ######### ORGANIZE ARCHIVE DATA #########
@@ -2051,9 +2051,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		return
 
 ### EXTRACTION ###
-	# if parameters['REREDUCE']==True: 
-	# 	if parameters['VERBOSE']==True: logging.info('NOTE: rereduce is set; will overwrite prior reductions ') 
-	# 	parameters['OVERWRITE']=True
 	if parameters['EXTRACT']==True:
 		for k in scikeys:
 			spar = parameters[k]
@@ -2151,8 +2148,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 						detector_info={'correct_bias':True},
 						flat_field=True, # default, may not to make variable
 						verbose=parameters['VERBOSE'],
-						)
-				
+						)				
 
 
 ############################
