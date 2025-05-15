@@ -5,6 +5,7 @@ from os.path import join as osjoin
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
 from pyspextool.extract.profiles import find_peaks
+from pyspextool.extract.profiles import combine_aperturesigns
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.pyspextoolerror import pySpextoolError
@@ -13,7 +14,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 def identify_apertures(method_info:list,
                        seeing_fwhm:int | float=0.8,
                        ybuffer:int=3,
-                       aperture_signs:list=None,
+#                       aperture_signs:list=None,
                        verbose:bool=None,
                        qa_show:bool=None,
                        qa_showscale:float | int=None,
@@ -44,7 +45,7 @@ def identify_apertures(method_info:list,
         as sometimes there is a downturn that can mess with the finding
         routine.
        
-    aperture_signs : list, default None
+#    aperture_signs : list, default None
     
     
     qa_show : {None, True, False}, optional
@@ -92,19 +93,9 @@ def identify_apertures(method_info:list,
 
     check_parameter('identify_apertures', 'method_info', method_info, 'list')
 
-    check_parameter('identify_apertures', 'aperture_signs', aperture_signs,
-                    ['list','NoneType'])    
-    
-
-#    check_parameter('identify_apertures', 'naps', find_naps, ['int','NoneType'],
-#                    possible_values=[1,2,3,4, None])
-#
-#    check_parameter('identify_apertures', 'guess_positions', guess_positions,
-#                    ['int', 'float', 'list', 'NoneType'])    
-#
-#    check_parameter('identify_apertures', 'aperture_positions',
-#                    aperture_positions, ['int', 'float', 'list', 'NoneType'])
-    
+#    check_parameter('identify_apertures', 'aperture_signs', aperture_signs,
+#                    ['list','NoneType'])    
+        
     check_parameter('identify_apertures', 'seeing_fwhm', seeing_fwhm,
                     ['int', 'float'])
 
@@ -171,47 +162,29 @@ def identify_apertures(method_info:list,
         naps = np.shape(peaks)[1]
         extract.state['aperture_type'] = 'fixed'        
 
-    apertures, apsigns = find_peaks(extract.state['profiles'],
-                                    {'method': method, 'peaks': peaks},
-                                    fwhm=seeing_fwhm)
+    results = find_peaks(extract.state['profiles'],
+                         {'method': method, 'peaks': peaks},
+                         fwhm=seeing_fwhm)
     
-    #
-    # Determine the average apsign
-    #
-
-    if aperture_signs is not None:
-
-        aperture_signs = np.array(aperture_signs)
-        apsigns = np.empty_like(aperture_signs,dtype=np.int8)
-        z = (aperture_signs == '+')
-        apsigns[z] = 1
-
-        z = (aperture_signs == '-')
-        apsigns[z] = -1
-        
-    else:
-
-        average_apsign = np.sum(apsigns, axis=0) / np.sum(np.abs(apsigns),
-                                                          axis=0)
-        apsigns = np.empty(naps, dtype=int)
-
-        for i in range(naps):
-            apsigns[i] = 1 if average_apsign[i] > 0 else -1
+    aperture_positions = results[0]
+    aperture_signs = results[1]
 
     #
-    # Store the results into the config variable
+    # Combine the aperture signs
     #
 
-    extract.state['aperture_positions'] = apertures
-    extract.state['aperture_signs'] = apsigns
-    extract.state['naps'] = naps
+    results = combine_aperturesigns(aperture_signs)
 
-    # Report the aperture signs
-    
-    signs = ', '.join(list(apsigns.astype(str)))
-    signs = signs.replace('-1', '-')
-    signs = signs.replace('1', '+')
-    message = ' Aperture signs are (' + signs + ').'
+    average_aperturesigns = results[0]
+    label_aperturesigns = results[1]
+
+    extract.state['aperture_positions'] = aperture_positions
+    extract.state['aperture_signs_byorder'] = aperture_signs
+    extract.state['aperture_signs'] = average_aperturesigns
+    extract.state['naps'] = np.size(average_aperturesigns)
+
+
+    message = ' Aperture signs are (' + label_aperturesigns + ').'
     logging.info(message)
         
     #
@@ -223,7 +196,7 @@ def identify_apertures(method_info:list,
         plot_profiles(extract.state['profiles'],
                       extract.state['slith_arc'],
                       np.ones(extract.state['norders'], dtype=int),
-                      aperture_positions=apertures,
+                      aperture_positions=aperture_positions,
                       plot_number=setup.plots['profiles'],
                       profilestack_max=setup.plots['profilestack_max'],
                       profile_size=setup.plots['profile_size'],
@@ -240,7 +213,7 @@ def identify_apertures(method_info:list,
         plot_profiles(extract.state['profiles'],
                       extract.state['slith_arc'],
                       np.ones(extract.state['norders'], dtype=int),
-                      aperture_positions=apertures,
+                      aperture_positions=aperture_positions,
                       profilestack_max=setup.plots['profilestack_max'],
                       profile_size=setup.plots['profile_size'],
                       font_size=setup.plots['font_size'],

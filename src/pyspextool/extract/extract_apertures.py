@@ -182,7 +182,7 @@ def extract_apertures(fix_badpixels:bool=True,
     # Do the extraction
     #
 
-    naps = len(extract.state['aperture_signs'])
+    naps = len(extract.state['average_aperture_signs'])
     norders = len(extract.state['tracecoeffs']) // naps
 
     message = ' Optimal ' if optimal_extraction is True else ' Sum '
@@ -211,7 +211,7 @@ def extract_apertures(fix_badpixels:bool=True,
                            extract_orders,
                            extract.state['tracecoeffs'],
                            extract.state['aperture_radii'],
-                           extract.state['aperture_signs'],
+                           extract.state['average_aperture_signs'],
                            linmax_bitmask=extract.state['maskimage'],
                            bg_annulus=extract.state['bg_annulus'],
                            bg_regions=extract.state['bg_regions'],
@@ -299,7 +299,7 @@ def extract_apertures(fix_badpixels:bool=True,
         
         # Are there positive apertures?
 
-        z_pos = extract.state['aperture_signs'] == 1
+        z_pos = extract.state['average_aperture_signs'] == 1
         pos_naps = int(np.sum(z_pos))
         if pos_naps != 0:
             
@@ -313,7 +313,8 @@ def extract_apertures(fix_badpixels:bool=True,
 
             # Now get the indices for the spectra array
             
-            full_apsign = np.tile(extract.state['aperture_signs'], norders)
+            full_apsign = np.tile(extract.state['average_aperture_signs'], 
+                                  norders)
             z = (np.where(full_apsign == 1))[0]
             pos_spectra = [spectra[i] for i in z]
             
@@ -355,7 +356,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
         # Are there negative apertures?
 
-        z_neg = extract.state['aperture_signs'] == -1
+        z_neg = extract.state['average_aperture_signs'] == -1
         neg_naps = int(np.sum(z_neg))
         if neg_naps != 0:
 
@@ -369,7 +370,8 @@ def extract_apertures(fix_badpixels:bool=True,
 
             # Now get the indices for the spectra array
             
-            full_apsign = np.tile(extract.state['aperture_signs'], norders)
+            full_apsign = np.tile(extract.state['average_aperture_signs'], 
+                                  norders)
             z = (np.where(full_apsign == -1))[0]
             neg_spectra = [spectra[i] for i in z]
             

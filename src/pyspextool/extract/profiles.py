@@ -267,7 +267,60 @@ def find_peaks(profiles:list,
 
 
 
+def combine_aperturesigns(aperture_signs:npt.ArrayLike):
 
+    """
+    To compute the average aperture signs given by-order aperture signs.
+
+    Parameters
+    ----------
+    aperture_signs : ndarray
+        An (norders, naps) array of integers +1, -1, giving the aperture 
+        signs for each order.
+    
+    Returns
+    -------
+    average_aperture_signs : ndarray
+        An (naps,) array giving the average aperture signs
+
+    label : str
+        A string giving the apeture signs as a comma-separated string of 
+        + and - signs. 
+
+    """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('combine_aperturesigns', 'aperture_signs', aperture_signs,
+                    'ndarray')
+
+    #
+    # Compute the average aperture sign.  If the answer is zero, it gets set
+    # to +.
+    #
+
+    average = np.sum(aperture_signs, axis=0) / \
+              np.sum(np.abs(aperture_signs), axis=0)
+
+    average_aperturesigns = np.full_like(average,1,dtype=int)
+
+    for i in range(len(average)):
+        if average[i] < 0:
+            average_aperturesigns[i] = -1
+
+    #
+    # Create string version of the aperture signs
+    #
+
+    label = ', '.join(list(average_aperturesigns.astype(str)))
+    label = label.replace('-1', '-')
+    label = label.replace('1', '+')
+
+    return average_aperturesigns, label
+
+    
 def make_1d_profile(rectified_order:dict,
                     atmospheric_transmission:dict=None,
                     robust_threshold:int=5):

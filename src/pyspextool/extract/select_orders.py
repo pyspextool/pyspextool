@@ -4,6 +4,7 @@ from os.path import join
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
+from pyspextool.extract.profiles import combine_aperturesigns
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import extract_filestring
 from pyspextool.plot.plot_profiles import plot_profiles
@@ -186,10 +187,25 @@ def select_orders(include:int | str | list=None,
 #        doorders = np.full(extract.state['norders'], True)
 
     #
-    # Set the correct doorders variable
+    # Set the doorders variable
     #
 
     extract.state['doorders'] = doorders
+
+    # 
+    # Update the aperture signs
+    #
+
+    z = doorders == 1
+
+    results = combine_aperturesigns(extract.state['aperture_signs_byorder'][z,:])
+    average_aperturesigns = results[0]
+    label_aperturesigns = results[1]
+
+    extract.state['aperture_signs'] = average_aperturesigns
+
+    message = ' Updated aperture signs are (' + label_aperturesigns + ').'
+    logging.info(message)
 
     #
     # Do the QA plotting
