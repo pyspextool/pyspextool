@@ -25,7 +25,7 @@ def test_make_wavecal():
 
     ps.extract.make_wavecal(
         ["sbd.2022B046.221019.arc.", "20"],
-        "flat15-19.fits",
+        "flat15-20.fits",
         "wavecal20",
         use_stored_solution=False,
     )
