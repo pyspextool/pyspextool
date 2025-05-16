@@ -44,7 +44,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 Apr 30'
+VERSION = '2025 May 14'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -66,7 +66,7 @@ BACKUP_REDUCTION_DATA_URL = 'https://drive.google.com/drive/folders/1fK345gOCKHt
 
 # modes to ignore
 IGNORE_MODES = ['LongSO','LowRes60','ShortSO']
-IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60']
+IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60','Mirror']
 
 # this is the data to extract from header, with options for header keywords depending on when file was written
 HEADER_DATA={
@@ -114,14 +114,14 @@ BATCH_PARAMETERS = {
 	'STITCHED_FILE_PREFIX': 'stitched',
 	'PROGRAM': '',
 	'OBSERVER': '',
-	'qa_write': True,
-	'qa_show': False, 
+	# 'qa_write': True,
+	# 'qa_show': False, 
 	'PLOT_TYPE': '.pdf', 
 	'CALIBRATIONS': True,
 	'EXTRACT': True,
 	'COMBINE': True,
 	'FLUXTELL': True,
-	'REREDUCE': False,
+#	'REREDUCE': False,
 	'STITCH': True,
 	'RENAME': True,
 	'OVERWRITE': False,
@@ -158,7 +158,7 @@ OBSERVATION_PARAMETERS_OPTIONAL = {
 #	'TARGET_TYPE': 'ps',
 #	'REDUCTION_MODE': 'A-B',
 	'NAPS': 2,
-	'APERTURE_POSITIONS': [4.,11.5],
+	'APERTURE_POSITIONS': [3.7,11.2],
 	'APERTURE_METHOD': 'auto',
 	'APERTURE': 1.5,
 	'PSF_RADIUS': 1.5,
@@ -209,6 +209,7 @@ SIMBAD_COLS = {
 	'SIMBAD_KMAG': ['fluxdata(K)','FLUX_K'],
 }
 
+# what to exclude when searching for standard information
 SIMBAD_EXCLUDE = ['Planet','Galaxy','QSO','Cluster*','Association','Stream','MouvGroup','GlobCluster','OpenCluster','BrightestCG','RadioG','LowSurfBrghtG','BlueCompactG','StarburstG','StarburstG','EmissionG','AGN','Seyfert','Seyfert1','Seyfert2','LINER','InteractingG','PairG','GroupG','Compact_Gr_G','ClG','protoClG','SuperClG','Void','Transient','HI','Maser','gammaBurst','PartofG','Unknown','Region','**']
 SIMBAD_RADIUS = 30*u.arcsecond
 
@@ -218,11 +219,7 @@ IRSA_FOLDER = 'IRTF'
 IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 DEFAULT_TARGET_NAMES = ['','Object_Observed']
-
-# observing schedule
 OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
-
-
 
 ###################################
 ######### HELPER FUNCTIONS ########
@@ -267,7 +264,9 @@ def formatDate(date,output='YYYYMMDD'):
 
 
 
-
+#########################################
+######### ORGANIZE ARCHIVE DATA #########
+#########################################
 
 #########################################
 ######### ORGANIZE ARCHIVE DATA #########
@@ -490,34 +489,6 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 					if makecopy==False: shutil.move(df,data_folder)
 					else: shutil.copy2(df,data_folder)
 			if verbose==True: logging.info(' Moved/copied legacy data folder {} to {}'.format(f,data_folder))
-
-
-# 		if prefix!=prefix0:
-# 			prefix0 = copy.deepcopy(prefix)
-# 			cntr=1
-# 		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
-# 		cntr+=1
-# 		print(output_folder)
-# 		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(1))
-# 		while os.path.exists(output_folder) == True:
-# 			cntr+=1
-# 			output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
-# 		os.makedirs(output_folder)
-# 		if verbose==True: logging.info('Creating folder {}'.format(output_folder))
-
-# # if path exists, just move and rename fits folder, otherwise move files, being careful of overwriting 
-# 		data_folder = os.path.join(output_folder,'data')
-# 		if os.path.exists(data_folder) == False: 
-# 			if makecopy==False: shutil.move(f, data_folder)
-# 			else: shutil.copytree(f,data_folder)
-# 			if verbose==True: logging.info('Moved legacy data folder {} to {}'.format(f,data_folder))
-# 		else: 
-# 			if len(glob.glob(os.path.join(f,'*.fits')))==0 or overwrite==True:
-# 				for df in glob.glob(os.path.join(f,'*.fits')): 
-# 					if makecopy==False: shutil.move(df,data_folder)
-# 					else: shutil.copy2(df,data_folder)
-# 				if verbose==True: logging.info('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
-# 			else: logging.info('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
 
 # create other folders
 			for rf in REDUCTION_FOLDERS[1:]:
@@ -1113,12 +1084,13 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 				new_opar['TARGET_REDUCTION_MODE'] = new_opar['SUB'].strip()
 # shorthand for order/orders
 			for k in ['ORDER','ORDERS']:
-				if k in list(new_opar.keys()):
-					for x in ['TARGET','STD']: new_opar['{}_ORDERS'.format(x)] = new_opar[k]
+				if k in list(new_opar.keys()): new_opar['TARGET_ORDERS'] = new_opar[k]
+# shorthand for STANDARD order/orders (separated on 5/14/2025)
+			for k in ['STDORDER','STDORDERS']:
+				if k in list(new_opar.keys()): new_opar['STD_ORDERS'] = new_opar[k]
 # if target/std prefix not given, assumed targets
 			for k in list(OBSERVATION_PARAMETERS_OPTIONAL.keys()):
-				if k in list(new_opar.keys()):
-					new_opar['TARGET_{}'.format(k)] = new_opar[k]
+				if k in list(new_opar.keys()): new_opar['TARGET_{}'.format(k)] = new_opar[k]
 # preserve type information (string conversion)
 			for k in list(OBSERVATION_PARAMETERS_OPTIONAL.keys()):
 				for x in ['TARGET','STD']:
@@ -1137,24 +1109,12 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 				spar['{}_BACKGROUND_RADIUS'.format(x)] = spar['{}_APERTURE'.format(x)]+0.05
 				if verbose==True: logging.info(' Increased {}_BACKGROUND_RADIUS to match {}_APERTURE = {}'.format(x,x,spar['{}_APERTURE'.format(x)]))
 
-# type conversions			
-# some instrument specific adjustments
-# THIS MIGHT NEED TO BE MANAGED THROUGH OTHER PYSPEXTOOL FUNCTIONS
-			if spar['MODE'] in ['Prism','LowRes15']: 
-				for x in ['TARGET','STD']: spar['{}_ORDERS'.format(x)] = '1'
-#				if verbose==True: print('Updated prism mode orders to 1')
-			for x in ['STD','TARGET']:
-				if parameters['INSTRUMENT'] == 'spex' and 'SXD' in spar['MODE'] and isinstance(spar['{}_ORDERS'.format(x)],str) == True:
-					spar['{}_ORDERS'.format(x)] = spar['{}_ORDERS'.format(x)][:-1]+'8'
-#				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
-
 		parameters['{}-{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
 
 # some specific parameters that need format conversation
 # THESE COMMANDS ARE NO LONGER USED
-	for k in ['qa_write','qa_show']:
-		if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
-
+	# for k in ['qa_write','qa_show']:
+	# 	if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
 
 # report out parameters
 	# if verbose==True:
@@ -2091,9 +2051,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		return
 
 ### EXTRACTION ###
-	if parameters['REREDUCE']==True: 
-		if parameters['VERBOSE']==True: logging.info('NOTE: rereduce is set; will overwrite prior reductions ') 
-		parameters['OVERWRITE']=True
 	if parameters['EXTRACT']==True:
 		for k in scikeys:
 			spar = parameters[k]
@@ -2109,6 +2066,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			else:
 				aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
 
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
 			fnums = extract_filestring(spar['STD_FILES'],'index')
 			nim = 2
 			if spar['STD_REDUCTION_MODE'] in ['A']: nim = 1
@@ -2118,11 +2076,11 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			for loop in range(nloop):
 				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
 # check if first file of pair is present - skip if not overwriting
-				fnum = '{}'.format(fnums[loop*nim])
-				if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
-					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnum))
+					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
 				else:
+					fnum = '{}'.format(fnums[loop*nim])
+					if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
 					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
 
 					ps.extract.extract(spar['STD_REDUCTION_MODE'],
@@ -2190,8 +2148,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 						detector_info={'correct_bias':True},
 						flat_field=True, # default, may not to make variable
 						verbose=parameters['VERBOSE'],
-						)
-				
+						)				
 
 
 ############################
