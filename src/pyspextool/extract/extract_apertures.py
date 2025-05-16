@@ -7,7 +7,6 @@ from pyspextool.extract import config as extract
 from pyspextool.extract.extraction import extract_1dxd, write_apertures_fits
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.plot.plot_spectra import plot_spectra
-from pyspextool.utils.arrays import find_index
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
@@ -182,7 +181,7 @@ def extract_apertures(fix_badpixels:bool=True,
     # Do the extraction
     #
 
-    naps = len(extract.state['average_aperture_signs'])
+    naps = len(extract.state['average_aperturesigns'])
     norders = len(extract.state['tracecoeffs']) // naps
 
     message = ' Optimal ' if optimal_extraction is True else ' Sum '
@@ -211,7 +210,7 @@ def extract_apertures(fix_badpixels:bool=True,
                            extract_orders,
                            extract.state['tracecoeffs'],
                            extract.state['aperture_radii'],
-                           extract.state['average_aperture_signs'],
+                           extract.state['average_aperturesigns'],
                            linmax_bitmask=extract.state['maskimage'],
                            bg_annulus=extract.state['bg_annulus'],
                            bg_regions=extract.state['bg_regions'],
@@ -299,7 +298,7 @@ def extract_apertures(fix_badpixels:bool=True,
         
         # Are there positive apertures?
 
-        z_pos = extract.state['average_aperture_signs'] == 1
+        z_pos = extract.state['average_aperturesigns'] == 1
         pos_naps = int(np.sum(z_pos))
         if pos_naps != 0:
             
@@ -313,7 +312,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
             # Now get the indices for the spectra array
             
-            full_apsign = np.tile(extract.state['average_aperture_signs'], 
+            full_apsign = np.tile(extract.state['average_aperturesigns'], 
                                   norders)
             z = (np.where(full_apsign == 1))[0]
             pos_spectra = [spectra[i] for i in z]
@@ -356,7 +355,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
         # Are there negative apertures?
 
-        z_neg = extract.state['average_aperture_signs'] == -1
+        z_neg = extract.state['average_aperturesigns'] == -1
         neg_naps = int(np.sum(z_neg))
         if neg_naps != 0:
 
@@ -370,7 +369,7 @@ def extract_apertures(fix_badpixels:bool=True,
 
             # Now get the indices for the spectra array
             
-            full_apsign = np.tile(extract.state['average_aperture_signs'], 
+            full_apsign = np.tile(extract.state['average_aperturesigns'], 
                                   norders)
             z = (np.where(full_apsign == -1))[0]
             neg_spectra = [spectra[i] for i in z]

@@ -13,7 +13,6 @@ from pyspextool.pyspextoolerror import pySpextoolError
 
 def select_orders(include:int | str | list=None,
                   exclude:int | str | list=None,
-#                  include_all:bool=True,
                   verbose:bool=None,
                   qa_show:bool=None,
                   qa_showscale:float | int=None,
@@ -34,9 +33,6 @@ def select_orders(include:int | str | list=None,
         If the type is int, the single order to exclude.  
         If the type is list, a list of integer orders to include.
         If the type is str, a str giving the orders, e.g. '1-3,4,5'.
-
- #   include_all : {False, True}, optional
- #       Set to include all orders.
 
     qa_show : {None, True, False}, optional
         Set to True/False to override config.state['qa_show'] in the
@@ -93,9 +89,6 @@ def select_orders(include:int | str | list=None,
 
     check_parameter('select_orders', 'exclude', exclude,
                     ['NoneType', 'int', 'list', 'str'])
-
-#    check_parameter('select_orders', 'include_all', include_all, 'bool',
-#                    possible_values=True)
 
     check_parameter('select_orders', 'verbose', verbose, ['NoneType', 'bool'])
 
@@ -183,9 +176,6 @@ def select_orders(include:int | str | list=None,
             message = ' A requested order does not exist.'
             raise pySpextoolError(message)
 
-#    if include_all is True:
-#        doorders = np.full(extract.state['norders'], True)
-
     #
     # Set the doorders variable
     #
@@ -198,13 +188,13 @@ def select_orders(include:int | str | list=None,
 
     z = doorders == 1
 
-    results = combine_aperturesigns(extract.state['aperture_signs_byorder'][z,:])
+    results = combine_aperturesigns(extract.state['aperture_signs'][z,:])
     average_aperturesigns = results[0]
     label_aperturesigns = results[1]
 
-    extract.state['aperture_signs'] = average_aperturesigns
+    extract.state['average_aperturesigns'] = average_aperturesigns
 
-    message = ' Updated aperture signs are (' + label_aperturesigns + ').'
+    message = ' Aperture signs are (' + label_aperturesigns + ').'
     logging.info(message)
 
     #
@@ -226,7 +216,7 @@ def select_orders(include:int | str | list=None,
 
     if qa['write'] is True:
 
-        filename = extract.state['qafilename'] + '_profiles' + \
+        filename = extract.state['qafilename'] + '_extractedprofiles' + \
             setup.state['qa_extension']
         fullpath = join(setup.state['qa_path'],filename)
 
