@@ -10,7 +10,6 @@ from pyspextool.utils.arrays import find_index, trim_nan
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.utils.for_print import for_print
 
-
 def find_peaks(profiles:list,
                method_info:dict,
                fwhm:int | float=0.8,

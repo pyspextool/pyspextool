@@ -709,6 +709,9 @@ def polyfit_1d(x:npt.ArrayLike,
 
                 mean = np.mean(residual)
                 stddev = np.std(residual)
+                
+                if stddev == 0.0:
+                    break
 
                 # Check to see if the new stddev isn't much of a change
                 # from the old one

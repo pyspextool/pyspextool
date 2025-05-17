@@ -276,6 +276,7 @@ def locate_orders(
 
     if debug is True:
 
+        print('hi')
         pl.ion()
         # plotfig2 = pl.figure(2, figsize=(6, 6))  # sobel profile
         # plotfig3 = pl.figure(3, figsize=(6, 6))  # image profile
@@ -288,6 +289,8 @@ def locate_orders(
 
         cmap = pl.cm.gray
         pl.imshow(simg, vmin=minmax[0], vmax=minmax[1], cmap=cmap, origin="lower")
+        pl.pause(1)
+        return
 
     # Start looping over each order
 
