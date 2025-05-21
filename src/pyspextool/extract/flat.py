@@ -413,7 +413,7 @@ def locate_orders(
 
             # Fit the centers, so you can project away from the guess position
 
-            print(f"debug: {debug}")
+#            print(f"debug: {debug}")
             r = polyfit_1d(fcols, cens, max(1, poly_degree - 2), silent=not debug)
 
             # Find the new guess position yguess

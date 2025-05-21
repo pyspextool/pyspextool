@@ -5,6 +5,7 @@ from pyspextool.extract import load_image
 from pyspextool.extract import make_profiles
 from pyspextool.extract import identify_apertures
 from pyspextool.extract import select_orders
+from pyspextool.extract import override_aperturesigns
 from pyspextool.extract import trace_apertures
 from pyspextool.extract import define_aperture_parameters
 from pyspextool.extract import extract_apertures
@@ -227,6 +228,13 @@ def extract(reduction_mode:str,
                           qa_showscale=qa_showscale,
                           qa_showblock=qa_showblock,
                           qa_write=qa_write)
+
+        # Update aperture positions if requested
+
+        if aperture_signs is not None:
+
+            override_aperturesigns(aperture_signs,
+                                   verbose=verbose)
 
         # Trace the orders
 
