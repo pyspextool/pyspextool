@@ -1,7 +1,9 @@
 import numpy as np
+import pytest
 from pyspextool.extract.override_aperturesigns import override_aperturesigns
 from pyspextool.setup_utils import pyspextool_setup
 from pyspextool.extract import config as extract
+from pyspextool.pyspextoolerror import pySpextoolError
 
 def test_override_aperturesigns(raw_setup):
 
@@ -21,3 +23,6 @@ def test_override_aperturesigns(raw_setup):
 
     np.testing.assert_array_equal(result,np.array([1,1]))
 
+    with pytest.raises(pySpextoolError):	
+
+        result = override_aperturesigns('+')
