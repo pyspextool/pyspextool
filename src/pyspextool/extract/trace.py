@@ -231,9 +231,7 @@ def trace_spectrum_1dxd(
                     ignore_optimizewarning=True,
                 )
 
-                peaks_arc[j, k] = fit["parms"][1]
-                f = interpolate.interp1d(slits, slity)
-                peaks_pix[j, k] = f(fit["parms"][1])
+                # Check the fit
 
                 if not fit["goodfit"]:
                     continue
@@ -249,6 +247,7 @@ def trace_spectrum_1dxd(
                     peaks_pix[j, k] = f(fit["parms"][1])
 
         for j in range(naps):
+
             # Generate index number to fill in results
 
             l = naps * i + j
