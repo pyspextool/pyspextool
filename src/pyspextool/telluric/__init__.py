@@ -5,5 +5,6 @@ from .get_radialvelocity import get_radialvelocity
 from .get_kernels import get_kernels
 from .make_telluric_spectra import make_telluric_spectra
 from .shift_spectra import shift_spectra
+from .adjust_ews import adjust_ews
 from .correct_spectra import correct_spectra
 from .write_spectra import write_spectra

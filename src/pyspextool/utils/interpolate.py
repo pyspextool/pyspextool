@@ -5,6 +5,7 @@ from pyspextool.io.check import check_parameter
 from pyspextool.utils.arrays import find_index
 from pyspextool.utils.math import bit_set
 from pyspextool.utils.for_print import for_print
+from pyspextool.pyspextoolerror import pySpextoolError
 
 def linear_interp1d(input_x:npt.ArrayLike,
                     input_y:npt.ArrayLike,
