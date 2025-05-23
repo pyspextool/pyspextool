@@ -14,7 +14,8 @@ from pyspextool.utils.interpolate import linear_bitmask_interp1d
 
 
 def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
-                          verbose:bool=True):
+                          verbose:bool=True,
+                          new=False):
 
     """
     To create telluric correction spectra.
@@ -98,8 +99,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             vega_continuum = tc.state['vega_continuum']
             vega_fitted_continuum = tc.state['vega_fitted_continuum']
             kernel = tc.state['kernels'][i]
-            scale = float(tc.state['ew_scale'])
-            
+
             result = make_telluric_spectrum(standard_wavelength,
                                             standard_fluxdensity,
                                             standard_uncertainty,
@@ -111,32 +111,17 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
                                             vega_continuum,
                                             vega_fitted_continuum,
                                             kernel,
-                                            scale)
+                                            tc.state['control_points'][i][0,:],
+                                            tc.state['control_points'][i][1,:],
+                                            int(tc.state['standard_orders'][i]),
+                                            intensity_unit,
+                                            new=new)
             
-            #
-            # Change units to those requested by the user
-            #
+            # Store results
             
-            flux = convert_fluxdensity(standard_wavelength,
-                                       result[0],
-                                       'um','erg s-1 cm-2 A-1',
-                                       intensity_unit)
-            
-            unc = convert_fluxdensity(standard_wavelength,
-                                      result[1],
-                                      'um','erg s-1 cm-2 A-1',
-                                      intensity_unit)
-            
-            vega = convert_fluxdensity(standard_wavelength,
-                                       result[2],
-                                       'um','erg s-1 cm-2 A-1',
-                                       intensity_unit)
-            
-            # Updates labels
-            
-            telluric_spectra[i,1,:] = flux
-            telluric_spectra[i,2,:] = unc
-            model_spectra[i,1,:] = vega
+            telluric_spectra[i,1,:] = result[0]
+            telluric_spectra[i,2,:] = result[1]
+            model_spectra[i,1,:] = result[2]
             
     if tc.state['type'] == 'basic':
 

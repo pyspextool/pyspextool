@@ -9,20 +9,21 @@ from pyspextool.utils.arrays import make_image_indices
 from pyspextool.utils.loop_progress import loop_progress
 
 
-def trace_spectrum_1dxd(image:npt.ArrayLike,
-                        order_mask:npt.ArrayLike,
-                        orders:npt.ArrayLike,
-                        wavecal:npt.ArrayLike,
-                        spatcal:npt.ArrayLike,
-                        xranges:npt.ArrayLike,
-                        apertures:npt.ArrayLike,
-                        fit_degree:int=2,
-                        step_size:int=5,
-                        summation_width:int=5,
-                        centroid_threshold:int=2,
-                        fwhm:int | float=0.8,
-                        verbose:bool=False):
-
+def trace_spectrum_1dxd(
+    image: npt.ArrayLike,
+    order_mask: npt.ArrayLike,
+    orders: npt.ArrayLike,
+    wavecal: npt.ArrayLike,
+    spatcal: npt.ArrayLike,
+    xranges: npt.ArrayLike,
+    apertures: npt.ArrayLike,
+    fit_degree: int = 2,
+    step_size: int = 5,
+    summation_width: int = 5,
+    centroid_threshold: int = 2,
+    fwhm: int | float = 0.8,
+    verbose: bool = False,
+):
     """
     To trace a spectrum.
 
@@ -120,34 +121,33 @@ def trace_spectrum_1dxd(image:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('trace_spectrum_1dxd', 'image', image, 'ndarray', 2)
+    check_parameter("trace_spectrum_1dxd", "image", image, "ndarray", 2)
 
-    check_parameter('trace_spectrum_1dxd', 'order_mask', order_mask,
-                    'ndarray', 2)
+    check_parameter("trace_spectrum_1dxd", "order_mask", order_mask, "ndarray", 2)
 
-    check_parameter('trace_spectrum_1dxd', 'orders', orders, 'ndarray', 1)
+    check_parameter("trace_spectrum_1dxd", "orders", orders, "ndarray", 1)
 
-    check_parameter('trace_spectrum_1dxd', 'wavecal', wavecal, 'ndarray', 2)
+    check_parameter("trace_spectrum_1dxd", "wavecal", wavecal, "ndarray", 2)
 
-    check_parameter('trace_spectrum_1dxd', 'spatcal', spatcal, 'ndarray', 2)
+    check_parameter("trace_spectrum_1dxd", "spatcal", spatcal, "ndarray", 2)
 
-    check_parameter('trace_spectrum_1dxd', 'xranges', xranges, 'ndarray', 2)
+    check_parameter("trace_spectrum_1dxd", "xranges", xranges, "ndarray", 2)
 
-    check_parameter('trace_spectrum_1dxd', 'apertures', apertures, 'ndarray', 2)
+    check_parameter("trace_spectrum_1dxd", "apertures", apertures, "ndarray", 2)
 
-    check_parameter('trace_spectrum_1dxd', 'fit_degree', fit_degree, 'int')
+    check_parameter("trace_spectrum_1dxd", "fit_degree", fit_degree, "int")
 
-    check_parameter('trace_spectrum_1dxd', 'step_size', step_size, 'int')
+    check_parameter("trace_spectrum_1dxd", "step_size", step_size, "int")
 
-    check_parameter('trace_spectrum_1dxd', 'summation_width', summation_width,
-                    'int')
+    check_parameter("trace_spectrum_1dxd", "summation_width", summation_width, "int")
 
-    check_parameter('trace_spectrum_1dxd', 'centroid_threshold',
-                    centroid_threshold, 'int')
+    check_parameter(
+        "trace_spectrum_1dxd", "centroid_threshold", centroid_threshold, "int"
+    )
 
-    check_parameter('trace_spectrum_1dxd', 'fwhm', fwhm, 'float')
+    check_parameter("trace_spectrum_1dxd", "fwhm", fwhm, "float")
 
-    check_parameter('trace_spectrum_1dxd', 'verbose', verbose, 'bool')
+    check_parameter("trace_spectrum_1dxd", "verbose", verbose, "bool")
 
     #
     # Get set up
@@ -158,7 +158,7 @@ def trace_spectrum_1dxd(image:npt.ArrayLike,
     norders, naps = np.shape(apertures)
     coeffs = np.empty((naps * norders, fit_degree + 1), dtype=float)
 
-    half = int(summation_width / 2.)
+    half = int(summation_width / 2.0)
 
     xx, yy = make_image_indices(nrows, ncols)
 
@@ -197,8 +197,10 @@ def trace_spectrum_1dxd(image:npt.ArrayLike,
 
             # Increase S/N by combining a bunch of columns
 
-            colz = np.mean(image[:, max(columns[j] - half, 0):
-                                    min(columns[j] + half, ncols - 1)], axis=1)
+            colz = np.mean(
+                image[:, max(columns[j] - half, 0) : min(columns[j] + half, ncols - 1)],
+                axis=1,
+            )
 
             omaskz = order_mask[:, columns[j]]
             wavez = wavecal[:, columns[j]]
@@ -222,66 +224,64 @@ def trace_spectrum_1dxd(image:npt.ArrayLike,
                 f = interpolate.interp1d(slits, slitz)
                 guessz = f(guesss)
 
-                fit = fit_peak1d(slits, slitz,
-                                 p0=[guessz, guesss, fwhm / 2.354, 0],
-                                 ignore_optimizewarning=True)
-               
-                if not fit['goodfit']:
+                fit = fit_peak1d(
+                    slits,
+                    slitz,
+                    p0=[guessz, guesss, fwhm / 2.354, 0],
+                    ignore_optimizewarning=True,
+                )
+
+                # Check the fit
+
+                if not fit["goodfit"]:
                     continue
 
-                if np.abs(fit['parms'][1] - guesss) <= centroid_threshold and fit['parms'][1] > 0 and fit['parms'][1] < np.max(slits):
-                    peaks_arc[j, k] = fit['parms'][1]
-                    f = interpolate.interp1d(slits, slity)
-                    peaks_pix[j, k] = f(fit['parms'][1])
+                if (
+                    np.abs(fit["parms"][1] - guesss) <= centroid_threshold
+                    and fit["parms"][1] > 0
+                    and fit["parms"][1] < np.max(slits)
+                ):
 
-        #            title = 'Order ' + str(orders[i]) + ', Column ' + str(columns[j])
-        #                    pl.plot(slits, slitz)
-        #                    pl.axvline(x=apertures[i,0],color='r', linestyle='dotted')
-        #                    pl.axvline(x=peaks_arc[j,0])
-        #                    pl.axvline(x=apertures[i,1],color='r', linestyle='dotted')
-        #                    pl.axvline(x=peaks_arc[j,1])
-        #                    pl.title(title)
-        #                    pl.pause(0.001)
-        #                    pl.clf()
+                    peaks_arc[j, k] = fit["parms"][1]
+                    f = interpolate.interp1d(slits, slity)
+                    peaks_pix[j, k] = f(fit["parms"][1])
 
         for j in range(naps):
+
             # Generate index number to fill in results
 
             l = naps * i + j
 
             # Fit the trace in w/s space
 
-            fit = polyfit_1d(waves, peaks_arc[:, j], fit_degree,
-                             robust={'thresh': 4, 'eps': 0.1})
+            fit = polyfit_1d(
+                waves, peaks_arc[:, j], fit_degree, robust={"thresh": 4, "eps": 0.1}
+            )
 
-            coeffs[l, :] = fit['coeffs']
+            coeffs[l, :] = fit["coeffs"]
 
             # Store the results for plotting
 
             plot_x = plot_x + list(columns)
             plot_y = plot_y + list(peaks_pix[:, j])
-            plot_goodbad = plot_goodbad + list(fit['goodbad'])
+            plot_goodbad = plot_goodbad + list(fit["goodbad"])
 
         if verbose is True:
             loop_progress(i, 0, norders)
 
-    dictionary = {'coeffs': coeffs, 'x': np.array(plot_x),
-                  'y': np.array(plot_y),
-                  'goodbad': np.array(plot_goodbad, dtype=int)}
+    dictionary = {
+        "coeffs": coeffs,
+        "x": np.array(plot_x),
+        "y": np.array(plot_y),
+        "goodbad": np.array(plot_goodbad, dtype=int),
+    }
 
     return dictionary
 
 
-
-def trace_to_xy(order_mask,
-                wavecal,
-                spatcal,
-                xranges,
-                doorders,
-                naps,
-                tracecoeffs,
-                verbose=False):
-    
+def trace_to_xy(
+    order_mask, wavecal, spatcal, xranges, doorders, naps, tracecoeffs, verbose=False
+):
     """
     To convert a trace in wavelength/arcseconds to x/y in an image.
 
@@ -342,14 +342,14 @@ def trace_to_xy(order_mask,
     #
     # Check parameters
     #
-    
-    check_parameter('trace_to_xy', 'order_mask', order_mask, 'ndarray', 2)
 
-    check_parameter('trace_to_xy', 'wavecal', wavecal, 'ndarray', 2)
+    check_parameter("trace_to_xy", "order_mask", order_mask, "ndarray", 2)
 
-    check_parameter('trace_to_xy', 'spatcal', spatcal, 'ndarray', 2)
+    check_parameter("trace_to_xy", "wavecal", wavecal, "ndarray", 2)
 
-    check_parameter('trace_to_xy', 'xranges', xranges, 'ndarray', 2)
+    check_parameter("trace_to_xy", "spatcal", spatcal, "ndarray", 2)
+
+    check_parameter("trace_to_xy", "xranges", xranges, "ndarray", 2)
 
     #
     # Get set up
@@ -358,7 +358,7 @@ def trace_to_xy(order_mask,
     nrows, ncols = np.shape(order_mask)
 
     orders = np.unique(order_mask)[1:]
-    
+
     norders = len(orders)
     donorders = np.sum(doorders)
 
@@ -368,7 +368,7 @@ def trace_to_xy(order_mask,
     l = 0
 
     #
-    # Start the loop over each 
+    # Start the loop over each
     #
 
     for i in range(norders):
@@ -402,8 +402,12 @@ def trace_to_xy(order_mask,
             trace_ang[j, :] = poly_1d(waves, tracecoeffs[l, :])
 
             if verbose is True:
-                loop_progress(l, 0, donorders * naps,
-                              message='Collecting plotting data for trace...')
+                loop_progress(
+                    l,
+                    0,
+                    donorders * naps,
+                    message="Collecting plotting data for trace...",
+                )
             l += 1
 
         # Convert these angular positons to pixel coordinates
@@ -425,4 +429,3 @@ def trace_to_xy(order_mask,
             plot_fits.append(np.stack([x, trace_pix[j, :]]))
 
     return plot_fits
-

@@ -2,6 +2,7 @@ import os
 from astropy.io import fits
 import numpy as np
 import logging
+import pooch
 
 from pyspextool import config as setup
 from pyspextool.io.read_instrument_file import read_instrument_file
@@ -12,9 +13,8 @@ from importlib.metadata import version, PackageNotFoundError
 
 # TODO:  test logging works as expected. run some commands in the REPL
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
 try:
     __version__ = version("pyspextool")
@@ -22,6 +22,17 @@ except PackageNotFoundError:
     # package is not installed
     pass
 
+
+mishu = pooch.create(
+        path=pooch.os_cache("pyspextool"),
+        base_url="https://pyspextool.s3.us-east-1.amazonaws.com/",
+        registry={
+            "uspex_lincorr.fits": "9ba8c54dc9de08aab81a67cd37ee7d5c6aaad2aec6a13537cc8c412b896aca58",
+            "uspex_bias.fits": "d1dbbffc882123de5f3e877ca14dbc6740e2e751d1c31d0647583305c6163cc6",
+            "spex_lincorr.fits": "47fcbd6b854f1b80fc65615978dffdcfa793af24d12b3ce3b199efae6d78040f",
+            "Vega50000.fits": "517f38feaaabe35443fcbd9a2670085b61af0e7dfd05a28a6c3c4f79ed7d7737",
+        },
+    )
 
 def set_version():
     setup.state["version"] = __version__
@@ -40,7 +51,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
                      qa_showblock:bool=False,
                      qa_write:bool=False,
                      qa_extension:str=setup.state["qa_extensions"][0]):
-    
+
     """
     Set the pyspextool instrument, paths, and quality assurance settings
 
@@ -70,9 +81,9 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
         The file extension used to search for files in `raw_path`.
     
     verbose : bool, default True
-        verbose = True sets the logging level to DEBUG
+        verbose = True sets the logging level to INFO
             Lots of information will be printed to the screen.
-        verbose = False sets the logging level to INFO
+        verbose = False sets the logging level to ERROR
             Only important information will be printed to the screen.
 
     qa_show : {False, True}, optional
@@ -130,16 +141,16 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     check_parameter('pyspextool_setup', 'instrument', instrument, 'str',
                     possible_values=setup.state['instruments'])
-    
+
     check_parameter('pyspextool_setup', 'raw_path', raw_path,
                     ['NoneType', 'str'])
-    
+
     check_parameter('pyspextool_setup', 'cal_path', cal_path,
                     ['NoneType', 'str'])
-                    
+
     check_parameter('pyspextool_setup', 'proc_path', proc_path, 
                     ['NoneType', 'str'])
-                    
+
     check_parameter('pyspextool_setup', 'qa_path', qa_path, 
                     ['NoneType', 'str'])
 
@@ -150,9 +161,9 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     check_parameter('pyspextool_setup', 'qa_showscale', qa_showscale,
                     ['float','int'])
-    
+
     check_parameter('pyspextool_setup', 'qa_showblock', qa_showblock, 'bool')
-    
+
     check_parameter('pyspextool_setup', 'qa_write', qa_write, 'bool')
 
     check_parameter('pyspextool_setup', 'qa_extensioan', qa_extension,
@@ -161,10 +172,10 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
     # Report what you are doing
     #
-    
+
     message = ' pySpextool Setup'
     logging.info(message+'\n'+'-'*(len(message)+5)+'\n')
-    
+
     #
     # Store the search extension
     #
@@ -174,7 +185,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
     # Set up verbose scale and logging
     #
-    
+
     if verbose is True:
 
         logging.getLogger().setLevel(logging.INFO)
@@ -185,12 +196,15 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
         logging.getLogger().setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-    logging.info(f" Verbose set to {setup.state['verbose']}")
+    logging.info(
+        f" Verbose set to {setup.state['verbose']}. \n"
+        f" Logging level set to {logging.getLogger().getEffectiveLevel()}"
+    )
 
     #
     # Set the instrument
     #
-    
+
     set_instrument(instrument)
 
     logging.info(f" Instrument set to {setup.state['instrument']}")
@@ -198,7 +212,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
     # Set the paths
     #
-    
+
     set_paths(raw_path, cal_path, proc_path, qa_path)
 
     logging.info(" Paths set")
@@ -211,7 +225,6 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     # Set the version number
     set_version()
-
 
     msg = f"""
     Pyspextool Setup

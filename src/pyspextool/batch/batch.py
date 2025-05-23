@@ -39,11 +39,12 @@ warnings.simplefilter('ignore', category=AstropyWarning)
 
 import pyspextool as ps
 from pyspextool import config as setup
+from pyspextool.extract.flat import read_flat_fits
 from pyspextool.io.files import extract_filestring,make_full_path
-from pyspextool.utils.arrays import numberList
 from pyspextool.io.read_spectra_fits import read_spectra_fits
+from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 Feb 12'
+VERSION = '2025 May 14'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +53,8 @@ CODEDIR = ps.__path__[0]
 XMatch.TIMEOUT = 180 # time out for XMatch search
 Simbad.TIMEOUT = 60
 MOVING_MAXSEP = 15. # max separation for fixed target in arcsec
-MOVING_ANGRATE = 10. # max moving rate for fixed target in arcsec/hr
+MOVING_ANGRATE = 15. # max moving rate for fixed target in arcsec/hr
+MOVING_MINTIME = 0.2 # min time for moving rate for fixed target in arcsec/hr
 SKIP_ANGSTEP = 3600. # separation in arcsec indicating this is a movement without change in name
 INSTRUMENT_DATE_SHIFT = Time('2014-07-01').mjd # date spex --> uspex
 ARC_NAME = 'arc lamp'
@@ -63,8 +65,8 @@ BACKUP_INSTRUMENT_DATA_URL = 'https://drive.google.com/drive/folders/1hxWS9a4G41
 BACKUP_REDUCTION_DATA_URL = 'https://drive.google.com/drive/folders/1fK345gOCKHtffluiFjPLUuRYbS7tK_yl?usp=sharing'
 
 # modes to ignore
-IGNORE_MODES = ['LongXD2.3','LongXD2.1','LongXD1.9','LongSO','LXD2.3','LXD2.1','LXD1.9','LXD_short','LXD_long','LowRes60','ShortSO']
-IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60']
+IGNORE_MODES = ['LongSO','LowRes60','ShortSO']
+IGNORE_SLITS = ['0.3x60','0.5x60','0.8x60','1.6x60','3.0x60','Mirror']
 
 # this is the data to extract from header, with options for header keywords depending on when file was written
 HEADER_DATA={
@@ -112,14 +114,14 @@ BATCH_PARAMETERS = {
 	'STITCHED_FILE_PREFIX': 'stitched',
 	'PROGRAM': '',
 	'OBSERVER': '',
-	'qa_write': True,
-	'qa_show': False, 
+	# 'qa_write': True,
+	# 'qa_show': False, 
 	'PLOT_TYPE': '.pdf', 
 	'CALIBRATIONS': True,
 	'EXTRACT': True,
 	'COMBINE': True,
 	'FLUXTELL': True,
-	'REREDUCE': False,
+#	'REREDUCE': False,
 	'STITCH': True,
 	'RENAME': True,
 	'OVERWRITE': False,
@@ -152,11 +154,11 @@ OBSERVATION_PARAMETERS_REQUIRED = {
 # note that all with have a TARGET and STD prefix attached when actual code is run
 OBSERVATION_PARAMETERS_OPTIONAL = {
 #	'USE_STORED_SOLUTION': False,
-	'ORDERS': '3-9',
+	'ORDERS': None,
 #	'TARGET_TYPE': 'ps',
 #	'REDUCTION_MODE': 'A-B',
 	'NAPS': 2,
-	'APERTURE_POSITIONS': [4.,11.5],
+	'APERTURE_POSITIONS': [3.7,11.2],
 	'APERTURE_METHOD': 'auto',
 	'APERTURE': 1.5,
 	'PSF_RADIUS': 1.5,
@@ -207,6 +209,7 @@ SIMBAD_COLS = {
 	'SIMBAD_KMAG': ['fluxdata(K)','FLUX_K'],
 }
 
+# what to exclude when searching for standard information
 SIMBAD_EXCLUDE = ['Planet','Galaxy','QSO','Cluster*','Association','Stream','MouvGroup','GlobCluster','OpenCluster','BrightestCG','RadioG','LowSurfBrghtG','BlueCompactG','StarburstG','StarburstG','EmissionG','AGN','Seyfert','Seyfert1','Seyfert2','LINER','InteractingG','PairG','GroupG','Compact_Gr_G','ClG','protoClG','SuperClG','Void','Transient','HI','Maser','gammaBurst','PartofG','Unknown','Region','**']
 SIMBAD_RADIUS = 30*u.arcsecond
 
@@ -216,168 +219,11 @@ IRSA_FOLDER = 'IRTF'
 IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
 DEFAULT_TARGET_NAMES = ['','Object_Observed']
-
-# observing schedule
 OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
 
-##################################
-####### BASIC TEST OF CODE #######
-##################################
-
-def test(verbose=ERROR_CHECKING):
-	'''
-	Purpose
-	-------
-	Checks to make sure installation is correct and necessary data files are present
-
-	Parameters
-	----------
-	None
-
-	Outputs
-	-------
-	Will raise warning errors if any aspects of code aren't working, otherwise returns True
-
-	Example
-	-------
-	>>> from pyspextool.batch import batch
-	>>> batch.test(verbose=True)
-	...checking that code can find instrument data
-		PASS
-	...checking that code can find reduction data
-		PASS
-	...checking that code can find test data
-		PASS
-	...checking that code can process data files
-		PASS
-	...checking that code can generate log
-		PASS
-	...checking that code can generate driver
-		PASS
-	*** Batch reduction tests have all passed - happy reducing! ***
-
-	Dependencies
-	------------
-	processfolder()
-	writeLog()
-	writeDriver()
-	readDriver()
-	glob
-	os
-	pandas
-	'''	
-	testdatafold = os.path.join(CODEDIR,"../../tests/test_data/")
-	instrumentdatafold = os.path.join(CODEDIR,"instruments/")
-	reductiondatafold = os.path.join(CODEDIR,"data/")
-	test_instruments = ['spex-prism', 'spex-SXD','uspex-prism','uspex-SXD']
-	rawfold = os.path.join(testdatafold, "raw/")
-	procfold = os.path.join(testdatafold, "processed/")
-	log_test_file = 'log_test.csv'
-	driver_test_file = 'driver_test.txt'
-
-# make sure code can find main instrument data files
-	if verbose==True: logging.info('...checking that code can find instrument data')
-	assert os.path.exists(instrumentdatafold), 'could not find instrument data folder {}, try downloading from {}'.format(instrumentdatafold,BACKUP_INSTRUMENT_DATA_URL)
-	for x in ['spex','uspex']:
-		testfold = os.path.join(instrumentdatafold,'{}'.format(x))
-		assert os.path.exists(testfold), 'could not find instrument data folder {}, try downloading from {}'.format(testfold,BACKUP_INSTRUMENT_DATA_URL)
-		testfile = os.path.join(testfold,'{}_bdpxmk.fits'.format(x))
-		assert os.path.exists(testfile), 'could not find bad pixel mask file {}, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
-		fstat = os.stat(testfile)
-		assert fstat.st_size > 1000000, 'file {} is too small, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
-		if verbose==True: logging.info('\t{}: PASS'.format(x))
-
-# make sure code can find main reduction data files
-	if verbose==True: logging.info('...checking that code can find reduction data')
-	assert os.path.exists(reductiondatafold), 'could not find reduction data folder {}, try downloading from {}'.format(reductiondatafold,BACKUP_REDUCTION_DATA_URL)
-	for x in [100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000,6000,60000,75000]:
-		atmfile = os.path.join(reductiondatafold,'atran{:.0f}.fits'.format(x))
-		assert os.path.exists(atmfile), 'could not find atmosphere transmission file {}, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
-		fstat = os.stat(atmfile)
-		assert fstat.st_size > 1000000, 'atmosphere transmission file {} is too small, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
-	for x in [5000,50000]:
-		vfile = os.path.join(reductiondatafold,'Vega{:.0f}.fits'.format(x))
-		assert os.path.exists(vfile), 'Vega spectrum file {} not found in data folder {}, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
-		fstat = os.stat(vfile)
-		assert fstat.st_size > 1000000, 'Vega spectrum file {} is too small, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
-	if verbose==True: logging.info('\tPASS')
-
-# make sure code can find raw test data
-	if verbose==True: logging.info('...checking that code can find and process test data')
-	assert os.path.exists(testdatafold), 'Could not find test data folder {}'.format(testdatafold)
-	for inst in test_instruments:
-		rfold = os.path.join(rawfold, inst)
-		assert os.path.exists(rfold), 'Could not find test data folder {}'.format(os.path.join(rawfold, inst))
-		for fold in REDUCTION_FOLDERS:
-			assert os.path.exists(os.path.join(rfold, fold)), 'Could not find test data folder {}'.format(os.path.join(rawfold, inst, fold))
-		dfiles = glob.glob(os.path.join(rfold, "data/*.fits"))
-		assert len(dfiles) > 0, 'no data files found in {}'.format(os.path.join(rfold, "data/*.fits"))
-		result = processFolder(os.path.join(rfold, "data/"),verbose=False)
-		assert isinstance(result, pd.core.frame.DataFrame), 'Could not process data folder {}'.format(os.path.join(rfold, "data/"))
-		assert len(result) > 0, 'no data files found in {}'.format(os.path.join(rfold, "data/"))
-		for x in list(HEADER_DATA.keys()):
-			assert x in list(result.columns), 'Could not find required header data {} in data files in {}'.format(x,os.path.join(rfold, "data/"))
-		if verbose==True: logging.info('\t{}: PASS'.format(inst))
-#	if verbose==True: print('\tPASS')
-
-# process files and generate a test log
-	if verbose==True: logging.info('...checking that code can generate log')
-	for inst in test_instruments:
-		rfold = os.path.join(rawfold, inst)
-		pfold = os.path.join(procfold, inst)
-		logfile = os.path.join(pfold, "qa", log_test_file)
-		dp = processFolder(os.path.join(rfold, "data/"),verbose=False)
-		writeLog(dp,logfile,verbose=False)
-		assert os.path.exists(logfile), 'Could not find log file {} after creation'.format(driver_file)
-		dp = pd.read_csv(logfile)
-		assert isinstance(dp, pd.core.frame.DataFrame), 'Log file parameter error: not a pandas dataframe for log file {}'.format(log_file)
-		assert len(dp)>0
-		for x in LOG_PARAMETERS['COLUMNS']:
-			assert x in list(dp.columns), 'Could not find required column {} in log file {}'.format(x,logfile)
-		for x in SIMBAD_COLS:
-			assert x in list(dp.columns), 'Could not find required SIMBAD column {} in log file {}'.format(x,logfile)
-		if verbose==True: logging.info('\t{}: PASS'.format(inst))
-
-# CLEANUP
-# remove generated files
-
-# process files and generate a driver file
-	if verbose==True: logging.info('...checking that code can generate driver')
-	for inst in test_instruments:
-		rfold = os.path.join(rawfold, inst)
-		pfold = os.path.join(procfold, inst)
-		logfile = os.path.join(pfold, "qa", log_test_file)
-		driver_file = os.path.join(pfold, "proc", driver_test_file)
-#	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
-		dp = pd.read_csv(logfile)
-		writeDriver(dp,driver_file,data_folder=os.path.join(rfold, "data"),check=False,create_folders=False,verbose=False)
-		assert os.path.exists(driver_file), 'Could not find driver file {} after creation'.format(driver_file)
-
-# read in existing driver in test folder and check
-		par = readDriver(driver_file,verbose=False)
-		assert isinstance(par, dict), 'Driver file parameter error: not a dictionary for driver file {}'.format(driver_file)
-		for x in BATCH_PARAMETERS:
-			assert x in list(par.keys()), 'Could not find required parameter {} in driver file {}'.format(x,driver_file)
-		if verbose==True: logging.info('\t{}: PASS'.format(inst))
-
-# CLEANUP
-# remove generated files
-	if verbose==True: logging.info('...cleaning up')
-	for inst in test_instruments:
-		rfold = os.path.join(rawfold, inst)
-		pfold = os.path.join(procfold, inst)
-		logfile = os.path.join(pfold, "qa", log_test_file)
-		os.remove(logfile)
-		driver_file = os.path.join(pfold, "proc", driver_test_file)
-		os.remove(driver_file)
-	if verbose==True: logging.info('\n*** Batch reduction tests have all passed - happy reducing! ***\n')
-
-	return
-
-##################################
-######### PROCESS FOLDERS ########
-####### AND ORGANIZED DATA #######
-##################################
+###################################
+######### HELPER FUNCTIONS ########
+###################################
 
 def formatDate(date,output='YYYYMMDD'):
 	'''
@@ -417,203 +263,14 @@ def formatDate(date,output='YYYYMMDD'):
 		return date
 
 
-def processFolder(folder,verbose=False):
-	'''
-	Purpose
-	-------
-	Reads in fits files from a data folder and organizes into pandas dataframe 
-	with select keywords from headers defined in HEADER_DATA
 
-	Parameters
-	----------
-	folder : str
-		full path to the data folder containing the fits files
+#########################################
+######### ORGANIZE ARCHIVE DATA #########
+#########################################
 
-	verbose : bool, default=False
-		Set to True to return verbose output
-
-	Outputs
-	-------
-	pandas DataFrame containing the main header elements of the fits data files
-
-	Example
-	-------
-	>>> from pyspextool.batch import batch
-	>>> dpath = '/Users/adam/data/spex/20200101/data/'
-	>>> dp = batch.processFolder(dpath)
-	>>> print(dp[:4])
-
-					   FILE	 UT_DATE		  UT_TIME TARGET_NAME		   RA  \
-		0	spc0001.a.fits  2003-05-21  05:46:06.300712   1104+1959  11:04:01.12   
-		1	spc0002.b.fits  2003-05-21  05:48:25.591305   1104+1959  11:04:01.08   
-		2	spc0003.b.fits  2003-05-21  05:50:42.924982   1104+1959  11:04:01.06   
-		3	spc0004.a.fits  2003-05-21  05:53:02.194063   1104+1959  11:04:01.08   
-
-	Dependencies
-	------------
-	astropy.coordinates
-	astropy.io
-	astropy.time
-	astropy.units
-	glob
-	os.path
-	pandas
-	'''
-# error checking folder 
-	if os.path.isdir(folder) == False: 
-		raise ValueError('Cannot folder find {}'.format(folder))
-	if folder[-1] != '/': folder=folder+'/'
-
-# read in files, with accounting for .gz files
-	files = glob.glob(folder+'/*.fits')
-	gzflag = 0
-	if len(files) == 0: 
-		files = glob.glob(folder+'/*.fits.gz')
-		gzflag = 1
-	if len(files) == 0: 
-		raise ValueError('Cannot find any .fits data files in {}'.format(folder))
-
-# generate pandas data frame
-	dp = pd.DataFrame()
-	dp['FILE'] = [os.path.basename(f) for f in files]
-	for k in list(HEADER_DATA.keys()): dp[k] = ['']*len(dp)
-
-# run through each file header and populate the dataframe
-	for i,f in enumerate(files):
-		hdu = fits.open(f,ignore_missing_end=True)
-		hdu[0].verify('silentfix')
-		header = hdu[0].header
-		hdu.close()
-		for k in list(HEADER_DATA.keys()): 
-			ref = ''
-			for ii in HEADER_DATA[k]:
-				if ii in list(header.keys()) and ref=='': ref=ii
-			if ref!='': dp.loc[i,k] = header[ref]
-			if ref=='' and verbose==True and i==0:
-				logging.info('Could not find keywords {} in file {}'.format(HEADER_DATA[k],f))
-# update some of the mode names
-		if 'SHORTXD' in dp.loc[i,'MODE'].upper(): dp.loc[i,'MODE'] = 'SXD'
-		if 'lowres' in dp.loc[i,'MODE'].lower(): dp.loc[i,'MODE'] = 'Prism'		
-		if 'arc' in dp.loc[i,'FILE']: 
-			dp.loc[i,'TARGET_NAME'] = ARC_NAME
-			dp.loc[i,'TARGET_TYPE'] = 'calibration'
-		if 'flat' in dp.loc[i,'FILE']: 
-			dp.loc[i,'TARGET_NAME'] = FLAT_NAME
-			dp.loc[i,'TARGET_TYPE'] = 'calibration'
-# set target type based on integration time
-# NOTE: THIS IS NOT THE BEST WAY TO DO THIS			
-		if dp.loc[i,'TARGET_TYPE']=='': 
-			dp.loc[i,'TARGET_TYPE']='target'
-			if 'SXD' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<=30.: dp.loc[i,'TARGET_TYPE']='standard'
-			if 'Prism' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<=10.: dp.loc[i,'TARGET_TYPE']='standard'
-
-# fix to coordinates
-	for k in ['RA','DEC']:
-		dp[k] = [x.strip() for x in dp[k]]
-	for i in range(len(dp)):
-		if dp.loc[i,'DEC'][0] not in ['-','+']: dp.loc[i,'DEC'] = '+'+dp.loc[i,'DEC']
-#		if dp.loc[i,'RA'][0]=='+': dp.loc[i,'RA'] = dp.loc[i,'RA'][1:]
-
-# generate ISO 8601 time string and sort
-	dp['DATETIME'] = [dp.loc[i,'UT_DATE']+'T'+dp.loc[i,'UT_TIME'] for i in range(len(dp))]
-	dp['MJD'] = [Time(d,format='isot', scale='utc').mjd for d in dp['DATETIME']]
-	dp['INSTRUMENT'] = ['spex']*len(dp)
-	if dp.loc[0,'MJD']>INSTRUMENT_DATE_SHIFT: dp['INSTRUMENT'] = ['uspex']*len(dp)
-	dp.sort_values('DATETIME',inplace=True)
-	dp.reset_index(inplace=True,drop=True)
-
-# ignore certain modes
-	dp.loc[dp['MODE'].isin(IGNORE_MODES),'TARGET_TYPE'] = 'ignore'
-
-# ignore cases where the slit is 60"
-	dp.loc[dp['SLIT'].isin(IGNORE_SLITS),'TARGET_TYPE'] = 'ignore'
-
-# alternate filename or shortname to replace target name if needed
-	dp['SHORTNAME'] = ['J{}{}'.format(((dp.loc[i,'RA']).replace(':','').replace('+',''))[:4],((dp.loc[i,'DEC']).replace(':',''))[:5]) for i in range(len(dp))]
-	if dp.loc[0,'INSTRUMENT']=='uspex': nint=5
-	else: nint =4
-	dp['ALTNAME'] = [(x.replace('.a.fits','').replace('.b.fits','')[:-nint]).upper() for x in dp['FILE']]
-	altnames = list(set(list(dp['ALTNAME'])))
-	for x in ['ARC','FLAT']:
-		if x in altnames: altnames.remove(x)
-	if len(altnames)<=1: dp['ALTNAME'] = dp['SHORTNAME']
-	for x in DEFAULT_TARGET_NAMES:
-		dps = dp[dp['TARGET_NAME']==x]
-		dps.reset_index(inplace=True)
-		if len(dps)>0:
-			for i in range(len(dps)):
-				dp.loc[dp['FILE']==dps.loc[i,'FILE'],'TARGET_NAME'] = dps.loc[i,'ALTNAME']
-
-# if standard guess was wrong, reset all standards back to targets
-	dpt = dp[dp['TARGET_TYPE']=='target']
-	if len(dpt)==0: 
-		dp.loc[dp['TARGET_TYPE']=='standard','TARGET_TYPE'] = 'target'
-	dpt = dp[dp['TARGET_TYPE']=='standard']
-	if len(dpt)==0: 
-		if verbose==True: logging.info('Warning: no standards present in list; be sure to check driver file carefully')
-
-# fixed/moving - determined by range of position and motion of source
-# uses SKIP_ANGSTEP to identify cases where user forgot to change source name
-	dp['FIXED-MOVING'] = ['fixed']*len(dp)
-	names = list(set(list(dp['TARGET_NAME'])))
-	if ARC_NAME in names: names.remove(ARC_NAME)
-	else: 
-		if verbose==True: logging.info('Warning: no arc lamp files identified in {}'.format(folder))
-	if FLAT_NAME in names: names.remove(FLAT_NAME)
-	else: 
-		if verbose==True: logging.info('Warning: no flat lamp files identified in {}'.format(folder))
-# critical failure - only calibration files
-	if len(names)==0:
-		if verbose==True: logging.info('Warning: no science files identified in {}'.format(folder))
-		return dp
-
-	for n in names:
-		dps = dp[dp['TARGET_NAME']==n]
-		dps.reset_index(inplace=True)
-		dpsa = dps[dps['BEAM']=='A']
-		dpsa.reset_index(inplace=True)
-		if len(dpsa)>1:	
-#			try:
-			pos1 = SkyCoord(dpsa.loc[0,'RA']+' '+dpsa.loc[0,'DEC'],unit=(u.hourangle, u.deg))
-			pos2 = SkyCoord(dpsa.loc[len(dpsa)-1,'RA']+' '+dpsa.loc[len(dpsa)-1,'DEC'],unit=(u.hourangle, u.deg))
-			dx = pos1.separation(pos2).to(u.arcsec)
-			time1 = Time(dpsa.loc[0,'DATETIME'],format='isot', scale='utc')
-			time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
-			dt = (time2-time1).to(u.hour)
-# very big move ==> likely failure to change name of target	
-#			print(n,dx.value,MOVING_MAXSEP,(dx/dt).value,MOVING_ANGRATE,dt.value,dx.value > SKIP_ANGSTEP,dx.value > MOVING_MAXSEP,((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1))			
-			if dx.value > SKIP_ANGSTEP:
-				if verbose==True: logging.info('Detected a jump of dx={:.1f} arcsec implying name change from {} failure; substituting in additional names...'.format(dx,n))
-				for jjj in range(len(dps)-1):
-					pos2 = SkyCoord(dps.loc[jjj+1,'RA']+' '+dps.loc[jjj+1,'DEC'],unit=(u.hourangle, u.deg))
-					if pos1.separation(pos2).to(u.arcsec).value > SKIP_ANGSTEP:
-						dp.loc[dp['FILE']==dps.loc[jjj+1,'FILE'],'TARGET_NAME'] = dps.loc[jjj+1,'ALTNAME']
-			elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1):
-				dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
-				if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.1f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
-			else: pass
-			# except Exception as e:
-			# 	if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
-
-# program and PI info (based on code by Evan Watson)
-# NOTE: in this realization we're assuming its the same program and PI for the entire folder
-# this overrules what is header
-	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE, usecols=['MJD START','MJD END','PROGRAM','PI'])
-	mjd = dp.loc[0,'MJD']
-	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
-	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
-	obs_sch.reset_index(inplace=True)
-	if len(obs_sch)>0:
-		dp['PROGRAM'] = [obs_sch.loc[0,'PROGRAM']]*len(dp)
-		dp['OBSERVER'] = [obs_sch.loc[0,'PI']]*len(dp)
-
-# some additional formatting cleanup
-	dp['TARGET_NAME'] = [x.replace('.','_').replace(',','_') for x in dp['TARGET_NAME']]
-
-	return dp
-
-
-
+#########################################
+######### ORGANIZE ARCHIVE DATA #########
+#########################################
 
 def organize(folder,outfolder='',verbose=ERROR_CHECKING,makecopy=False,overwrite=False):
 	'''
@@ -833,34 +490,6 @@ def organizeLegacy(folder,expand=LEGACY_FOLDER,outfolder='',verbose=ERROR_CHECKI
 					else: shutil.copy2(df,data_folder)
 			if verbose==True: logging.info(' Moved/copied legacy data folder {} to {}'.format(f,data_folder))
 
-
-# 		if prefix!=prefix0:
-# 			prefix0 = copy.deepcopy(prefix)
-# 			cntr=1
-# 		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
-# 		cntr+=1
-# 		print(output_folder)
-# 		output_folder = os.path.abspath(prefix+'-{:.0f}'.format(1))
-# 		while os.path.exists(output_folder) == True:
-# 			cntr+=1
-# 			output_folder = os.path.abspath(prefix+'-{:.0f}'.format(cntr))
-# 		os.makedirs(output_folder)
-# 		if verbose==True: logging.info('Creating folder {}'.format(output_folder))
-
-# # if path exists, just move and rename fits folder, otherwise move files, being careful of overwriting 
-# 		data_folder = os.path.join(output_folder,'data')
-# 		if os.path.exists(data_folder) == False: 
-# 			if makecopy==False: shutil.move(f, data_folder)
-# 			else: shutil.copytree(f,data_folder)
-# 			if verbose==True: logging.info('Moved legacy data folder {} to {}'.format(f,data_folder))
-# 		else: 
-# 			if len(glob.glob(os.path.join(f,'*.fits')))==0 or overwrite==True:
-# 				for df in glob.glob(os.path.join(f,'*.fits')): 
-# 					if makecopy==False: shutil.move(df,data_folder)
-# 					else: shutil.copy2(df,data_folder)
-# 				if verbose==True: logging.info('Moved fits files in legacy data folder {} to {}'.format(f,data_folder))
-# 			else: logging.info('WARNING: fits files already exist in {}; move these files or set overwrite to True'.format(data_folder))
-
 # create other folders
 			for rf in REDUCTION_FOLDERS[1:]:
 				rfolder = os.path.join(output_folder,rf)
@@ -980,6 +609,213 @@ def organizeIRSA(folder,expand=IRSA_FOLDER,outfolder='',verbose=ERROR_CHECKING,m
 
 		if verbose==True: logging.info(' Organization complete; data and reduction folders can be found in {}\n\n'.format(output_folder))
 	return
+
+
+
+
+#################################
+######### PROCESS FOLDER ########
+#################################
+
+def processFolder(folder,verbose=False):
+	'''
+	Purpose
+	-------
+	Reads in fits files from a data folder and organizes into pandas dataframe 
+	with select keywords from headers defined in HEADER_DATA
+
+	Parameters
+	----------
+	folder : str
+		full path to the data folder containing the fits files
+
+	verbose : bool, default=False
+		Set to True to return verbose output
+
+	Outputs
+	-------
+	pandas DataFrame containing the main header elements of the fits data files
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> dpath = '/Users/adam/data/spex/20200101/data/'
+	>>> dp = batch.processFolder(dpath)
+	>>> print(dp[:4])
+
+					   FILE	 UT_DATE		  UT_TIME TARGET_NAME		   RA  \
+		0	spc0001.a.fits  2003-05-21  05:46:06.300712   1104+1959  11:04:01.12   
+		1	spc0002.b.fits  2003-05-21  05:48:25.591305   1104+1959  11:04:01.08   
+		2	spc0003.b.fits  2003-05-21  05:50:42.924982   1104+1959  11:04:01.06   
+		3	spc0004.a.fits  2003-05-21  05:53:02.194063   1104+1959  11:04:01.08   
+
+	Dependencies
+	------------
+	astropy.coordinates
+	astropy.io
+	astropy.time
+	astropy.units
+	glob
+	os.path
+	pandas
+	'''
+# error checking folder 
+	if os.path.isdir(folder) == False: 
+		raise ValueError('Cannot folder find {}'.format(folder))
+	if folder[-1] != '/': folder=folder+'/'
+
+# read in files, with accounting for .gz files
+	files = glob.glob(folder+'/*.fits')
+	gzflag = 0
+	if len(files) == 0: 
+		files = glob.glob(folder+'/*.fits.gz')
+		gzflag = 1
+	if len(files) == 0: 
+		raise ValueError('Cannot find any .fits data files in {}'.format(folder))
+
+# generate pandas data frame
+	dp = pd.DataFrame()
+	dp['FILE'] = [os.path.basename(f) for f in files]
+	for k in list(HEADER_DATA.keys()): dp[k] = ['']*len(dp)
+
+# run through each file header and populate the dataframe
+	for i,f in enumerate(files):
+		hdu = fits.open(f,ignore_missing_end=True)
+		hdu[0].verify('silentfix')
+		header = hdu[0].header
+		hdu.close()
+		for k in list(HEADER_DATA.keys()): 
+			ref = ''
+			for ii in HEADER_DATA[k]:
+				if ii in list(header.keys()) and ref=='': ref=ii
+			if ref!='': dp.loc[i,k] = header[ref]
+			if ref=='' and verbose==True and i==0:
+				logging.info('Could not find keywords {} in file {}'.format(HEADER_DATA[k],f))
+# update some of the mode names
+		if 'SHORTXD' in dp.loc[i,'MODE'].upper(): dp.loc[i,'MODE'] = 'SXD'
+		if 'LOWRES' in dp.loc[i,'MODE'].upper(): dp.loc[i,'MODE'] = 'Prism'		
+		if 'arc' in dp.loc[i,'FILE']: 
+			dp.loc[i,'TARGET_NAME'] = ARC_NAME
+			dp.loc[i,'TARGET_TYPE'] = 'calibration'
+		if 'flat' in dp.loc[i,'FILE']: 
+			dp.loc[i,'TARGET_NAME'] = FLAT_NAME
+			dp.loc[i,'TARGET_TYPE'] = 'calibration'
+# set target type based on integration time
+#######
+####### NOTE: THIS IS NOT THE BEST WAY TO DO THIS, AND PARTICULARLY NOT GOOD FOR LXD MODE; MAYBE SET AFTER SIMBAD CALL
+#######
+		if dp.loc[i,'TARGET_TYPE']=='': 
+			dp.loc[i,'TARGET_TYPE']='target'
+			if 'SXD' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<=30.: dp.loc[i,'TARGET_TYPE']='standard'
+			if 'Prism' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<=10.: dp.loc[i,'TARGET_TYPE']='standard'
+			if 'LXD' in dp.loc[i,'MODE'] and float(dp.loc[i,'INTEGRATION'])<5.: dp.loc[i,'TARGET_TYPE']='standard'
+
+# fix to coordinates
+	for k in ['RA','DEC']:
+		dp[k] = [x.strip() for x in dp[k]]
+	for i in range(len(dp)):
+		if dp.loc[i,'DEC'][0] not in ['-','+']: dp.loc[i,'DEC'] = '+'+dp.loc[i,'DEC']
+#		if dp.loc[i,'RA'][0]=='+': dp.loc[i,'RA'] = dp.loc[i,'RA'][1:]
+
+# generate ISO 8601 time string and sort
+	dp['DATETIME'] = [dp.loc[i,'UT_DATE']+'T'+dp.loc[i,'UT_TIME'] for i in range(len(dp))]
+	dp['MJD'] = [Time(d,format='isot', scale='utc').mjd for d in dp['DATETIME']]
+	dp['INSTRUMENT'] = ['spex']*len(dp)
+	if dp.loc[0,'MJD']>INSTRUMENT_DATE_SHIFT: dp['INSTRUMENT'] = ['uspex']*len(dp)
+	dp.sort_values('DATETIME',inplace=True)
+	dp.reset_index(inplace=True,drop=True)
+
+# ignore certain modes
+	dp.loc[dp['MODE'].isin(IGNORE_MODES),'TARGET_TYPE'] = 'ignore'
+
+# ignore cases where the slit is 60"
+	dp.loc[dp['SLIT'].isin(IGNORE_SLITS),'TARGET_TYPE'] = 'ignore'
+
+# alternate filename or shortname to replace target name if needed
+	dp['SHORTNAME'] = ['J{}{}'.format(((dp.loc[i,'RA']).replace(':','').replace('+',''))[:4],((dp.loc[i,'DEC']).replace(':',''))[:5]) for i in range(len(dp))]
+	if dp.loc[0,'INSTRUMENT']=='uspex': nint=5
+	else: nint =4
+	dp['ALTNAME'] = [(x.replace('.a.fits','').replace('.b.fits','')[:-nint]).upper() for x in dp['FILE']]
+	altnames = list(set(list(dp['ALTNAME'])))
+	for x in ['ARC','FLAT']:
+		if x in altnames: altnames.remove(x)
+	if len(altnames)<=1: dp['ALTNAME'] = dp['SHORTNAME']
+	for x in DEFAULT_TARGET_NAMES:
+		dps = dp[dp['TARGET_NAME']==x]
+		dps.reset_index(inplace=True)
+		if len(dps)>0:
+			for i in range(len(dps)):
+				dp.loc[dp['FILE']==dps.loc[i,'FILE'],'TARGET_NAME'] = dps.loc[i,'ALTNAME']
+
+# if standard guess was wrong, reset all standards back to targets
+	dpt = dp[dp['TARGET_TYPE']=='target']
+	if len(dpt)==0: 
+		dp.loc[dp['TARGET_TYPE']=='standard','TARGET_TYPE'] = 'target'
+	dpt = dp[dp['TARGET_TYPE']=='standard']
+	if len(dpt)==0: 
+		if verbose==True: logging.info('Warning: no standards present in list; be sure to check driver file carefully')
+
+# fixed/moving - determined by range of position and motion of source
+# uses SKIP_ANGSTEP to identify cases where user forgot to change source name
+	dp['FIXED-MOVING'] = ['fixed']*len(dp)
+	names = list(set(list(dp['TARGET_NAME'])))
+	if ARC_NAME in names: names.remove(ARC_NAME)
+	else: 
+		if verbose==True: logging.info('Warning: no arc lamp files identified in {}'.format(folder))
+	if FLAT_NAME in names: names.remove(FLAT_NAME)
+	else: 
+		if verbose==True: logging.info('Warning: no flat lamp files identified in {}'.format(folder))
+# critical failure - only calibration files
+	if len(names)==0:
+		if verbose==True: logging.info('Warning: no science files identified in {}'.format(folder))
+		return dp
+
+	for n in names:
+		dps = dp[dp['TARGET_NAME']==n]
+		dps.reset_index(inplace=True)
+		dpsa = dps[dps['BEAM']=='A']
+		dpsa.reset_index(inplace=True)
+		if len(dpsa)>1:	
+#			try:
+			pos1 = SkyCoord(dpsa.loc[0,'RA']+' '+dpsa.loc[0,'DEC'],unit=(u.hourangle, u.deg))
+			pos2 = SkyCoord(dpsa.loc[len(dpsa)-1,'RA']+' '+dpsa.loc[len(dpsa)-1,'DEC'],unit=(u.hourangle, u.deg))
+			dx = pos1.separation(pos2).to(u.arcsec)
+			time1 = Time(dpsa.loc[0,'DATETIME'],format='isot', scale='utc')
+			time2 = Time(dpsa.loc[len(dpsa)-1,'DATETIME'],format='isot', scale='utc')
+			dt = (time2-time1).to(u.hour)
+# very big move ==> likely failure to change name of target	
+			if dx.value > SKIP_ANGSTEP:
+				if verbose==True: logging.info('Detected a jump of dx={:.1f} arcsec implying name change from {} failure; substituting in additional names...'.format(dx,n))
+				for jjj in range(len(dps)-1):
+					pos2 = SkyCoord(dps.loc[jjj+1,'RA']+' '+dps.loc[jjj+1,'DEC'],unit=(u.hourangle, u.deg))
+					if pos1.separation(pos2).to(u.arcsec).value > SKIP_ANGSTEP:
+						dp.loc[dp['FILE']==dps.loc[jjj+1,'FILE'],'TARGET_NAME'] = dps.loc[jjj+1,'ALTNAME']
+			elif dx.value > MOVING_MAXSEP or ((dx/dt).value>MOVING_ANGRATE and dt.value > MOVING_MINTIME):
+				dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'] = 'moving'
+				if verbose==True: logging.info('{}: dx={:.1f} arcsec, dt={:.2f} hr, pm={:.2f} arcsec/hr = {}'.format(n,dx,dt,dx/dt,dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING']))
+			else: pass
+#			print('{} dx={:.1f} vs {:.1f} dx/dt={:.1f} vs {:.1f} dt={:.2f} dx? {} dx max?  {} dx/dt? {} label={}'.format(n,dx.value,MOVING_MAXSEP,(dx/dt).value,MOVING_ANGRATE,dt.value,dx.value > SKIP_ANGSTEP,dx.value > MOVING_MAXSEP,((dx/dt).value>MOVING_ANGRATE and dt.value > 0.1),list(dp.loc[dp['TARGET_NAME']==n,'FIXED-MOVING'])[0]))
+			# except Exception as e:
+			# 	if verbose==True: logging.info('\tWarning: exception {} encountered for file {}; assuming fixed source'.format(e,dpsa['FILE'],iloc[0]))
+
+# program and PI info (based on code by Evan Watson)
+# NOTE: in this realization we're assuming its the same program and PI for the entire folder
+# this overrules what is header
+	obs_sch = pd.read_csv(OBSERVER_SCHEDULE_FILE, usecols=['MJD START','MJD END','PROGRAM','PI'])
+	mjd = dp.loc[0,'MJD']
+	obs_sch = obs_sch[obs_sch['MJD START']<mjd]
+	obs_sch = obs_sch[obs_sch['MJD END']>mjd]
+	obs_sch.reset_index(inplace=True)
+	if len(obs_sch)>0:
+		dp['PROGRAM'] = [obs_sch.loc[0,'PROGRAM']]*len(dp)
+		dp['OBSERVER'] = [obs_sch.loc[0,'PI']]*len(dp)
+
+# some additional formatting cleanup
+	dp['TARGET_NAME'] = [x.replace('.','_').replace(',','_') for x in dp['TARGET_NAME']]
+
+	return dp
+
+
 
 
 ##############################
@@ -1143,6 +979,8 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	return
 
 
+
+
 #############################
 ##### BATCH DRIVER FILE #####
 #############################
@@ -1246,12 +1084,13 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 				new_opar['TARGET_REDUCTION_MODE'] = new_opar['SUB'].strip()
 # shorthand for order/orders
 			for k in ['ORDER','ORDERS']:
-				if k in list(new_opar.keys()):
-					for x in ['TARGET','STD']: new_opar['{}_ORDERS'.format(x)] = new_opar[k]
+				if k in list(new_opar.keys()): new_opar['TARGET_ORDERS'] = new_opar[k]
+# shorthand for STANDARD order/orders (separated on 5/14/2025)
+			for k in ['STDORDER','STDORDERS']:
+				if k in list(new_opar.keys()): new_opar['STD_ORDERS'] = new_opar[k]
 # if target/std prefix not given, assumed targets
 			for k in list(OBSERVATION_PARAMETERS_OPTIONAL.keys()):
-				if k in list(new_opar.keys()):
-					new_opar['TARGET_{}'.format(k)] = new_opar[k]
+				if k in list(new_opar.keys()): new_opar['TARGET_{}'.format(k)] = new_opar[k]
 # preserve type information (string conversion)
 			for k in list(OBSERVATION_PARAMETERS_OPTIONAL.keys()):
 				for x in ['TARGET','STD']:
@@ -1270,24 +1109,12 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 				spar['{}_BACKGROUND_RADIUS'.format(x)] = spar['{}_APERTURE'.format(x)]+0.05
 				if verbose==True: logging.info(' Increased {}_BACKGROUND_RADIUS to match {}_APERTURE = {}'.format(x,x,spar['{}_APERTURE'.format(x)]))
 
-# type conversions			
-# some instrument specific adjustments
-# THIS MIGHT NEED TO BE MANAGED THROUGH OTHER PYSPEXTOOL FUNCTIONS
-			if spar['MODE'] in ['Prism','LowRes15']: 
-				for x in ['TARGET','STD']: spar['{}_ORDERS'.format(x)] = '1'
-#				if verbose==True: print('Updated prism mode orders to 1')
-			for x in ['STD','TARGET']:
-				if parameters['INSTRUMENT'] == 'spex' and 'SXD' in spar['MODE'] and spar['{}_ORDERS'.format(x)][-1]=='9':
-					spar['{}_ORDERS'.format(x)] = spar['{}_ORDERS'.format(x)][:-1]+'8'
-#				if verbose==True: print('Updated spex SXD mode orders to {}'.format(spar['ORDERS']))
-
 		parameters['{}-{}'.format(OBSERVATION_SET_KEYWORD,str(i+1).zfill(4))] = spar
 
 # some specific parameters that need format conversation
 # THESE COMMANDS ARE NO LONGER USED
-	for k in ['qa_write','qa_show']:
-		if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
-
+	# for k in ['qa_write','qa_show']:
+	# 	if k in list(parameters.keys()): parameters[k] = bool(parameters[k])
 
 # report out parameters
 	# if verbose==True:
@@ -1450,6 +1277,11 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
+# modes
+	srcmodes = list(set(list(dpc['MODE'])))
+	for ignm in IGNORE_MODES: srcmodes = [i for i in srcmodes if i != ignm]
+	srcmodes.sort()
+
 # cal sets - determine here but print below
 	cal_sets=''
 	dpcal = dpc[dpc['TARGET_TYPE']=='calibration']
@@ -1461,21 +1293,22 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		if calf1[i]!=calf2[i]: cal_sets+='{:.0f}-{:.0f},'.format(calf1[i],calf2[i])
 	cal_sets = cal_sets[:-1]
 
-# std sets - determine here but print below
-# we have a problem here
+# std sets - separate by mode
 	std_sets_set=[]
-	dpstd = dpc[dpc['TARGET_TYPE']=='standard']
-	dpstd.reset_index(inplace=True)
-	stdshnm = list(set(list(dpstd['TARGET_NAME'])))
-	for snm in stdshnm:
-		dpstdx = dpstd[dpstd['TARGET_NAME']==snm]
-		dpstdx.reset_index(inplace=True)
-		fnum = np.array(dpstdx['FILE NUMBER'])
-		calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-		calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-#		print(snm,fnum,calf1,calf2)
-		for i in range(len(calf1)): 
-			if calf1[i]!=calf2[i]: std_sets_set.append('{:.0f}-{:.0f},'.format(calf1[i],calf2[i]))
+	for m in srcmodes:
+		dpstd = dpc[dpc['MODE']==m]
+		dpstd = dpstd[dpstd['TARGET_TYPE']=='standard']
+		dpstd.reset_index(inplace=True)
+		stdshnm = list(set(list(dpstd['TARGET_NAME'])))
+		for snm in stdshnm:
+			dpstdx = dpstd[dpstd['TARGET_NAME']==snm]
+			dpstdx.reset_index(inplace=True)
+			fnum = np.array(dpstdx['FILE NUMBER'])
+			calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+			calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+	#		print(snm,fnum,calf1,calf2)
+			for i in range(len(calf1)): 
+				if calf1[i]!=calf2[i]: std_sets_set.append('{:.0f}-{:.0f},'.format(calf1[i],calf2[i]))
 #	print(std_sets_set)
 	std_sets_set.sort()
 	std_sets = ''
@@ -1516,75 +1349,75 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		src_coord = SkyCoord(dps.loc[0,'RA']+' '+dps.loc[0,'DEC'],unit=(u.hourangle, u.deg))
 
 # loop over modes, dropping ignored modes
-		srcmodes = list(set(list(dps['MODE'])))
-		for ignm in IGNORE_MODES: srcmodes = [i for i in srcmodes if i != ignm]
-		srcmodes.sort()
 		for m in srcmodes:
 			dpsrc = dps[dps['MODE']==m]
 			dpsrc.reset_index(inplace=True)
-			line='{}\t{}\t{}-ps\t{}\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc.loc[0,'FIXED-MOVING']),OBSERVATION_PARAMETERS_REQUIRED['TARGET_REDUCTION_MODE'],n,str(dpsrc.loc[0,'PREFIX']))
+			if len(dpsrc)>1:
+				line='{}\t{}\t{}-ps\t{}\t{}\t{}'.format(OBSERVATION_SET_KEYWORD,str(m),str(dpsrc.loc[0,'FIXED-MOVING']),OBSERVATION_PARAMETERS_REQUIRED['TARGET_REDUCTION_MODE'],n,str(dpsrc.loc[0,'PREFIX']))
 #			print(n,m,np.array(dpsrc['FILE NUMBER']),numberList(np.array(dpsrc['FILE NUMBER'])))
-			line+='\t{}'.format(numberList(np.array(dpsrc['FILE NUMBER'])))
+				line+='\t{}'.format(numberList(np.array(dpsrc['FILE NUMBER'])))
 
 # assign calibrations
-			dpcals = dpcal[dpcal['MODE']==m]
-			dpcals.reset_index(inplace=True)
-			if len(dpcals)==0: 
-				if verbose==True: logging.info('WARNING: no calibration files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
-				cs = cal_sets.split(',')[0]
-			else:
-				cnum = np.array(dpcals['FILE NUMBER'])
-				cnum1 = cnum[np.where(np.abs(cnum-np.roll(cnum,1))>1)]
-				cnum2 = cnum[np.where(np.abs(cnum-np.roll(cnum,-1))>1)]
-				ical = np.argmin(np.abs(cnum1-np.median(dpsrc['FILE NUMBER'])))
-				cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
-			line+='\tflat{}.fits\twavecal{}.fits'.format(cs,cs)
+				dpcals = dpcal[dpcal['MODE']==m]
+				dpcals.reset_index(inplace=True)
+				if len(dpcals)==0: 
+					if verbose==True: logging.info('WARNING: no calibration files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
+					cs = cal_sets.split(',')[0]
+				else:
+					cnum = np.array(dpcals['FILE NUMBER'])
+					cnum1 = cnum[np.where(np.abs(cnum-np.roll(cnum,1))>1)]
+					cnum2 = cnum[np.where(np.abs(cnum-np.roll(cnum,-1))>1)]
+					ical = np.argmin(np.abs(cnum1-np.median(dpsrc['FILE NUMBER'])))
+					cs = '{:.0f}-{:.0f}'.format(cnum1[ical],cnum2[ical])
+				line+='\tflat{}.fits\twavecal{}.fits'.format(cs,cs)
 
 # assign flux stds based on closest in airmass (0.2), time (2 hr) and position (10 degree) for first std in set
-			dpstds = dpc[dpc['TARGET_TYPE']=='standard']
-			dpstds = dpstds[dpstds['MODE']==m]
-			dpstds.reset_index(inplace=True)
-			ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
-			if len(dpstds)==0: 
-				if verbose==True: logging.info('WARNING: no flux standard files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
-				line+=ftxt
-			else:
-				# fnum = np.array(dpstds['FILE NUMBER'])
-				# calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
-				ssets = np.array(std_sets.split(','))
-				fnum = np.array(dpstds['FILE NUMBER'])
-				stdf1 = np.array(fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)])
-				if len(stdf1)==0: stdf1 = [fnum[0]]
-#				calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
-				# 
-				# stdf1 = [x.split('-')[0] for x in ssets]
-				diff = []
-				for fn in stdf1:
+				dpstds = dpc[dpc['TARGET_TYPE']=='standard']
+				dpstds = dpstds[dpstds['MODE']==m]
+				dpstds.reset_index(inplace=True)
+#				print(m,dpstds[['FILE NUMBER','MODE']])
+				ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
+				if len(dpstds)==0: 
+					if verbose==True: logging.info('WARNING: no flux standard files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
+					line+=ftxt
+				else:
+					# fnum = np.array(dpstds['FILE NUMBER'])
+					# calf1 = fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)]
+					ssets = np.array(std_sets.split(','))
+					fnum = np.array(dpstds['FILE NUMBER'])
+					stdf1 = np.array(fnum[np.where(np.abs(fnum-np.roll(fnum,1))>1)])
+					if len(stdf1)==0: stdf1 = [fnum[0]]
+	#				print(stdf1)
+	#				calf2 = fnum[np.where(np.abs(fnum-np.roll(fnum,-1))>1)]
+					# 
+					# stdf1 = [x.split('-')[0] for x in ssets]
+					diff = []
+					for fn in stdf1:
+						dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
+						dpstdx.reset_index(inplace=True)
+						diff.append(\
+							np.abs(float(dpstdx.loc[0,'AIRMASS'])-np.nanmedian(dpsrc['AIRMASS']))/0.2+\
+							np.abs(float(dpstdx.loc[0,'MJD'])-np.nanmedian(dpsrc['MJD']))*12.+\
+							src_coord.separation(SkyCoord(str(dpstdx.loc[0,'RA']).replace('+','')+' '+str(dpstdx.loc[0,'DEC']),unit=(u.hourangle, u.deg))).to(u.degree).value/10.)
+					fn = stdf1[np.argmin(diff)]
+					w = [x.split('-')[0]==str(fn) for x in ssets]
+#					print(fn,w,ssets,std_sets)
+					ss = ssets[w][0]
 					dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
 					dpstdx.reset_index(inplace=True)
-					diff.append(\
-						np.abs(float(dpstdx.loc[0,'AIRMASS'])-np.nanmedian(dpsrc['AIRMASS']))/0.2+\
-						np.abs(float(dpstdx.loc[0,'MJD'])-np.nanmedian(dpsrc['MJD']))*12.+\
-						src_coord.separation(SkyCoord(str(dpstdx.loc[0,'RA']).replace('+','')+' '+str(dpstdx.loc[0,'DEC']),unit=(u.hourangle, u.deg))).to(u.degree).value/10.)
-				fn = stdf1[np.argmin(diff)]
-				w = [x.split('-')[0]==str(fn) for x in ssets]
-#				print(fn,w,ssets,std_sets)
-				ss = ssets[w][0]
-				dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
-				dpstdx.reset_index(inplace=True)
-#				print(len(dpstdx))
-				tname = str(dpstdx.loc[0,'TARGET_NAME'])
-#				print(ss,tname)
-# temporary fix while sorting out why this doesn't work in testing				
-				if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
-				else: tspt = 'UNK'
-				if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
-				else: tbmag = 0.
-				if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
-				else: tvmag = 0.
-				line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
-#				print(line)
-			f.write(line+'\n')
+	#				print(len(dpstdx))
+					tname = str(dpstdx.loc[0,'TARGET_NAME'])
+	#				print(ss,tname)
+	# temporary fix while sorting out why this doesn't work in testing				
+					if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
+					else: tspt = 'UNK'
+					if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
+					else: tbmag = 0.
+					if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
+					else: tvmag = 0.
+					line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
+	#				print(line)
+				f.write(line+'\n')
 
 # print out cal sets
 	f.write('\n# Lamp calibrations\n')
@@ -1614,10 +1447,11 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	return
 
 
+
+
 #############################
 ##### QUALITY ASSURANCE #####
 #############################
-
 
 def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spectra',output_folder='',log_html_name='',options={},show_options=False,verbose=ERROR_CHECKING):
 	'''
@@ -2060,6 +1894,8 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 	return
 
 
+
+
 #############################
 ###### BATCH REDUCTION ######
 #############################
@@ -2149,11 +1985,20 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 	cal_sets = parameters['CAL_SETS'].split(',')
 	if parameters['CALIBRATIONS']==True:
 		for cs in cal_sets:
+# check that science modes are present to ignore unneeded cals
+# HOLD OFF ON THIS
+		# scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
+		# if len(scikeys)==0: 
+		# 	if parameters['VERBOSE']==True: logging.info('No science files were obtained in mode {}; skipping '.format(finfo['mode']))
+		# else:
 
 # flats
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['FLAT_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
 			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False)
+			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['FLAT_FILE_PREFIX'],\
+				'suffix': '.b', 'extension': '.fits'}
+			temp_files.extend(make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False))
 			temp_files = list(filter(lambda x: os.path.exists(x),temp_files))
 			input_files = list(filter(lambda x: parameters['FLAT_FILE_PREFIX'] in x,temp_files))
 			if len(input_files)==0: raise ValueError('Cannot find any of the flat files {}'.format(temp_files))
@@ -2170,23 +2015,33 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
 			temp_files = make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False)
+			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['ARC_FILE_PREFIX'],\
+				'suffix': '.b', 'extension': '.fits'}
+			temp_files.extend(make_full_path(parameters['DATA_FOLDER'],cs, indexinfo=indexinfo,exist=False))
 			temp_files = list(filter(lambda x: os.path.exists(x),temp_files))
 			input_files = list(filter(lambda x: parameters['ARC_FILE_PREFIX'] in x,temp_files))
 			if len(input_files)==0: raise ValueError('Cannot find any of the arc files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['ARC_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
+#			print(fnum,fstr)
+
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
-				ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs))
+
+# For LXD we need to set sky files to one of the source sequences
+				finfo = read_flat_fits(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))
+#				print(finfo)
+				if 'Long' in finfo['mode'] or 'LXD' in finfo['mode']:
+					scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
+					pkeys = list(filter(lambda x: parameters[x]['MODE']==finfo['mode'],scikeys))
+					sky_files = [parameters[pkeys[0]]['TARGET_PREFIX'], parameters[pkeys[0]]['TARGET_FILES'].split(',')[0]]
+					print([parameters['ARC_FILE_PREFIX'],fstr],sky_files)
+					ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs),sky_files=sky_files)
+				else:
+					ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs))
 			else:
 				if parameters['VERBOSE']==True: logging.info(' wavecal{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
 
-# IMPORTANT NOTE
-# FOR LXD MODE WE WILL NEED TO ADD IN A SKY FILE
-# USING FOLLOWING FORMAT
-# ps.extract.make_wavecal(['arc','575,576'],
-#                         'flat577-581.fits','wavecal575-576',
-#                         sky_files=['spc','555,556'])
 
 # extract all sources and standards
 	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
@@ -2195,23 +2050,64 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		if parameters['VERBOSE']==True: logging.info('No science files to reduce')
 		return
 
-##################
 ### EXTRACTION ###
-##################
-	if parameters['REREDUCE']==True: 
-		if parameters['VERBOSE']==True: logging.info('NOTE: rereduce is set; will overwrite prior reductions ') 
-		parameters['OVERWRITE']=True
 	if parameters['EXTRACT']==True:
 		for k in scikeys:
 			spar = parameters[k]
 			for kk in bkeys:
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
+# FLUX STANDARD
+# FUTURE: could also add file size: os.path.getsize(file1)>100:
+			naps = spar['STD_NAPS']
+			if spar['STD_REDUCTION_MODE'] not in ['A-B']: naps = 1
+			if spar['STD_APERTURE_METHOD']=='auto':
+				aperture_find = [spar['STD_APERTURE_METHOD'],naps]
+			else:
+				aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
+
+			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+			fnums = extract_filestring(spar['STD_FILES'],'index')
+			nim = 2
+			if spar['STD_REDUCTION_MODE'] in ['A']: nim = 1
+
+# loop through each pair of images
+			nloop = int(len(fnums)/nim)
+			for loop in range(nloop):
+				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
+# check if first file of pair is present - skip if not overwriting
+				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
+				else:
+					fnum = '{}'.format(fnums[loop*nim])
+					if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
+					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
+
+					ps.extract.extract(spar['STD_REDUCTION_MODE'],
+						[spar['STD_PREFIX'],fnum], # do just a pair
+#						[spar['STD_PREFIX'],spar['STD_FILES']], # do all pairs
+						spar['STD_FLAT_FILE'],
+						spar['STD_WAVECAL_FILE'],
+						aperture_find,
+						spar['STD_APERTURE'],
+						linearity_correction=True, # default, may not to make variable
+						output_prefix=spar['SPECTRA_FILE_PREFIX'],
+						write_rectified_orders=False, # default, may not to make variable
+						aperture_signs=None, # default, may not to make variable
+						include_orders=spar['STD_ORDERS'],
+						bg_annulus=[spar['STD_BACKGROUND_RADIUS'],spar['STD_BACKGROUND_WIDTH']],
+						fix_badpixels=False, # default, may not to make variable
+						psf_radius=spar['STD_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
+						detector_info={'correct_bias':True},
+						flat_field=True, # default, may not to make variable
+						verbose=parameters['VERBOSE'],
+						)
 
 # SCIENCE TARGET
 # FUTURE: could also add file size: os.path.getsize(file1)>100:
 			naps = spar['TARGET_NAPS']
 			if spar['TARGET_REDUCTION_MODE'].upper() not in ['A-B']: naps = 1
+			if spar['TARGET_REDUCTION_MODE'].upper() in ['A-SKY']: spar['TARGET_REDUCTION_MODE'] = 'A-B'
 			if spar['TARGET_APERTURE_METHOD']=='auto':
 				aperture_find = [spar['TARGET_APERTURE_METHOD'],naps]
 			else:
@@ -2252,53 +2148,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 						detector_info={'correct_bias':True},
 						flat_field=True, # default, may not to make variable
 						verbose=parameters['VERBOSE'],
-						)
-				
-# FLUX STANDARD
-# first check if file is present - skip if not overwriting
-# FUTURE: could also add file size: os.path.getsize(file1)>100:
-			naps = spar['STD_NAPS']
-			if spar['STD_REDUCTION_MODE'] not in ['A-B']: naps = 1
-			if spar['STD_APERTURE_METHOD']=='auto':
-				aperture_find = [spar['STD_APERTURE_METHOD'],naps]
-			else:
-				aperture_find = [spar['STD_APERTURE_METHOD'],spar['STD_APERTURE_POSITIONS']]
+						)				
 
-			fnums = extract_filestring(spar['STD_FILES'],'index')
-			nim = 2
-			if spar['STD_REDUCTION_MODE'] in ['A']: nim = 1
-
-# loop through each pair of images
-			nloop = int(len(fnums)/nim)
-			for loop in range(nloop):
-				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
-# check if first file of pair is present - skip if not overwriting
-				fnum = '{}'.format(fnums[loop*nim])
-				if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
-				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
-					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnum))
-				else:
-					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
-
-					ps.extract.extract(spar['STD_REDUCTION_MODE'],
-						[spar['STD_PREFIX'],fnum], # do just a pair
-#						[spar['STD_PREFIX'],spar['STD_FILES']], # do all pairs
-						spar['STD_FLAT_FILE'],
-						spar['STD_WAVECAL_FILE'],
-						aperture_find,
-						spar['STD_APERTURE'],
-						linearity_correction=True, # default, may not to make variable
-						output_prefix=spar['SPECTRA_FILE_PREFIX'],
-						write_rectified_orders=False, # default, may not to make variable
-						aperture_signs=None, # default, may not to make variable
-						include_orders=spar['STD_ORDERS'],
-						bg_annulus=[spar['STD_BACKGROUND_RADIUS'],spar['STD_BACKGROUND_WIDTH']],
-						fix_badpixels=False, # default, may not to make variable
-						psf_radius=spar['STD_PSF_RADIUS'], # note: None ==> not optimal extraction, may need to be updated
-						detector_info={'correct_bias':True},
-						flat_field=True, # default, may not to make variable
-						verbose=parameters['VERBOSE'],
-						)
 
 ############################
 ## COMBINE SPECTRAL FILES ##
@@ -2522,6 +2373,163 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # END OF BATCH
 	return
 
+
+##################################
+####### BASIC TEST OF CODE #######
+##################################
+
+def test(verbose=ERROR_CHECKING):
+	'''
+	Purpose
+	-------
+	Checks to make sure installation is correct and necessary data files are present
+
+	Parameters
+	----------
+	None
+
+	Outputs
+	-------
+	Will raise warning errors if any aspects of code aren't working, otherwise returns True
+
+	Example
+	-------
+	>>> from pyspextool.batch import batch
+	>>> batch.test(verbose=True)
+	...checking that code can find instrument data
+		PASS
+	...checking that code can find reduction data
+		PASS
+	...checking that code can find test data
+		PASS
+	...checking that code can process data files
+		PASS
+	...checking that code can generate log
+		PASS
+	...checking that code can generate driver
+		PASS
+	*** Batch reduction tests have all passed - happy reducing! ***
+
+	Dependencies
+	------------
+	processfolder()
+	writeLog()
+	writeDriver()
+	readDriver()
+	glob
+	os
+	pandas
+	'''	
+	testdatafold = os.path.join(CODEDIR,"../../tests/test_data/")
+	instrumentdatafold = os.path.join(CODEDIR,"instruments/")
+	reductiondatafold = os.path.join(CODEDIR,"data/")
+#########	
+######### NEED TO ADD IN LXD MODES FOR TESTING
+#########
+	test_instruments = ['spex-prism', 'spex-SXD','uspex-prism','uspex-SXD']
+	rawfold = os.path.join(testdatafold, "raw/")
+	procfold = os.path.join(testdatafold, "processed/")
+	log_test_file = 'log_test.csv'
+	driver_test_file = 'driver_test.txt'
+
+# make sure code can find main instrument data files
+	if verbose==True: logging.info('...checking that code can find instrument data')
+	assert os.path.exists(instrumentdatafold), 'could not find instrument data folder {}, try downloading from {}'.format(instrumentdatafold,BACKUP_INSTRUMENT_DATA_URL)
+	for x in ['spex','uspex']:
+		testfold = os.path.join(instrumentdatafold,'{}'.format(x))
+		assert os.path.exists(testfold), 'could not find instrument data folder {}, try downloading from {}'.format(testfold,BACKUP_INSTRUMENT_DATA_URL)
+		testfile = os.path.join(testfold,'{}_bdpxmk.fits'.format(x))
+		assert os.path.exists(testfile), 'could not find bad pixel mask file {}, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
+		fstat = os.stat(testfile)
+		assert fstat.st_size > 1000000, 'file {} is too small, try downloading from {}'.format(testfile,BACKUP_INSTRUMENT_DATA_URL)
+		if verbose==True: logging.info('\t{}: PASS'.format(x))
+
+# make sure code can find main reduction data files
+	if verbose==True: logging.info('...checking that code can find reduction data')
+	assert os.path.exists(reductiondatafold), 'could not find reduction data folder {}, try downloading from {}'.format(reductiondatafold,BACKUP_REDUCTION_DATA_URL)
+	for x in [100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000,6000,60000,75000]:
+		atmfile = os.path.join(reductiondatafold,'atran{:.0f}.fits'.format(x))
+		assert os.path.exists(atmfile), 'could not find atmosphere transmission file {}, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
+		fstat = os.stat(atmfile)
+		assert fstat.st_size > 1000000, 'atmosphere transmission file {} is too small, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
+	for x in [5000,50000]:
+		vfile = os.path.join(reductiondatafold,'Vega{:.0f}.fits'.format(x))
+		assert os.path.exists(vfile), 'Vega spectrum file {} not found in data folder {}, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
+		fstat = os.stat(vfile)
+		assert fstat.st_size > 1000000, 'Vega spectrum file {} is too small, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
+	if verbose==True: logging.info('\tPASS')
+
+# make sure code can find raw test data
+	if verbose==True: logging.info('...checking that code can find and process test data')
+	assert os.path.exists(testdatafold), 'Could not find test data folder {}'.format(testdatafold)
+	for inst in test_instruments:
+		rfold = os.path.join(rawfold, inst)
+		assert os.path.exists(rfold), 'Could not find test data folder {}'.format(os.path.join(rawfold, inst))
+		for fold in REDUCTION_FOLDERS:
+			assert os.path.exists(os.path.join(rfold, fold)), 'Could not find test data folder {}'.format(os.path.join(rawfold, inst, fold))
+		dfiles = glob.glob(os.path.join(rfold, "data/*.fits"))
+		assert len(dfiles) > 0, 'no data files found in {}'.format(os.path.join(rfold, "data/*.fits"))
+		result = processFolder(os.path.join(rfold, "data/"),verbose=False)
+		assert isinstance(result, pd.core.frame.DataFrame), 'Could not process data folder {}'.format(os.path.join(rfold, "data/"))
+		assert len(result) > 0, 'no data files found in {}'.format(os.path.join(rfold, "data/"))
+		for x in list(HEADER_DATA.keys()):
+			assert x in list(result.columns), 'Could not find required header data {} in data files in {}'.format(x,os.path.join(rfold, "data/"))
+		if verbose==True: logging.info('\t{}: PASS'.format(inst))
+#	if verbose==True: print('\tPASS')
+
+# process files and generate a test log
+	if verbose==True: logging.info('...checking that code can generate log')
+	for inst in test_instruments:
+		rfold = os.path.join(rawfold, inst)
+		pfold = os.path.join(procfold, inst)
+		logfile = os.path.join(pfold, "qa", log_test_file)
+		dp = processFolder(os.path.join(rfold, "data/"),verbose=False)
+		writeLog(dp,logfile,verbose=False)
+		assert os.path.exists(logfile), 'Could not find log file {} after creation'.format(driver_file)
+		dp = pd.read_csv(logfile)
+		assert isinstance(dp, pd.core.frame.DataFrame), 'Log file parameter error: not a pandas dataframe for log file {}'.format(log_file)
+		assert len(dp)>0
+		for x in LOG_PARAMETERS['COLUMNS']:
+			assert x in list(dp.columns), 'Could not find required column {} in log file {}'.format(x,logfile)
+		for x in SIMBAD_COLS:
+			assert x in list(dp.columns), 'Could not find required SIMBAD column {} in log file {}'.format(x,logfile)
+		if verbose==True: logging.info('\t{}: PASS'.format(inst))
+
+# CLEANUP
+# remove generated files
+
+# process files and generate a driver file
+	if verbose==True: logging.info('...checking that code can generate driver')
+	for inst in test_instruments:
+		rfold = os.path.join(rawfold, inst)
+		pfold = os.path.join(procfold, inst)
+		logfile = os.path.join(pfold, "qa", log_test_file)
+		driver_file = os.path.join(pfold, "proc", driver_test_file)
+#	dp = processFolder(os.path.join(tfold, "data/"),verbose=False)
+		dp = pd.read_csv(logfile)
+		writeDriver(dp,driver_file,data_folder=os.path.join(rfold, "data"),check=False,create_folders=False,verbose=False)
+		assert os.path.exists(driver_file), 'Could not find driver file {} after creation'.format(driver_file)
+
+# read in existing driver in test folder and check
+		par = readDriver(driver_file,verbose=False)
+		assert isinstance(par, dict), 'Driver file parameter error: not a dictionary for driver file {}'.format(driver_file)
+		for x in BATCH_PARAMETERS:
+			assert x in list(par.keys()), 'Could not find required parameter {} in driver file {}'.format(x,driver_file)
+		if verbose==True: logging.info('\t{}: PASS'.format(inst))
+
+# CLEANUP
+# remove generated files
+	if verbose==True: logging.info('...cleaning up')
+	for inst in test_instruments:
+		rfold = os.path.join(rawfold, inst)
+		pfold = os.path.join(procfold, inst)
+		logfile = os.path.join(pfold, "qa", log_test_file)
+		os.remove(logfile)
+		driver_file = os.path.join(pfold, "proc", driver_test_file)
+		os.remove(driver_file)
+	if verbose==True: logging.info('\n*** Batch reduction tests have all passed - happy reducing! ***\n')
+
+	return
 
 
 # external function call

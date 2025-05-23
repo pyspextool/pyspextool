@@ -3,16 +3,15 @@ import numpy.typing as npt
 from astropy.io import fits
 from astropy.time import Time
 import re
-import os
+import sys
 
-from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
 from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils import math
-from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
+from pyspextool.setup_utils import mishu
 
 
 def correct_linearity(image:npt.ArrayLike,
@@ -93,15 +92,21 @@ def correct_linearity(image:npt.ArrayLike,
 
     mean_pedestal_1 = image*np.squeeze(tread[z])*(ndr+1)/2/itime
     mean_signal_1 = image + mean_pedestal_1
-    
+
     # Do the corrections
 
     correction = c0/spex_linearity_imagepoly(mean_pedestal_1,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_pedestal_1 = mean_pedestal_1*correction
 
     correction = c0/spex_linearity_imagepoly(mean_signal_1,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_signal_1 = mean_signal_1*correction    
 
     # Create a new estimate of the image
@@ -115,16 +120,22 @@ def correct_linearity(image:npt.ArrayLike,
     # Estimate the mean pedistal and signal images
 
     mean_pedestal_2 = image_2*np.squeeze(tread[z])*(ndr+1)/2/itime
-    mean_signal_2 = image_2 + mean_pedestal_2
+    mean_signal_2 = image + mean_pedestal_2
 
     # Do the corrections
     
     correction = c0/spex_linearity_imagepoly(mean_pedestal_2,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_pedestal_2 = mean_pedestal_2*correction
 
     correction = c0/spex_linearity_imagepoly(mean_signal_2,coefficients)
     correction = np.clip(correction, 1.0, None)
+    z_nan = np.isnan(correction)
+    correction[z_nan] = 1.0
+
     corrected_mean_signal_2 = mean_signal_2*correction    
 
     # Create a new estimate of the image
@@ -326,7 +337,7 @@ def load_data(file,
     # Open the file and grab important values 
     #
     
-    hdul = fits.open(file)
+    hdul = fits.open(file, ignore_missing_end=True)
     hdul[0].verify('silentfix')  # this was needed to correct hdr problems
 
     itime = hdul[0].header['ITIME']
@@ -468,15 +479,10 @@ def read_fits(files,
     #
     # Correct for non-linearity?
     #
-    
     if linearity_correction is True:
-
-        linearity_file = os.path.join(setup.state['instrument_path'],
-                                      'spex_lincorr.fits')
+        linearity_file = mishu.fetch("spex_lincorr.fits")
         linearity_coeffs = fits.getdata(linearity_file)
-
     else:
-
         linearity_coeffs = None
 
     #
@@ -591,5 +597,3 @@ def spex_linearity_imagepoly(image, coefficients):
     result = image_poly(corrected_image, coefficients)
 
     return result
-
-

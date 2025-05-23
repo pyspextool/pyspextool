@@ -185,7 +185,7 @@ def rectify_order(image:npt.ArrayLike,
 
     # Do the resampling
     
-    f = interpolate.RegularGridInterpolator(points, image)
+    f = interpolate.RegularGridInterpolator(points, image,method='cubic')
     image = f((yidx, xidx))
 
     ny, nx = image.shape
@@ -205,7 +205,7 @@ def rectify_order(image:npt.ArrayLike,
 
         # Do the resampling
     
-        f = interpolate.RegularGridInterpolator(points, variance)
+        f = interpolate.RegularGridInterpolator(points, variance,method='cubic')
         var = f((yidx, xidx))
 
         order.update({'variance':var})

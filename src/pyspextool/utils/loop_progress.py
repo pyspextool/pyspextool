@@ -21,27 +21,25 @@ def loop_progress(idx, bot, top, message=None):
     --------
     None
 
-    Procedure
-    ---------
-    Just prints a updating message on the command line
-
     Example
     --------
     >>> loopprogress(i,0,100)
      90% |*************************************                       |
 
-
-    Modification History
-    --------------------
-    2022-05-25 - Written by M. Cushing, University of Toledo.
-                Based on the Spextool mc_loopprogress.pro IDL program.
     """
     
     # Print the message if necessary
     
     if idx == 0 and message is not None:
 
-        print(message)
+        if message != '':
+
+            print(message)
+
+        frac = 0
+        stars = "{:<70}".format('*'*round(frac*70))
+        print(str(round(frac*100)).rjust(3), '% ', '|', stars, '|',
+              sep='', end='\r')
 
     # Run counter        
             

@@ -1,5 +1,10 @@
-def add_entry(idict, key, direction, newkey, nvalue):
+def add_entry(idict,
+              key,
+              direction,
+              newkey,
+              nvalue):
 
+    
     """
     Adds a key and value to a dictionary.
 

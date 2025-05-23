@@ -15,11 +15,12 @@ from pyspextool.extract.images import make_ordermask
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
+from pyspextool.utils.arrays import idl_rotate
 
 
 def make_flat(files:list | str,
               output_name:str,
-              linearity_correction=True,
+              linearity_correction=False,
               detector_info:dict=None,
               normalize:bool=True,
               verbose:bool=None,
@@ -44,7 +45,7 @@ def make_flat(files:list | str,
     output_name : str
         The root of the filename of the flat field image to written to disk.
 
-    linearity_correction : {True, False}
+    linearity_correction : {False, True}
         Set to True to correct for non-linearity.
         Set to False to not correct for non-linearity.
 
@@ -167,6 +168,7 @@ def make_flat(files:list | str,
 
     # Load the FITS files into memory
 
+    logging.info(' Loading the images.')
     result = instr.read_fits(files,
                              setup.state['linearity_info'],
                              rotate=modeinfo['rotation'],
@@ -184,6 +186,11 @@ def make_flat(files:list | str,
 
     average_header = average_headerinfo(hdr)    
     flag = math.combine_flag_stack(mask)
+
+#    # Load the bad pixel mask
+
+#    bad_pixel_mask = idl_rotate(setup.state['raw_bad_pixel_mask'],
+#                                modeinfo['rotation'])
 
     #
     # Combine the images
@@ -233,8 +240,9 @@ def make_flat(files:list | str,
                            qa_show=qa['show'],
                            qa_showblock=qa['showblock'],
                            qa_showscale=qa['showscale'],
-                           qa_fullpath=fullpath)
-        
+                           qa_fullpath=fullpath,
+                           debug=False)
+
     edgecoeffs = result[0]
     xranges = result[1]
 
@@ -254,7 +262,7 @@ def make_flat(files:list | str,
                                          modeinfo['nygrid'],
                                          var=munc ** 2,
                                          ybuffer=modeinfo['ybuffer'],
-                                         verbose=verbose)
+                                         verbose=qa['verbose'])
 
     else:
 
@@ -264,7 +272,7 @@ def make_flat(files:list | str,
     
     # Protect against zeros
 
-    z = np.where(nimg == 0)
+    z = np.where(nimg <= 0)
     nimg[z] = 1
 
     #

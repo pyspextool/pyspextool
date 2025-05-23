@@ -194,7 +194,7 @@ def find_lines_1dxd(spectra:dict,
             try:
 
                 fit = fit_peak1d(x[zline],y[zline],
-                                 nparms=line_info['num_parms'][i],
+                                 nparms=line_info['num_parms'][i].item(),
                                  type=type,positive=True)
 
             except RuntimeError:
@@ -402,7 +402,9 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
                             qa_show:bool=False,
                             qa_showscale:float | int=None,
                             qa_showblock:bool=False,
-                            qa_fullpath:bool=None):
+                            qa_fullpath:bool=None,
+                            anchor_label:str='Anchor', 
+                            source_label:str='Source'):
 
     """
     To determine the shift (in pixels) between two spectra.
@@ -516,7 +518,7 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
     # Run the cross correlation
     #
     
-    xcor = correlate(sgysource, sgyanchor, mode='same', method='fft')
+    xcor = correlate(sgysource, sgyanchor, mode='same', method='direct')
     
     xcor = xcor / np.nanmax(xcor)
 
@@ -573,7 +575,9 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
                                  fitlag,
                                  fitxcor,
                                  r['fit'],
-                                 offset)
+                                 offset,
+                                 anchor_label=anchor_label,
+                                 source_label=source_label)
         
         pl.show(block=qa['showblock'])
         if qa['showblock'] is False: pl.pause(1)
@@ -592,7 +596,10 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
                                  fitlag,
                                  fitxcor,
                                  r['fit'],
-                                 offset)
+                                 offset,
+                                 anchor_label=anchor_label,
+                                 source_label=source_label)
+
 
         pl.savefig(qa_fullpath)
         pl.close()
@@ -938,7 +945,9 @@ def plot_spectral_pixelshift(plot_number:int,
                              fit_lag:npt.ArrayLike,
                              fit_xcorrelation:npt.ArrayLike,
                              fit:npt.ArrayLike,
-                             offset:int | float):
+                             offset:int | float,
+                             anchor_label:str='Anchor', 
+                             source_label:str='Source'):
 
     """
     Plot the cross correlation results in a device independent way
@@ -983,6 +992,7 @@ def plot_spectral_pixelshift(plot_number:int,
 
     offset : float or int
         The mean value of the fit
+
 
     Returns
     -------
@@ -1032,10 +1042,10 @@ def plot_spectral_pixelshift(plot_number:int,
     axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
     axes1.set(xlabel='Column Number', ylabel='Relative Intensity')
 
-    axes1.text(0.95, 0.8, 'anchor', color='black', ha='right',
+    axes1.text(0.95, 0.8, anchor_label, color='black', ha='right',
                transform=axes1.transAxes)
 
-    axes1.text(0.95, 0.7, 'source', color='r', ha='right',
+    axes1.text(0.95, 0.7, source_label, color='r', ha='right',
                transform=axes1.transAxes)
 
     # Deal with the tick marks
@@ -1880,7 +1890,8 @@ def wavecal_solution_1d(orders:npt.ArrayLike,
     check_parameter('wavecal_solution_1d', 'dispersion_degree',
                     dispersion_degree, ['float','int'])        
     
-    check_parameter('wavecal_solution_1d', 'xd_info', xd_info, 'dict')
+    check_parameter('wavecal_solution_1d', 'xd_info', xd_info, 
+                    ['dict', 'NoneType'])
 
     check_parameter('wavecal_solution_1d', 'verbose', verbose, 'bool')
 
@@ -1907,12 +1918,12 @@ def wavecal_solution_1d(orders:npt.ArrayLike,
 
         # Do the fit
         
-        fit = poly_fit_1d(line_info['x'],
-                          line_info['wavelength'].astype(np.float16),
-                          dispersion_degree,
-                          goodbad=line_info['goodbad'],
-                          robust={'thresh': 4, 'eps': 0.1})
-
+        fit = polyfit_1d(line_info['x'],
+                         line_info['wavelength'].astype(np.float16),
+                         dispersion_degree,
+                         goodbad=line_info['goodbad'],
+                         robust={'thresh': 4, 'eps': 0.1})
+        
         # Do the QA plotting
         
         residuals = (line_info['wavelength'].astype(np.float16) -

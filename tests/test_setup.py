@@ -6,41 +6,12 @@ from pyspextool.setup_utils import (
     set_paths,
     set_instrument,
     set_qa_state,
+    mishu,
 )
 
 
-cwd = os.path.abspath(os.getcwd())
-
-spex_prism_paths = {
-    "raw_path": "tests/test_data/raw/spex-prism/data/",
-    "cal_path": "tests/test_data/raw/spex-prism/cals/",
-    "proc_path": "tests/test_data/raw/spex-prism/proc/",
-    "qa_path": "tests/test_data/raw/spex-prism/qa/",
-}
-
-spex_sxd_paths = {
-    "raw_path": "tests/test_data/raw/spex-SXD/data/",
-    "cal_path": "tests/test_data/raw/spex-SXD/cals/",
-    "proc_path": "tests/test_data/raw/spex-SXD/proc/",
-    "qa_path": "tests/test_data/raw/spex-SXD/qa/",
-}
-
-uspex_sxd_paths = {
-    "raw_path": "tests/test_data/raw/uspex-SXD/data/",
-    "cal_path": "tests/test_data/raw/uspex-SXD/cals/",
-    "proc_path": "tests/test_data/raw/uspex-SXD/proc/",
-    "qa_path": "tests/test_data/raw/uspex-SXD/qa/",
-}
-
-uspex_prism_paths = {
-    "raw_path": "tests/test_data/raw/uspex-prism/data/",
-    "cal_path": "tests/test_data/raw/uspex-prism/cals/",
-    "proc_path": "tests/test_data/raw/uspex-prism/proc/",
-    "qa_path": "tests/test_data/raw/uspex-prism/qa/",
-}
-
-
-def test_pyspextool_setup_defaults():
+def test_pyspextool_setup_defaults(raw_setup):
+    spex_prism_paths = raw_setup["spex_prism"]
     pyspextool_setup(
         raw_path=spex_prism_paths["raw_path"],
         cal_path=spex_prism_paths["cal_path"],
@@ -63,16 +34,20 @@ def test_pyspextool_setup_defaults():
 
 
 @pytest.mark.parametrize(
-    "paths", [spex_prism_paths, spex_sxd_paths, uspex_prism_paths, uspex_sxd_paths]
+    "setup_name", ["spex_lxd","spex_prism", "spex_sxd", "uspex_lxd","uspex_prism", "uspex_sxd"]
 )
-def test_set_paths(paths):
+def test_set_paths(setup_name, raw_setup):
+    setup_dict = raw_setup[setup_name]
     set_paths(
-        paths["raw_path"], paths["cal_path"], paths["proc_path"], paths["qa_path"]
+        setup_dict["raw_path"],
+        setup_dict["cal_path"],
+        setup_dict["proc_path"],
+        setup_dict["qa_path"],
     )
 
-    assert setup.state["raw_path"] == os.path.abspath(paths["raw_path"])
-    assert setup.state["cal_path"] == os.path.abspath(paths["cal_path"])
-    assert setup.state["proc_path"] == os.path.abspath(paths["proc_path"])
+    assert setup.state["raw_path"] == os.path.abspath(setup_dict["raw_path"])
+    assert setup.state["cal_path"] == os.path.abspath(setup_dict["cal_path"])
+    assert setup.state["proc_path"] == os.path.abspath(setup_dict["proc_path"])
 
 
 #  # TODO: add tests for bad paths
@@ -91,7 +66,7 @@ def test_set_instrument(instrument):
         assert setup.state["lincormax"] == 4000
 
 
-#def test_set_instrument_state_bad():
+# def test_set_instrument_state_bad():
 #    with pytest.raises(ValueError):
 #        set_instrument("SpeX")
 #
@@ -103,8 +78,21 @@ def test_set_instrument(instrument):
 
 
 def test_set_qa_state():
-    set_qa_state(False, 1, False, False, '.pdf')
+    set_qa_state(False, 1, False, False, ".pdf")
 
     assert setup.state["qa_show"] is False
     assert setup.state["qa_write"] is False
     assert setup.state["qa_extension"] == ".pdf"
+
+
+@pytest.mark.parametrize(
+    "file",
+    [
+        "uspex_lincorr.fits",
+        "uspex_bias.fits",
+        "spex_lincorr.fits",
+        "Vega50000.fits",
+    ],
+)
+def test_pooch_cache(file):
+    assert mishu.is_available(file)
