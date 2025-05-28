@@ -259,7 +259,8 @@ def make_wavecal(arc_files:str | list,
             'please check the QA plot '+filename1+'.  Also '+\
             "consider setting `qa_write_findlines` to True and inspecting "+\
             'the QA plot '+filename2+' to ensure all lines are identified '+\
-            'properly.  To proceed anyway, '+\
+            'properly.  Please choose unsaturated files for the wavelength '+\
+            'calibration To proceed without doing so, '+\
             "set the `ignore_saturation_error` keyword to True."
 
         if ignore_saturation_error is False:
