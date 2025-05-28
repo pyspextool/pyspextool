@@ -9,6 +9,7 @@ from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
 def plot_image(image:npt.ArrayLike,
+               zrange:str | list | float=None,
                mask:npt.ArrayLike=None,
                orders_plotinfo:dict=None,
                trace_plotinfo:dict=None,
@@ -31,6 +32,9 @@ def plot_image(image:npt.ArrayLike,
         with the rows of `img` and the spatial axis is roughly aligned 
         with the columns of `img.  That is, orders go left-right and 
         not up-down. 
+
+    zrange : str, list, float, None
+
 
     mask : ndarray, optional
         An (nrows, ncols) array where "bad" pixels are set to unity and 
@@ -143,8 +147,8 @@ def plot_image(image:npt.ArrayLike,
     check_parameter('plot_image', 'showblock', showblock, 'bool')
 
     check_parameter('plot_image', 'showscale', showscale, ['int','float'])
-    
 
+    
     #
     # Make the plot
     #
@@ -156,7 +160,8 @@ def plot_image(image:npt.ArrayLike,
         doplot(None,
                figure_size, 
                font_size,
-               image,               
+               image,   
+               zrange=zrange,
                mask=mask,
                locateorders_plotinfo=locateorders_plotinfo,
                orders_plotinfo=orders_plotinfo,
@@ -173,6 +178,7 @@ def plot_image(image:npt.ArrayLike,
                (figure_size[0]*showscale,figure_size[1]*showscale),
                font_size*showscale,
                image,
+               zrange=zrange,
                mask=mask,
                locateorders_plotinfo=locateorders_plotinfo,
                orders_plotinfo=orders_plotinfo,
@@ -189,6 +195,7 @@ def doplot(plot_number:int,
            figure_size:tuple,
            font_size:float | int,
            image:npt.ArrayLike,
+           zrange=None,
            mask:npt.ArrayLike=None,
            locateorders_plotinfo:dict=None,
            orders_plotinfo:dict=None,
@@ -203,22 +210,30 @@ def doplot(plot_number:int,
     # Set the fonts
 
     # removed helvetica - problem for windows OS
-    font = {
-    #'family' : 'helvetica',
-            'weight' : 'normal',
+    font = {'weight' : 'normal',
             'size'   : font_size}
 
     rc('font', **font)
     
     # Set the color map
 
-    minmax = get_image_range(image, 'zscale')
-    if minmax[0] > minmax[1]:
-
-        minmax = (np.min(image), np.max(image))
-        
     cmap = pl.cm.gray
 
+    # Get the plot range
+
+    if isinstance(zrange, list):
+        
+        minmax = np.array(zrange)
+        
+    else:
+
+        type = 'zscale' if zrange == None else zrange
+
+        minmax = get_image_range(image, type)
+        if minmax[0] > minmax[1]:
+            
+            minmax = (np.nanmin(image), np.nanmax(image))
+    
     # Now check to see if the mask is passed.
 
     pimage = np.copy(image)
