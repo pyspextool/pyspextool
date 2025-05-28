@@ -4,7 +4,6 @@ import matplotlib.pyplot as pl
 from matplotlib import rc
 from matplotlib.ticker import AutoMinorLocator
 from matplotlib.backends.backend_pdf import PdfPages
-from os.path import join
 from scipy.interpolate import interp1d
 from scipy.signal import correlate, correlation_lags
 from astropy.io import fits
@@ -18,7 +17,7 @@ from pyspextool.plot.limits import get_spectra_range
 from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.fit.robust_savgol import robust_savgol
 from pyspextool.utils.arrays import idl_unrotate, idl_rotate
-from pyspextool.utils.for_print import for_print
+from pyspextool.pyspextoolerror import pySpextoolError
 
 
 def find_lines_1dxd(spectra:dict,
@@ -128,7 +127,6 @@ def find_lines_1dxd(spectra:dict,
 
     # Get basic information
     
-    norders = len(orders)
     nlines = len(line_info['wavelength'])
 
     # Setup the output arrays
@@ -217,7 +215,7 @@ def find_lines_1dxd(spectra:dict,
             
             m2 = np.sum((x[zline]-m1)**2*(y[zline]-med)) / np.sum(y[zline]-med)
 
-            f = scipy.interpolate.interp1d(x[zline],y[zline])
+            f = interp1d(x[zline],y[zline])
             inten = f(m1)
 
             line_xpos[i] = m1            
@@ -390,6 +388,10 @@ def get_line_guess_position(spectra:npt.ArrayLike,
     line_info['range_max_xguess'] = x_rght
 
     return line_info
+
+
+
+
 
 def get_spectral_pixelshift(xanchor:npt.ArrayLike,
                             yanchor:npt.ArrayLike,
@@ -580,7 +582,9 @@ def get_spectral_pixelshift(xanchor:npt.ArrayLike,
                                  source_label=source_label)
         
         pl.show(block=qa['showblock'])
-        if qa['showblock'] is False: pl.pause(1)
+        if qa['showblock'] is False: 
+            
+            pl.pause(1)
     
     if isinstance(qa_fullpath,str):
 
@@ -741,6 +745,137 @@ def make_interp_indices_1d(edgecoeffs:npt.ArrayLike,
         return indices
 
 
+
+def mix_orders(image1:npt.ArrayLike,
+               image1_mask:npt.ArrayLike,
+               image2:npt.ArrayLike,
+               image2_mask:npt.ArrayLike,
+               order_mask:npt.ArrayLike,
+               orders:npt.ArrayLike | list,
+               orders_from_image1:npt.ArrayLike | list,
+               orders_from_image2:npt.ArrayLike | list,
+               interorder_value=0.0):
+
+    """
+    To create an image with orders from two different images.
+
+    Parameters
+    ----------
+    image1 : ndarray
+        An (nrows, ncols) array.
+
+    image1_mask : ndarray
+        An (nrows, ncols) bit mask.
+
+    image2 : ndarray
+        An (nrows, ncols) array.
+
+    image2_mask : ndarray
+        An (nrows, ncols) bit mask.
+
+    order_mask : ndarray
+        An (nrows, ncols) array where each pixel is set to its order number.
+
+    orders : ndarray
+        An (norders,) array of the orders numbers in order_mask.
+
+    orders_from_image1: ndarray
+        A array of orders numbers to grab from image 1.
+
+    orders_from_image2: ndarray
+        A array of orders numbers to grab from image 2.
+
+    interorder_value : float, optional
+        The value to use for inter-order pixels.  The default is np.nan.
+             
+    Returns
+    -------
+    ndarray
+
+       
+    """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('mix_orders', 'image1', image1, 'ndarray')
+
+    check_parameter('mix_orders', 'image1_mask', image1_mask, 'ndarray')
+
+    check_parameter('mix_orders', 'image2', image2, 'ndarray')
+
+    check_parameter('mix_orders', 'image2_mask', image2_mask, 'ndarray')
+
+    check_parameter('mix_orders', 'order_mask', order_mask, 'ndarray')
+
+    check_parameter('mix_orders', 'orders', orders, ['ndarray','list'])
+
+    check_parameter('mix_orders', 'orders_from_image1', orders_from_image1,
+                    ['ndarray','list'])                
+
+    check_parameter('mix_orders', 'orders_from_image2', orders_from_image2,
+                    ['ndarray','list'])
+
+    check_parameter('mix_orders', 'interorder_value', interorder_value,
+                    ['int','float'])
+
+    #
+    # Do checking to make sure the requested orders exist.
+    #
+
+    # Check the orders from image 1
+
+    if np.sum(np.in1d(orders_from_image1, orders)) != len(orders_from_image1):
+
+        message = 'Order number in parameter `orders_from_image1` is not in ' \
+            '`orders`.'
+        raise pySpextoolError(message)
+    
+    # Check the orders from image 2
+
+    if np.sum(np.in1d(orders_from_image2, orders)) != len(orders_from_image2):
+
+        message = 'Order number in parameter `orders_from_image2` is not in ' \
+            '`orders`.'
+        raise pySpextoolError(message)
+
+    # Check whether threre is overlap in orders_from_image1 and
+    # orders_from_image2
+
+    if np.sum(np.in1d(orders_from_image2, orders_from_image1)) != 0:
+
+        message = 'At least one order number is in both parameters ' \
+            '`orders_from_image1` and `orders_from_image2`.'
+        raise pySpextoolError(message)
+       
+    #
+    # Loop over each request
+    #
+
+    output_image = np.full_like(image1, interorder_value, dtype=float)
+    output_mask = np.full_like(image1_mask, 0)
+
+    for order in orders_from_image1:
+
+        z = np.where(order_mask == order)
+        output_image[z] = image1[z]
+        output_mask[z] = image1_mask[z]
+
+    for order in orders_from_image2:
+       
+        z = np.where(order_mask == order)
+        output_image[z] = image2[z]
+        output_mask[z] = image2_mask[z]
+
+    #
+    # Return the new array
+    #
+
+    return output_image, output_mask
+
+
+
 def plot_1d_residuals(figsize,
                       residuals:npt.ArrayLike,
                       residual_columns:npt.ArrayLike,
@@ -876,8 +1011,6 @@ def plot_1dxd_residuals(plot_number:int,
                    markeredgecolor='black',
                    markersize=8, alpha=0.8)
         
-        bad = goodbad == 0
-                
         axes1.plot(residual_orders[zbad], residuals[zbad], 's',
                    markersize=13, markerfacecolor='none', color='black')
                 
@@ -2004,7 +2137,9 @@ def wavecal_solution_1d(orders:npt.ArrayLike,
                                 xd_info['orderdeg'])
 
             pl.show(block=qa_showblock)
-            if qa_showblock is False:  pl.pause(1)
+            if qa_showblock is False:  
+            
+                pl.pause(1)
 
         if isinstance(qa_fullpath,str):
 
