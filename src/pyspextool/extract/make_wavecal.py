@@ -531,7 +531,7 @@ def make_wavecal(arc_files:str | list,
 
 
 def _make_wavecal_image(arc_files:str | list,
-                        sky_files:str | list,
+                        sky_files:str | list | None,
                         linearity_correction:bool,
                         detector_info:dict | None,
                         flat_file:str,
@@ -619,7 +619,7 @@ def _make_wavecal_image(arc_files:str | list,
                     ['str', 'list'])
 
     check_parameter('_make_wavecal_image', 'sky_files', sky_files, 
-                    ['str', 'list'])
+                    ['str', 'list', 'NoneType'])
 
     check_parameter('_make_wavecal_image', 'linearity_correction',
                     linearity_correction, 'bool')
