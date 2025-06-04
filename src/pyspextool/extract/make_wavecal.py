@@ -1,28 +1,20 @@
 import importlib
-from os.path import join, basename
+import os
 import numpy as np
-import numpy.typing as npt
 import logging
-import matplotlib.pyplot as pl
-
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.extract.flat import read_flat_fits
 from pyspextool.io.files import files_to_fullpath
-from pyspextool.io.reorder_irtf_files import reorder_irtf_files
-from pyspextool.extract.mix_orders import mix_orders
-from pyspextool.extract.wavecal import read_line_list, \
-    get_line_guess_position, find_lines_1dxd, get_spectral_pixelshift, \
-    make_interp_indices_1d, write_wavecal1d_fits, read_wavecal_file, \
-    simulate_wavecal_1dxd
-from pyspextool.extract.wavecal import wavecal_solution_1d
+from pyspextool.extract import wavecal
 from pyspextool.extract.extraction import extract_1dxd
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils.math import scale_data_stack
 from pyspextool.utils.math import median_data_stack
-
+from pyspextool.utils.math import combine_flag_stack
+from pyspextool.pyspextoolerror import pySpextoolError
 
 def make_wavecal(arc_files:str | list,
                  flat_file:str,
@@ -32,11 +24,14 @@ def make_wavecal(arc_files:str | list,
                  detector_info:dict=None,
                  use_stored_solution:bool=False,
                  verbose:bool=None,
+                 saturation_fraction:float=0.3,
+                 ignore_saturation_error:bool=False,
                  qa_show:bool=None,
                  qa_showscale:float | int=None,
                  qa_showblock:bool=None,
                  qa_write_findlines:bool=False,
                  qa_write:bool=None):
+
 
     """
     To create a spextool wavecal file.
@@ -78,6 +73,15 @@ def make_wavecal(arc_files:str | list,
     use_stored_solution : {False, True}
         Set to True to use  the solution stored in the pyspextool cal file.  
 
+    saturation_fraction : float, default 0.3
+        The fraction of pixels identified as saturated within in order beyond 
+        which a pySpextoolError will be thrown.  The wavelength calibration 
+        is most likely bad.  
+   
+    ignore_saturation_error : {False, True}
+        Set to True to ignore issues with saturation of lines.
+        Set to False to throw a pySpextoolError error.  
+
     verbose : {None, True, False}
         Set to True to report updates to the command line.
         Set to False to not report updates to the command line.
@@ -102,6 +106,7 @@ def make_wavecal(arc_files:str | list,
         The scale factor by which to increase or decrease the default size of
         the plot window which is (9,6).  This does affect plots written to disk.
         Set to None to default to setup.state['qa_scale'].
+
 
     Returns
     -------
@@ -156,7 +161,7 @@ def make_wavecal(arc_files:str | list,
     #
 
     message = ' Generating Wavelength Solution'
-    logging.info(message+'\n'+'-'*(len(message)+5)+'\n')
+    logging.info(message+'\n'+'-'*(len(message)+6)+'\n')
 
     extract.load['wavecal']['output_filename'] = output_filename
     extract.load['wavecal']['use_stored_solution'] = use_stored_solution
@@ -167,7 +172,7 @@ def make_wavecal(arc_files:str | list,
 
     # Create the file names
 
-    flat_fullpath = join(setup.state['cal_path'], flat_file)
+    flat_fullpath = os.path.join(setup.state['cal_path'], flat_file)
     
     result = files_to_fullpath(setup.state['raw_path'],
                                arc_files,
@@ -188,11 +193,7 @@ def make_wavecal(arc_files:str | list,
         skys_fullpath = result[0]
 
         skys_filenames = ','.join(result[2])
-        
-        # And reorder to get to ABAB
-    
-        skys_fullpath = reorder_irtf_files(skys_fullpath)[0]
-              
+                      
     else:
 
         skys_fullpath = None
@@ -202,35 +203,81 @@ def make_wavecal(arc_files:str | list,
     # Create the image
     #
 
-    result = make_arcsky_image(arcs_fullpath,
-                               skys_fullpath,
-                               linearity_correction,
-                               detector_info,
-                               flat_fullpath,
-                               qa['verbose'],
-                               setup.plots['wavecal_image'],
-                               setup.plots['square_size'],
-                               setup.plots['font_size'],
-                               qa['show'],
-                               qa['showscale'],
-                               qa['showblock'],    
-                               qa['write'])
-    
+    result = _make_wavecal_image(arcs_fullpath,
+                                 skys_fullpath,
+                                 linearity_correction,
+                                 detector_info,
+                                 flat_fullpath,
+                                 qa['verbose'],
+                                 setup.plots['wavecal_image'],
+                                 setup.plots['square_size'],
+                                 setup.plots['font_size'],
+                                 qa['show'],
+                                 qa['showscale'],
+                                 qa['showblock'],    
+                                 qa['write'])
+
     flatinfo = result[0]
     wavecalinfo = result[1]
     wavecal_image = result[2]
+    wavecal_mask = result[3]
     
+    #
+    # Check for saturation of lines
+    #
+
+    fractions = []
+    for i in range(flatinfo['norders']):
+
+        zorder = np.where(flatinfo['ordermask'] == flatinfo['orders'][i])[0]
+        zsat   = np.where((wavecal_mask == 1) & 
+                          (flatinfo['ordermask'] == flatinfo['orders'][i]))[0]
+       
+        if len(zsat)/len(zorder) > saturation_fraction:
+
+            fractions.append(True)
+
+        else:
+
+            fractions.append(False)
+
+#    fractions[1] = True
+    saturated_orders = flatinfo['orders'][fractions]
+
+    if len(saturated_orders) > 0:
+
+        filename1 = extract.load['wavecal']['output_filename'] + \
+            '_image'+setup.state['qa_extension']
+
+        filename2 = extract.load['wavecal']['output_filename'] + \
+            '_findlines.pdf'
+
+
+        message = '>'+str(saturation_fraction*100)+'% of pixels in Order(s) '+\
+            ", ".join([str(x) for x in saturated_orders])+' are saturated.  '+\
+            'The wavelength calibration will most likely be useless so '+\
+            'please check the QA plot '+filename1+'.  Also '+\
+            "consider setting `qa_write_findlines` to True and inspecting "+\
+            'the QA plot '+filename2+' to ensure all lines are identified '+\
+            'properly.  Please choose unsaturated files for the wavelength '+\
+            'calibration To proceed without doing so, '+\
+            "set the `ignore_saturation_error` keyword to True."
+
+        if ignore_saturation_error is False:
+            
+            raise pySpextoolError(message)
+
     #
     # Let's do the extraction of the wavecal image
     #
 
     # Create wavecal and spatcal images
 
-    result = simulate_wavecal_1dxd(flatinfo['ncols'],
-                                   flatinfo['nrows'],
-                                   flatinfo['edgecoeffs'],
-                                   flatinfo['xranges'],
-                                   flatinfo['slith_arc'])
+    result = wavecal.simulate_wavecal_1dxd(flatinfo['ncols'],
+                                           flatinfo['nrows'],
+                                           flatinfo['edgecoeffs'],
+                                           flatinfo['xranges'],
+                                           flatinfo['slith_arc'])
 
     wavecal_pixels = result[0]
     spatcal = result[1]
@@ -248,7 +295,7 @@ def make_wavecal(arc_files:str | list,
     logging.info(message)
 
     spectra = extract_1dxd(wavecal_image,
-                           wavecal_image,
+                           wavecal_mask,
                            flatinfo['ordermask'],
                            wavecal_pixels,
                            spatcal,
@@ -257,7 +304,6 @@ def make_wavecal(arc_files:str | list,
                            aperture_radii,
                            np.full((1),1),
                            progressbar=qa['verbose'])
-
 
     #
     # Find the pixel offset between these spectra and the disk spectra
@@ -280,13 +326,13 @@ def make_wavecal(arc_files:str | list,
 
             filename = extract.load['wavecal']['output_filename'] + \
                 '_pixelshift'+setup.state['qa_extension']
-            fullpath = join(setup.state['qa_path'],filename)
+            fullpath = os.path.join(setup.state['qa_path'],filename)
 
     else:
 
         fullpath = None
-        
-    offset = get_spectral_pixelshift(xanchor,
+
+    offset = wavecal.get_spectral_pixelshift(xanchor,
                                      fanchor,
                                      xsource,
                                      fsource,
@@ -324,18 +370,19 @@ def make_wavecal(arc_files:str | list,
 
         # Get the line list to search for lines
 
-        filename = join(setup.state['instrument_path'], wavecalinfo['linelist'])
+        filename = os.path.join(setup.state['instrument_path'], 
+                                wavecalinfo['linelist'])
 
-        lineinfo = read_line_list(filename,
-                                  delta_to_microns=True)
+        lineinfo = wavecal.read_line_list(filename,
+                                          delta_to_microns=True)
         
         #  Determine the guess position and search range for each
     
-        lineinfo = get_line_guess_position(wavecalinfo['spectra'],
-                                           wavecalinfo['orders'],
-                                           wavecalinfo['xranges'],
-                                           lineinfo)
-
+        lineinfo = wavecal.get_line_guess_position(wavecalinfo['spectra'],
+                                                   wavecalinfo['orders'],
+                                                   wavecalinfo['xranges'],
+                                                   lineinfo)
+        
         # Add the shift offset to the results
 
         lineinfo['xguess'] = lineinfo['xguess'] + offset
@@ -349,8 +396,8 @@ def make_wavecal(arc_files:str | list,
         if qa_write_findlines is True:
 
             filename = extract.load['wavecal']['output_filename'] + \
-                '_findlines'+setup.state['qa_extension']
-            fullpath = join(setup.state['qa_path'],filename)
+                '_findlines.pdf'
+            fullpath = os.path.join(setup.state['qa_path'],filename)
             
         else:
 
@@ -358,7 +405,7 @@ def make_wavecal(arc_files:str | list,
 
         # Find the lines
     
-        lineinfo = find_lines_1dxd(spectra,
+        lineinfo = wavecal.find_lines_1dxd(spectra,
                                    wavecalinfo['orders'],
                                    lineinfo,
                                    flatinfo['slitw_pix'],
@@ -391,7 +438,7 @@ def make_wavecal(arc_files:str | list,
 
             filename = extract.load['wavecal']['output_filename'] + \
                 '_residuals'+setup.state['qa_extension']
-            fullpath = join(setup.state['qa_path'],filename)
+            fullpath = os.path.join(setup.state['qa_path'],filename)
             
         else:
             
@@ -399,7 +446,7 @@ def make_wavecal(arc_files:str | list,
 
         # Find the solution
 
-        solution = wavecal_solution_1d(wavecalinfo['orders'],
+        solution = wavecal.wavecal_solution_1d(wavecalinfo['orders'],
                                        lineinfo,
                                        wavecalinfo['dispdeg'],
                                        xd_info=xdinfo,
@@ -435,10 +482,10 @@ def make_wavecal(arc_files:str | list,
 
     indices = []
     for i in range(flatinfo['norders']):
-        idxs = make_interp_indices_1d(flatinfo['edgecoeffs'][i, :, :],
-                                      flatinfo['xranges'][i, :],
-                                      flatinfo['slith_arc'],
-                                      array_output=True)
+        idxs = wavecal.make_interp_indices_1d(flatinfo['edgecoeffs'][i, :, :],
+                                              flatinfo['xranges'][i, :],
+                                              flatinfo['slith_arc'],
+                                              array_output=True)
               
         indices.append(idxs)
         
@@ -457,72 +504,155 @@ def make_wavecal(arc_files:str | list,
         xdinfo = {'orderdeg': wavecalinfo['ordrdeg'],
                   'homeorder': wavecalinfo['homeorder']}
 
-    oname = join(setup.state['cal_path'], output_filename + '.fits')
+    oname = os.path.join(setup.state['cal_path'], output_filename + '.fits')
         
-    write_wavecal1d_fits(flatinfo['ordermask'],                         
-                         flatinfo['xranges'],
-                         solution['coeffs'],
-                         solution['covar'],
-                         wavecalinfo['dispdeg'],
-                         solution['rms'] * 1e4,
-                         solution['nlines'],
-                         solution['ngood'],
-                         solution['nbad'],
-                         wavecal_pixels,
-                         stored_solution_offset,
-                         spatcal,
-                         indices,
-                         flatinfo['rotation'],
-                         flat_file,
-                         skys_filenames,
-                         oname,
-                         setup.state['version'],
-                         xdinfo=xdinfo,
-                         stored_solution=use_stored_solution)
+    wavecal.write_wavecal1d_fits(flatinfo['ordermask'],                         
+                                 flatinfo['xranges'],
+                                 solution['coeffs'],
+                                 solution['covar'],
+                                 wavecalinfo['dispdeg'],
+                                 solution['rms'] * 1e4,
+                                 solution['nlines'],
+                                 solution['ngood'],
+                                 solution['nbad'],
+                                 wavecal_pixels,
+                                 stored_solution_offset,
+                                 spatcal,
+                                 indices,
+                                 flatinfo['rotation'],
+                                 flat_file,
+                                 skys_filenames,
+                                 oname,
+                                 setup.state['version'],
+                                 xdinfo=xdinfo,
+                                 stored_solution=use_stored_solution)
 
     logging.info(' Wavecal file ' + output_filename + \
                  '.fits written to disk.\n')
 
 
-def make_arcsky_image(arc_files:str | list,
-                      sky_files:str | list,
-                      linearity_correction:bool,
-                      detector_info:dict | None,
-                      flat_file:str,
-                      verbose:bool,
-                      qa_plotnumber:int,
-                      qa_figuresize:tuple,
-                      qa_fontsize:int,
-                      qa_show:bool,
-                      qa_showscale:bool,
-                      qa_showblock:bool,
-                      qa_write:bool):
+def _make_wavecal_image(arc_files:str | list,
+                        sky_files:str | list | None,
+                        linearity_correction:bool,
+                        detector_info:dict | None,
+                        flat_file:str,
+                        verbose:bool,
+                        qa_plotnumber:int,
+                        qa_figuresize:tuple,
+                        qa_fontsize:int,
+                        qa_show:bool,
+                        qa_showscale:bool,
+                        qa_showblock:bool,
+                        qa_write:bool):
     
     """
-    Creates a "wavelength" image for extraction
+    Creates an "arc" image using arc and sky images for wavelength calibration.
 
     Parameters
     ----------
-    verbose : bool
+    arc_files : str or list
+        If type is str, then the fullpath to an arc file.
+        If type is list, then an (nfiles,) list of fullpaths to arc files.
 
-    qa_show : bool
+    sky_files : str or list
+        If type is str, then the fullpath to a sky file.
+        If type is list, then an (nfiles,) list of fullpaths to sky files.
+       
+    linearity_correction : {True, False}
+        Set to True to correct for non-linearity.
+        Set to False to not correct for non-linearity.
 
-    qa_block : bool
+    detector_info : dict, deafult None
+        A dictionary with any information that needs to be passed to the
+        instrument-specific readfits program.  
 
-    qa_write : bool
+    flat_file : str
+        A string to a pySpextool flat file.
+    
+    qa_plotnumber : int
+        The plot number for the QA plot.
+    
+    qa_figuresize : tuple
+        A (2,) array giving the figure size.
+
+    qa_fontsize : int
+        The font size.
+
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+    
+    qa_show : {None, True, False}
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
+        Set to None to default to setup.state['qa_show'].
+
+    qa_write : {None, True, False}
+        Set to True to write a QA plot to disk
+        Set to False to not write a QA plot to disk.
+        Set to None to default to setup.state['qa_write'].
+    
+    qa_showblock : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+
+    qa_showscale : float or int, default=None
+        The scale factor by which to increase or decrease the default size of
+        the plot window which is (9,6).  This does affect plots written to disk.
+        Set to None to default to setup.state['qa_scale'].
 
     Returns
     -------
     ndarray
 
+        An (nrows, ncols) array suitable for use in wavelength calibration.
+        If `sky_files` is not None, then 
+
     """
 
     #
-    # Check parameters
+    # Check parameters and keywords
     #
 
-#    check_parameter('make_')
+    check_parameter('_make_wavecal_image', 'arc_files', arc_files, 
+                    ['str', 'list'])
+
+    check_parameter('_make_wavecal_image', 'sky_files', sky_files, 
+                    ['str', 'list', 'NoneType'])
+
+    check_parameter('_make_wavecal_image', 'linearity_correction',
+                    linearity_correction, 'bool')
+
+    check_parameter('_make_wavecal_image', 'detector_info', detector_info,
+                    ['dict', 'NoneType'])
+
+    check_parameter('_make_wavecal_image', 'flat_file', flat_file, 'str')
+
+    check_parameter('_make_wavecal_image', 'qa_plotnumber', qa_plotnumber, 
+                    'int')
+
+    check_parameter('_make_wavecal_image', 'qa_figuresize', qa_figuresize, 
+                    'tuple')
+
+    check_parameter('_make_wavecal_image', 'qa_fontsize', qa_fontsize, 
+                    'int')
+
+    check_parameter('_make_wavecal_image', 'verbose', verbose, 
+                    ['NoneType','bool'])
+
+    check_parameter('_make_wavecal_image', 'qa_show', qa_show, 
+                    ['NoneType','bool'])
+
+    check_parameter('_make_wavecal_image', 'qa_showscale', qa_showscale,
+                    ['NoneType','float','int'])
     
+    check_parameter('_make_wavecal_image', 'qa_showblock', qa_showblock,
+                    ['NoneType','bool'])
+        
+    check_parameter('_make_wavecal_image', 'qa_write', qa_write, 
+                    ['NoneType','bool'])
 
     check_qakeywords(verbose=verbose)
     
@@ -541,10 +671,10 @@ def make_arcsky_image(arc_files:str | list,
 
     flatinfo = read_flat_fits(flat_file)
 
-    wavecalfile = join(setup.state['instrument_path'],
-                       flatinfo['mode'] + '_wavecalinfo.fits')
+    wavecalfile = os.path.join(setup.state['instrument_path'],
+                               flatinfo['mode'] + '_wavecalinfo.fits')
 
-    wavecalinfo = read_wavecal_file(wavecalfile)
+    wavecalinfo = wavecal.read_wavecal_file(wavecalfile)
 
     #
     # Deal with the arc images first
@@ -553,21 +683,10 @@ def make_arcsky_image(arc_files:str | list,
     # Load the data
 
     logging.info(' Creating the arc image.')    
-    if wavecalinfo['arctype'] == 'on-off':
-
-        pair_subtract = True
-
-        # And reorder to get to ABAB
-    
-        arc_files = reorder_irtf_files(arc_files)[0]
-
-    else:
-
-        pair_subtract = False
 
     result = instr.read_fits(arc_files,
                              setup.state['linearity_info'],
-                             pair_subtract=pair_subtract,
+                             pair_subtract=False,
                              keywords=setup.state['extract_keywords'],
                              rotate=flatinfo['rotation'],
                              linearity_correction=linearity_correction,
@@ -575,32 +694,34 @@ def make_arcsky_image(arc_files:str | list,
                              verbose=False)
     
     imgs = result[0]
-    vars = result[1]
-    hdrs = result[1]
-    masks = result[2]
+    masks = result[3]
 
     #
     # Combine images as necessary and don't worry about the variance
     #
 
-    if np.ndim(imgs) > 2:
+    if np.ndim(imgs) == 3:
 
         # Scale their intensities to a common flux level
 
-        logging.info(' Scaling images.')
+        logging.info(' Scaling the arc images.')
 
         simgs, svars, scales = scale_data_stack(imgs, None)
 
         # Now median the scaled images
         
-        logging.info(' Medianing the images.')
+        logging.info(' Medianing the scaled arc images.')
 
         arc, munc = median_data_stack(simgs)
+
+        # Combine the masks
+        
+        arc_mask = combine_flag_stack(masks, nbits=1)
 
     else:
         
         arc = imgs
-
+        arc_mask = masks
 
     #
     # Now deal with the potential sky frames
@@ -610,37 +731,58 @@ def make_arcsky_image(arc_files:str | list,
 
         logging.info(' Creating the sky image.')
         
-        # Get the file names
-
         # Load the image(s)
+
+        result = instr.read_fits(sky_files,
+                                 setup.state['linearity_info'],
+                                 pair_subtract=False,
+                                 keywords=setup.state['extract_keywords'],
+                                 rotate=flatinfo['rotation'],
+                                 verbose=verbose)
+        imgs = result[0]
+        masks = result[3]
         
-        skys, vars, hdrs, masks = instr.read_fits(sky_files,
-                                                  setup.state['linearity_info'],
-                                    keywords=setup.state['extract_keywords'],
-                                                  rotate=flatinfo['rotation'],
-                                                  verbose=verbose)
-        # Create a sky if need be
+        # Combine them if necessary
 
-        if np.ndim(skys) == 3:
-
-            sky = (skys[0,:,:]+skys[1,:,:])-np.abs(skys[0,:,:]-skys[1,:,:])
-
+        if np.ndim(imgs) == 3:
+            
+            logging.info(' Scaling the sky images.')
+            
+            simgs, svars, scales = scale_data_stack(imgs, None)
+            
+            # Now median the scaled images
+            
+            logging.info(' Medianing the scaled sky images.')
+            
+            sky, munc = median_data_stack(simgs)
+ 
+            # Combine the masks
+            
+            sky_mask = combine_flag_stack(masks, nbits=1)
+            
         else:
-
-            sky = skys
-
+            
+            sky = imgs
+            sky_mask = masks
+            
         # Mix the orders
 
-        wavecal_image = mix_orders(arc,
-                                   sky,
-                                   flatinfo['ordermask'],
-                                   flatinfo['orders'],
-                                   wavecalinfo['arcorders'],
-                                   wavecalinfo['skyorders'])
-    
-    else:
+        result = wavecal.mix_orders(arc,
+                                    arc_mask,
+                                    sky,
+                                    sky_mask,
+                                    flatinfo['ordermask'],
+                                    flatinfo['orders'],
+                                    wavecalinfo['arcorders'],
+                                    wavecalinfo['skyorders'])
+        
+        wavecal_image = result[0]
+        wavecal_mask = result[1]
 
+    else:
+        
         wavecal_image = arc
+        wavecal_mask = arc_mask
 
     #
     # Do the QA plot
@@ -653,10 +795,11 @@ def make_arcsky_image(arc_files:str | list,
     if qa_write is True:
 
         filename = extract.load['wavecal']['output_filename'] + \
-            setup.state['qa_extension']
-        fullpath = join(setup.state['qa_path'],filename)
+            '_image'+setup.state['qa_extension']
+        fullpath = os.path.join(setup.state['qa_path'],filename)
         
         plot_image(wavecal_image,
+                   mask=wavecal_mask,
                    orders_plotinfo=orders_plotinfo,
                    figure_size=qa_figuresize,
                    font_size=qa_fontsize,
@@ -665,16 +808,17 @@ def make_arcsky_image(arc_files:str | list,
     if qa_show is True:
         
         plot_image(wavecal_image,
+                   mask=wavecal_mask,
                    plot_number=qa_plotnumber,
                    orders_plotinfo=orders_plotinfo,
                    figure_size=qa_figuresize,
                    font_size=qa_fontsize,
                    showscale=qa_showscale,
                    showblock=qa_showblock)
-        
+
     #
     # Return the arrays
     #
         
-    return flatinfo, wavecalinfo, wavecal_image
+    return flatinfo, wavecalinfo, wavecal_image, wavecal_mask
 
