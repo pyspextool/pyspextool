@@ -27,4 +27,21 @@ def test_interpolate():
                                   np.array([np.nan,np.nan,np.nan,np.nan,
                                             2.44948974,2.44948974]))
 
+    #
+    # Test for linear_interp1d
+    # 
+
+    
+    result = interpolate.linear_interp1d(input_x,
+                                         input_y,
+                                         output_x,
+                                         input_u = input_u)
+    
+
+    np.testing.assert_array_equal(result[0],
+                                  np.array([np.nan,np.nan,np.nan,np.nan,1,1]))
+
+    np.testing.assert_allclose(result[1],
+                                  np.array([np.nan,np.nan,np.nan,np.nan,
+                                            2.44948974,2.44948974]))
 

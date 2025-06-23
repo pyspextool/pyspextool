@@ -4,7 +4,6 @@ import numpy.typing as npt
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.arrays import find_index
 from pyspextool.utils.math import bit_set
-from pyspextool.utils.for_print import for_print
 from pyspextool.pyspextoolerror import pySpextoolError
 
 def linear_interp1d(input_x:npt.ArrayLike,
@@ -107,25 +106,38 @@ def linear_interp1d(input_x:npt.ArrayLike,
     # Do the interpolation
     #
 
-    result = nonan_interp1d(input_x, input_y, x)
+    result = _noxnan_linearinterp1d(input_x, 
+                                    input_y, 
+                                    x,
+                                    input_u = input_u)
+
+    print(result['y'])
+    print(result['uncertainty'])
 
     # Now create an output_y array the same size as output_x and fill with
     # result.
     
     output_y = np.full_like(output_x, np.nan, dtype=np.float64)
-    output_y[z_output_nonan] = result
-
-    #
-    # Do the error propagation
-    #
+    output_y[z_output_nonan] = result['y']
 
     if input_u is not None:
 
-        result = nonan_interp1d(input_x, input_u**2, x, variance=True)    
+        output_u = np.full_like(output_x, np.nan, dtype=np.float64)
+        output_u[z_output_nonan] = result['uncertainty']
 
-        output_v = np.full_like(output_x, np.nan, dtype=np.float64)
-        output_v[z_output_nonan] = result
 
+#
+#    #
+#    # Do the error propagation
+#    #
+#
+#    if input_u is not None:
+#
+#        result = nonan_interp1d(input_x, input_u**2, x, variance=True)    
+#
+#        output_v = np.full_like(output_x, np.nan, dtype=np.float64)
+#        output_v[z_output_nonan] = result
+#
     #
     # Return the values accordingly
     #
@@ -134,11 +146,11 @@ def linear_interp1d(input_x:npt.ArrayLike,
 
         if scalar is True:
 
-            return output_y[0], np.sqrt(output_v[0])
+            return output_y[0], output_u[0]
 
         else:
 
-            return output_y, np.sqrt(output_v)            
+            return output_y, output_u
         
     else:
 
