@@ -1,0 +1,109 @@
+import os
+import numpy as np
+import logging
+
+from pyspextool import config as setup
+from pyspextool.merge import config as config
+from pyspextool.io.check import check_parameter, check_qakeywords
+from pyspextool.io.files import make_full_path
+from pyspextool.io.fitsheader import get_headerinfo
+from pyspextool.io.read_spectra_fits import read_spectra_fits
+from pyspextool.pyspextoolerror import pySpextoolError
+from pyspextool.io.load_atmosphere import load_atmosphere
+from pyspextool.utils.interpolate import linear_interp1d
+
+def load_spectrum(
+    file: str,
+    output_filename:str=None,
+    verbose:bool = None):
+
+    """
+
+    Parameters
+    ----------
+    file : str
+        The name of the pySpextool FITS file containing the multi-order spectra.
+
+    outout_filename : str
+        A string giving the root of the output file name, e.g. 'Wolf359'. 
+
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+
+    Returns
+    -------
+    None
+    Loads data into memory
+
+
+    """
+
+    #
+    # Check the parameters and keywords
+    #
+
+    check_parameter("load_spectrum", "file", file, "str")
+
+    check_parameter("load_spectrum", "output_filename", output_filename, 
+                    ["NoneType", "str"])
+
+    check_parameter("load_spectrum", "verbose", verbose, ["NoneType", "bool"])
+
+    check_qakeywords(verbose=verbose)
+
+    #
+    # Clear the state variables
+    #
+
+    config.state.clear()
+
+    #
+    # Store user inputs
+    #
+
+    config.state["file"] = file
+    config.state["output_filename"] = output_filename
+
+    logging.info(" Order Merging\n--------------------\n")
+    logging.info(" Loading the spectrum.")
+
+    fullpath = make_full_path(setup.state["proc_path"], 
+                              config.state["file"], exist=True)
+
+    spectra, data = read_spectra_fits(fullpath)
+
+    hdrinfo = get_headerinfo(data["header"], 
+                             keywords=setup.state["telluric_keywords"])
+
+    #
+    # Store the results
+    #
+    config.state["spectra"] = spectra
+    config.state["data"] = data
+    config.state["hdrinfo"] = hdrinfo
+    config.state["norders"] = object_data["norders"]
+    config.state["napertures"] = object_data["napertures"]
+    config.state["orders"] = object_data["orders"]
+    config.state["xlabel"] = object_hdrinfo["LXLABEL"][0]
+#
+
+#    #
+#    # Now get the object ranges
+#    #
+#
+#    wavelength_ranges = []
+#
+#    for i in range(tc.state["object_norders"]):
+#
+#        idx = i * tc.state["object_napertures"]
+#        min = np.nanmin(tc.state["object_spectra"][idx, 0, :])
+#        max = np.nanmax(tc.state["object_spectra"][idx, 0, :])
+#
+#        wavelength_ranges.append(np.array([min, max]))
+#
+#    # Store the results
+#
+#    tc.state["object_wavelengthranges"] = wavelength_ranges
+

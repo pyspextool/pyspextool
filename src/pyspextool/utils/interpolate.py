@@ -111,9 +111,6 @@ def linear_interp1d(input_x:npt.ArrayLike,
                                     x,
                                     input_u = input_u)
 
-    print(result['y'])
-    print(result['uncertainty'])
-
     # Now create an output_y array the same size as output_x and fill with
     # result.
     
