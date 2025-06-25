@@ -14,7 +14,8 @@ from pyspextool.utils.interpolate import linear_interp1d
 
 def load_spectrum(
     file: str,
-    output_filename:str=None,
+    outputfile_root:str,
+    merge_aperture:int=1,
     verbose:bool = None):
 
     """
@@ -24,8 +25,11 @@ def load_spectrum(
     file : str
         The name of the pySpextool FITS file containing the multi-order spectra.
 
-    outout_filename : str
+    outputfile_root : str
         A string giving the root of the output file name, e.g. 'Wolf359'. 
+
+    merge_aperture : int, default 1
+        The aperture number to merge.
 
     verbose : {None, True, False}
         Set to True to report updates to the command line.
@@ -46,8 +50,9 @@ def load_spectrum(
 
     check_parameter("load_spectrum", "file", file, "str")
 
-    check_parameter("load_spectrum", "output_filename", output_filename, 
-                    ["NoneType", "str"])
+    check_parameter("load_spectrum", "outputfile_root", outputfile_root, "str")
+
+    check_parameter("load_spectrum", "merge_aperture", merge_aperture, "int")
 
     check_parameter("load_spectrum", "verbose", verbose, ["NoneType", "bool"])
 
@@ -64,7 +69,7 @@ def load_spectrum(
     #
 
     config.state["file"] = file
-    config.state["output_filename"] = output_filename
+    config.state["outputfile_root"] = outputfile_root
 
     logging.info(" Order Merging\n--------------------\n")
     logging.info(" Loading the spectrum.")
@@ -73,6 +78,9 @@ def load_spectrum(
                               config.state["file"], exist=True)
 
     spectra, data = read_spectra_fits(fullpath)
+
+    spectra = spectra.astype(np.float64)
+
 
     hdrinfo = get_headerinfo(data["header"], 
                              keywords=setup.state["telluric_keywords"])
@@ -83,10 +91,19 @@ def load_spectrum(
     config.state["spectra"] = spectra
     config.state["data"] = data
     config.state["hdrinfo"] = hdrinfo
-    config.state["norders"] = object_data["norders"]
-    config.state["napertures"] = object_data["napertures"]
-    config.state["orders"] = object_data["orders"]
-    config.state["xlabel"] = object_hdrinfo["LXLABEL"][0]
+    config.state["norders"] = data["norders"]
+    config.state["napertures"] = data["napertures"]
+    config.state["orders"] = data["orders"]
+    config.state["xlabel"] = hdrinfo["LXLABEL"][0]
+    config.state["merge_aperture"] = merge_aperture
+
+    #
+    # Set done variables
+    #
+
+    config.state["load_done"] = True
+    config.state["merge_done"] = False
+
 #
 
 #    #

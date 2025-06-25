@@ -7,9 +7,9 @@ from pyspextool.utils.interpolate import linear_interp1d, linear_bitmask_interp1
 from pyspextool.utils.math import mean_data_stack, combine_flag_stack
 
 def merge_spectra(anchor_wavelength:npt.ArrayLike,
-                  anchor_fluxdensity:npt.ArrayLike,
+                  anchor_intensity:npt.ArrayLike,
                   add_wavelength:npt.ArrayLike,
-                  add_fluxdensity:npt.ArrayLike,
+                  add_intensity:npt.ArrayLike,
                   anchor_uncertainty:npt.ArrayLike=None,
                   anchor_bitmask:npt.ArrayLike=None,
                   add_uncertainty:npt.ArrayLike=None,
@@ -23,13 +23,13 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     anchor_wavelength : ndarray
         An (nanchor,) array of wavelength values for the anchor spectrum.
 
-    anchor_fluxdensity : ndarray
+    anchor_intensity : ndarray
         An (nanchor,) array of flux density values for the anchor spectrum.
 
     add_wavelength : ndarray
         An (nadd,) array of wavelength values for the add spectrum.
 
-    add_fluxdensity : ndarray
+    add_intensity : ndarray
         An (nadd,) array of flux density values for the add spectrum.
 
     anchor_uncertainty : ndarray, default None
@@ -51,7 +51,7 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
         `"wavelength"` : ndarray
             An (nwaves,) array of merged wavelengths.
 
-        `"fluxdensity"` : ndarray
+        `"intensity"` : ndarray
             An (nwaves,) array of merged flux density values.
 
         `"uncertainty"` : ndarray or None
@@ -83,14 +83,14 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     check_parameter("merge_spectra", "anchor_wavelength", anchor_wavelength, 
                     "ndarray")
 
-    check_parameter("merge_spectra", "anchor_fluxdensity", anchor_fluxdensity, 
+    check_parameter("merge_spectra", "anchor_intensity", anchor_intensity, 
                     "ndarray", ndarray_size=np.size(anchor_wavelength),
                     ndarray_dtype='float')
 
     check_parameter("merge_spectra", "add_wavelength", add_wavelength, 
                     "ndarray")
 
-    check_parameter("merge_spectra", "add_fluxdensity", add_fluxdensity, 
+    check_parameter("merge_spectra", "add_intensity", add_intensity, 
                     "ndarray", ndarray_size=np.size(add_wavelength),
                     ndarray_dtype='float')
 
@@ -136,13 +136,13 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     # Trim NaNs at the edges of the two arrays
     #
 
-    anchor_mask = trim_nan(anchor_fluxdensity, flag=2)
-    add_mask = trim_nan(add_fluxdensity, flag=2)
+    anchor_mask = trim_nan(anchor_intensity, flag=2)
+    add_mask = trim_nan(add_intensity, flag=2)
 
     # Anchor data
 
     tanchor_wavelength = anchor_wavelength[anchor_mask]
-    tanchor_fluxdensity = anchor_fluxdensity[anchor_mask]
+    tanchor_intensity = anchor_intensity[anchor_mask]
 
     if no_uncertainty is False:
 
@@ -163,7 +163,7 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     # Add data 
 
     tadd_wavelength = add_wavelength[add_mask]
-    tadd_fluxdensity = add_fluxdensity[add_mask]
+    tadd_intensity = add_intensity[add_mask]
 
     if no_uncertainty is False:
 
@@ -218,33 +218,33 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     if position == 'Right':
 
         result = _merge_onright(tanchor_wavelength,
-                                tanchor_fluxdensity,
+                                tanchor_intensity,
                                 tanchor_uncertainty,
                                 tanchor_bitmask,
                                 tadd_wavelength,
-                                tadd_fluxdensity,
+                                tadd_intensity,
                                 tadd_uncertainty,
                                 tadd_bitmask)
 
     if position == 'Left':
 
         result = _merge_onright(tadd_wavelength,
-                               tadd_fluxdensity,
+                               tadd_intensity,
                                tadd_uncertainty,
                                tadd_bitmask,
                                tanchor_wavelength,
-                               tanchor_fluxdensity,
+                               tanchor_intensity,
                                tanchor_uncertainty,
                                tanchor_bitmask)
 
     if position == 'Inside':
 
         result = _merge_inmiddle(tanchor_wavelength,
-                                 tanchor_fluxdensity,
+                                 tanchor_intensity,
                                  tanchor_uncertainty,
                                  tanchor_bitmask,
                                  tadd_wavelength,
-                                 tadd_fluxdensity,
+                                 tadd_intensity,
                                  tadd_uncertainty,
                                  tadd_bitmask)
 
@@ -255,11 +255,11 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
 
 
 def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
-                   anchor_fluxdensity:npt.ArrayLike,
+                   anchor_intensity:npt.ArrayLike,
                    anchor_uncertainty:npt.ArrayLike | None,
                    anchor_bitmask:npt.ArrayLike | None,
                    add_wavelength:npt.ArrayLike,
-                   add_fluxdensity:npt.ArrayLike,
+                   add_intensity:npt.ArrayLike,
                    add_uncertainty:npt.ArrayLike | None,
                    add_bitmask:npt.ArrayLike | None):
 
@@ -271,7 +271,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     anchor_wavelength : ndarray
         An (nanchor,) array of wavelength values for the anchor spectrum.
 
-    anchor_fluxdensity : ndarray
+    anchor_intensity : ndarray
         An (nanchor,) array of flux density values for the anchor spectrum.
 
     anchor_uncertainty : ndarray or None
@@ -284,7 +284,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     add_wavelength : ndarray
         An (nadd,) array of wavelength values for the add spectrum.
 
-    add_fluxdensity : ndarray
+    add_intensity : ndarray
         An (nadd,) array of flux density values for the add spectrum.
 
     add_uncertainty : ndarray, default None
@@ -299,7 +299,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
         `"wavelength"` : ndarray
             An (nwaves,) array of merged wavelengths.
 
-        `"fluxdensity"` : ndarray
+        `"intensity"` : ndarray
             An (nwaves,) array of merged flux density values.
 
         `"uncertainty"` : ndarray or None
@@ -317,14 +317,14 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     check_parameter("merge_inmiddle", "anchor_wavelength", anchor_wavelength, 
                     "ndarray")
 
-    check_parameter("merge_inmiddle", "anchor_fluxdensity", anchor_fluxdensity, 
+    check_parameter("merge_inmiddle", "anchor_intensity", anchor_intensity, 
                     "ndarray", ndarray_size=np.size(anchor_wavelength),
                     ndarray_dtype='float')
 
     check_parameter("merge_inmiddle", "add_wavelength", add_wavelength, 
                     "ndarray")
 
-    check_parameter("merge_inmiddle", "add_fluxdensity", add_fluxdensity, 
+    check_parameter("merge_inmiddle", "add_intensity", add_intensity, 
                     "ndarray", ndarray_size=np.size(add_wavelength))
 
     check_parameter("merge_inmiddle", "anchor_uncertainty", anchor_uncertainty, 
@@ -361,7 +361,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     z = np.where(anchor_wavelength < add_minwavelength)[0]
     
     left_wavelength = anchor_wavelength[z]
-    left_fluxdensity = anchor_fluxdensity[z]
+    left_intensity = anchor_intensity[z]
     
     if anchor_uncertainty is not None:
         
@@ -377,7 +377,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
 
         
     right_wavelength = anchor_wavelength[z]
-    right_fluxdensity = anchor_fluxdensity[z]
+    right_intensity = anchor_intensity[z]
 
 
 
@@ -394,11 +394,11 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     if anchor_uncertainty is None:
             
         iflux = linear_interp1d(add_wavelength, 
-                                add_fluxdensity,
+                                add_intensity,
                                 anchor_wavelength, 
                                 leave_nans=True)
         
-        mean = np.sum(np.vstack((iflux,anchor_fluxdensity)),axis=0)/2
+        mean = np.sum(np.vstack((iflux,anchor_intensity)),axis=0)/2
             
         # Figure which pixels are in the overlap by exploiting the fact
         # that the pixels outside of overlap are set to NaNs in the 
@@ -406,20 +406,20 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
         
         idx = trim_nan(iflux, flag=2)
 
-        middle_fluxdensity = mean[idx]
+        middle_intensity = mean[idx]
         middle_wavelength = anchor_wavelength[idx]
 
     else:
 
         iflux, iunc = linear_interp1d(add_wavelength, 
-                                      add_fluxdensity,
+                                      add_intensity,
                                       anchor_wavelength, 
                                       input_u=add_uncertainty, 
                                       leave_nans=True)
         
         
         weights = 1/np.vstack((anchor_uncertainty,iunc))**2
-        result = mean_data_stack(np.vstack((anchor_fluxdensity,iflux)),
+        result = mean_data_stack(np.vstack((anchor_intensity,iflux)),
                                  weights=weights)
         
         imean = result[0]
@@ -431,7 +431,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
         
         idx = trim_nan(iflux, flag=2)
         
-        middle_fluxdensity = imean[idx]
+        middle_intensity = imean[idx]
         middle_uncertainty = iunc[idx]
         middle_wavelength = anchor_wavelength[idx]
         
@@ -454,9 +454,9 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
                                   middle_wavelength, 
                                   right_wavelength))
     
-    ofluxdensity = np.concatenate((left_fluxdensity, 
-                                   middle_fluxdensity, 
-                                   right_fluxdensity))
+    ointensity = np.concatenate((left_intensity, 
+                                   middle_intensity, 
+                                   right_intensity))
     
     if anchor_uncertainty is not None:
         
@@ -483,7 +483,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     #
 
     dict = {'wavelength':owavelength,
-            'fluxdensity':ofluxdensity,
+            'intensity':ointensity,
             'uncertainty':ouncertainty,
             'bitmask':obitmask}
 
@@ -492,11 +492,11 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
 
             
 def _merge_onright(anchor_wavelength:npt.ArrayLike,
-                   anchor_fluxdensity:npt.ArrayLike,
+                   anchor_intensity:npt.ArrayLike,
                    anchor_uncertainty:npt.ArrayLike | None,
                    anchor_bitmask:npt.ArrayLike | None,
                    add_wavelength:npt.ArrayLike,
-                   add_fluxdensity:npt.ArrayLike,
+                   add_intensity:npt.ArrayLike,
                    add_uncertainty:npt.ArrayLike | None,
                    add_bitmask:npt.ArrayLike | None):
 
@@ -508,7 +508,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
     anchor_wavelength : ndarray
         An (nanchor,) array of wavelength values for the anchor spectrum.
 
-    anchor_fluxdensity : ndarray
+    anchor_intensity : ndarray
         An (nanchor,) array of flux density values for the anchor spectrum.
 
     anchor_uncertainty : ndarray or None
@@ -521,7 +521,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
     add_wavelength : ndarray
         An (nadd,) array of wavelength values for the add spectrum.
 
-    add_fluxdensity : ndarray
+    add_intensity : ndarray
         An (nadd,) array of flux density values for the add spectrum.
 
     add_uncertainty : ndarray, default None
@@ -536,7 +536,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
         `"wavelength"` : ndarray
             An (nwaves,) array of merged wavelengths.
 
-        `"fluxdensity"` : ndarray
+        `"intensity"` : ndarray
             An (nwaves,) array of merged flux density values.
 
         `"uncertainty"` : ndarray or None
@@ -557,14 +557,14 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
     check_parameter("merge_onright", "anchor_wavelength", anchor_wavelength, 
                     "ndarray")
 
-    check_parameter("merge_onright", "anchor_fluxdensity", anchor_fluxdensity, 
+    check_parameter("merge_onright", "anchor_intensity", anchor_intensity, 
                     "ndarray", ndarray_size=np.size(anchor_wavelength),
                     ndarray_dtype='float')
 
     check_parameter("merge_onright", "add_wavelength", add_wavelength, 
                     "ndarray")
 
-    check_parameter("merge_onright", "add_fluxdensity", add_fluxdensity, 
+    check_parameter("merge_onright", "add_intensity", add_intensity, 
                     "ndarray", ndarray_size=np.size(add_wavelength))
 
     check_parameter("merge_onright", "anchor_uncertainty", anchor_uncertainty, 
@@ -610,10 +610,10 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
         
         # Flux density
         
-        anchor_fluxdensity[-1] = np.nan
-        add_fluxdensity[0] = np.nan
+        anchor_intensity[-1] = np.nan
+        add_intensity[0] = np.nan
         
-        ofluxdensity = np.concatenate((anchor_fluxdensity, add_fluxdensity))
+        ointensity = np.concatenate((anchor_intensity, add_intensity))
         
         # Uncertainty
 
@@ -640,7 +640,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
         z = np.where(anchor_wavelength < add_minwavelength)[0]
         
         left_wavelength = anchor_wavelength[z]
-        left_fluxdensity = anchor_fluxdensity[z]
+        left_intensity = anchor_intensity[z]
 
         if anchor_uncertainty is not None:
 
@@ -655,7 +655,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
         z = np.where(add_wavelength > anchor_maxwavelength)[0]
         
         right_wavelength = add_wavelength[z]
-        right_fluxdensity = add_fluxdensity[z]
+        right_intensity = add_intensity[z]
 
         if anchor_uncertainty is not None:
 
@@ -670,11 +670,11 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
         if anchor_uncertainty is None:
             
             iflux = linear_interp1d(add_wavelength, 
-                                    add_fluxdensity,
+                                    add_intensity,
                                     anchor_wavelength, 
                                     leave_nans=True)
             
-            mean = np.sum(np.vstack((iflux,anchor_fluxdensity)),axis=0)/2
+            mean = np.sum(np.vstack((iflux,anchor_intensity)),axis=0)/2
             
             # Figure which pixels are in the overlap by exploiting the fact
             # that the pixels outside of overlap are set to NaNs in the 
@@ -682,20 +682,20 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
 
             idx = trim_nan(iflux, flag=2)
 
-            middle_fluxdensity = mean[idx]
+            middle_intensity = mean[idx]
             middle_wavelength = anchor_wavelength[idx]
 
         else:
 
             iflux, iunc = linear_interp1d(add_wavelength, 
-                                          add_fluxdensity,
+                                          add_intensity,
                                           anchor_wavelength, 
                                           input_u=add_uncertainty, 
                                           leave_nans=True)
 
 
             weights = 1/np.vstack((anchor_uncertainty,iunc))**2
-            result = mean_data_stack(np.vstack((anchor_fluxdensity,iflux)),
+            result = mean_data_stack(np.vstack((anchor_intensity,iflux)),
                                      weights=weights)
 
             imean = result[0]
@@ -707,7 +707,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
 
             idx = trim_nan(iflux, flag=2)
 
-            middle_fluxdensity = imean[idx]
+            middle_intensity = imean[idx]
             middle_uncertainty = iunc[idx]
             middle_wavelength = anchor_wavelength[idx]
 
@@ -730,9 +730,9 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
                                       middle_wavelength, 
                                       right_wavelength))
         
-        ofluxdensity = np.concatenate((left_fluxdensity, 
-                                       middle_fluxdensity, 
-                                       right_fluxdensity))
+        ointensity = np.concatenate((left_intensity, 
+                                       middle_intensity, 
+                                       right_intensity))
         
         if anchor_uncertainty is not None:
             
@@ -759,7 +759,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
     #
 
     dict = {'wavelength':owavelength,
-            'fluxdensity':ofluxdensity,
+            'intensity':ointensity,
             'uncertainty':ouncertainty,
             'bitmask':obitmask}
 
