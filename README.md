@@ -33,7 +33,7 @@ Python code to reduce data obtained with the SpeX spectrograph.
 
 ## Instructions for using the example notebooks
 
-1) The Jupyter notebook tutorials are under `notebooks/` for preupgraded and upgraded SpeX Prism and SXD data.
+1) The Jupyter notebook tutorials are under `notebooks/` for preupgraded and upgraded SpeX Prism, SXD, and LXD data.
 
 2) Follow the instructions above to download the test data which will be saved under `tests/test_data/`. To get the data used by the Jupyter notebooks, clone the [test_data](https://github.com/pyspextool/test_data) repository.
 
@@ -41,7 +41,9 @@ Python code to reduce data obtained with the SpeX spectrograph.
    git clone git@github.com:pyspextool/test_data.git
    ```
 
-3) While users should be able to run the Jupyter notebook tutorials without changing the output paths, users are encouraged to move the data folder and rename the output paths.
+   The raw and processed example data products are available under `tests/test_data/raw/` and `tests/test_data/processed/` respectively. The data products include the `cal` (calibration data), `proc` (processed data), and `qa` (quality assurance plots).
+
+3) While users should be able to run the Jupyter notebook tutorials without changing the output paths, users are encouraged to move the data folder and rename the output paths. The default saving directory is `/test_pyspextool/test_data/processed/`.
 
 
 ## Developer Instructions
