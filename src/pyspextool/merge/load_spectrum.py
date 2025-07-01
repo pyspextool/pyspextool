@@ -15,7 +15,6 @@ from pyspextool.utils.interpolate import linear_interp1d
 def load_spectrum(
     file: str,
     outputfile_root:str,
-    merge_aperture:int=1,
     verbose:bool = None):
 
     """
@@ -27,9 +26,6 @@ def load_spectrum(
 
     outputfile_root : str
         A string giving the root of the output file name, e.g. 'Wolf359'. 
-
-    merge_aperture : int, default 1
-        The aperture number to merge.
 
     verbose : {None, True, False}
         Set to True to report updates to the command line.
@@ -52,8 +48,6 @@ def load_spectrum(
 
     check_parameter("load_spectrum", "outputfile_root", outputfile_root, "str")
 
-    check_parameter("load_spectrum", "merge_aperture", merge_aperture, "int")
-
     check_parameter("load_spectrum", "verbose", verbose, ["NoneType", "bool"])
 
     check_qakeywords(verbose=verbose)
@@ -72,7 +66,7 @@ def load_spectrum(
     config.state["outputfile_root"] = outputfile_root
 
     logging.info(" Order Merging\n--------------------\n")
-    logging.info(" Loading the spectrum.")
+    logging.info(" Loading the spectra.")
 
     fullpath = make_full_path(setup.state["proc_path"], 
                               config.state["file"], exist=True)
@@ -88,14 +82,16 @@ def load_spectrum(
     #
     # Store the results
     #
-    config.state["spectra"] = spectra
+    config.state["rawspectra"] = spectra
     config.state["data"] = data
     config.state["hdrinfo"] = hdrinfo
     config.state["norders"] = data["norders"]
     config.state["napertures"] = data["napertures"]
     config.state["orders"] = data["orders"]
     config.state["xlabel"] = hdrinfo["LXLABEL"][0]
-    config.state["merge_aperture"] = merge_aperture
+
+    logging.info(" There are "+str(data["napertures"])+\
+                 " apertures in this file.")
 
     #
     # Set done variables
@@ -103,24 +99,4 @@ def load_spectrum(
 
     config.state["load_done"] = True
     config.state["merge_done"] = False
-
-#
-
-#    #
-#    # Now get the object ranges
-#    #
-#
-#    wavelength_ranges = []
-#
-#    for i in range(tc.state["object_norders"]):
-#
-#        idx = i * tc.state["object_napertures"]
-#        min = np.nanmin(tc.state["object_spectra"][idx, 0, :])
-#        max = np.nanmax(tc.state["object_spectra"][idx, 0, :])
-#
-#        wavelength_ranges.append(np.array([min, max]))
-#
-#    # Store the results
-#
-#    tc.state["object_wavelengthranges"] = wavelength_ranges
 
