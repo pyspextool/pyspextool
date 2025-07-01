@@ -122,9 +122,9 @@ class runBatch():
 			return
 
 # if nothing passed, assume we are using the local folder as the base folder
-		if len(folders)<1: 
+		if len(folders)==0: 
 			base_folder='./'
-			folders = [batch.REDUCTION_FOLDERS[0]]
+			folders = [base_folder]
 
 # one input - assume to be base folder 
 		if len(folders) == 1:
@@ -210,7 +210,7 @@ class runBatch():
 					logging.info('\nWARNING: could not find log file {}, this may be a problem later'.format(log_file_prefix+'.csv'))
 				if args['quiet']==False: logging.info('\nGenerating driver file and writing to {}'.format(driver_file))
 #				print(driver_file,folders[0])
-				batch.writeDriver(dp,driver_file,data_folder=folders[0],verbose=(not args['quiet']),check=True,create_folders=True)
+				batch.writeDriver(dp,driver_file,data_folder=folders[0],options={'CALS_FOLDER':folders[1],'PROC_FOLDER':folders[2],'QA_FOLDER':folders[3]},verbose=(not args['quiet']),check=True,create_folders=True)
 
 # query to pause and check driver
 			if args['no_pause']==False and args['only_driver']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
