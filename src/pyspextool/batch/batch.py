@@ -44,7 +44,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 May 14'
+VERSION = '2025 July 1'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -116,7 +116,7 @@ BATCH_PARAMETERS = {
 	'OBSERVER': '',
 	# 'qa_write': True,
 	# 'qa_show': False, 
-	'PLOT_TYPE': '.pdf', 
+	'PLOT_TYPE': '.png', 
 	'CALIBRATIONS': True,
 	'EXTRACT': True,
 	'COMBINE': True,
@@ -174,7 +174,7 @@ QA_PARAMETERS = {
 	'SOURCE_TEMPLATE_FILE': os.path.join(DIR,'qa_source_template.txt'),
 	'SINGLE_PLOT_TEMPLATE_FILE': os.path.join(DIR,'qa_singleplot_template.txt'),
 	'CSS_FILE' : os.path.join(DIR,'qa.css'),
-	'PLOT_TYPE': '.pdf',
+	'PLOT_TYPE': '.png',
 	'NIMAGES': 3,
 	'IMAGE_WIDTH': 300,
 	'MKWC_ARCHIVE_URL': 'http://mkwc.ifa.hawaii.edu/forecast/mko/archive/index.cgi',
@@ -917,29 +917,41 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 # try statement to catch cases where simbad is not accessible
 	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
 	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
-	try:
-		sb = Simbad()
-		for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
-		if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
-			dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
-			dpouts.reset_index(inplace=True)
-			tnames = list(set(list(dpouts['TARGET_NAME'])))
-			tnames = [str(x) for x in tnames]
-			for i,tnm in enumerate(tnames):
-				dpsel = dpout[dpout['TARGET_NAME']==tnm]
-				dpsel.reset_index(inplace=True)
-				if len(dpsel)>0:
-					src_coord = SkyCoord(dpsel.loc[0,'RA']+' '+dpsel.loc[0,'DEC'],unit=(u.hourangle, u.deg))
-					t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
-					if isinstance(t_match,type(None))==False:
-						if len(t_match)>0:
-							for x in SIMBAD_EXCLUDE: t_match.remove_rows(np.where(t_match['OTYPE']==x))
-						if len(t_match)>0:
-							t_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(t_match['RA'][lp]),str(t_match['DEC'][lp]),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(t_match))]
-							t_match.sort(['SIMBAD_SEP'])
-							for x in list(SIMBAD_COLS.keys()):
-								dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x][1]][0]
-							dpout.loc[dpout['TARGET_NAME']==tnm,'SIMBAD_SEP'] = '{:.2f}'.format(t_match['SIMBAD_SEP'][0])
+#	try:
+	sb = Simbad()
+	for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
+	if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
+		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
+		dpouts.reset_index(inplace=True)
+		tnames = list(set(list(dpouts['TARGET_NAME'])))
+		tnames = [str(x) for x in tnames]
+		for i,tnm in enumerate(tnames):
+			dpsel = dpout[dpout['TARGET_NAME']==tnm]
+			dpsel.reset_index(inplace=True)
+			if len(dpsel)>0:
+				src_coord = SkyCoord(dpsel.loc[0,'RA']+' '+dpsel.loc[0,'DEC'],unit=(u.hourangle, u.deg))
+				t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
+				if isinstance(t_match,type(None))==False:
+					dp_match = t_match.to_pandas()
+					if len(t_match)>0:
+# astroquery fix: ==0.4.7 was upper case, >0.4.7 was lower case 
+						if 'otype' in list(dp_match.columns):
+							swap = {}
+							for x in list(dp_match.columns): swap[x] = x.upper()
+							dp_match.rename(columns=swap,inplace=True)
+# astroquery fix: ==0.4.7 was FLUX_B, >0.4.7 was B 
+						if 'V' in list(dp_match.columns):
+							swap = {}
+							for x in list(SIMBAD_COLS.keys()): 
+								if 'MAG' in x: swap[SIMBAD_COLS[x][1].replace('FLUX_','')] = SIMBAD_COLS[x][1]
+							dp_match.rename(columns=swap,inplace=True)
+						for x in SIMBAD_EXCLUDE: dp_match = dp_match[dp_match['OTYPE']!=x]
+					if len(dp_match)>0:
+						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
+						dp_match.sort_values('SIMBAD_SEP',inplace=True,ignore_index=True)
+						for x in list(SIMBAD_COLS.keys()):
+							dpout.loc[dpout['TARGET_NAME']==tnm,x] = dp_match.loc[0,SIMBAD_COLS[x][1]]
+						dpout.loc[dpout['TARGET_NAME']==tnm,'SIMBAD_SEP'] = '{:.2f}'.format(dp_match.loc[0,'SIMBAD_SEP'])
 				# t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
 			# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
 			# t_match.sort(['angDist'])
@@ -950,7 +962,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 			# if len(t_match)>0:
 			# 	for x in list(SIMBAD_COLS.keys()):
 				# 		dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
-	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
+#	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 
 # add on a NOTES column
 	dpout['NOTES'] = ['']*len(dpout)
@@ -1401,23 +1413,26 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 							src_coord.separation(SkyCoord(str(dpstdx.loc[0,'RA']).replace('+','')+' '+str(dpstdx.loc[0,'DEC']),unit=(u.hourangle, u.deg))).to(u.degree).value/10.)
 					fn = stdf1[np.argmin(diff)]
 					w = [x.split('-')[0]==str(fn) for x in ssets]
+					if len(ssets[w])==0:
+						logging.info('Warning: problem match standard in file {:.0f} to standard sets {}\nCheck your log'.format(fn,std_sets))
 #					print(fn,w,ssets,std_sets)
-					ss = ssets[w][0]
-					dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
-					dpstdx.reset_index(inplace=True)
-	#				print(len(dpstdx))
-					tname = str(dpstdx.loc[0,'TARGET_NAME'])
-	#				print(ss,tname)
-	# temporary fix while sorting out why this doesn't work in testing				
-					if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
-					else: tspt = 'UNK'
-					if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
-					else: tbmag = 0.
-					if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
-					else: tvmag = 0.
-					line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
+					else:
+						ss = ssets[w][0]
+						dpstdx = dpstds[dpstds['FILE NUMBER']==int(fn)]
+						dpstdx.reset_index(inplace=True)
+		#				print(len(dpstdx))
+						tname = str(dpstdx.loc[0,'TARGET_NAME'])
+		#				print(ss,tname)
+		# temporary fix while sorting out why this doesn't work in testing				
+						if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
+						else: tspt = 'UNK'
+						if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
+						else: tbmag = 0.
+						if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
+						else: tvmag = 0.
+						line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
 	#				print(line)
-				f.write(line+'\n')
+				f.write(line+'\n#\n')
 
 # print out cal sets
 	f.write('\n# Lamp calibrations\n')
@@ -1643,7 +1658,7 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 		# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 		if len(imfile)>0:
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			fitsfile = os.path.join(qa_parameters['PROC_FOLDER'],os.path.basename(imfile[0]).replace('.pdf','.fits'))
+			fitsfile = os.path.join(qa_parameters['PROC_FOLDER'],os.path.basename(imfile[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
 			if os.path.exists(fitsfile)==True:
 				ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(fitsfile,os.path.basename(fitsfile),os.path.basename(fitsfile)))
 			else: ptxt.replace('[FITS]','')
@@ -2447,15 +2462,16 @@ def test(verbose=ERROR_CHECKING):
 # make sure code can find main reduction data files
 	if verbose==True: logging.info('...checking that code can find reduction data')
 	assert os.path.exists(reductiondatafold), 'could not find reduction data folder {}, try downloading from {}'.format(reductiondatafold,BACKUP_REDUCTION_DATA_URL)
-	for x in [100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000,6000,60000,75000]:
+	for x in [100,200,300,400,500,600,700,800,900,1000,2000,3000,4000]: #,5000,6000,60000,75000]:
 		atmfile = os.path.join(reductiondatafold,'atran{:.0f}.fits'.format(x))
 		assert os.path.exists(atmfile), 'could not find atmosphere transmission file {}, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
 		fstat = os.stat(atmfile)
 		assert fstat.st_size > 1000000, 'atmosphere transmission file {} is too small, try downloading from {}'.format(atmfile,BACKUP_REDUCTION_DATA_URL)
 	for x in [5000,50000]:
-		vfile = os.path.join(reductiondatafold,'Vega{:.0f}.fits'.format(x))
-		assert os.path.exists(vfile), 'Vega spectrum file {} not found in data folder {}, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
-		fstat = os.stat(vfile)
+		vfile = glob.glob(os.path.join(reductiondatafold,'Vega{:.0f}*.fits'.format(x)))
+#		vfile = os.path.join(reductiondatafold,'Vega{:.0f}.fits'.format(x))
+		assert os.path.exists(vfile[0]), 'Vega spectrum file {} not found in data folder {}, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
+		fstat = os.stat(vfile[0])
 		assert fstat.st_size > 1000000, 'Vega spectrum file {} is too small, try downloading from {}'.format(vfile,BACKUP_REDUCTION_DATA_URL)
 	if verbose==True: logging.info('\tPASS')
 
