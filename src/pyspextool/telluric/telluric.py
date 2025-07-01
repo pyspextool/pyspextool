@@ -278,7 +278,7 @@ def telluric(object_file:str,
         shift_spectra(default_shiftranges=default_shiftranges,
                       user_shiftranges=user_shiftranges,
                       verbose=qa['verbose'])
-    
+
     #
     # Correct the spectra for telluric absorption and flux calibrate
     #

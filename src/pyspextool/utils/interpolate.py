@@ -276,8 +276,9 @@ def linear_bitmask_interp1d(input_x,
 
         # Do the interpolation
         
-        result = nonan_interp1d(input_x, is_set, x)
-    
+        result = _noxnan_linearinterp1d(input_x, is_set, x)
+        result = result['y']
+
         # Convert NaNs to zero as they are out of range.
 
         z_nan = np.isnan(result)
@@ -445,7 +446,6 @@ def _noxnan_linearinterp1d(input_x:npt.ArrayLike,
 
             inrange_v[z_idx_differ] = (input_u[floor[z_idx_differ]]**2 + 
                                        m_var*dx**2)
-            inrange_u = np.sqrt(inrange_v)
                 
     # Make an output array that is the same size as x.
 
@@ -460,7 +460,7 @@ def _noxnan_linearinterp1d(input_x:npt.ArrayLike,
     if input_u is not None:
 
         u = np.full_like(x, np.nan,dtype=np.float64)
-        u[z_idx_nonan] = inrange_u
+        u[z_idx_nonan] = np.sqrt(inrange_v)
 
         result['uncertainty'] = u
 
@@ -468,119 +468,119 @@ def _noxnan_linearinterp1d(input_x:npt.ArrayLike,
 
     
 
-def nonan_interp1d(input_x, 
-                   input_y, 
-                   x, 
-                   variance=False):
-
-    """
-    To perform a linear interpolation assuming no NaNs are present.
-
-    Parameters
-    ----------
-    input_x : ndarray 
-        An (ndat1,) array of independent values.  Can include NaNs, but should 
-        be monotonically increasing.
-
-    input_y : ndarray
-        An (ndat1,) array of dependent values. 
-
-    x : ndarray or float or int
-        An (ndat2,) array or scalar of requested independent values.  Should
-        be monotonically increasing.
-
-    variance : {False, True}
-        Set to True to interpolate assuming the values are variances.
-
-    Returns
-    -------
-    ndarray
-          
-    """
-
-    # Determine the indices of x on input_x.  Things that don't overlap will
-    # be set to Nan (on purpose for ease of identification).
-
-    idx = find_index(input_x, x, ends_to_nan=True)
-    
-    # Check to see if there are at least some non NaN values. If not, then
-    # the requested 'x' values are not in range of input_x.
-
-    z_idx_nonan = ~np.isnan(idx)
-    if np.sum(z_idx_nonan) == 0:
-
-        message = 'nonan_interp1d from linear_inter1d:  `x` is not in range of `input_x`'
-        raise pySpextoolError(message)
-        
-    # Trim the idx array and x array to ensure only values within
-    # input_x.  Then create an array for the outputs.  
-        
-    idx = idx[z_idx_nonan]
-    inrange_x = x[z_idx_nonan]
-    inrange_y = np.zeros(np.sum(z_idx_nonan))
-
-    # Determine the floor and ceil of each value for later use.  have to do it
-    # this way to avoid using astype()
-    
-    floor = np.empty_like(idx, dtype=np.int64)
-    np.floor(idx, out=floor, casting='unsafe')
-
-    ceil = np.empty_like(idx, dtype=np.int64)
-    np.ceil(idx, out=ceil, casting='unsafe')    
-    
-    # See which points in inrange_output_x_nonan land directly on points in
-    # input_x_nonan.
-    
-    z_idx_same = ceil == floor
-
-    if np.sum(z_idx_same) !=0:
-
-        inrange_y[z_idx_same] = input_y[floor[z_idx_same]]
-
-    # Now deal with the points that don't.
-
-    if np.sum(z_idx_same) != np.sum(z_idx_nonan):
-
-        # Find the pixels that aren't identical
-        
-        z_idx_differ = floor-ceil != 0
-
-        # Compute the slope
-
-        Deltay = input_y[ceil[z_idx_differ]] - input_y[floor[z_idx_differ]]
-        Deltax = input_x[ceil[z_idx_differ]] - input_x[floor[z_idx_differ]]
-        m = Deltay/Deltax
-
-        # Get the dx
-
-        dx = inrange_x[z_idx_differ] - input_x[floor[z_idx_differ]]
-        
-        if variance is False:
-
-            # y = y_1 + m * dx where m = (y2-y1)/(x2-x1), dx=x-x1        
-
-            inrange_y[z_idx_differ] = m*dx + input_y[floor[z_idx_differ]]
-
-        else:
-
-            # var_y = [1-dx/Deltax]**2 * var_y1 + [dx/Deltax]**2 * var_y2
-
-            input_y = input_y**2
-            
-            term1 = (1-dx/Deltax)**2 * input_y[floor[z_idx_differ]]**2
-            term2 = (dx/Deltax)**2 * input_y[ceil[z_idx_differ]]**2
-
-            inrange_y[z_idx_differ] = term1 + term2
-                
-    # Make an output array that is the same size as x.
-
-    y = np.full_like(x, np.nan,dtype=np.float64)
-
-    # Now fill the inrange values back into the entire y array
-
-    y[z_idx_nonan] = inrange_y
-    
-    return y 
+#def nonan_interp1d(input_x, 
+#                   input_y, 
+#                   x, 
+#                   variance=False):
+#
+#    """
+#    To perform a linear interpolation assuming no NaNs are present.
+#
+#    Parameters
+#    ----------
+#    input_x : ndarray 
+#        An (ndat1,) array of independent values.  Can include NaNs, but should 
+#        be monotonically increasing.
+#
+#    input_y : ndarray
+#        An (ndat1,) array of dependent values. 
+#
+#    x : ndarray or float or int
+#        An (ndat2,) array or scalar of requested independent values.  Should
+#        be monotonically increasing.
+#
+#    variance : {False, True}
+#        Set to True to interpolate assuming the values are variances.
+#
+#    Returns
+#    -------
+#    ndarray
+#          
+#    """
+#
+#    # Determine the indices of x on input_x.  Things that don't overlap will
+#    # be set to Nan (on purpose for ease of identification).
+#
+#    idx = find_index(input_x, x, ends_to_nan=True)
+#    
+#    # Check to see if there are at least some non NaN values. If not, then
+#    # the requested 'x' values are not in range of input_x.
+#
+#    z_idx_nonan = ~np.isnan(idx)
+#    if np.sum(z_idx_nonan) == 0:
+#
+#        message = 'nonan_interp1d from linear_inter1d:  `x` is not in range of `input_x`'
+#        raise pySpextoolError(message)
+#        
+#    # Trim the idx array and x array to ensure only values within
+#    # input_x.  Then create an array for the outputs.  
+#        
+#    idx = idx[z_idx_nonan]
+#    inrange_x = x[z_idx_nonan]
+#    inrange_y = np.zeros(np.sum(z_idx_nonan))
+#
+#    # Determine the floor and ceil of each value for later use.  have to do it
+#    # this way to avoid using astype()
+#    
+#    floor = np.empty_like(idx, dtype=np.int64)
+#    np.floor(idx, out=floor, casting='unsafe')
+#
+#    ceil = np.empty_like(idx, dtype=np.int64)
+#    np.ceil(idx, out=ceil, casting='unsafe')    
+#    
+#    # See which points in inrange_output_x_nonan land directly on points in
+#    # input_x_nonan.
+#    
+#    z_idx_same = ceil == floor
+#
+#    if np.sum(z_idx_same) !=0:
+#
+#        inrange_y[z_idx_same] = input_y[floor[z_idx_same]]
+#
+#    # Now deal with the points that don't.
+#
+#    if np.sum(z_idx_same) != np.sum(z_idx_nonan):
+#
+#        # Find the pixels that aren't identical
+#        
+#        z_idx_differ = floor-ceil != 0
+#
+#        # Compute the slope
+#
+#        Deltay = input_y[ceil[z_idx_differ]] - input_y[floor[z_idx_differ]]
+#        Deltax = input_x[ceil[z_idx_differ]] - input_x[floor[z_idx_differ]]
+#        m = Deltay/Deltax
+#
+#        # Get the dx
+#
+#        dx = inrange_x[z_idx_differ] - input_x[floor[z_idx_differ]]
+#        
+#        if variance is False:
+#
+#            # y = y_1 + m * dx where m = (y2-y1)/(x2-x1), dx=x-x1        
+#
+#            inrange_y[z_idx_differ] = m*dx + input_y[floor[z_idx_differ]]
+#
+#        else:
+#
+#            # var_y = [1-dx/Deltax]**2 * var_y1 + [dx/Deltax]**2 * var_y2
+#
+#            input_y = input_y**2
+#            
+#            term1 = (1-dx/Deltax)**2 * input_y[floor[z_idx_differ]]**2
+#            term2 = (dx/Deltax)**2 * input_y[ceil[z_idx_differ]]**2
+#
+#            inrange_y[z_idx_differ] = term1 + term2
+#                
+#    # Make an output array that is the same size as x.
+#
+#    y = np.full_like(x, np.nan,dtype=np.float64)
+#
+#    # Now fill the inrange values back into the entire y array
+#
+#    y[z_idx_nonan] = inrange_y
+#    
+#    return y 
 
 
 def sinc_interpolation_fft(x: np.ndarray, s: np.ndarray, u: np.ndarray) -> np.ndarray:

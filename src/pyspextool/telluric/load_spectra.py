@@ -260,8 +260,6 @@ def _load_standard_data(standard_filename: str = None):
             setup.state["proc_path"], standard_filename, exist=False
         )
     
-    print(fullpath)
-
     standard_spectra, standard_data = read_spectra_fits(fullpath)
 
     standard_hdrinfo = get_headerinfo(
