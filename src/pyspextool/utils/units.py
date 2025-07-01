@@ -331,13 +331,13 @@ def get_latex_fluxdensity(unit:str):
                       'erg s-1 cm-2 Hz-1',
                       'reflectance'])
 
-    lunits = np.array([r'(W m$^{-2}$ $\mu$m$^{-1}$)',
-                       r'(erg s$^{-1}$ cm$^{-2}$ $\mathrm{\AA}^{-1}$)',
-                       '(Jy)',
-                       '(mJy)',
-                       r'($\mu$Jy)',
-                       r'(W m$^{-2}$ Hz$^{-1}$)',
-                       r'(erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$)',
+    lunits = np.array([r'W m$^{-2}$ $\mu$m$^{-1}$',
+                       r'erg s$^{-1}$ cm$^{-2}$ $\mathrm{\AA}^{-1}$',
+                       'Jy',
+                       'mJy',
+                       r'$\mu$Jy',
+                       r'W m$^{-2}$ Hz$^{-1}$',
+                       r'erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$',
                        ''])
 
     ftype = np.array([r'$f_\lambda$',
@@ -354,8 +354,13 @@ def get_latex_fluxdensity(unit:str):
     #
     
     z = units == unit
-    
-    return lunits[z][0], ftype[z][0]+lunits[z][0], r'$\sigma$'+lunits[z][0] 
+
+    result = (lunits[z].item(),
+              ftype[z][0].item()+'('+lunits[z].item()+')',
+              r'$\sigma$'+'('+lunits[z].item()+')' ) 
+
+    return result
+
     
 
 
