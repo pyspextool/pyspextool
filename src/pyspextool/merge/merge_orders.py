@@ -152,28 +152,28 @@ def merge_orders(merge_apertures:int=None,
             merged_uncertainty = result['uncertainty']
             merged_bitmask = result['bitmask']
                         
-            # Create spectrum to store
+        # Create spectrum to store
 
-            spectrum = np.vstack((merged_wavelength,merged_intensity, 
-                                  merged_uncertainty, merged_bitmask))
+        spectrum = np.vstack((merged_wavelength,merged_intensity, 
+                              merged_uncertainty, merged_bitmask))
 
-            merged_spectra.append(spectrum)
+        merged_spectra.append(spectrum)
 
     #
     # Make QA plot
     #
 
-    plot_merges(setup.plots['shifts'],
-                setup.plots['subplot_size'],
-                setup.plots['stack_max'],
-                setup.plots['font_size'],
-                qa['showscale'],
-                setup.plots['spectrum_linewidth'],
-                setup.plots['spine_linewidth'],
-                config.state['xlabel'],
-                config.state['rawspectra'],
-                config.state['orders'],
-                merged_spectra)
+#    plot_merges(setup.plots['shifts'],
+#                setup.plots['subplot_size'],
+#                setup.plots['stack_max'],
+#                setup.plots['font_size'],
+#                qa['showscale'],
+#                setup.plots['spectrum_linewidth'],
+#                setup.plots['spine_linewidth'],
+#                config.state['xlabel'],
+#                config.state['rawspectra'],
+#                config.state['orders'],
+#                merged_spectra)
     
     #
     # Store the results and set the done variable
