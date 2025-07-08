@@ -204,12 +204,13 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
 
     for i in range(tc.state['object_norders']):
 
+        std_idx = np.where(tc.state['standard_orders'] == \
+                           tc.state['object_orders'][i])[0]
+        
         for j in range(tc.state['object_napertures']):
 
-            std_idx = tc.state['standard_orders'] == \
-                tc.state['object_orders'][i]
-            obj_idx = i + j*tc.state['object_napertures']
-            
+            obj_idx = i*tc.state['object_napertures'] + j
+
             ri, ru = linear_interp1d(telluric_spectra[std_idx,0,:],
                                      telluric_spectra[std_idx,1,:],
                                      object_spectra[obj_idx,0,:],

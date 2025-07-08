@@ -28,10 +28,6 @@ def check_path(path:str,
         `path`, if the path exists.  If `make_absolute` is set to True,
         `path` is converted to an absolute path before being returned.
 
-    Examples
-    --------
-    later
-
     """
 
     #
@@ -153,10 +149,11 @@ def check_parameter(caller_name:str,
                     *dimens,
                     possible_values=None,
                     list_types=None,
-                    ndarray_type=None):
+                    ndarray_size=None,
+                    ndarray_dtype=None):
 
     """
-    check_parameter
+    Checks input parameters for a variety of characterisitcs.
 
 
     Parameters
@@ -274,20 +271,31 @@ def check_parameter(caller_name:str,
                     raise ValueError(message)
                     return False
 
-#    if ndarray_type is not None:
-#        
-#        if parameter_type == 'ndarray':
-#
-#            if parameter[i].dtype != ndarray_type:
-#            
-#                    message = 'Parameter `'+str(parameter_name) + \
-#                        '['+str(i)+']` of function ' + \
-#                    caller_name+' has dtype ' + \
-#                    parameter[i].dtype+ \
-#                    '.  Acceptable type is '+ndarray_type+'.'
-#
-#                    raise ValueError(message)
-#                    return False
+    if ndarray_size is not None:
+
+        if parameter_type == 'ndarray':
+
+            size = np.size(parameter)
+            if size != ndarray_size:
+
+                message = 'Parameter `'+str(parameter_name) + \
+                    '` of function '+caller_name+' has a size of '+str(size) + \
+                    ' but is required to have a size of '+str(ndarray_size)+'.'
+                raise pySpextoolError(message)
+
+    if ndarray_dtype is not None:
+        
+        if parameter_type == 'ndarray':
+
+            if parameter.dtype != ndarray_dtype:
+            
+                    message = 'Parameter `'+str(parameter_name) + \
+                        ' of function ' + caller_name+' has dtype ' + \
+                    str(parameter.dtype)+'.  Acceptable type is '+ \
+                    ndarray_dtype+'.'
+
+                    raise TypeError(message)
+                    return False
 
         
 def check_range(values,
