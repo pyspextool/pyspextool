@@ -44,7 +44,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 July 1'
+VERSION = '2025 July 9'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -933,6 +933,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 				t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
 				if isinstance(t_match,type(None))==False:
 					dp_match = t_match.to_pandas()
+					dp_match.reset_index(inplace=True)
 					if len(t_match)>0:
 # astroquery fix: ==0.4.7 was upper case, >0.4.7 was lower case 
 						if 'otype' in list(dp_match.columns):
