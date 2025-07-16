@@ -2096,7 +2096,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
 				else:
 					fnum = '{}'.format(fnums[loop*nim])
-					if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
+					if nim>1: fnum+=',{}'.format(fnums[loop*nim+1])
 					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
 
 					ps.extract.extract(spar['STD_REDUCTION_MODE'],
@@ -2143,7 +2143,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
 				else:
 					fnum = '{}'.format(fnums[loop*nim])
-					if nim>1: fnum+='-{}'.format(fnums[loop*nim+1])
+					if nim>1: fnum+=',{}'.format(fnums[loop*nim+1])
 					if parameters['VERBOSE']==True: logging.info(' Extracting files {}'.format(fnum))
 					ps.extract.extract(spar['TARGET_REDUCTION_MODE'],
 						[spar['TARGET_PREFIX'],fnum], # do just a pair
