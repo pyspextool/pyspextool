@@ -105,16 +105,29 @@ def convert_to_votable(input_file, output_path="."):
     """
 
     spectra, header_dict = read_spectra_fits(input_file)
+    
+    hdul = fits.open(input_file)
+    hdul.info()
+    data = hdul[0].data
 
-    wavelength = spectra[0, 0, :]
-    flux = spectra[0, 1, :]
-    flux_unc = spectra[0, 2, :]
-    # mask?
+    # Convert the FITS table to an Astropy Table
+    init_table = Table()
+
+    # Set up initial parameters
+    #print(init_table)
+    init_table['wavelength']       = spectra[0, 0, :]
+    init_table['flux']             = spectra[0, 1, :]
+    init_table['flux_uncertainty'] = spectra[0, 2, :]
+    init_table['mask']             = spectra[0, 3, :]
+    print(init_table)
+
+    plt.plot(init_table['wavelength'], init_table['flux'])
+    plt.show()
 
     # header = compile_header(wavelength, **spectrum_info_all)
     header = header_dict["header"]
     header["HISTORY"] = (
-        f"Converted {basename(input_file)} using pyspextool.io convert_to_fits"
+        f"Converted {basename(input_file)} using pyspextool.io convert_to_votable"
     )
 
     # replace spaces in object name with underscores
@@ -190,3 +203,4 @@ def convert_to_votable(input_file, output_path="."):
     logger.info(f"Wrote {vo_path}")
 
     return
+
