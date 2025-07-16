@@ -3,16 +3,15 @@ import numpy.typing as npt
 from astropy.io import fits
 from astropy.time import Time
 import re
-import os
+import sys
 
-from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
 from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils import math
-from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
+from pyspextool.setup_utils import mishu
 
 
 def correct_linearity(image:npt.ArrayLike,
@@ -338,7 +337,7 @@ def load_data(file,
     # Open the file and grab important values 
     #
     
-    hdul = fits.open(file)
+    hdul = fits.open(file, ignore_missing_end=True)
     hdul[0].verify('silentfix')  # this was needed to correct hdr problems
 
     itime = hdul[0].header['ITIME']
@@ -480,15 +479,10 @@ def read_fits(files,
     #
     # Correct for non-linearity?
     #
-    
     if linearity_correction is True:
-
-        linearity_file = os.path.join(setup.state['instrument_path'],
-                                      'spex_lincorr.fits')
+        linearity_file = mishu.fetch("spex_lincorr.fits")
         linearity_coeffs = fits.getdata(linearity_file)
-
     else:
-
         linearity_coeffs = None
 
     #
@@ -603,5 +597,3 @@ def spex_linearity_imagepoly(image, coefficients):
     result = image_poly(corrected_image, coefficients)
 
     return result
-
-

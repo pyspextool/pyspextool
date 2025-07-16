@@ -4,6 +4,7 @@ from .load_image import load_image
 from .make_profiles import make_profiles
 from .identify_apertures import identify_apertures
 from .select_orders import select_orders
+from .override_aperturesigns import override_aperturesigns
 from .trace_apertures import trace_apertures
 from .define_aperture_parameters import define_aperture_parameters
 from .extract_apertures import extract_apertures

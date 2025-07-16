@@ -2,18 +2,17 @@ import numpy as np
 import numpy.typing as npt
 from astropy.io import fits
 import re
-from os.path import join, basename
+import os
 import logging
 
-from pyspextool import config as setup
 from pyspextool.fit.polyfit import image_poly
 from pyspextool.io.check import check_parameter
-from pyspextool.io.fitsheader import get_headerinfo, average_headerinfo
+from pyspextool.io.fitsheader import get_headerinfo
 from pyspextool.utils.arrays import idl_rotate
 from pyspextool.utils.math import combine_flag_stack
-from pyspextool.utils.split_text import split_text
 from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.pyspextoolerror import pySpextoolError
+from pyspextool.setup_utils import mishu # pooch class for caching files
 
 def correct_uspexbias(img:npt.ArrayLike):
 
@@ -153,25 +152,16 @@ def read_fits(files:list,
     nfiles = len(files)
 
     # Correct for non-linearity?
-
     if linearity_correction is True:
-
-        linearity_file = join(setup.state['instrument_path'],
-                              'uspex_lincorr.fits')
-        try:
-            lc_coeffs = fits.getdata(linearity_file)
-        except FileNotFoundError:
-            lc_coeffs = fits.getdata("https://pyspextool.s3.us-east-1.amazonaws.com/uspex_lincorr.fits")
-
+        linearity_file = mishu.fetch('uspex_lincorr.fits')
+        lc_coeffs = fits.getdata(linearity_file)
     else:
-
         lc_coeffs = None
 
     # Get set up for linearity check
-
-    bias_file = join(setup.state['instrument_path'],'uspex_bias.fits')
-    
+    bias_file = mishu.fetch('uspex_bias.fits')   
     hdul = fits.open(bias_file)
+    
     divisor = hdul[0].header['DIVISOR']
     bias = hdul[0].data / divisor
     hdul.close()
@@ -191,9 +181,9 @@ def read_fits(files:list,
         list_filenames = []    
         for file in files:
 
-            list_filenames.append(basename(file))
+            list_filenames.append(os.path.basename(file))
             
-            file_names = ', '.join(list_filenames)+','
+            file_names = ", ".join(list_filenames)
 
         
         message = ' Loading images(s) '+file_names
@@ -382,7 +372,7 @@ def load_uspeximage(file:list,
     readnoise = 12.0  # per single read
     gain = 1.5  # electrons per DN
 
-    hdul = fits.open(file)
+    hdul = fits.open(file, ignore_missing_data=True)
     hdul[0].verify('silentfix')  # this was needed for to correct hdr problems
 
     itime = hdul[0].header['ITIME']
@@ -573,31 +563,65 @@ def get_uspexheader(hdr,
     
     # Airmass 
 
-    hdrinfo['AM'] = [hdr['TCS_AM'], ' Airmass']
+    try:
+
+        airmass = hdr['TCS_AM']
+
+    except KeyError as e:
+
+        airmass = np.nan
+
+    hdrinfo['AM'] = [airmass, ' Airmass']
 
     # Hour angle
 
-    val = hdr['TCS_HA']
-    m = re.search('[-]', '[' + val + ']')
-    if not m:
-        val = '+' + val.strip()
-    hdrinfo['HA'] = [val, ' Hour angle (hours)']
+    try:
+
+        hourangle = hdr['TCS_HA']
+
+        m = re.search('[-]', '[' + hourangle + ']')
+        if not m:
+            hourangle = '+' + hourangle.strip()
+            
+    except KeyError as e:
+
+        hourangle = 'nan'
+        
+    hdrinfo['HA'] = [hourangle, ' Hour angle (hours)']
 
     # Position Angle
 
     hdrinfo['PA'] = [hdr['POSANGLE'], ' Position Angle E of N (deg)']
 
-    # Dec 
 
-    val = hdr['TCS_DEC']
-    m = re.search('[-]', '[' + val + ']')
-    if not m:
-        val = '+' + val.strip()
-    hdrinfo['DEC'] = [val, ' Declination, FK5 J2000']
+    # Declination
 
-    # RA
+    try:
 
-    hdrinfo['RA'] = [hdr['TCS_RA'].strip(), ' Right Ascension, FK5 J2000']
+        declination = hdr['TCS_DEC']
+
+        m = re.search('[-]', '[' + declination + ']')
+        if not m:
+            declination = '+' + declination.strip()
+            
+
+    except KeyError as e:
+
+        declination = 'nan'
+
+    hdrinfo['DEC'] = [declination, ' Declination, FK5 J2000']
+
+    # Right Ascension
+
+    try:
+
+        ra = hdr['TCS_RA'].strip()
+
+    except KeyError as e:
+
+        declination = 'nan'
+
+    hdrinfo['RA'] = [declination, ' Right Ascension, FK5 J2000']
 
     # COADDS, ITIME
 

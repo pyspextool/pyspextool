@@ -1,8 +1,11 @@
+import os
+
 
 from pyspextool.extract import load_image
 from pyspextool.extract import make_profiles
 from pyspextool.extract import identify_apertures
 from pyspextool.extract import select_orders
+from pyspextool.extract import override_aperturesigns
 from pyspextool.extract import trace_apertures
 from pyspextool.extract import define_aperture_parameters
 from pyspextool.extract import extract_apertures
@@ -69,12 +72,12 @@ def extract(reduction_mode:str,
     if load_directory == 'raw':
 
         load_path = setup.state['raw_path']
-        image_type = 'raw'
+#        image_type = 'raw'
         
     elif load_directory == 'proc':
 
         load_path = setup.state['proc_path']
-        image_type = 'combined'
+#        image_type = 'combined'
     
 
     # Create the input file names
@@ -130,11 +133,11 @@ def extract(reduction_mode:str,
         else:
 
             output_filenames = []
-            for file in input_files:
+            for file in files:
 
-                root = splitext(osbasename(file))
+                root = os.path.splitext(os.path.basename(file))
                 if root[1] == '.gz':
-                    root = splitext(root[0])
+                    root = os.path.splitext(root[0])
                     
                 output_filenames.append(output_prefix+'_'+root[0]+'.fits')
 
@@ -208,7 +211,6 @@ def extract(reduction_mode:str,
         identify_apertures(aperture_findinfo,
                            seeing_fwhm=seeing_fwhm,
                            ybuffer=profile_ybuffer,
-                           aperture_signs=aperture_signs,
                            verbose=verbose,
                            qa_show=qa_show,
                            qa_showscale=qa_showscale,
@@ -217,13 +219,22 @@ def extract(reduction_mode:str,
 
         # Select orders
 
-        select_orders(include=include_orders,
-                      exclude=exclude_orders,
-                      verbose=verbose,
-                      qa_show=qa_show,
-                      qa_showscale=qa_showscale,
-                      qa_showblock=qa_showblock,
-                      qa_write=qa_write)
+        if include_orders is not None or exclude_orders is not None:
+
+            select_orders(include=include_orders,
+                          exclude=exclude_orders,
+                          verbose=verbose,
+                          qa_show=qa_show,
+                          qa_showscale=qa_showscale,
+                          qa_showblock=qa_showblock,
+                          qa_write=qa_write)
+
+        # Update aperture positions if requested
+
+        if aperture_signs is not None:
+
+            override_aperturesigns(aperture_signs,
+                                   verbose=verbose)
 
         # Trace the orders
 

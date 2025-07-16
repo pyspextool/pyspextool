@@ -240,8 +240,9 @@ def make_flat(files:list | str,
                            qa_show=qa['show'],
                            qa_showblock=qa['showblock'],
                            qa_showscale=qa['showscale'],
-                           qa_fullpath=fullpath)
-        
+                           qa_fullpath=fullpath,
+                           debug=False)
+
     edgecoeffs = result[0]
     xranges = result[1]
 
