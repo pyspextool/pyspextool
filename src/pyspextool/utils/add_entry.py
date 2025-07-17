@@ -1,15 +1,16 @@
-def add_entry(idict,
-              key,
-              direction,
-              newkey,
-              nvalue):
+from pyspextool.io.check import check_parameter
 
+def add_entry(idict:dict,
+              key:str,
+              direction:str,
+              newkey:str,
+              nvalue):
     
     """
     Adds a key and value to a dictionary.
 
-    Input Parameters
-    ----------------
+    Parameters
+    ----------
     idict : dict 
         a dictionary
 
@@ -26,7 +27,7 @@ def add_entry(idict,
         the value associated with `newkey`
 
     Returns
-    --------
+    -------
     dict
         the original dictionary with a new entry
 
@@ -48,6 +49,23 @@ def add_entry(idict,
     {'HA': 1, 'new': (3, 4), 'PA': 2, 'MJD': 3}
 
     """
+
+    #
+    # Check parameters
+    #
+    
+    check_parameter('add_entry', 'idict', idict, 'dict')
+
+    check_parameter('add_entry', 'key', key, 'str')
+
+    check_parameter('add_entry', 'direction', direction, 'str', 
+                    possible_values=['before', 'after'])
+    
+    check_parameter('add_entry', 'newkey', newkey, 'str')
+
+    #
+    # Now do the work
+    #
 
     pos = list(idict.keys()).index(key)
     items = list(idict.items())

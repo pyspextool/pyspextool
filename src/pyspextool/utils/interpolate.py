@@ -4,7 +4,6 @@ import numpy.typing as npt
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.arrays import find_index
 from pyspextool.utils.math import bit_set
-from pyspextool.utils.for_print import for_print
 from pyspextool.pyspextoolerror import pySpextoolError
 
 def linear_interp1d(input_x:npt.ArrayLike,
@@ -46,50 +45,28 @@ def linear_interp1d(input_x:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('linear_interp1d', 'input_x', input_x, ['ndarray', 'list'])
+    check_parameter('linear_interp1d', 'input_x', input_x, 'ndarray')
 
-    check_parameter('linear_interp1d', 'input_y', input_y, ['ndarray', 'list'])
+    check_parameter('linear_interp1d', 'input_y', input_y, 'ndarray')
 
     check_parameter('linear_interp1d', 'output_x', output_x,
-                    ['ndarray', 'list', 'int', 'float'])
+                    ['ndarray', 'int', 'float'])
 
-    check_parameter('linear_interp1d', 'input_u', input_u,
-                    ['NoneType', 'ndarray', 'list'])    
+    check_parameter('linear_interp1d', 'input_u', input_u, 
+                    ['NoneType', 'ndarray'])    
 
     check_parameter('linear_interp1d', 'leave_nans', leave_nans, 'bool')    
 
     #
-    #  Convert possible lists to numpy arrays
+    # Check to see if `output_x` is a scalar
     #
-    
-    if isinstance(input_x, list) is True:
 
-        input_x = np.array(input_x)
-
-    if isinstance(input_y, list) is True:
-
-        input_y = np.array(input_y)
-
-    if isinstance(input_u, list) is True:
-
-        input_u = np.array(input_u)                                
-
-    # Now deal with the output_x array.  First check to see if it is a scalar,
-    # and then check if it is a list.
-
+    scalar = False
     if np.isscalar(output_x):
 
         scalar = True
         output_x = np.array([output_x])        
-
-    else:
-
-        scalar = False
             
-    if isinstance(output_x, list) is True:
-
-        output_x = np.array(output_x)
-
     #
     #  Remove NaNs
     #
@@ -128,26 +105,36 @@ def linear_interp1d(input_x:npt.ArrayLike,
     #
     # Do the interpolation
     #
-        
-    result = nonan_interp1d(input_x, input_y, x)
+
+    result = _noxnan_linearinterp1d(input_x, 
+                                    input_y, 
+                                    x,
+                                    input_u = input_u)
 
     # Now create an output_y array the same size as output_x and fill with
     # result.
     
     output_y = np.full_like(output_x, np.nan, dtype=np.float64)
-    output_y[z_output_nonan] = result
-    
-    #
-    # Do the error propagation
-    #
+    output_y[z_output_nonan] = result['y']
 
     if input_u is not None:
 
-        result = nonan_interp1d(input_x, input_u**2, x, variance=True)    
+        output_u = np.full_like(output_x, np.nan, dtype=np.float64)
+        output_u[z_output_nonan] = result['uncertainty']
 
-        output_v = np.full_like(output_x, np.nan, dtype=np.float64)
-        output_v[z_output_nonan] = result
 
+#
+#    #
+#    # Do the error propagation
+#    #
+#
+#    if input_u is not None:
+#
+#        result = nonan_interp1d(input_x, input_u**2, x, variance=True)    
+#
+#        output_v = np.full_like(output_x, np.nan, dtype=np.float64)
+#        output_v[z_output_nonan] = result
+#
     #
     # Return the values accordingly
     #
@@ -156,16 +143,16 @@ def linear_interp1d(input_x:npt.ArrayLike,
 
         if scalar is True:
 
-            return output_y[0], np.sqrt(output_v[0])
+            return output_y[0], output_u[0]
 
         else:
 
-            return output_y, np.sqrt(output_v)            
+            return output_y, output_u
         
     else:
 
         if scalar is True:
-        
+
             return output_y[0]
 
         else:
@@ -174,7 +161,10 @@ def linear_interp1d(input_x:npt.ArrayLike,
 
 
         
-def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
+def linear_bitmask_interp1d(input_x, 
+                            input_y, 
+                            output_x, 
+                            nbits=8):
 
     """
     To preform 1D linear interpolation on a bit mask.
@@ -286,8 +276,9 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
 
         # Do the interpolation
         
-        result = nonan_interp1d(input_x, is_set, x)
-    
+        result = _noxnan_linearinterp1d(input_x, is_set, x)
+        result = result['y']
+
         # Convert NaNs to zero as they are out of range.
 
         z_nan = np.isnan(result)
@@ -320,37 +311,61 @@ def linear_bitmask_interp1d(input_x, input_y, output_x, nbits=8):
 
         return tmp
 
-
-
-def nonan_interp1d(input_x, input_y, x, variance=False):
-
+def _noxnan_linearinterp1d(input_x:npt.ArrayLike, 
+                           input_y:npt.ArrayLike, 
+                           x:npt.ArrayLike | int | float,
+                           input_u:npt.ArrayLike=None):
+    
     """
-    To perform a linear interpolation assuming non NaNs present.
-
+    To perform a linear interpolation with optional error propagation.
+   
     Parameters
     ----------
     input_x : ndarray 
-        An (ndat1,) array of independent values.  Can include NaNs, but should 
-        be monotonically increasing.
+        An (ndat1,) array of independent values.  Cannot include NaNs, 
+        but should otherwise be monotonically increasing.
 
     input_y : ndarray
         An (ndat1,) array of dependent values. 
 
-    x : ndarray or float or int
-        An (ndat2,) array or scalar of requested independent values.  Should
-        be monotonically increasing.
+    x : ndarray 
+        An (ndat2,) array of requested independent values.  Should also be 
+        monotonically increasing.
 
-    variance : {False, True}
-        Set to True to interpolate assuming the values are variances.
+    input_u : ndarray, optional
+        An (ndat1,) array of uncertainty values. 
 
     Returns
     -------
-    ndarray
+    dict
+
+        `"y"` : ndarray
+            An (ndat2,) array of interpolated values.
+
+        `"uncertainty"` : ndarray
+            An (ndat2,) array of propagated uncertainties.
           
     """
 
+    #
+    # Check parameters
+    #
+    
+    check_parameter('_nonxnan_linearinterp1d', 'input_x', input_x, 'ndarray')
+
+    check_parameter('_nonxnan_linearinterp1d', 'input_y', input_y, 'ndarray')
+
+    check_parameter('_nonxnan_linearinterp1d', 'x', x, 'ndarray')
+
+    check_parameter('_nonxnan_linearinterp1d', 'input_u', input_u, 
+                    ['ndarray','NoneType'])
+
+    # 
+    # Start the process
+    #
+
     # Determine the indices of x on input_x.  Things that don't overlap will
-    # be set to Nan (on purpose for ease of identification).
+    # be set to NaN (on purpose for ease of identification).
 
     idx = find_index(input_x, x, ends_to_nan=True)
     
@@ -360,7 +375,7 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
     z_idx_nonan = ~np.isnan(idx)
     if np.sum(z_idx_nonan) == 0:
 
-        message = 'nonan_interp1d from linear_inter1d:  `x` is not in range of `input_x`'
+        message = '`x` is not in range of `input_x`'
         raise pySpextoolError(message)
         
     # Trim the idx array and x array to ensure only values within
@@ -369,6 +384,9 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
     idx = idx[z_idx_nonan]
     inrange_x = x[z_idx_nonan]
     inrange_y = np.zeros(np.sum(z_idx_nonan))
+    if input_u is not None:
+
+        inrange_v = np.zeros(np.sum(z_idx_nonan))
 
     # Determine the floor and ceil of each value for later use.  have to do it
     # this way to avoid using astype()
@@ -379,8 +397,12 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
     ceil = np.empty_like(idx, dtype=np.int64)
     np.ceil(idx, out=ceil, casting='unsafe')    
     
-    # See which points in inrange_output_x_nonan land directly on points in
-    # input_x_nonan.
+    #
+    # Start the interpolation
+    #
+
+    # First, see which points in inrange_output_x_nonan land directly on 
+    # points in input_x_nonan.  These just get copied.
     
     z_idx_same = ceil == floor
 
@@ -388,7 +410,11 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
 
         inrange_y[z_idx_same] = input_y[floor[z_idx_same]]
 
-    # Now deal with the points that don't.
+        if input_u is not None:
+
+            inrange_v[z_idx_same] = input_u[floor[z_idx_same]]**2
+
+    # Now look for points that don't.  These get linear interpolation
 
     if np.sum(z_idx_same) != np.sum(z_idx_nonan):
 
@@ -406,22 +432,20 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
 
         dx = inrange_x[z_idx_differ] - input_x[floor[z_idx_differ]]
         
-        if variance is False:
+        # Do the interpolation
+        # y = y_1 + m * dx where m = (y2-y1)/(x2-x1), dx=x-x1        
 
-            # y = y_1 + m * dx where m = (y2-y1)/(x2-x1), dx=x-x1        
+        inrange_y[z_idx_differ] = m*dx + input_y[floor[z_idx_differ]]
 
-            inrange_y[z_idx_differ] = m*dx + input_y[floor[z_idx_differ]]
+        # Now do the error propagation
+        
+        if input_u is not None:
 
-        else:
+            m_var = (input_u[ceil[z_idx_differ]]**2 + 
+                     input_u[floor[z_idx_differ]]**2) / Deltax**2
 
-            # var_y = [1-dx/Deltax]**2 * var_y1 + [dx/Deltax]**2 * var_y2
-
-            input_y = input_y**2
-            
-            term1 = (1-dx/Deltax)**2 * input_y[floor[z_idx_differ]]**2
-            term2 = (dx/Deltax)**2 * input_y[ceil[z_idx_differ]]**2
-
-            inrange_y[z_idx_differ] = term1 + term2
+            inrange_v[z_idx_differ] = (input_u[floor[z_idx_differ]]**2 + 
+                                       m_var*dx**2)
                 
     # Make an output array that is the same size as x.
 
@@ -430,8 +454,133 @@ def nonan_interp1d(input_x, input_y, x, variance=False):
     # Now fill the inrange values back into the entire y array
 
     y[z_idx_nonan] = inrange_y
+
+    result = {'y':y, 'uncertainty':None}
+
+    if input_u is not None:
+
+        u = np.full_like(x, np.nan,dtype=np.float64)
+        u[z_idx_nonan] = np.sqrt(inrange_v)
+
+        result['uncertainty'] = u
+
+    return result
+
     
-    return y 
+
+#def nonan_interp1d(input_x, 
+#                   input_y, 
+#                   x, 
+#                   variance=False):
+#
+#    """
+#    To perform a linear interpolation assuming no NaNs are present.
+#
+#    Parameters
+#    ----------
+#    input_x : ndarray 
+#        An (ndat1,) array of independent values.  Can include NaNs, but should 
+#        be monotonically increasing.
+#
+#    input_y : ndarray
+#        An (ndat1,) array of dependent values. 
+#
+#    x : ndarray or float or int
+#        An (ndat2,) array or scalar of requested independent values.  Should
+#        be monotonically increasing.
+#
+#    variance : {False, True}
+#        Set to True to interpolate assuming the values are variances.
+#
+#    Returns
+#    -------
+#    ndarray
+#          
+#    """
+#
+#    # Determine the indices of x on input_x.  Things that don't overlap will
+#    # be set to Nan (on purpose for ease of identification).
+#
+#    idx = find_index(input_x, x, ends_to_nan=True)
+#    
+#    # Check to see if there are at least some non NaN values. If not, then
+#    # the requested 'x' values are not in range of input_x.
+#
+#    z_idx_nonan = ~np.isnan(idx)
+#    if np.sum(z_idx_nonan) == 0:
+#
+#        message = 'nonan_interp1d from linear_inter1d:  `x` is not in range of `input_x`'
+#        raise pySpextoolError(message)
+#        
+#    # Trim the idx array and x array to ensure only values within
+#    # input_x.  Then create an array for the outputs.  
+#        
+#    idx = idx[z_idx_nonan]
+#    inrange_x = x[z_idx_nonan]
+#    inrange_y = np.zeros(np.sum(z_idx_nonan))
+#
+#    # Determine the floor and ceil of each value for later use.  have to do it
+#    # this way to avoid using astype()
+#    
+#    floor = np.empty_like(idx, dtype=np.int64)
+#    np.floor(idx, out=floor, casting='unsafe')
+#
+#    ceil = np.empty_like(idx, dtype=np.int64)
+#    np.ceil(idx, out=ceil, casting='unsafe')    
+#    
+#    # See which points in inrange_output_x_nonan land directly on points in
+#    # input_x_nonan.
+#    
+#    z_idx_same = ceil == floor
+#
+#    if np.sum(z_idx_same) !=0:
+#
+#        inrange_y[z_idx_same] = input_y[floor[z_idx_same]]
+#
+#    # Now deal with the points that don't.
+#
+#    if np.sum(z_idx_same) != np.sum(z_idx_nonan):
+#
+#        # Find the pixels that aren't identical
+#        
+#        z_idx_differ = floor-ceil != 0
+#
+#        # Compute the slope
+#
+#        Deltay = input_y[ceil[z_idx_differ]] - input_y[floor[z_idx_differ]]
+#        Deltax = input_x[ceil[z_idx_differ]] - input_x[floor[z_idx_differ]]
+#        m = Deltay/Deltax
+#
+#        # Get the dx
+#
+#        dx = inrange_x[z_idx_differ] - input_x[floor[z_idx_differ]]
+#        
+#        if variance is False:
+#
+#            # y = y_1 + m * dx where m = (y2-y1)/(x2-x1), dx=x-x1        
+#
+#            inrange_y[z_idx_differ] = m*dx + input_y[floor[z_idx_differ]]
+#
+#        else:
+#
+#            # var_y = [1-dx/Deltax]**2 * var_y1 + [dx/Deltax]**2 * var_y2
+#
+#            input_y = input_y**2
+#            
+#            term1 = (1-dx/Deltax)**2 * input_y[floor[z_idx_differ]]**2
+#            term2 = (dx/Deltax)**2 * input_y[ceil[z_idx_differ]]**2
+#
+#            inrange_y[z_idx_differ] = term1 + term2
+#                
+#    # Make an output array that is the same size as x.
+#
+#    y = np.full_like(x, np.nan,dtype=np.float64)
+#
+#    # Now fill the inrange values back into the entire y array
+#
+#    y[z_idx_nonan] = inrange_y
+#    
+#    return y 
 
 
 def sinc_interpolation_fft(x: np.ndarray, s: np.ndarray, u: np.ndarray) -> np.ndarray:

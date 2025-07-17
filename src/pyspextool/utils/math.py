@@ -180,7 +180,10 @@ def combine_flag_stack(stack:npt.ArrayLike,
 
 
 
-def find_outliers(data, thresh, leave_nans=True, silent=False):
+def find_outliers(data, 
+                  thresh, 
+                  leave_nans=True, 
+                  silent=False):
 
     '''
     To identify outliers in a distribution of data.
@@ -304,14 +307,14 @@ def find_outliers(data, thresh, leave_nans=True, silent=False):
 
 
     
-def mean_data_stack(data,
-                    weights=None,
-                    goodbad=None,
-                    robust=None,
-                    stderr=True):
+def mean_data_stack(data:npt.ArrayLike,
+                    weights:npt.ArrayLike=None,
+                    goodbad:npt.ArrayLike=None,
+                    robust:float=None,
+                    stderr:bool=True):
 
-    '''
-    (Robustly) Compute the mean of a spectral or image stack with optional mask
+    """
+    (Robustly) Compute the mean of a spectral or image stack
     
     Parameters
     ----------
@@ -324,14 +327,14 @@ def mean_data_stack(data,
         for images (nimgs, nrows, ncols).  For a standard weighted mean, 
         pass 1/var.
 
-    goodbad : numpy.ndarray, optional
+    goodbad : ndarray, optional
         an int mask array with the same shape as `data`.  
         0 = bad, 1=good
 
     robust : float, optional
         The threshold for identifying outliers.  See find_outliers.
 
-    stderr : {True, False}, optional
+    stderr : {True, False}
         If True, and `weights` is None, then the output `mvar` will be the 
         standard error**2.
 
@@ -351,13 +354,7 @@ def mean_data_stack(data,
 
         tuple(2) : ndarray
         
-
-    Examples
-    --------
-    later
-       
-
-    '''
+    """
 
     #
     # Check the parameters
@@ -452,7 +449,7 @@ def mean_data_stack(data,
         sum_weights = np.nansum(weights, dtype=float, axis=0)
         z_allnan = sum_weights == 0
         sum_weights[z_allnan] = np.nan
- 
+
         mvar = 1/sum_weights
         mean = np.nansum(np.multiply(data, weights),axis=0)*mvar
         
