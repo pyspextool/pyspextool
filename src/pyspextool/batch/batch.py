@@ -2437,6 +2437,7 @@ def test(verbose=ERROR_CHECKING):
 	pandas
 	'''	
 	testdatafold = os.path.join(CODEDIR,"../../tests/test_data/")
+	if os.path.exists(testdatafold)==False:  testdatafold = os.path.join(CODEDIR,"tests","test_data/")
 	instrumentdatafold = os.path.join(CODEDIR,"instruments/")
 	reductiondatafold = os.path.join(CODEDIR,"data/")
 #########	
