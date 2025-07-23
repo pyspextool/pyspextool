@@ -46,24 +46,17 @@ def correct_spectra():
 
     for i in range(tc.state['object_norders']):
 
-        # Find the order in the standard spectrum
-
-        z_order = np.where(tc.state['object_orders'][i] == \
-                           tc.state['standard_orders'])
-
-       # Now loop over the apertures
-        
         for j in range(tc.state['object_napertures']):
 
-            k =i*tc.state['object_napertures']+j
+            idx =i*tc.state['object_napertures']+j
             
-            tc_f = np.squeeze(tc.state['shiftedtc_spectra'][z_order,1,:])
-            tc_u = np.squeeze(tc.state['shiftedtc_spectra'][z_order,2,:]) 
-            tc_m = np.squeeze(tc.state['shiftedtc_spectra'][z_order,3,:])
+            tc_f = np.squeeze(tc.state['shiftedtc_spectra'][idx,1,:])
+            tc_u = np.squeeze(tc.state['shiftedtc_spectra'][idx,2,:]) 
+            tc_m = np.squeeze(tc.state['shiftedtc_spectra'][idx,3,:])
             
-            obj_f = tc.state['object_spectra'][k,1,:]
-            obj_u = tc.state['object_spectra'][k,2,:]
-            obj_m = tc.state['object_spectra'][k,3,:]
+            obj_f = tc.state['object_spectra'][idx,1,:]
+            obj_u = tc.state['object_spectra'][idx,2,:]
+            obj_m = tc.state['object_spectra'][idx,3,:]
 
             # Do the correction and propagate uncertainties
             
@@ -77,9 +70,9 @@ def correct_spectra():
                         
             # Store the results
 
-            corrected_spectra[k,1,:] = fd
-            corrected_spectra[k,2,:] = fd_u
-            corrected_spectra[k,3,:] = fd_m
+            corrected_spectra[idx,1,:] = fd
+            corrected_spectra[idx,2,:] = fd_u
+            corrected_spectra[idx,3,:] = fd_m
 
     # Store all the corrected_spectra
             
