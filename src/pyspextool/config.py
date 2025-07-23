@@ -9,7 +9,7 @@ state = {"instruments": ['uspex', 'spex'],
          "vega_zfd":3.46e-9*10, # ergs s-1 cm-2 A-1
          "vega_zlambda":5556e-4, # microns
          "xunits":'um',
-         "lxunits":'$\mu$m'}
+         "lxunits":r'$\mu$m'}
 
 
 plotwindows = {'telluric_deconvolution':None,
@@ -26,6 +26,9 @@ plots = {"portrait_size":(7,9),
          "spectrum_linewidth":0.5,
          "zoomspectrum_linewidth":1.5,         
          "spine_linewidth":1.5,
+         "ticks_direction":'in',
+         "ticks_top":'True',
+         "ticks_right":'True',
          "subplot_size":(6,3),
          "stack_max":4,
          'flat':1,
@@ -44,5 +47,8 @@ plots = {"portrait_size":(7,9),
          'radial_velocity':11,
          'deconvolution':12,
          'shifts':13,
-         'ewscales':14}
+         'ewscales':14,
+         'merged':15}
+
+
 

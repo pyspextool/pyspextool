@@ -6,7 +6,8 @@ import matplotlib.pyplot as pl
 from pyspextool import config as setup
 from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords, check_file
-from pyspextool.telluric.core import find_shift, plot_shifts
+from pyspextool.telluric.core import find_shift
+from pyspextool.telluric.qaplots import plot_shifts
 from pyspextool.utils.interpolate import linear_interp1d
 
 
@@ -168,8 +169,8 @@ def shift_spectra(default_shiftranges:bool=True,
         z = np.where(shift_orders == user_shiftranges[0])[0]
         if len(z) == 1:
 
-            user_range = check_inrange(user_shiftranges,
-                                       verbose=qa['verbose'])
+            user_range = _check_inrange(user_shiftranges,
+                                        verbose=qa['verbose'])
             if user_range is not None:
 
                 shift_ranges[z,:] = user_range
@@ -192,7 +193,7 @@ def shift_spectra(default_shiftranges:bool=True,
         
         for j in range(tc.state['object_napertures']):
 
-            idx = i + j*tc.state['object_napertures']
+            idx = i*tc.state['object_napertures'] + j
 
             shifts[i,j] = find_shift(tc.state['object_spectra'][idx,0,:],
                                      tc.state['object_spectra'][idx,1,:],
@@ -209,8 +210,8 @@ def shift_spectra(default_shiftranges:bool=True,
         
         for j in range(tc.state['object_napertures']):
 
-            idx = i + j*tc.state['object_napertures']
-    
+            idx = i*tc.state['object_napertures'] + j
+
             x = np.arange(len(tc.state['object_spectra'][idx,0,:]))
             tc_f = tc.state['ewcorrectedtc_spectra'][idx,1,:]
             tc_u = tc.state['ewcorrectedtc_spectra'][idx,2,:]            
@@ -228,7 +229,7 @@ def shift_spectra(default_shiftranges:bool=True,
     #
 
     if qa['show'] is True and np.sum(tc.state['shifts']) != 0:
-        
+
         plot_shifts(setup.plots['shifts'],
                     setup.plots['subplot_size'],
                     setup.plots['stack_max'],
@@ -264,7 +265,8 @@ def shift_spectra(default_shiftranges:bool=True,
                     tc.state['ewcorrectedtc_spectra'],
                     tc.state['shiftedtc_spectra'],
                     tc.state['shift_ranges'],
-                    tc.state['shifts'])
+                    tc.state['shifts'],
+                    reverse_order=True)
         
         pl.savefig(osjoin(setup.state['qa_path'],
                           tc.state['output_filename']+ \
@@ -273,8 +275,8 @@ def shift_spectra(default_shiftranges:bool=True,
         pl.close()
 
             
-def check_inrange(test:tuple,
-                  verbose:bool=True):
+def _check_inrange(test:tuple,
+                   verbose:bool=True):
 
     """
     To determine if a requested user shift range falls within the order
@@ -303,7 +305,7 @@ def check_inrange(test:tuple,
     # Check parameters
     #
 
-    check_parameter('check_inrange', 'test', test, 'tuple')
+    check_parameter('_check_inrange', 'test', test, 'tuple')
 
     check_qakeywords(verbose=verbose)
     
