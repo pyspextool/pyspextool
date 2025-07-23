@@ -122,7 +122,8 @@ def scale_spectra(order:int=None,
 
         # Do it ourselves.  Pick the middle-most order.
 
-        order = int(np.median(combine.state['orders']))
+#        order = int(np.median(combine.state['orders']))
+        order = int(np.take(combine.state['orders'],len(combine.state['orders'])/2.))
 
     else:
 
