@@ -12,7 +12,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.load_atmosphere import load_atmosphere
 from pyspextool.utils.interpolate import linear_interp1d
 
-def load_spectrum(
+def load_spectra(
     file: str,
     outputfile_root:str,
     verbose:bool = None):
@@ -44,11 +44,11 @@ def load_spectrum(
     # Check the parameters and keywords
     #
 
-    check_parameter("load_spectrum", "file", file, "str")
+    check_parameter("load_spectra", "file", file, "str")
 
-    check_parameter("load_spectrum", "outputfile_root", outputfile_root, "str")
+    check_parameter("load_spectra", "outputfile_root", outputfile_root, "str")
 
-    check_parameter("load_spectrum", "verbose", verbose, ["NoneType", "bool"])
+    check_parameter("load_spectra", "verbose", verbose, ["NoneType", "bool"])
 
     check_qakeywords(verbose=verbose)
 
@@ -89,6 +89,11 @@ def load_spectrum(
     config.state["napertures"] = data["napertures"]
     config.state["orders"] = data["orders"]
     config.state["xlabel"] = hdrinfo["LXLABEL"][0]
+
+    if data["norders"] == 1:
+
+        message = ' The file has only 1 order.  No merging required.'
+        raise pySpextoolError(message)
 
     logging.info(" There are "+str(data["napertures"])+\
                  " apertures in this file.")

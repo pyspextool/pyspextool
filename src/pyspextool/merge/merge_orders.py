@@ -1,5 +1,7 @@
 import numpy as np
 import logging
+import matplotlib.pyplot as pl
+import os
 
 from pyspextool import config as setup
 from pyspextool.merge import config
@@ -8,12 +10,14 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.merge.core import merge_spectra
 from pyspextool.merge.qaplots import plot_merges
 
-def merge_orders(merge_apertures:int=None,
-                 verbose:bool=None,
-                 qa_show:bool=None,
-                 qa_showscale:float=None,
-                 qa_showblock:bool=None,
-                 qa_write:bool=None):
+def merge_orders(
+    merge_apertures:int=None,
+    scale_orders:bool=True,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     To merge the orders.
@@ -23,6 +27,11 @@ def merge_orders(merge_apertures:int=None,
     merge_apertures : int, list, default None
         The aperture number or a list of aperture numbers to merge.  
         The apetures are index starting with 1.  
+
+    scale_orders : {True, False}
+        Set to True to scale the flux density of each additional order to match
+        the flux density level of the merged spectrum.
+        Set to False to merge orders with no scaling.
 
     verbose : {None, True, False}
         Set to True to report updates to the command line.
@@ -52,6 +61,7 @@ def merge_orders(merge_apertures:int=None,
     Returns
     -------
     None
+        Set variable config.state['merged_spectrum']
 
     """
 
@@ -70,6 +80,9 @@ def merge_orders(merge_apertures:int=None,
 
     check_parameter("merge_orders", "merge_apertures", merge_apertures, 
                     ["NoneType", "int", "list"])
+
+    check_parameter("merge_orders", "scale_orders", scale_orders, 'bool')
+
 
     qa = check_qakeywords(verbose=verbose,
                           show=qa_show,
@@ -138,6 +151,11 @@ def merge_orders(merge_apertures:int=None,
             add_uncertainty = config.state['rawspectra'][add_idx,2,:]
             add_bitmask = config.state['rawspectra'][add_idx,3,:].astype(np.uint8)
 
+            # Scale the add order?
+
+
+            # Merge the results
+
             result = merge_spectra(merged_wavelength,
                                    merged_intensity,
                                    add_wavelength,
@@ -163,18 +181,47 @@ def merge_orders(merge_apertures:int=None,
     # Make QA plot
     #
 
-#    plot_merges(setup.plots['shifts'],
-#                setup.plots['subplot_size'],
-#                setup.plots['stack_max'],
-#                setup.plots['font_size'],
-#                qa['showscale'],
-#                setup.plots['spectrum_linewidth'],
-#                setup.plots['spine_linewidth'],
-#                config.state['xlabel'],
-#                config.state['rawspectra'],
-#                config.state['orders'],
-#                merged_spectra)
+    if qa['show'] is True:
+
+        plot_merges(setup.plots['shifts'],
+                    setup.plots['subplot_size'],
+                    setup.plots['stack_max'],
+                    setup.plots['font_size'],
+                    qa['showscale'],
+                    setup.plots['spectrum_linewidth'],
+                    setup.plots['spine_linewidth'],
+                    config.state['xlabel'],
+                    config.state['rawspectra'],
+                    config.state['orders'],
+                    1,
+                    merged_spectra)
     
+        pl.show(block=qa['showblock'])
+        if qa['showblock'] is False:
+
+            pl.pause(1)
+        
+    if qa['write'] is True:
+
+        plot_merges(None,
+                    setup.plots['subplot_size'],
+                    setup.plots['stack_max'],
+                    setup.plots['font_size'],
+                    qa['showscale'],
+                    setup.plots['spectrum_linewidth'],
+                    setup.plots['spine_linewidth'],
+                    config.state['xlabel'],
+                    config.state['rawspectra'],
+                    config.state['orders'],
+                    1,
+                    merged_spectra)
+        
+        pl.savefig(os.path.join(setup.state['qa_path'],
+                                config.state['outputfile_root']+ \
+                                '_merges' + \
+                                setup.state['qa_extension']))
+        pl.close()
+
     #
     # Store the results and set the done variable
     # 

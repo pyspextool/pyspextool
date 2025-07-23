@@ -26,6 +26,9 @@ plots = {"portrait_size":(7,9),
          "spectrum_linewidth":0.5,
          "zoomspectrum_linewidth":1.5,         
          "spine_linewidth":1.5,
+         "ticks_direction":'in',
+         "ticks_top":'True',
+         "ticks_right":'True',
          "subplot_size":(6,3),
          "stack_max":4,
          'flat':1,
@@ -46,4 +49,6 @@ plots = {"portrait_size":(7,9),
          'shifts':13,
          'ewscales':14,
          'merged':15}
+
+
 

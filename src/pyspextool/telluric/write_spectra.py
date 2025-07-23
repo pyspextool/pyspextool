@@ -322,12 +322,11 @@ def write_spectra(write_model_spectra:bool=False,
 
     value = [float('{:.2f}'.format(tc.state['delta_airmass'])),
              'Telluric Average airmass difference']
-    add_entry(hdrinfo, 'TC_STDRV', 'after', 'TC_dAM', value)
-
+    hdrinfo = add_entry(hdrinfo, 'TC_STDV', 'after', 'TC_dAM', value)
 
     value = [float('{:.2f}'.format(tc.state['delta_angle'])),\
              'Telluric angular separation (deg) of obj and std']
-    add_entry(hdrinfo, 'TC_dAM', 'after', 'TC_dAN', value)
+    hdrinfo = add_entry(hdrinfo, 'TC_dAM', 'after', 'TC_dAN', value)
 
     
     # Rename header for ease of reading

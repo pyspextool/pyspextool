@@ -6,14 +6,115 @@ from pyspextool.io.check import check_parameter
 from pyspextool.utils.interpolate import linear_interp1d, linear_bitmask_interp1d
 from pyspextool.utils.math import mean_data_stack, combine_flag_stack
 
-def merge_spectra(anchor_wavelength:npt.ArrayLike,
-                  anchor_intensity:npt.ArrayLike,
-                  add_wavelength:npt.ArrayLike,
-                  add_intensity:npt.ArrayLike,
-                  anchor_uncertainty:npt.ArrayLike=None,
-                  anchor_bitmask:npt.ArrayLike=None,
-                  add_uncertainty:npt.ArrayLike=None,
-                  add_bitmask:npt.ArrayLike=None):
+
+def get_spectra_position(
+    anchor_wavelength:npt.ArrayLike,
+    add_wavelength:npt.ArrayLike):
+
+    """
+    Merges two, potentially overlapping, spectra into a single spectrum.
+
+    Parameters
+    ----------
+    anchor_wavelength : ndarray
+        An (nanchor,) array of wavelength values for the anchor spectrum.
+
+    add_wavelength : ndarray
+        An (ndd,) array of wavelength values for the add spectrum.
+
+    Returns
+    -------
+    str {'left', 'left+overlap', 'right', right+overlap', 'inside', 
+        'encompasses'}
+
+    """
+
+    #
+    # Check parameters and qa values
+    # 
+
+    check_parameter("get_spectra_positions", "anchor_wavelength", 
+                    anchor_wavelength, "ndarray")
+
+    check_parameter("get_spectra_positions", "add_wavelength", 
+                    add_wavelength, "ndarray")
+
+
+    #
+    # Get the minimum and maximum wavelengths
+    #
+
+    anchor_minwavelength = np.nanmin(anchor_wavelength)
+    anchor_maxwavelength = np.nanmax(anchor_wavelength)
+
+    add_minwavelength = np.nanmin(add_wavelength)
+    add_maxwavelength = np.nanmax(add_wavelength)
+
+    #
+    # Figure out their relative locations
+    #
+
+    if (add_minwavelength < anchor_minwavelength and 
+        add_maxwavelength > anchor_minwavelength and 
+        add_maxwavelength < anchor_maxwavelength):
+
+        label = 'left+overlap' 
+        range = [anchor_minwavelength, add_maxwavelength]
+
+        return label, range
+
+
+    if (add_minwavelength < anchor_minwavelength and 
+        add_maxwavelength < anchor_minwavelength):
+
+        label = 'left'
+        range = [add_maxwavelength, anchor_minwavelength]
+
+        return label, range
+
+    if (add_maxwavelength > anchor_maxwavelength and 
+        add_minwavelength < anchor_maxwavelength and 
+        add_minwavelength > anchor_minwavelength):
+
+        label = 'right+overlap' 
+        range = [add_minwavelength, anchor_maxwavelength]
+        return label, range
+
+
+    if (add_maxwavelength > anchor_maxwavelength and 
+        add_minwavelength > anchor_maxwavelength):
+
+        label = 'right'
+        range = [anchor_maxwavelength, add_minwavelength]
+
+        return label, range
+
+    if (add_minwavelength < anchor_minwavelength and 
+        add_maxwavelength > anchor_maxwavelength):
+
+        label = 'encompass'
+        range = [anchor_minwavelength, anchor_maxwavelength]
+
+        return label, range
+
+    if (add_minwavelength > anchor_minwavelength and 
+        add_maxwavelength < anchor_maxwavelength):
+        
+        label = 'inside'
+        range = [add_minwavelength, add_maxwavelength]
+
+        return label, range
+ 
+
+def merge_spectra(
+    anchor_wavelength:npt.ArrayLike,
+    anchor_intensity:npt.ArrayLike,
+    add_wavelength:npt.ArrayLike,
+    add_intensity:npt.ArrayLike,
+    anchor_uncertainty:npt.ArrayLike=None,
+    anchor_bitmask:npt.ArrayLike=None,
+    add_uncertainty:npt.ArrayLike=None,
+    add_bitmask:npt.ArrayLike=None):
 
     """
     Merges two, potentially overlapping, spectra into a single spectrum.
@@ -73,6 +174,9 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     If the two spectra do overlap in wavelength, the add spectrum is first 
     linearly interpolated onto the wavelength scale of the anchor spectrum.  
     In the overlap region, the two spectra are (weighted) averaged.  
+
+    There is an implicit assumption that the "add" order cannot cover the 
+    entire wavelength range of the anchor_order.  This needs to be fixed.
    
     """
 
@@ -253,6 +357,16 @@ def merge_spectra(anchor_wavelength:npt.ArrayLike,
     return result
 
 
+def scale_order():
+
+    """
+    
+
+
+    """
+
+
+
 
 def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
                    anchor_intensity:npt.ArrayLike,
@@ -378,8 +492,6 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
         
     right_wavelength = anchor_wavelength[z]
     right_intensity = anchor_intensity[z]
-
-
 
     if anchor_uncertainty is not None:
 
