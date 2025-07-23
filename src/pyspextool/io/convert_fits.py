@@ -8,6 +8,7 @@ from specutils import Spectrum1D
 import matplotlib.pyplot as plt
 from astropy.table import Table
 from pyspextool.io.read_spectra_fits import read_spectra_fits
+from pyspextool import utils
 
 __all__ = ["convert_to_fits", "spectrum_isplottable"]
 
@@ -102,17 +103,56 @@ def convert_to_fits(input_file, output_path="."):
 
     """
 
+    # expect files with individual orders
+    # input file may have multiple orders and multiple aperatures (for extended sources)
     spectra, header_dict = read_spectra_fits(input_file)
-
-    wavelength = spectra[0, 0, :]
-    flux = spectra[0, 1, :]
-    flux_unc = spectra[0, 2, :]
-    # mask?
-
-    # header = compile_header(wavelength, **spectrum_info_all)
     header = header_dict["header"]
+
+    # ADD UCD for FluxAxis.ucd = phot.flux.density;em.wl 
+
+    x_units = header["XUNITS"]
+    y_units = header["YUNITS"]
+    if y_units == "DN s-1":
+        y_units = "count s-1"
+        # fluxAxis.ucd = arith.rate;phot.count 
+
+    n_orders = header_dict["NORDERS"] # each order has a different wavelength range
+    n_aperatures = header_dict["NAPERATURES"]
+
+    for order in range(n_orders):
+        for aperture in range(n_aperatures):
+            idx = order * n_aperatures + aperture
+            non_nans = utils.arrays.trim_nan(spectra[idx, 0, :],flag=2) # flag=2 removes leading and trailing NaNs
+            wavelength = spectra[idx, 0, :][non_nans] # floating point
+            flux = spectra[idx, 1, :][non_nans] # floating point
+            flux_unc = spectra[idx, 2, :][non_nans] # floating point
+            mask = spectra[idx, 3, :][non_nans].astype(np.uint8) # read in as floating point, but can be converted to 8-bit array
+
+            if idx == 0:
+                spectrum_data_out = Table(
+                    {
+                        "wavelength": wavelength * u.Unit(x_units),
+                        "flux": flux * u.Unit(y_units),
+                        "flux_uncertainty": flux_unc * u.Unit(y_units),
+                        "mask": mask * u.Unit("1"),  # mask is a bitmask, so unit is 1
+                    }
+                )
+            else:
+                #TODO: make sure add_row is what we want
+                spectrum_data_out.add_row(
+                    {
+                        "wavelength": wavelength * u.Unit(x_units),
+                        "flux": flux * u.Unit(y_units),
+                        "flux_uncertainty": flux_unc * u.Unit(y_units),
+                        "mask": mask * u.Unit("1"),  # mask is a bitmask, so unit is 1
+                    }
+                )
+
+
+# TODO: Make a new function to deal with the header
+# Dealing with the primary header HDU0 
     header["HISTORY"] = (
-        f"Converted {basename(input_file)} using pyspextool.io convert_to_fits"
+        f"Converted {basename(input_file)} using pyspextool.io.convert_to_fits"
     )
 
     # replace spaces in object name with underscores
@@ -123,20 +163,7 @@ def convert_to_fits(input_file, output_path="."):
 
     # Update Date the file was written
     header["DATE"] = date.today().strftime("%Y-%m-%d")
-
-    x_units = header["XUNITS"]
-    y_units = header["YUNITS"]
-    if y_units == "DN s-1":
-        y_units = "count s-1"
-
-    spectrum_data_out = Table(
-        {
-            "wavelength": wavelength * u.Unit(x_units),
-            "flux": flux * u.Unit(y_units),
-            "flux_uncertainty": flux_unc * u.Unit(y_units),
-        }
-    )
-
+    
     # Make the HDUs
     hdu1 = fits.BinTableHDU(data=spectrum_data_out)
     hdu1.header["EXTNAME"] = "SPECTRUM"
