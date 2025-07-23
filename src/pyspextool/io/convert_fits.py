@@ -108,16 +108,44 @@ def convert_to_fits(input_file, output_path="."):
     spectra, header_dict = read_spectra_fits(input_file)
     header = header_dict["header"]
 
-    # ADD UCD for FluxAxis.ucd = phot.flux.density;em.wl 
+    spectrum_data_out = make_table_of_spectra(spectra, header)
+    
+    new_header = do_header_things(header, input_file)
+
+    # replace spaces in object name with underscores
+    object_name = header["OBJECT"].replace(" ", "_").replace("/", "_")
+    
+    # convert obsdate to format YYYYMonDD
+    obs_date = datetime.strptime(header["AVE_DATE"], "%Y-%m-%d").strftime("%Y%b%d")
+
+    # Make the HDUs
+    hdu1 = fits.BinTableHDU(data=spectrum_data_out)
+    hdu1.header["EXTNAME"] = "SPECTRUM"
+    hdu1.header.set("OBJECT", object_name, "Object Name")
+    hdu0 = fits.PrimaryHDU(header=new_header)
+
+    # Write the MEF with the header and the data
+    spectrum_mef = fits.HDUList([hdu0, hdu1])  # hdu0 is header and hdu1 is data
+
+    fits_filename = f"{object_name}_{obs_date}.fits"
+    fits_path = join(output_path, fits_filename)
+    spectrum_mef.writeto(fits_path, overwrite=True, output_verify="exception")
+    # TODO: think about overwrite
+    logger.info(f"Wrote {fits_path}")
+
+    return
+
+def make_table_of_spectra(spectra, header):
+    # TODO: ADD UCD for FluxAxis.ucd = phot.flux.density;em.wl 
 
     x_units = header["XUNITS"]
     y_units = header["YUNITS"]
     if y_units == "DN s-1":
         y_units = "count s-1"
-        # fluxAxis.ucd = arith.rate;phot.count 
+        # TODO: fluxAxis.ucd = arith.rate;phot.count 
 
-    n_orders = header_dict["NORDERS"] # each order has a different wavelength range
-    n_aperatures = header_dict["NAPERATURES"]
+    n_orders = header["NORDERS"] # each order has a different wavelength range
+    n_aperatures = header["NAPERATURES"]
 
     for order in range(n_orders):
         for aperture in range(n_aperatures):
@@ -148,35 +176,16 @@ def convert_to_fits(input_file, output_path="."):
                     }
                 )
 
+    return spectrum_data_out
 
-# TODO: Make a new function to deal with the header
-# Dealing with the primary header HDU0 
+
+def do_header_things(header, input_file):
+    # Dealing with the primary header HDU0
     header["HISTORY"] = (
         f"Converted {basename(input_file)} using pyspextool.io.convert_to_fits"
     )
 
-    # replace spaces in object name with underscores
-    object_name = header["OBJECT"].replace(" ", "_").replace("/", "_")
-
-    # convert obsdate to format YYYYMonDD
-    obs_date = datetime.strptime(header["AVE_DATE"], "%Y-%m-%d").strftime("%Y%b%d")
-
     # Update Date the file was written
     header["DATE"] = date.today().strftime("%Y-%m-%d")
-    
-    # Make the HDUs
-    hdu1 = fits.BinTableHDU(data=spectrum_data_out)
-    hdu1.header["EXTNAME"] = "SPECTRUM"
-    hdu1.header.set("OBJECT", object_name, "Object Name")
-    hdu0 = fits.PrimaryHDU(header=header)
 
-    # Write the MEF with the header and the data
-    spectrum_mef = fits.HDUList([hdu0, hdu1])  # hdu0 is header and hdu1 is data
-
-    fits_filename = f"{object_name}_{obs_date}.fits"
-    fits_path = join(output_path, fits_filename)
-    spectrum_mef.writeto(fits_path, overwrite=True, output_verify="exception")
-    # TODO: think about overwrite
-    logger.info(f"Wrote {fits_path}")
-
-    return
+    return header
