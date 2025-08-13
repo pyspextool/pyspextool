@@ -2391,8 +2391,9 @@ def plot_estimate_ewscales(plot_number:int,
     #
     
     # Set the fonts
-
-    font = {'family' : 'helvetica',
+    # removed helvetica - problem for windows OS
+    font = {
+#            'family' : 'helvetica',
             'weight' : 'normal',
             'size'   : font_size}
 

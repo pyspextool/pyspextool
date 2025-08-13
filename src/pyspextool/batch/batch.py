@@ -5,11 +5,9 @@
 # - user checks logs and batch driving file to ensure they are correct
 # - run through reduction steps based on batch driving file
 #  -- subprocesses: read driver --> do all calibrations --> extract all spectra 
-#		--> combine spectral groups --> telluric correction --> stitch (SXD/LXD)
+#		--> combine spectral groups --> telluric correction --> merge (SXD/LXD)
 #
 # REMAINING TASKS
-# - xtellcor integration
-# - stitching integration
 # - finish docstrings
 # - integrate testing scripts
 # - TESTING
@@ -44,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 July 9'
+VERSION = '2025 Aug 12'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -111,7 +109,9 @@ BATCH_PARAMETERS = {
 	'SPECTRA_FILE_PREFIX': 'spectra',
 	'COMBINED_FILE_PREFIX': 'combspec',
 	'CALIBRATED_FILE_PREFIX': 'calspec',
-	'STITCHED_FILE_PREFIX': 'stitched',
+	'CALIBRATED_FILE_SUFFIX': 'comb',
+	'MERGED_FILE_PREFIX': 'merged',
+	'MERGED_FILE_SUFFIX': 'merged',
 	'PROGRAM': '',
 	'OBSERVER': '',
 	# 'qa_write': True,
@@ -122,7 +122,7 @@ BATCH_PARAMETERS = {
 	'COMBINE': True,
 	'FLUXTELL': True,
 #	'REREDUCE': False,
-	'STITCH': True,
+	'MERGE': True,
 	'RENAME': True,
 	'OVERWRITE': False,
 }
@@ -165,6 +165,8 @@ OBSERVATION_PARAMETERS_OPTIONAL = {
 	'BACKGROUND_RADIUS': 2.5,
 	'BACKGROUND_WIDTH': 4.,
 	'SCALE_RANGE': [1.0,1.5],
+	'SKY': None,
+	'INDIVIDUAL': False,
 }
 
 # these are default parameters for QA page creation
@@ -218,6 +220,8 @@ LEGACY_FOLDER = 'irtfdata.ifa.hawaii.edu'
 IRSA_FOLDER = 'IRTF'
 IRSA_PREFIX = 'sbd.'
 REDUCTION_FOLDERS = ['data','cals','proc','qa']
+QA_IMAGE_FOLDER = 'images'
+QA_SPECTRA_FOLDER = 'spectra'
 DEFAULT_TARGET_NAMES = ['','Object_Observed']
 OBSERVER_SCHEDULE_FILE = os.path.join(DIR,'observer_schedule.csv')
 
@@ -1101,6 +1105,11 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 # shorthand for STANDARD order/orders (separated on 5/14/2025)
 			for k in ['STDORDER','STDORDERS']:
 				if k in list(new_opar.keys()): new_opar['STD_ORDERS'] = new_opar[k]
+# shorthand for individual extractions
+			for k in ['INDIVIDUAL','IND','EACH']:
+				if k in list(new_opar.keys()): 
+					if 'TRUE' in str(new_opar[k]).upper(): new_opar['INDIVIDUAL'] = True
+					else: new_opar['INDIVIDUAL'] = False
 # if target/std prefix not given, assumed targets
 			for k in list(OBSERVATION_PARAMETERS_OPTIONAL.keys()):
 				if k in list(new_opar.keys()): new_opar['TARGET_{}'.format(k)] = new_opar[k]
@@ -1287,7 +1296,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	f.write('\n# Folders and files\n')
 	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
-	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','STITCHED_FILE_PREFIX']:
+	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','MERGED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
 # modes
@@ -1469,7 +1478,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 ##### QUALITY ASSURANCE #####
 #############################
 
-def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spectra',output_folder='',log_html_name='',options={},show_options=False,verbose=ERROR_CHECKING):
+def makeQApage(driver_input,log_input,image_folder=QA_IMAGE_FOLDER,spectra_folder=QA_SPECTRA_FOLDER,output_folder='',log_html_name='',options={},show_options=False,overwrite=True,verbose=ERROR_CHECKING):
 	'''
 	Purpose
 	-------
@@ -1530,21 +1539,41 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 
 # set up image folder
 	if image_folder!='':
-		image_folder+='/'
 		if os.path.exists(os.path.join(qa_parameters['QA_FOLDER'],image_folder))==False:
 			try: os.mkdir(os.path.join(qa_parameters['QA_FOLDER'],image_folder))
 			except:
 				logging.info('WARNING: could not generate image folder {}; reverting to qa folder {}'.format(image_folder,qa_parameters['QA_FOLDER']))
 				image_folder = ''
 
+# MOVE qa images into image folder if not present
+	imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'*{}'.format(qa_parameters['PLOT_TYPE'])))
+	for im in imfiles:
+		if os.path.exists(im)==False or overwrite==True:
+			shutil.move(im,im.replace(qa_parameters['QA_FOLDER'],os.path,join(qa_parameters['QA_FOLDER'],image_folder,'')))
+
 # set up spectra folder
 	if spectra_folder!='':
-		spectra_folder+='/'
 		if os.path.exists(os.path.join(qa_parameters['QA_FOLDER'],spectra_folder))==False:
 			try: os.mkdir(os.path.join(qa_parameters['QA_FOLDER'],spectra_folder))
 			except:
 				logging.info('WARNING: could not generate spectra folder {}; reverting to qa folder {}'.format(spectra_folder,qa_parameters['QA_FOLDER']))
-				image_folder = ''
+				spectra_folder = ''
+
+# COPY reduced spectra into spectra folder if not already present
+# in order: named, merged, calibrated
+	for ftype in ['.fits','.csv']:
+		spfiles = glob.glob(os.path.join(qa_parameters['PROC_FOLDER'],'{}*{}'.format(driver['INSTRUMENT'],ftype)))
+		for im in spfiles:
+			if os.path.exists(im)==False or overwrite==True:
+				shutil.copy2(im,im.replace(qa_parameters['PROC_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,'')))
+		spfiles = glob.glob(os.path.join(qa_parameters['PROC_FOLDER'],'{}*{}'.format(driver['MERGED_FILE_PREFIX'],ftype)))
+		for im in spfiles:
+			if os.path.exists(im)==False or overwrite==True:
+				shutil.copy2(im,im.replace(qa_parameters['PROC_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,'')))
+		spfiles = glob.glob(os.path.join(qa_parameters['PROC_FOLDER'],'{}*{}'.format(driver['CALIBRATED_FILE_PREFIX'],ftype)))
+		for im in spfiles:
+			if os.path.exists(im)==False or overwrite==True:
+				shutil.copy2(im,im.replace(qa_parameters['PROC_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,'')))
 
 # if necessary read in log
 	if isinstance(log_input,str)==True:
@@ -1640,29 +1669,51 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 			sep = stdcoord.separation(srccoord).degree
 			stxt = stxt.replace('[DELTA_ANGLE]','{:.2f} deg'.format(sep))
 
-
 # final calibrated file (check for presence, otherwise combined file)
 		ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 # fix for distributed file list
 		tmp = re.split('[,-]',sci_param['TARGET_FILES'])
 		fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 
-#		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],driver['CALIBRATED_FILE_PREFIX'])+'{}*{}'.format(sci_param['TARGET_FILES'],qa_parameters['PLOT_TYPE']))
-		imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-		if len(imfile)==0:
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-#			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-# added due to annoying .fits suffix
-		# if len(imfile)==0:
-		# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}.fits{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-		# if len(imfile)==0:
-		# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}.fits{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-		if len(imfile)>0:
-			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			fitsfile = os.path.join(qa_parameters['PROC_FOLDER'],os.path.basename(imfile[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
+# try in order: named merged
+		imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}-{}*{}-{}{}'.format(driver['INSTRUMENT'],sci_param['MODE'].lower(),fsuf,driver['MERGED_FILE_PREFIX'],qa_parameters['PLOT_TYPE']))
+		imfiles = glob.glob(imfile)
+		if len(imfiles)==0:
+			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
+			imfiles = glob.glob(imfile)
+# named
+		if len(imfiles)==0:
+			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}-{}*{}{}'.format(driver['INSTRUMENT'],sci_param['MODE'].lower(),fsuf,qa_parameters['PLOT_TYPE']))
+			imfiles = glob.glob(imfile)
+		if len(imfiles)==0:
+			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
+			imfiles = glob.glob(imfile)
+# merged
+		if len(imfiles)==0:
+			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['MERGED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE']))
+			imfiles = glob.glob(imfile)
+		if len(imfiles)==0:
+			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
+			imfiles = glob.glob(imfile)
+# calibrated
+		if len(imfiles)==0:
+			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE']))
+			imfiles = glob.glob(imfile)
+		if len(imfiles)==0:
+			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
+			imfiles = glob.glob(imfile)
+		if len(imfiles)>0:
+			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfiles[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(imfiles[0]))
+			fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
 			if os.path.exists(fitsfile)==True:
-				ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(fitsfile,os.path.basename(fitsfile),os.path.basename(fitsfile)))
-			else: ptxt.replace('[FITS]','')
+				fitsfile = os.path.basename(fitsfile)
+				ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,fitsfile),fitsfile,fitsfile))
+			else: ptxt=ptxt.replace('[FITS]','')
+			csvfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.csv'))
+			if os.path.exists(csvfile)==True:
+				csvfile = os.path.basename(csvfile)
+				ptxt = ptxt.replace('[CSV]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,csvfile),csvfile,csvfile))
+			else: ptxt=ptxt.replace('[CSV]','')
 		else: ptxt=''
 #		ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
 		stxt = stxt.replace('[CALIBRATED_FILE]',ptxt)
@@ -1671,7 +1722,7 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 		for x in ['TARGET','STD']:	
 
 # combined files
-			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			ptxt0 = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 # fix for distributed file list
 			tmp = re.split('[,-]',sci_param['{}_FILES'.format(x)])
 			fsuf = '{}-{}'.format(tmp[0],tmp[-1])
@@ -1680,48 +1731,91 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 			# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_raw{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
 			# if len(imfile)>0:
 			# 	ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)==0:
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)>0:
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)==0:
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)>0: 
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)==0:
-				imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
-			if len(imfile)>0: 
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfile[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
-			stxt = stxt.replace('[{}_COMBINED_FILES]'.format(x),ptxt)
+			imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			# if len(imfile)==0:
+			# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}*_scaled{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfiles)>0:
+				ptxt=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfiles[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(imfiles[0]))
+				fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
+				if os.path.exists(fitsfile)==True:
+					fitsfile = os.path.basename(fitsfile)
+					ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,fitsfile),fitsfile,fitsfile))
+				else: ptxt=ptxt.replace('[FITS]','')
+				csvfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.csv'))
+				if os.path.exists(csvfile)==True:
+					csvfile = os.path.basename(csvfile)
+					ptxt = ptxt.replace('[CSV]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,csvfile),csvfile,csvfile))
+				else: ptxt=ptxt.replace('[CSV]','')
+				ptxt0+=ptxt
+			imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			# if len(imfile)==0:
+			# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['COMBINED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfiles)>0: 
+				ptxt=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfiles[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(imfiles[0]))
+				fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
+				if os.path.exists(fitsfile)==True:
+					fitsfile = os.path.basename(fitsfile)
+					ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,fitsfile),fitsfile,fitsfile))
+				else: ptxt=ptxt.replace('[FITS]','')
+				csvfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.csv'))
+				if os.path.exists(csvfile)==True:
+					csvfile = os.path.basename(csvfile)
+					ptxt = ptxt.replace('[CSV]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,csvfile),csvfile,csvfile))
+				else: ptxt=ptxt.replace('[CSV]','')
+				ptxt0+=ptxt
+			imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}_shifts{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			# if len(imfile)==0:
+			# 	imfile = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],image_folder,'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE'])))
+			if len(imfiles)>0: 
+				ptxt=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfiles[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(imfiles[0]))
+				fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
+				if os.path.exists(fitsfile)==True:
+					fitsfile = os.path.basename(fitsfile)
+					ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,fitsfile),fitsfile,fitsfile))
+				else: ptxt=ptxt.replace('[FITS]','')
+				csvfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.csv'))
+				if os.path.exists(csvfile)==True:
+					csvfile = os.path.basename(csvfile)
+					ptxt = ptxt.replace('[CSV]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,csvfile),csvfile,csvfile))
+				else: ptxt=ptxt.replace('[CSV]','')
+				ptxt0+=ptxt
+			ptxt0+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[{}_COMBINED_FILES]'.format(x),ptxt0)
 
 # individual extracted files
 			indexinfo = {'nint': setup.state['nint'], 'prefix': driver['SPECTRA_FILE_PREFIX'],'suffix': '', 'extension': qa_parameters['PLOT_TYPE']}
-			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
+			files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 			files = list(filter(lambda x: os.path.exists(x),files))
-			if len(files)==0:
-				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
-				files = list(filter(lambda x: os.path.exists(x),files))
 			files.sort()
-			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+			ptxt0 = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
 			for i,f in enumerate(files):
+				ptxt=''
 				if i>0 and np.mod(i,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(f))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
-			stxt = stxt.replace('[{}_SPECTRA_FILES]'.format(x),ptxt)
+				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(f))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(f))
+				fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(f).replace(qa_parameters['PLOT_TYPE'],'.fits'))
+				if os.path.exists(fitsfile)==True:
+					fitsfile = os.path.basename(fitsfile)
+					ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,fitsfile),fitsfile,fitsfile))
+				else: ptxt=ptxt.replace('[FITS]','')
+				csvfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(f).replace(qa_parameters['PLOT_TYPE'],'.csv'))
+				if os.path.exists(csvfile)==True:
+					csvfile = os.path.basename(csvfile)
+					ptxt = ptxt.replace('[CSV]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,csvfile),csvfile,csvfile))
+				else: ptxt=ptxt.replace('[CSV]','')
+				ptxt0+=ptxt
+			ptxt0+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+			stxt = stxt.replace('[{}_SPECTRA_FILES]'.format(x),ptxt0)
 
 # individual calibrated files
 # have to do a little reorg on files here
 			indexinfo = {'nint': setup.state['nint'], 'prefix': driver['CALIBRATED_FILE_PREFIX'],'suffix': '', 'extension': qa_parameters['PLOT_TYPE']}
 # in qa folder ==> move to image folder
-			files = make_full_path(qa_parameters['QA_FOLDER'],sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
+			files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 			files = list(filter(lambda x: os.path.exists(x),files))
-			if len(files)==0:
-				files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
-				files = list(filter(lambda x: os.path.exists(x),files))
+			if len(files)>0:
+			# if len(files)==0:
+			# 	files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
+			# 	files = list(filter(lambda x: os.path.exists(x),files))
 #			print(files)
 # 			if len(files)>0:
 # 				for f in files: shutil.move(f,f.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
@@ -1742,13 +1836,26 @@ def makeQApage(driver_input,log_input,image_folder='images',spectra_folder='spec
 			# 		for f in files: shutil.move(f,f.replace(qa_parameters['PROC_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder)))
 			# 	files = make_full_path(os.path.join(qa_parameters['QA_FOLDER'],image_folder),sci_param['{}_FILES'.format(x)], indexinfo=indexinfo,exist=False)
 			# 	files = list(filter(lambda x: os.path.exists(x),files))
-			files.sort()
-			ptxt = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
-			for i,f in enumerate(files):
-				if i>0 and np.mod(i,qa_parameters['NIMAGES'])==0: ptxt+=' </tr>\n <tr> \n'
-				ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(f))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
-			ptxt+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
-			stxt = stxt.replace('[{}_CALIBRATED_FILES]'.format(x),ptxt)
+				files.sort()
+				ptxt0 = copy.deepcopy(qa_parameters['HTML_TABLE_HEAD'])
+				for i,f in enumerate(files):
+					ptxt = ''
+					if i>0 and np.mod(i,qa_parameters['NIMAGES'])==0: ptxt=' </tr>\n <tr> \n'
+					ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(f))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH']))
+					fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(f).replace(qa_parameters['PLOT_TYPE'],'.fits'))
+					if os.path.exists(fitsfile)==True:
+						fitsfile = os.path.basename(fitsfile)
+						ptxt = ptxt.replace('[FITS]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,fitsfile),fitsfile,fitsfile))
+					else: ptxt=ptxt.replace('[FITS]','')
+					csvfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(f).replace(qa_parameters['PLOT_TYPE'],'.csv'))
+					if os.path.exists(csvfile)==True:
+						csvfile = os.path.basename(csvfile)
+						ptxt = ptxt.replace('[CSV]','[<a href="{}" download="{}">{}</a>]'.format(os.path.join(spectra_folder,csvfile),csvfile,csvfile))
+					else: ptxt=ptxt.replace('[CSV]','')
+					ptxt0+=ptxt
+				ptxt0+=copy.deepcopy(qa_parameters['HTML_TABLE_TAIL'])
+				stxt = stxt.replace('[{}_CALIBRATED_FILES]'.format(x),ptxt0)
+			else: stxt = stxt.replace('[{}_CALIBRATED_FILES]'.format(x),'')
 
 # telluric correction files
 			cnt=0
@@ -2048,10 +2155,11 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				finfo = read_flat_fits(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))
 #				print(finfo)
 				if 'Long' in finfo['mode'] or 'LXD' in finfo['mode']:
+					if parameters['SKY'] != None: scikeys
 					scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 					pkeys = list(filter(lambda x: parameters[x]['MODE']==finfo['mode'],scikeys))
 					sky_files = [parameters[pkeys[0]]['TARGET_PREFIX'], parameters[pkeys[0]]['TARGET_FILES'].split(',')[0]]
-					print([parameters['ARC_FILE_PREFIX'],fstr],sky_files)
+#					print([parameters['ARC_FILE_PREFIX'],fstr],sky_files)
 					ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs),sky_files=sky_files)
 				else:
 					ps.extract.make_wavecal([parameters['ARC_FILE_PREFIX'],fstr],'flat{}.fits'.format(cs),'wavecal{}'.format(cs))
@@ -2090,7 +2198,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # loop through each pair of images
 			nloop = int(len(fnums)/nim)
 			for loop in range(nloop):
-				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
+				files = make_full_path(spar['PROC_FOLDER'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
 # check if first file of pair is present - skip if not overwriting
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
@@ -2137,7 +2245,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # loop through each pair of images
 			nloop = int(len(fnums)/nim)
 			for loop in range(nloop):
-				files = make_full_path(setup.state['proc_path'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
+				files = make_full_path(spar['PROC_FOLDER'], fnums[loop*nim:loop*nim+nim], indexinfo=indexinfo,exist=False)
 # check if first file of pair is present - skip if not overwriting
 				if os.path.exists(files[0])==True and parameters['OVERWRITE']==False:
 					if parameters['VERBOSE']==True: logging.info(' {} already created; skipping set {}-{} (use --overwrite option to reextract)'.format(os.path.basename(files[0]),fnums[loop*nim],fnums[loop*nim+1]))
@@ -2192,7 +2300,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			fnums =  extract_filestring(spar['TARGET_FILES'],'index')
 			fnumstr = ''
 			for nnn in fnums:
-				file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+				file = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
 				if os.path.exists(file)==True: 
 					fnumstr+='{},'.format(int(nnn))
 				else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
@@ -2201,7 +2309,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if fnumstr=='': 
 				if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
 # check if combined file is present - skip if not overwriting
-			elif os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
+			elif os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
 				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 # combine
 			else:
@@ -2224,7 +2332,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			fnumstr = ''
 # check that all input files are present - skip any they are missing with a warning
 			for nnn in fnums:
-				file = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
+				file = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
 				if os.path.exists(file)==True: 
 					fnumstr+='{},'.format(int(nnn))
 				else: logging.info('WARNING: could not find file {}, not including in combine'.format(os.path.basename(file)))
@@ -2233,7 +2341,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if parameters['VERBOSE']==True: logging.info(' No files available to combine; skipping {}'.format(fsuf))
 
 # check if combined file is present - skip if not overwriting
-			elif os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
+			elif os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
 				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 # combine
 			else:        
@@ -2255,7 +2363,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
 			standard_data = {'id': spar['STD_NAME'], 'sptype': spar['STD_SPT'],'bmag': float(spar['STD_B']),'vmag': float(spar['STD_V'])}
-			print(standard_data)
+
+#			print(standard_data)
 
 # fix for distributed file list
 			tmp = re.split('[,-]',spar['TARGET_FILES'])
@@ -2265,7 +2374,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			outfile = '{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)
 
 # first check if file is present - skip if not overwriting
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
+			if os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile+'.fits'))==True and parameters['OVERWRITE']==False:
 				if parameters['VERBOSE']==True: logging.info(' {}.fits already created, skipping (use --overwrite option to remake)'.format(outfile))
 
 			else:
@@ -2278,6 +2387,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
 					if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
 					correction_type = 'A0 V'
+# raise error if B or V are nan - only an issue for A0V correction
+					if standard_data['bmag']==np.nan or standard_data['vmag']==np.nan: 
+						raise ValueError('One of the B = {:.2f} or V = {:.2f} magnitude of {} is nan; please correct the driver file'.format(standard_data['bmag'],standard_data['vmag'],standard_data['id']))
 				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
 					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
 					correction_type = 'reflectance'
@@ -2289,40 +2401,57 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,verbose=parameters['VERBOSE'])
 
 # Telluric calibrate all individual files
-				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-				fnums =  extract_filestring(spar['TARGET_FILES'],'index')
-				fnumstr = ''
-				for nnn in fnums:
-					objfile = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
-					if os.path.exists(objfile)==True: 
-						outfile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX']).replace('.fits','')
-						ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,qa_write=False,verbose=parameters['VERBOSE'])
-					else: logging.info('WARNING: could not find file {}, not conductin telluric calibration'.format(os.path.basename(file)))
+# NOTE REPLACE THIS WITH THE TELLURIC "ALL" OPTION
+				if spar['TARGET_INDIVIDUAL']==True:
+					indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+					fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+					fnumstr = ''
+					for nnn in fnums:
+						objfile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+						if os.path.exists(objfile)==True: 
+							outfile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX']).replace('.fits','')
+							ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,qa_write=False,verbose=parameters['VERBOSE'])
+						else: logging.info('WARNING: could not find file {}, not conducting telluric calibration'.format(os.path.basename(file)))
 
 
 #####################
-## ORDER STITCHING ##
+## MERGING SXD/LXD ##
 #####################
 
-### NOT YET IMPLEMENTED ###
-
-	if parameters['STITCH']==True:
+	if parameters['MERGE']==True:
 		for k in scikeys:
 			spar = parameters[k]
 			for kk in bkeys:
 				if kk not in list(spar.keys()): spar[kk] = parameters[kk]
 
+# DO COMBINED FILES
 			if spar['MODE'] not in ['Prism','LowRes15']:
-				if parameters['VERBOSE']==True: 
-					logging.info('\n** NOTE: STITCHING HAS NOT BEEN IMPLEMENTED **')
+				if parameters['VERBOSE']==True: logging.info('\nMerging orders for {}'.format(spar['TARGET_NAME']))
 
+				tmp = re.split('[,-]',spar['TARGET_FILES'])
+				fsuf = '{}-{}'.format(tmp[0],tmp[-1])
+				infile = '{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],fsuf)
+				outfile = '{}{}'.format(spar['MERGED_FILE_PREFIX'],fsuf)
+
+				ps.merge.merge(infile,outfile,qa_show=False,qa_write=True,verbose=parameters['VERBOSE'])
+
+# DO INDIVIDUAL FILES
+				if spar['TARGET_INDIVIDUAL']==True:
+					indexinfo = {'nint': setup.state['nint'], 'prefix': spar['CALIBRATED_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+					fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+					fnumstr = ''
+					for nnn in fnums:
+						infile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+						if os.path.exists(objfile)==True: 
+							outfile = infile.replace(spar['CALIBRATED_FILE_PREFIX'],spar['MERGED_FILE_PREFIX']).replace('.fits','')
+							ps.merge.merge(infile,outfile,qa_show=False,qa_write=False,verbose=parameters['VERBOSE'])
+						else: logging.info('WARNING: could not find file {}, not conducting merging'.format(os.path.basename(file)))
 
 
 ##################
 ## RENAME FILES ##
 ##################
 
-## CURRENTLY GOING FROM TELLURIC TO FINAL - SKIPPING STITCHING ##
 	if parameters['RENAME']==True:
 		for k in scikeys:
 			spar = parameters[k]
@@ -2336,55 +2465,137 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			for x in [' ','_','/']: name=name.replace(x,'-')
 			for x in [',',':',';','.']: name=name.replace(x,'')
 			date = formatDate(spar['UT_DATE'])
-# fits files
+
+# calibrated and combined data
 			infile = '{}{}.fits'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf)
-			outfile = '{}-{}_{}_{}_{}_{}comb.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf)
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],infile))==False:
-				logging.info(' WARNING: could not find file {} in {}'.format(infile,parameters['PROC_FOLDER']))
-			else:
-				shutil.copy2(os.path.join(parameters['PROC_FOLDER'],infile),os.path.join(parameters['PROC_FOLDER'],outfile))
-				if parameters['VERBOSE']==True: logging.info(' Copied {} to {} in {}'.format(infile,outfile,parameters['PROC_FOLDER']))
-# QA files
-			infile = '{}{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf,parameters['PLOT_TYPE'])
-			outfile = '{}-{}_{}_{}_{}_{}comb{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,parameters['PLOT_TYPE'])
-			if os.path.exists(os.path.join(parameters['QA_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))
-			infile_full = os.path.join(parameters['QA_FOLDER'],infile)
-			if os.path.exists(infile_full)==False:
-				infile_full = os.path.join(parameters['QA_FOLDER'],'images',infile)
-				if os.path.exists(infile_full)==False:
-					logging.info(' WARNING: could not find file {} in {} or {}'.format(infile,parameters['QA_FOLDER'],os.path.join(parameters['QA_FOLDER'],'images')))
-			if os.path.exists(infile_full)==True:
-				shutil.copy2(infile_full,os.path.join(parameters['QA_FOLDER'],outfile))
-				if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(infile,outfile))
-
-# QA CSV file
-			outfile = '{}-{}_{}_{}_{}_{}comb.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf)
-			if os.path.exists(os.path.join(parameters['PROC_FOLDER'],outfile.replace('.fits','.csv')))==True and parameters['OVERWRITE']==False:
-				if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
-			else:
-				sp,_ = read_spectra_fits(os.path.join(parameters['PROC_FOLDER'],outfile))
-				np.savetxt(os.path.join(parameters['PROC_FOLDER'],outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
-				if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
-
-# Repeat for all individual files
-			indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-
-			fnums =  extract_filestring(spar['TARGET_FILES'],'index')
-			fnumstr = ''
-			for nnn in fnums:
-				objfile = make_full_path(setup.state['proc_path'], [nnn], indexinfo=indexinfo,exist=False)[0]
-				infile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX'])
-				outfile = os.path.join(parameters['PROC_FOLDER'],'{}-{}_{}_{}_{}_{}.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],nnn))
-				if os.path.exists(outfile)==True and parameters['OVERWRITE']==False:
-					if parameters['VERBOSE']==True: logging.info(' {} already created, skipping renaming (use --overwrite option to remake)'.format(os.path.basename(outfile)))
-				elif os.path.exists(infile)==False:
-					if parameters['VERBOSE']==True: logging.info(' input file {} does not exist, skipping renaming'.format(os.path.basename(infile)))
+			if os.path.exists(os.path.join(spar['PROC_FOLDER'],infile))==True:
+				outfile = '{}-{}_{}_{}_{}_{}.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf)
+				if os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))	
 				else:
-					shutil.copy2(infile,outfile)
-					if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(os.path.basename(infile),os.path.basename(outfile)))
+					shutil.copy2(os.path.join(spar['PROC_FOLDER'],infile),os.path.join(spar['PROC_FOLDER'],outfile))
+					if parameters['VERBOSE']==True: logging.info(' Copied {} to {} in {}'.format(infile,outfile,spar['PROC_FOLDER']))
+# QA CSV file
+				if os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile.replace('.fits','.csv')))==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
+				else:
+					sp,_ = read_spectra_fits(os.path.join(spar['PROC_FOLDER'],outfile))
+					np.savetxt(os.path.join(spar['PROC_FOLDER'],outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+					if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
+# copy QA files
+				qafold = spar['QA_FOLDER']
+				qainfile = '{}{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf,parameters['PLOT_TYPE'])
+				qainfull = os.path.join(qafold,qainfile)
+				if os.path.exists(qainfull)==False:
+					qafold = os.path.join(qafold,QA_IMAGE_FOLDER)
+					qainfull = os.path.join(qafold,qainfile)
+				if os.path.exists(qainfull)==True:
+					qaoutfile = '{}-{}_{}_{}_{}_{}{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,parameters['PLOT_TYPE'])
+					qaoutfull = os.path.join(qafold,qaoutfile)
+					shutil.copy2(qainfull,qaoutfull)
+					if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(qainfull,qaoutfull))
+			else: logging.info(' WARNING: could not find calibrated file {} in {}, skipping renaming'.format(infile,spar['PROC_FOLDER']))
+
+# merged and combined data
+			infile = '{}{}.fits'.format(spar['MERGED_FILE_PREFIX'],tsuf)
+			if os.path.exists(os.path.join(spar['PROC_FOLDER'],infile))==True:
+				outfile = '{}-{}_{}_{}_{}_{}-{}.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,spar['MERGED_FILE_SUFFIX'])
+				if os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile))==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile))	
+				else:
+					shutil.copy2(os.path.join(spar['PROC_FOLDER'],infile),os.path.join(spar['PROC_FOLDER'],outfile))
+					if parameters['VERBOSE']==True: logging.info(' Copied {} to {} in {}'.format(infile,outfile,spar['PROC_FOLDER']))
+# CSV file
+				if os.path.exists(os.path.join(spar['PROC_FOLDER'],outfile.replace('.fits','.csv')))==True and parameters['OVERWRITE']==False:
+					if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
+				else:
+					sp,_ = read_spectra_fits(os.path.join(spar['PROC_FOLDER'],outfile))
+					np.savetxt(os.path.join(spar['PROC_FOLDER'],outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+					if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
+# copy QA files
+				qafold = spar['QA_FOLDER']
+				qainfile = '{}{}{}'.format(spar['MERGED_FILE_PREFIX'],tsuf,parameters['PLOT_TYPE'])
+				qainfull = os.path.join(qafold,qainfile)
+				if os.path.exists(qainfull)==False:
+					qafold = os.path.join(qafold,'images')
+					qainfull = os.path.join(qafold,qainfile)
+				if os.path.exists(qainfull)==True:
+					qaoutfile = '{}-{}_{}_{}_{}_{}-{}{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,spar['MERGED_FILE_SUFFIX'],parameters['PLOT_TYPE'])
+					qaoutfull = os.path.join(qafold,qaoutfile)
+					shutil.copy2(qainfull,qaoutfull)
+					if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(qainfull,qaoutfull))
+			else: logging.info(' WARNING: could not find merged file {} in {}, skipping renaming'.format(infile,spar['PROC_FOLDER']))
+
+
+# DO INDIVIDUAL FILES
+			if spar['TARGET_INDIVIDUAL']==True:
+# calibrated data
+				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['CALIBRATED_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+				fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+				fnumstr = ''
+				for nnn in fnums:
+					infile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+					if os.path.exists(infile)==True:
+						indexinfo = {'nint': setup.state['nint'], 'prefix': '{}-{}_{}_{}_{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM']), 'suffix': '', 'extension': '.fits'}
+						outfile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+#						outfile = os.path.join(spar['PROC_FOLDER'],'{}-{}_{}_{}_{}_{}.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],nnn))
+						if os.path.exists(outfile)==True and parameters['OVERWRITE']==False:
+							if parameters['VERBOSE']==True: logging.info(' {} already created, skipping renaming (use --overwrite option to remake)'.format(os.path.basename(outfile)))
+						else:
+							shutil.copy2(infile,outfile)
+							if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(os.path.basename(infile),os.path.basename(outfile)))
+# CSV file
+# NOTE: THIS MAY NOT BE SAVING MULTIORDER CORRECTLY
+						if os.path.exists(outfile.replace('.fits','.csv'))==True and parameters['OVERWRITE']==False:
+							if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
+						else:
+							sp,_ = read_spectra_fits(os.path.join(spar['PROC_FOLDER'],outfile))
+							np.savetxt(os.path.exists(outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+							if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
+							else:
+								if parameters['VERBOSE']==True: logging.info(' Individual calibrated file {} does not exist, skipping renaming'.format(os.path.basename(infile)))
+					else: logging.info(' WARNING: could not find individual calibrated file {}, skipping renaming'.format(infile))
+
+# copy QA files - NOT CURRENTLY SAVING SO SKIPPING
+					# qafold = setup.state['qa_path']
+					# qainfile = '{}{}{}'.format(spar['CALIBRATED_FILE_PREFIX'],tsuf,parameters['PLOT_TYPE'])
+					# qainfull = os.path.join(qafold,qainfile)
+					# if os.path.exists(qainfull)==False:
+					# 	qafold = os.path.join(spar['QA_FOLDER'],'images')
+					# 	qainfull = os.path.join(qafold,qainfile)
+					# if os.path.exists(qainfull)==True:
+					# 	qaoutfile = '{}-{}_{}_{}_{}_{}-{}{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,spar['MERGED_FILE_PREFIX'],parameters['PLOT_TYPE'])
+					# 	qaoutfull = os.path.join(qafold,qainfile)
+					# 	shutil.copy2(qainfull,qaoutfull)
+					# 	if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(qainfull,qaoutfull))
+
+# merged data
+				indexinfo = {'nint': setup.state['nint'], 'prefix': spar['MERGED_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+				fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+				fnumstr = ''
+				for nnn in fnums:
+					infile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+					if os.path.exists(infile)==True:
+						indexinfo = {'nint': setup.state['nint'], 'prefix': '{}-{}_{}_{}_{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM']), 'suffix': spar['MERGED_FILE_SUFFIX'], 'extension': '.fits'}
+						outfile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+#						outfile = os.path.join(spar['PROC_FOLDER'],'{}-{}_{}_{}_{}_{}.fits'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],nnn))
+						if os.path.exists(outfile)==True and parameters['OVERWRITE']==False:
+							if parameters['VERBOSE']==True: logging.info(' {} already created, skipping renaming (use --overwrite option to remake)'.format(os.path.basename(outfile)))
+						else:
+							shutil.copy2(infile,outfile)
+							if parameters['VERBOSE']==True: logging.info(' Copied {} to {}'.format(os.path.basename(infile),os.path.basename(outfile)))
+# CSV file
+# NOTE: THIS MAY NOT BE SAVING MULTIORDER CORRECTLY
+						if os.path.exists(outfile.replace('.fits','.csv'))==True and parameters['OVERWRITE']==False:
+							if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
+						else:
+							sp,_ = read_spectra_fits(os.path.join(spar['PROC_FOLDER'],outfile))
+							np.savetxt(os.path.exists(outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+							if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
+							else:
+								if parameters['VERBOSE']==True: logging.info(' Individual calibrated file {} does not exist, skipping renaming'.format(os.path.basename(infile)))
+					else: logging.info(' WARNING: could not find individual merged file {}, skipping renaming'.format(infile))
+
 
 # END OF BATCH
 	return
