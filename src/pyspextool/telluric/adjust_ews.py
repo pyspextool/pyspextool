@@ -128,7 +128,7 @@ def adjust_ews(verbose:bool=None,
     # Determine if the mode being corrected even requires adjustments
     #
 
-    z = np.where(modes == tc.state['mode'])[0]
+    z = np.where(modes == tc.state['instrument_mode'])[0]
 
     if z.size == 0:
 
@@ -165,7 +165,7 @@ def adjust_ews(verbose:bool=None,
     # Get QA set up
     #
     
-    xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
+    xlabel = tc.state['latex_xlabel']
 
     if qa['show'] is True:
 
@@ -256,7 +256,7 @@ def adjust_ews(verbose:bool=None,
 
             # Get the title for the QA plot
 
-            title = tc.state['mode']+' Order '+\
+            title = tc.state['instrument_mode']+' Order '+\
                 str(tc.state['standard_orders'][i])+', '+str(subranges[j][0])+\
                 '-'+str(subranges[j][1])+' '+setup.state['lxunits']+\
                 ', poly degree='+str(subdegrees[j].item())+\
@@ -270,13 +270,13 @@ def adjust_ews(verbose:bool=None,
 
                 qafile_info['title'] = title
                 
-                label = tc.state['mode']+'Order'+\
+                label = tc.state['instrument_mode']+'Order'+\
                     str(tc.state['standard_orders'][i])+'_'+\
                     str(subranges[j][0])+\
                 '-'+str(subranges[j][1])+setup.state['xunits']
 
                 fullpath = osjoin(setup.state['qa_path'],
-                                  tc.state['output_filename']+\
+                                  tc.state['telluric_output_filename']+\
                                   '_ewadjustments_'+\
                                   label+\
                                   setup.state['qa_extension'])    

@@ -60,14 +60,15 @@ def correct_uspexbias(img:npt.ArrayLike):
     return  corrected_image    
 
 
-def read_fits(files:list,
-              linearity_info:dict,
-              keywords:list=None,
-              pair_subtract:bool=False,
-              rotate:int=0,
-              linearity_correction:bool=True,
-              extra:dict=None,
-              verbose:bool=False):
+def read_fits(
+    files:list,
+    linearity_info:dict,
+    keywords:list=None,
+    pair_subtract:bool=False,
+    rotate:int=0,
+    linearity_correction:bool=True,
+    extra:dict=None,
+    verbose:bool=False):
 
     """
     To read upgraded SpeX FITS image files.
@@ -190,11 +191,11 @@ def read_fits(files:list,
 
         if extra['correct_bias'] is True:
             
-            message = message + ' correcting bias drift,'
+            message = message + ': correcting for bias drift,'
             
         else :
             
-            message = message + ' not correcting bias drift,'
+            message = message + ': not correcting bias drift,'
             
         if linearity_correction is True:
         

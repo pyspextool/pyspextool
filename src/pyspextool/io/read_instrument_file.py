@@ -1,15 +1,16 @@
 import numpy as np
 
 
-def read_instrument_file(filename:str):
+def read_instrument_file(
+    filename:str):
 
     """
-    To read a Spextool instrument configuration file
+    To read a Spextool instrument configuration file.  
 
     Parameters
     ----------
     filename : str
-        The name of a Spextool instrument file.
+        The fullname path to the Spextool instrument file.
 
     Returns
     --------
@@ -20,11 +21,12 @@ def read_instrument_file(filename:str):
 
     # Read the file into to string arrays
 
-    labels, vals = np.loadtxt(filename,
-                              comments='#',
-                              delimiter='=',
-                              unpack=True,
-                              dtype='str')
+    labels, vals = np.loadtxt(
+        filename,
+        comments='#',
+        delimiter='=',
+        unpack=True,
+        dtype='str')
 
     # Strip any edge white spaces from poor formatting of the file
 
@@ -41,62 +43,96 @@ def read_instrument_file(filename:str):
     # NINT
 
     keyword = 'NINT'
-    z = find_keyword(labels, keyword)
+    z = _find_keyword(labels, keyword)
     output[keyword] = int(vals[z].item())
 
     # BADPIXMASK
 
     keyword = 'BADPIXMASK'
-    z = find_keyword(labels, keyword)
+    z = _find_keyword(labels, keyword)
     output[keyword] = vals[z].item()
 
     # SUFFIX
 
     keyword = 'SUFFIX'
-    z = find_keyword(labels, keyword)
+    z = _find_keyword(labels, keyword)
     output[keyword] = vals[z].item()
 
     # FITSREADPROGRAM
 
     keyword = 'READFITS'
-    z = find_keyword(labels, keyword)
+    z = _find_keyword(labels, keyword)
     output[keyword] = vals[z].item()
 
     # LINCORMAX
 
     keyword = 'LINCORMAX'
-    z = find_keyword(labels, keyword)
+    z = _find_keyword(labels, keyword)
     output[keyword] = int(vals[z].item())
+
+    # KEYWORDS
+
+    keyword = 'KEYWORD'
+    z = _find_keyword(labels, keyword)
+
+    output['KEYWORDS'] = []
+    output['COMBINE_IGNORE_KEYWORDS'] = []
+    output['TELLURIC_IGNORE_KEYWORDS'] = []
+    output['MERGE_IGNORE_KEYWORDS'] = []
+    for value in vals[z]:
+
+        list = value.split(' ')
+
+        output['KEYWORDS'].append(list[0].strip())
+        if 'combine' not in list[1::]:
+
+            output['COMBINE_IGNORE_KEYWORDS'].append(list[0].strip())
+
+        if 'telluric' not in list[1::]:
+
+            output['TELLURIC_IGNORE_KEYWORDS'].append(list[0].strip())
+
+        if 'merge' not in list[1::]:
+
+            output['MERGE_IGNORE_KEYWORDS'].append(list[0].strip())
+
+
+
+#        output['TELLURIC_KEYWORDS'] = tmp        
+
+#    output[keyword] = int(vals[z].item())
+
 
     # XSPEXTOOL KEYWORDS
 
-    keyword = 'EXTRACT_KEYWORD'
-    z = find_keyword(labels, keyword)
-    tmp = vals[z]
-    tmp = [value.strip() for value in tmp]
-    output['EXTRACT_KEYWORDS'] = tmp
-
-    # COMBINE KEYWORDS
-
-    keyword = 'COMBINE_KEYWORD'
-    z = find_keyword(labels, keyword)
-    tmp = vals[z]
-    tmp = [value.strip() for value in tmp]
-    output['COMBINE_KEYWORDS'] = tmp
-
-    # XTELLCOR KEYWORDS
-
-    keyword = 'TELLURIC_KEYWORD'
-    z = find_keyword(labels, keyword)
-    tmp = vals[z]
-    tmp = [value.strip() for value in tmp]
-    output['TELLURIC_KEYWORDS'] = tmp
+#    keyword = 'EXTRACT_KEYWORD'
+#    z = _find_keyword(labels, keyword)
+#    tmp = vals[z]
+#    tmp = [value.strip() for value in tmp]
+#    output['EXTRACT_KEYWORDS'] = tmp
+#
+#    # COMBINE KEYWORDS
+#
+#    keyword = 'COMBINE_KEYWORD'
+#    z = _find_keyword(labels, keyword)
+#    tmp = vals[z]
+#    tmp = [value.strip() for value in tmp]
+#    output['COMBINE_KEYWORDS'] = tmp
+#
+#    # XTELLCOR KEYWORDS
+#
+#    keyword = 'TELLURIC_KEYWORD'
+#    z = _find_keyword(labels, keyword)
+#    tmp = vals[z]
+#    tmp = [value.strip() for value in tmp]
+#    output['TELLURIC_KEYWORDS'] = tmp
 
     return output
 
 
-def find_keyword(labels,
-                 keyword):
+def _find_keyword(
+    labels,
+    keyword):
 
     z = np.where(labels == keyword)
     if np.size(z):

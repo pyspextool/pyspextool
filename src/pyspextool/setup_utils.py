@@ -401,9 +401,11 @@ def set_instrument(instrument_name: str):
 
     setup.state["suffix"] = instrument_info["SUFFIX"]
     setup.state["nint"] = instrument_info["NINT"]
-    setup.state["extract_keywords"] = instrument_info["EXTRACT_KEYWORDS"]
-    setup.state["combine_keywords"] = instrument_info["COMBINE_KEYWORDS"]
-    setup.state["telluric_keywords"] = instrument_info["TELLURIC_KEYWORDS"]
+    setup.state["extract_keywords"] = instrument_info["KEYWORDS"]
+    setup.state["combine_ignore_keywords"] = \
+        instrument_info["COMBINE_IGNORE_KEYWORDS"]
+    setup.state["telluric_ignore_keywords"] = \
+        instrument_info["TELLURIC_IGNORE_KEYWORDS"]
 
     # Now store linearity numbers
 
@@ -437,8 +439,8 @@ def set_instrument(instrument_name: str):
     State: {setup.state['suffix']}
     NINT: {setup.state['nint']}
     Extract Keywords: {setup.state['extract_keywords']}
-    Combine Keywords: {setup.state['combine_keywords']}
-    Telluric Keywords: {setup.state['telluric_keywords']}
+    Combine Keywords: {setup.state['combine_ignore_keywords']}
+    Telluric Keywords: {setup.state['telluric_ignore_keywords']}
     Linearity Max: {setup.state['lincormax']}
     Bad Pixel Mask: {bad_pixel_mask_file}
     """

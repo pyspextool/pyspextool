@@ -1,10 +1,12 @@
-from os.path import join, basename
+import os
 
 from pyspextool.io.check import check_file
 from pyspextool.io.check import check_parameter
+from pyspextool.pyspextoolerror import pySpextoolError
 
-def extract_filestring(string:str,
-                       method:str):
+def extract_filestring(
+    string:str,
+    method:str):
 
     """
     Extracts the indices or filenames from a comma-separated string.
@@ -101,10 +103,11 @@ def extract_filestring(string:str,
         raise ValueError(message)
 
 
-def make_full_path(dir:str,
-                   files:list | str,
-                   indexinfo:dict=None,
-                   exist:bool=True):
+def make_full_path(
+    dir:str,
+    files:list | str,
+    indexinfo:dict=None,
+    exist:bool=True):
     
     """
     Constructs fullpath strings for files.
@@ -201,7 +204,7 @@ def make_full_path(dir:str,
 
                 # Now create the file names
 
-        output = [join(dir,indexinfo['prefix'] +
+        output = [os.path.join(dir,indexinfo['prefix'] +
                   str(root).zfill(indexinfo['nint']) +
                   indexinfo['suffix']+indexinfo['extension'])
                   for root in files]
@@ -210,11 +213,11 @@ def make_full_path(dir:str,
 
         if isinstance(files, str):
 
-            output = join(dir,files)
+            output = os.path.join(dir,files)
 
         else:
         
-            output = [join(dir,root) for root in files]
+            output = [os.path.join(dir,root) for root in files]
 
         #  Now let's check to see if the file actually exists
 
@@ -224,12 +227,13 @@ def make_full_path(dir:str,
     return output
 
 
-def files_to_fullpath(path:str,
-                      files:list | str,
-                      nint:int,
-                      suffix:str,
-                      extension:str,
-                      exist:bool=True):
+def files_to_fullpath(
+    path:str,
+    files:list | str,
+    nint:int,
+    suffix:str,
+    extension:str,
+    exist:bool=True):
 
     """
     Takes pySpextool user inputs and create full paths.
@@ -257,10 +261,9 @@ def files_to_fullpath(path:str,
     extension : str
         The file extension, e.g. '.fits'
 
-    exist : {True, False}, optional
+    exist : {True, False}
         Set to True to test whether the file exists.
         Set to False to not test whether the file exists.    
-        Choices in brackets, default first when optional.
     
     Returns
     -------
@@ -315,8 +318,194 @@ def files_to_fullpath(path:str,
 
         readmode = 'index'
         
-    filenames = [basename(x) for x in fullpaths]
+    filenames = [os.path.basename(x) for x in fullpaths]
 
                
     return fullpaths, readmode, filenames
+
+
     
+def inoutfiles_to_fullpaths(    
+    input_path:str,
+    inputs:list | str,
+    nint:int,
+    input_suffix:str,
+    input_extension:str,
+    output_path:str,
+    outputs:str,
+    inputfiles_exist:bool=True,
+    outputpath_exist:bool=True):
+
+    """
+    Creates fullpaths for both input and output files.
+   
+    Parameters
+    ----------
+    input_path : str
+        The path to the input files.
+
+    inputs : str or list
+    
+        If type is str, then a comma-separated string of full file names, 
+        e.g. 'spc-00001.a.fits, spc-00002.b.fits' or a single full file name, e.g.
+        'spc-00001.a.fits'.
+
+        If type is list, then a two-element list where
+        files[0] is a str giving the prefix, files[1] is a str giving the 
+        index numbers of the files, e.g. ['spc', '1-2,5-10,13,14'].
+
+    nint : int
+        The number of integers to use for indexed files, e.g. 5 -> 00001.
+
+    input_suffix : str
+        The file suffix.
+
+    input_extension : str
+        The file extension, e.g. '.fits'
+
+    output_path : str
+        The path to the output files.
+
+    outputs : str
+        If type `inputs` is str, then a comma-separated string of the of the full 
+        file names, e.g. 'spectra00001, spectra00002' or a single full file name, e.g.
+        'spectra00001'.
+
+        If type `inputs` is list, then the prefix, e.g. 'spectra'.  
+
+    inputfiles_exist : {True, False}
+        Set to True to test whether the innput files exist.
+        Set to False to not test whether the input files exist.    
+
+    outputpath_exist : {True, False}
+        Set to True to test whether the output path exists.
+        Set to False to not test whether the output path exists.    
+
+
+    Returns
+    -------
+    dict
+    
+    """
+
+
+
+    #
+    # Check the input parmameters
+    #
+
+    check_parameter('inoutfiles_to_fullpaths', 'input_path', input_path, 'str')
+
+    check_parameter('inoutfiles_to_fullpaths', 'inputs', inputs, ['str','list'],
+                    list_types=['str','str'])
+
+    check_parameter('inoutfiles_to_fullpaths', 'nint', nint, 'int')
+
+    check_parameter('inoutfiles_to_fullpaths', 'input_suffix', input_suffix, 'str')
+
+    check_parameter('inoutfiles_to_fullpaths', 'input_extension', input_extension, 
+                    'str')
+
+    check_parameter('inoutfiles_to_fullpaths', 'output_path', output_path, 'str')
+
+    check_parameter('inoutfiles_to_fullpaths', 'outputs', outputs, 'str')
+
+    check_parameter('inoutfiles_to_fullpaths', 'inputfiles_exist', inputfiles_exist, 
+                    'bool')
+    
+    check_parameter('inoutfiles_to_fullpaths', 'outputpath_exist', outputpath_exist, 
+                    'bool')
+
+    #
+    # Does the output path exist?
+    #
+
+    if outputpath_exist is True:
+
+        if os.path.exists(output_path) is False:
+
+            message = '`output_path` does not exist.'
+            raise pySpextoolError(message)
+            
+    #
+    # Figure out whether you are in FILENAME mode or INDEX mode
+    #
+
+    if isinstance(inputs, str):
+
+        # You are in FILENAME mode
+
+        input_filenames = inputs.replace(" ", "").split(',')
+        input_fullpaths = make_full_path(input_path, input_filenames, 
+                                         exist=inputfiles_exist)
+
+        readmode = 'filename'
+        
+    else:
+
+        # You are in INDEX mode
+
+        prefix = inputs[0]
+        nums = inputs[1]
+
+        indexinfo={'nint': nint, 'prefix': prefix, 'suffix': input_suffix, 
+                   'extension': input_extension}
+                                      
+        input_fullpaths = make_full_path(input_path, 
+                                         nums, 
+                                         indexinfo=indexinfo,
+                                         exist=inputfiles_exist)
+
+        readmode = 'index'
+        
+    input_filenames = [os.path.basename(x) for x in input_fullpaths]
+
+    #
+    # Now deal with the output files
+    #
+
+    if readmode == 'filename':
+
+        output_filenames = outputs.replace(" ", "").split(',')
+        output_fullpaths = make_full_path(output_path, output_filenames, exist=False)
+        
+    if readmode == 'index':
+
+        prefix = outputs
+        nums = inputs[1]
+
+        indexinfo={'nint': nint, 'prefix': prefix, 'suffix':'',  'extension':''}
+                                      
+        output_fullpaths = make_full_path(output_path, 
+                                         nums, 
+                                         indexinfo=indexinfo,exist=False)
+        
+        output_filenames = [os.path.basename(x) for x in output_fullpaths]
+
+    #
+    # Do the numbers match?
+    #
+
+    if len(input_filenames) != len(output_filenames):
+
+        message = 'The number of input files does not the number of output files.'
+        raise pySpextoolError(message)
+
+    #
+    # Package up and return
+    #
+
+    dict = {'input_filenames':input_filenames,
+            'input_fullpaths':input_fullpaths,
+            'output_filenames':output_filenames,
+            'output_fullpaths':output_fullpaths,
+            'readmode':readmode,
+            'nfiles':len(input_filenames)}
+
+               
+    return dict
+
+    
+    
+
+

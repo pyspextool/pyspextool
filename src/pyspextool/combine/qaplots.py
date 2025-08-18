@@ -4,22 +4,21 @@ from matplotlib.pyplot import cm
 import matplotlib
 from matplotlib.ticker import (AutoMinorLocator)
 
-
-
 from pyspextool import config as setup
 from pyspextool.combine import config as combine
 from pyspextool.plot.limits import get_stack_range
 from pyspextool.io.check import check_parameter
 
 
-def plot_allorders(plot_number,
-                   figure_size,
-                   font_size,
-                   spectrum_linewidth,
-                   spine_linewidth,                   
-                   spectra_labels,
-                   scalerange:tuple=None,
-                   title:str=None):
+def plot_allorders(
+    plot_number,
+    figure_size,
+    font_size,
+    spectrum_linewidth,
+    spine_linewidth,                   
+    spectra_labels,
+    scalerange:tuple=None,
+    title:str=None):
 
     """
     To plot all the spectra during the combine step in a device independent way
@@ -65,7 +64,8 @@ def plot_allorders(plot_number,
     # Check the parameters
     #
 
-    check_parameter('plot_allorders', 'plot_number', plot_number, 'int')
+    check_parameter('plot_allorders', 'plot_number', plot_number, 
+                    ['int','NoneType'])
 
     check_parameter('plot_allorders', 'figure_size', figure_size, 'tuple')
 
@@ -136,10 +136,7 @@ def plot_allorders(plot_number,
     #
     
     # removed helvetica - problem for windows OS
-    font = {
-    #'family' : 'helvetica',
-            'weight' : 'normal',
-            'size'   : font_size}
+    font = {'weight' : 'normal', 'size'   : font_size}
 
     matplotlib.rc('font', **font)
 
@@ -155,7 +152,6 @@ def plot_allorders(plot_number,
                        right=0.95, 
                        top=0.9, 
                        hspace=0.05)
-
 
     for i in range(combine.state['final_napertures']):
 

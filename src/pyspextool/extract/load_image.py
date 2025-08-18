@@ -23,23 +23,24 @@ from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def load_image(files:str | list,
-               flat_name:str,
-               wavecal_name:str,
-               output_filenames:str=None,
-               output_prefix:str='spectra',
-               input_extension:str='.fits*',
-               load_directory='raw',
-               flat_field=True,
-               linearity_correction=True,
-               detector_info:dict=None,
-               write_rectified_orders:bool=False,
-               do_all_steps:bool=False,
-               verbose:bool=None,
-               qa_show:bool=None,
-               qa_showscale:float | int=None,
-               qa_showblock:bool=None,
-               qa_write:bool=None):
+def load_image(
+    files:str | list,
+    flat_name:str,
+    wavecal_name:str,
+    output_filenames:str=None,
+    output_prefix:str='spectra',
+    input_extension:str='.fits*',
+    load_directory='raw',
+    flat_field=True,
+    linearity_correction=True,
+    detector_info:dict=None,
+    write_rectified_orders:bool=False,
+    do_all_steps:bool=False,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     To load a (pair-subtracted, sky/dark subrtracted) image into memory.
@@ -198,11 +199,12 @@ def load_image(files:str | list,
     # Create the full input file names
     #
 
-    results = files_to_fullpath(load_path,
-                                files,
-                                setup.state['nint'],
-                                setup.state['suffix'],
-                                input_extension)
+    results = files_to_fullpath(
+        load_path,
+        files,
+        setup.state['nint'],
+        setup.state['suffix'],
+        input_extension)
 
     input_files = results[0]
     file_readmode = results[1]
@@ -244,12 +246,13 @@ def load_image(files:str | list,
         
             files[0] = output_prefix
             
-            result = files_to_fullpath('',
-                                       files,
-                                       setup.state['nint'],
-                                       '',
-                                       '',
-                                       exist=False)
+            result = files_to_fullpath(
+                '',
+                files,
+                setup.state['nint'],
+                '',
+                '',
+                exist=False)
 
             output_filenames = result[0]        
 
@@ -465,14 +468,15 @@ def load_image(files:str | list,
 
         if image_type == 'raw':
 
-            result = instr.read_fits(input_files,
-                                     setup.state['linearity_info'],
-                                     rotate=extract.state['rotation'],
-                                     keywords=setup.state['extract_keywords'],
-                                     linearity_correction=linearity_correction,
-                                     extra=detector_info,
-                                     verbose=qa['verbose'])
-
+            result = instr.read_fits(
+                input_files,
+                setup.state['linearity_info'],
+                rotate=extract.state['rotation'],
+                keywords=setup.state['extract_keywords'],
+                linearity_correction=linearity_correction,
+                extra=detector_info,
+                verbose=qa['verbose'])
+            
             img = result[0]
             var = result[1]
             hdrinfo = result[2]
@@ -497,14 +501,15 @@ def load_image(files:str | list,
 
     elif reduction_mode == 'A-B':
 
-        result = instr.read_fits(input_files,
-                                 setup.state['linearity_info'],
-                                 pair_subtract=True,
-                                 rotate=extract.state['rotation'],
-                                 keywords=setup.state['extract_keywords'],
-                                 linearity_correction=linearity_correction,
-                                 extra=detector_info,
-                                 verbose=qa['verbose'])
+        result = instr.read_fits(
+            input_files,
+            setup.state['linearity_info'],
+            pair_subtract=True,
+            rotate=extract.state['rotation'],
+            keywords=setup.state['extract_keywords'],
+            linearity_correction=linearity_correction,
+            extra=detector_info,
+            verbose=qa['verbose'])
 
         img = result[0]
         var = result[1]
@@ -514,6 +519,11 @@ def load_image(files:str | list,
     else:
 
         print('do later.')
+
+#    fits.writeto('single.fits',img,overwrite=True)
+#    return
+
+
     
     #
     # Flat field the data
@@ -554,7 +564,7 @@ def load_image(files:str | list,
                                 extract.state['rotation'])
 
     extract.state['bad_pixel_mask'] = bad_pixel_mask
-        
+
     #
     # Rectify the orders
     #
@@ -566,12 +576,13 @@ def load_image(files:str | list,
     for i in range(extract.state['norders']):
 
         loop_progress(i,0,extract.state['norders'])
-        result = rectify_order(img,
-                               indices[i]['xidx'],
-                               indices[i]['yidx'],
-                               variance=var,
-                               bad_pixel_mask=bad_pixel_mask,
-                               flag_mask=flag_mask)
+        result = rectify_order(
+            img,
+            indices[i]['xidx'],
+            indices[i]['yidx'],
+            variance=var,
+            bad_pixel_mask=bad_pixel_mask,
+            flag_mask=flag_mask)
 
         rectorder = {'wavelengths':indices[i]['w'],
                      'angles':indices[i]['a'],

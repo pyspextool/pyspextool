@@ -271,10 +271,7 @@ def combine_images(files:str | list,
         unrotate = False
 
     # Check beam mode
-
-
-            
-    
+              
     # Load the instrument module for the read_fits program
 
     module = 'pyspextool.instruments.' + setup.state['instrument'] + \
@@ -284,13 +281,14 @@ def combine_images(files:str | list,
 
     logging.info(' Loading images...')    
     
-    result = instr.read_fits(input_files,
-                             setup.state['linearity_info'],
-                             pair_subtract=pair,
-                             linearity_correction=correct_nonlinearity,
-                             keywords=setup.state['extract_keywords'],
-                             rotate=rotation,
-                             verbose=qa['verbose'])
+    result = instr.read_fits(
+        input_files,
+        setup.state['linearity_info'],
+        pair_subtract=pair,
+        linearity_correction=correct_nonlinearity,
+        keywords=setup.state['extract_keywords'],
+        rotate=rotation,
+        verbose=qa['verbose'])
 
     data = result[0]
     var = result[1]
@@ -367,6 +365,7 @@ def combine_images(files:str | list,
 
     mean = result[0]
     var = result[1] ** 2
+
 
     # Now do the mask
 
