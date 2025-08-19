@@ -17,7 +17,7 @@ dependencies = [
     "pandas",
     "importlib_resources; python_version < '3.11'",
     "git-lfs",
-    "astroquery",
+    "astroquery >0.4.8",
     "specutils",
     "dust_extinction",
     "jinja2",
