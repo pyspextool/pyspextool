@@ -74,14 +74,14 @@ def query_simbad(info:str | list | dict):
         # user has passed the name of the standard
         #
 
-        Simbad.add_votable_fields("sptype", "flux(B)", "flux(V)")
+        Simbad.add_votable_fields("sp_type", "B", "V")
         table = Simbad.query_object(info)
 
         if isinstance(table, Table):
-            name = table["MAIN_ID"][0]
-            sptype = table["SP_TYPE"][0]
-            vmag = float(table["FLUX_V"][0])
-            bmag = float(table["FLUX_B"][0])
+            name = table["main_id"][0]
+            sptype = table["sp_type"][0]
+            vmag = float(table["V"][0])
+            bmag = float(table["B"][0])
 
         else:
 
@@ -100,25 +100,25 @@ def query_simbad(info:str | list | dict):
         # user has passed the coordinates of the standard
         #
 
-        Simbad.add_votable_fields("id", "sptype", "flux(B)", "flux(V)")
+        Simbad.add_votable_fields("id", "sp_type", "B", "V")
 
         c = SkyCoord(info[0],info[1], unit=(u.hourangle, u.deg))
 
         table = Simbad.query_region(c, radius="0d1m0s")
 
         if isinstance(table, Table):
-            name = table["MAIN_ID"][0]
-            sptype = table["SP_TYPE"][0]
-            vmag = float(table["FLUX_V"][0])
-            bmag = float(table["FLUX_B"][0])
+            name = table["main_id"][0]
+            sptype = table["sp_type"][0]
+            vmag = float(table["V"][0])
+            bmag = float(table["B"][0])
 
         else:
 
             message = (
-                'Standard coordiantes "{}"" were not found in SIMBAD; '
+                f"Standard coordinates {info} were not found in SIMBAD; "
                 "provide the correct name, correct coordinates, or a "
                 'dictionary containing keys "id", "sptype", "bmag", '
-                'and "vmag".'.format(info)
+                'and "vmag".'
             )
 
             raise pySpextoolError(message)
