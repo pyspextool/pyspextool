@@ -470,7 +470,7 @@ def extract_apertures(fix_badpixels:bool=True,
                          plot_number=setup.plots['bbeam_spectra'],
                          figure_size=figure_size,
                          font_size=font_size,
-                         title=osbasename(abeam_fullpath),
+                         title=osbasename(bbeam_fullpath),
                          showblock=b_showblock)                         
                     
     if qa['write'] is True:
@@ -500,7 +500,7 @@ def extract_apertures(fix_badpixels:bool=True,
                          font_size=setup.plots['font_size'],
                          spectrum_linewidth=setup.plots['spectrum_linewidth'],
                          spine_linewidth=setup.plots['spectrum_linewidth'],
-                         title=osbasename(abeam_fullpath),
+                         title=osbasename(bbeam_fullpath),
                          output_fullpath=fullpath)    
 
     #
