@@ -388,8 +388,6 @@ def inoutfiles_to_fullpaths(
     
     """
 
-
-
     #
     # Check the input parmameters
     #

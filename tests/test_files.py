@@ -53,10 +53,10 @@ def test_inoutfiles_to_fullpaths():
     input_suffix = '.[ab]'
     inputs = ['spc-','1-2']
     input_extension = '.fits'
-    input_path = 'test_data/raw/uspex-SXD/data/'
+    input_path = 'tests/test_data/raw/uspex-SXD/data/'
 
     outputs = 'spectra'
-    output_path = 'test_data/'
+    output_path = 'tests/test_data/'
 
     result = inoutfiles_to_fullpaths(input_path,
                                 inputs,
@@ -66,16 +66,16 @@ def test_inoutfiles_to_fullpaths():
                                 output_path,
                                 outputs)
 
-    assert result == {'input_filenames': ['spc-00001.a.fits', 'spc-00002.b.fits'], 'input_fullpaths': ['test_data/raw/uspex-SXD/data/spc-00001.a.fits', 'test_data/raw/uspex-SXD/data/spc-00002.b.fits'], 'output_filenames': ['spectra00001', 'spectra00002'], 'output_fullpaths': ['test_data/spectra00001', 'test_data/spectra00002'], 'readmode': 'index', 'nfiles': 2}
+    assert result == {'input_filenames': ['spc-00001.a.fits', 'spc-00002.b.fits'], 'input_fullpaths': ['tests/test_data/raw/uspex-SXD/data/spc-00001.a.fits', 'tests/test_data/raw/uspex-SXD/data/spc-00002.b.fits'], 'output_filenames': ['spectra00001', 'spectra00002'], 'output_fullpaths': ['tests/test_data/spectra00001', 'tests/test_data/spectra00002'], 'readmode': 'index', 'nfiles': 2}
 
 
     input_suffix = '.[ab]'
     inputs = 'spc-00001.a.fits,spc-00002.b.fits'
     input_extension = '.fits'
-    input_path = 'test_data/raw/uspex-SXD/data/'
+    input_path = 'tests/test_data/raw/uspex-SXD/data/'
 
     outputs = 'spectra00001, spectra00002'
-    output_path = 'test_data/'
+    output_path = 'tests/test_data/'
 
     result = inoutfiles_to_fullpaths(input_path,
                                 inputs,
@@ -85,7 +85,7 @@ def test_inoutfiles_to_fullpaths():
                                 output_path,
                                 outputs)
 
-    assert result == {'input_filenames': ['spc-00001.a.fits', 'spc-00002.b.fits'], 'input_fullpaths': ['test_data/raw/uspex-SXD/data/spc-00001.a.fits', 'test_data/raw/uspex-SXD/data/spc-00002.b.fits'], 'output_filenames': ['spectra00001', 'spectra00002'], 'output_fullpaths': ['test_data/spectra00001', 'test_data/spectra00002'], 'readmode': 'filename', 'nfiles': 2}
+    assert result == {'input_filenames': ['spc-00001.a.fits', 'spc-00002.b.fits'], 'input_fullpaths': ['tests/test_data/raw/uspex-SXD/data/spc-00001.a.fits', 'tests/test_data/raw/uspex-SXD/data/spc-00002.b.fits'], 'output_filenames': ['spectra00001', 'spectra00002'], 'output_fullpaths': ['tests/test_data/spectra00001', 'tests/test_data/spectra00002'], 'readmode': 'filename', 'nfiles': 2}
 
 #
 #    input_suffix = '.[ab]'
