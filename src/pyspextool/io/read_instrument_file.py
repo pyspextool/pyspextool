@@ -97,36 +97,6 @@ def read_instrument_file(
             output['MERGE_IGNORE_KEYWORDS'].append(list[0].strip())
 
 
-
-#        output['TELLURIC_KEYWORDS'] = tmp        
-
-#    output[keyword] = int(vals[z].item())
-
-
-    # XSPEXTOOL KEYWORDS
-
-#    keyword = 'EXTRACT_KEYWORD'
-#    z = _find_keyword(labels, keyword)
-#    tmp = vals[z]
-#    tmp = [value.strip() for value in tmp]
-#    output['EXTRACT_KEYWORDS'] = tmp
-#
-#    # COMBINE KEYWORDS
-#
-#    keyword = 'COMBINE_KEYWORD'
-#    z = _find_keyword(labels, keyword)
-#    tmp = vals[z]
-#    tmp = [value.strip() for value in tmp]
-#    output['COMBINE_KEYWORDS'] = tmp
-#
-#    # XTELLCOR KEYWORDS
-#
-#    keyword = 'TELLURIC_KEYWORD'
-#    z = _find_keyword(labels, keyword)
-#    tmp = vals[z]
-#    tmp = [value.strip() for value in tmp]
-#    output['TELLURIC_KEYWORDS'] = tmp
-
     return output
 
 

@@ -15,6 +15,7 @@ from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.io.sptype2teff import sptype2teff
 from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.utils.interpolate import linear_interp1d
+from pyspextool.setup_utils import mishu # pooch class for caching files
 
 
 logger = logging.getLogger(__name__)
@@ -275,15 +276,19 @@ def load_standard(
     # Get and store the Vega model 
     #
 
-    if new is True:
+#    if new is True:
+#
+#        root = "Vega" + result["model"] + "_new.fits"
+#
+#    else:
+#
+#        root = "Vega" + result["model"] + ".fits"
+#
+#    fullpath = os.path.join(setup.state["package_path"], "data", root)
 
-        root = "Vega" + result["model"] + "_new.fits"
 
-    else:
+    file_path = mishu.fetch("Vega50000.fits")
 
-        root = "Vega" + result["model"] + ".fits"
-
-    fullpath = os.path.join(setup.state["package_path"], "data", root)
 
     hdul = fits.open(fullpath)
     data = hdul[1].data
