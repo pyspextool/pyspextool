@@ -1675,33 +1675,43 @@ def makeQApage(driver_input,log_input,image_folder=QA_IMAGE_FOLDER,spectra_folde
 		tmp = re.split('[,-]',sci_param['TARGET_FILES'])
 		fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 
+# NOTE: MAY NEED TO MAKE ALLOWANCE FOR FITS FILE BEING PRESENT BUT NOT IMAGE
+
 # try in order: named merged
 		imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}-{}*{}-{}{}'.format(driver['INSTRUMENT'],sci_param['MODE'].lower(),fsuf,driver['MERGED_FILE_PREFIX'],qa_parameters['PLOT_TYPE']))
 		imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
 # named
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}-{}*{}{}'.format(driver['INSTRUMENT'],sci_param['MODE'].lower(),fsuf,qa_parameters['PLOT_TYPE']))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
 # merged
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['MERGED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE']))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
 # calibrated
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE']))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)>0:
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfiles[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(imfiles[0]))
 			fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
@@ -2152,10 +2162,11 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
 
 # For LXD we need to set sky files to one of the source sequences
+# ERROR HERE!!!!
 				finfo = read_flat_fits(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))
 #				print(finfo)
 				if 'Long' in finfo['mode'] or 'LXD' in finfo['mode']:
-					if parameters['SKY'] != None: scikeys
+#					if parameters['SKY'] != None:
 					scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 					pkeys = list(filter(lambda x: parameters[x]['MODE']==finfo['mode'],scikeys))
 					sky_files = [parameters[pkeys[0]]['TARGET_PREFIX'], parameters[pkeys[0]]['TARGET_FILES'].split(',')[0]]
