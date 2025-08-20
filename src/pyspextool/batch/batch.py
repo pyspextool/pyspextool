@@ -184,7 +184,7 @@ QA_PARAMETERS = {
 	'HTML_TABLE_TAIL': ' </tr>\n</table>\n',
 }
 
-# columns to grab from SIMBAD
+# columns to grab from SIMBAD - note these are out of date
 # SIMBAD_COLS = {
 # 	'SIMBAD_SEP': 'angDist',
 # 	'SIMBAD_NAME': 'main_id',
@@ -1549,7 +1549,7 @@ def makeQApage(driver_input,log_input,image_folder=QA_IMAGE_FOLDER,spectra_folde
 	imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'*{}'.format(qa_parameters['PLOT_TYPE'])))
 	for im in imfiles:
 		if os.path.exists(im)==False or overwrite==True:
-			shutil.move(im,im.replace(qa_parameters['QA_FOLDER'],os.path,join(qa_parameters['QA_FOLDER'],image_folder,'')))
+			shutil.move(im,im.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,'')))
 
 # set up spectra folder
 	if spectra_folder!='':
