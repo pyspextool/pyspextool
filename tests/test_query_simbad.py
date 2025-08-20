@@ -9,7 +9,8 @@ def test_query_simbad():
 
     result = query_simbad('HD 12345')
 
-    assert result == {'name':'HD  12345', 'sptype':'G8III','vmag':8.770,'bmag':9.520}
+    assert result == {'name':'HD  12345', 'sptype':'G8III','vmag':8.770,
+                      'bmag':9.520}
     
 
     with pytest.raises(pySpextoolError):

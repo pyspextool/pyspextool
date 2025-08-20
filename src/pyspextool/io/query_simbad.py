@@ -3,12 +3,14 @@ from astropy.io import fits
 from astropy.table.table import Table
 import astropy.units as u
 from astroquery.simbad import Simbad
+import warnings
 
 
 from pyspextool.io.check import check_parameter
 from pyspextool.pyspextoolerror import pySpextoolError
 
-def query_simbad(info:str | list | dict):
+def query_simbad(
+    info:str | list | dict):
 
     """
     Query SIMBAD for spectral type, B magnitude, and V magnitudes.  
@@ -64,6 +66,8 @@ def query_simbad(info:str | list | dict):
 
     check_parameter("_query_simbad", "info", info, ["str", "list", "dict"])
 
+    warnings.filterwarnings('error')
+
    #
    # Load the standard information based on the type of input
    # 
@@ -75,24 +79,27 @@ def query_simbad(info:str | list | dict):
         #
 
         Simbad.add_votable_fields("sp_type", "B", "V")
-        table = Simbad.query_object(info)
 
-        if isinstance(table, Table):
-            name = table["main_id"][0]
-            sptype = table["sp_type"][0]
-            vmag = float(table["V"][0])
-            bmag = float(table["B"][0])
+        try:
 
-        else:
+            table = Simbad.query_object(info)
+        
+        except Warning as w:
 
             message = (
                 'Standard name "{}"" was not found in SIMBAD; provide '
                 "the correct name, correct coordinates, or a dictionary "
                 'containing keys "id", "sptype", "bmag", '
-                'and "vmag".'.format(info)
-            )
+                'and "vmag".'.format(info))
 
             raise pySpextoolError(message)
+
+
+        name = table["main_id"][0]
+        sptype = table["sp_type"][0]
+        vmag = float(table["V"][0])
+        bmag = float(table["B"][0])
+
 
     if isinstance(info, list):
 
@@ -100,19 +107,16 @@ def query_simbad(info:str | list | dict):
         # user has passed the coordinates of the standard
         #
 
-        Simbad.add_votable_fields("id", "sp_type", "B", "V")
+        Simbad.add_votable_fields("main_id", "sp_type", "B", "V")
 
-        c = SkyCoord(info[0],info[1], unit=(u.hourangle, u.deg))
+        c = SkyCoord(info[0], info[1],unit=(u.hourangle, u.deg))
 
-        table = Simbad.query_region(c, radius="0d1m0s")
+        try:
 
-        if isinstance(table, Table):
-            name = table["main_id"][0]
-            sptype = table["sp_type"][0]
-            vmag = float(table["V"][0])
-            bmag = float(table["B"][0])
+            table = Simbad.query_region(c, radius="0d1m0s")
 
-        else:
+
+        except Warning as w:
 
             message = (
                 f"Standard coordinates {info} were not found in SIMBAD; "
@@ -122,6 +126,11 @@ def query_simbad(info:str | list | dict):
             )
 
             raise pySpextoolError(message)
+
+        name = table["main_id"][0]
+        sptype = table["sp_type"][0]
+        vmag = float(table["V"][0])
+        bmag = float(table["B"][0])
 
     if isinstance(info, dict):
 
