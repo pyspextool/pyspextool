@@ -36,8 +36,25 @@ def test_pyspextool_setup_defaults(raw_setup):
 @pytest.mark.parametrize(
     "setup_name", ["spex_lxd","spex_prism", "spex_sxd", "uspex_lxd","uspex_prism", "uspex_sxd"]
 )
-def test_set_paths(setup_name, raw_setup):
+def test_set_paths_raw(setup_name, raw_setup):
     setup_dict = raw_setup[setup_name]
+    set_paths(
+        setup_dict["raw_path"],
+        setup_dict["cal_path"],
+        setup_dict["proc_path"],
+        setup_dict["qa_path"],
+    )
+
+    assert setup.state["raw_path"] == os.path.abspath(setup_dict["raw_path"])
+    assert setup.state["cal_path"] == os.path.abspath(setup_dict["cal_path"])
+    assert setup.state["proc_path"] == os.path.abspath(setup_dict["proc_path"])
+
+
+@pytest.mark.parametrize(
+    "setup_name", ["spex_lxd","spex_prism", "spex_sxd", "uspex_lxd","uspex_prism", "uspex_sxd"]
+)
+def test_set_paths_proc(setup_name, proc_setup):
+    setup_dict = proc_setup[setup_name]
     set_paths(
         setup_dict["raw_path"],
         setup_dict["cal_path"],
@@ -92,6 +109,7 @@ def test_set_qa_state():
         "uspex_bias.fits",
         "spex_lincorr.fits",
         "Vega50000.fits",
+        "Vega5000.fits"
     ],
 )
 def test_pooch_cache(file):

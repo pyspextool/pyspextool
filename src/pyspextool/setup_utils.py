@@ -11,10 +11,15 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from importlib.resources import files  # Python 3.10+
 from importlib.metadata import version, PackageNotFoundError
 
-# TODO:  test logging works as expected. run some commands in the REPL
+parent_logger = logging.getLogger('pyspextool')
+parent_logger.setLevel(logging.DEBUG) # Set the default level of the parent logger
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+logger.debug(f"Logger level: {logging.getLevelName(logger.getEffectiveLevel()) }")
+
+msg = f"logger.parent.name: {logger.parent.name}, logger.parent.level: {logger.parent.level}"
+logger.debug(msg)
+
 
 try:
     __version__ = version("pyspextool")
@@ -31,6 +36,7 @@ mishu = pooch.create(
             "uspex_bias.fits": "d1dbbffc882123de5f3e877ca14dbc6740e2e751d1c31d0647583305c6163cc6",
             "spex_lincorr.fits": "47fcbd6b854f1b80fc65615978dffdcfa793af24d12b3ce3b199efae6d78040f",
             "Vega50000.fits": "517f38feaaabe35443fcbd9a2670085b61af0e7dfd05a28a6c3c4f79ed7d7737",
+            "Vega5000.fits": "9409530908cb433ab7d557da11ece5d8b9b74eb3b4901785333370141b1bacfd"
         },
     )
 
@@ -174,7 +180,8 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     #
 
     message = ' pySpextool Setup'
-    logging.info(message+'\n'+'-'*(len(message)+5)+'\n')
+    logger.info(message+'\n'+'-'*(len(message)+5)+'\n')
+    logger.debug(f"Logger level: {logging.getLevelName(logger.getEffectiveLevel()) }")
 
     #
     # Store the search extension
@@ -188,17 +195,17 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     if verbose is True:
 
-        logging.getLogger().setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
         setup.state["verbose"] = True
 
     elif verbose is False:
 
-        logging.getLogger().setLevel(logging.ERROR)
+        logger.setLevel(logging.ERROR)
         setup.state["verbose"] = False
 
-    logging.info(
+    logger.info(
         f" Verbose set to {setup.state['verbose']}. \n"
-        f" Logging level set to {logging.getLogger().getEffectiveLevel()}"
+        f" Logging level set to {logging.getLevelName(logger.getEffectiveLevel()) }"
     )
 
     #
@@ -207,7 +214,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     set_instrument(instrument)
 
-    logging.info(f" Instrument set to {setup.state['instrument']}")
+    logger.info(f" Instrument set to {setup.state['instrument']}")
 
     #
     # Set the paths
@@ -215,13 +222,13 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     set_paths(raw_path, cal_path, proc_path, qa_path)
 
-    logging.info(" Paths set")
+    logger.info(" Paths set")
 
     # Set the quality assurance settings
 
     set_qa_state(qa_show, qa_showscale, qa_showblock, qa_write, qa_extension)
 
-    logging.info(" QA settings set")
+    logger.info(" QA settings set")
 
     # Set the version number
     set_version()
@@ -246,7 +253,7 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
     Version: {setup.state['version']}
     """
 
-    logging.debug(msg)
+    logger.debug(msg)
 
     return  # setup.state
 
@@ -294,21 +301,21 @@ def set_paths(raw_path:str,
         raw_path = check_path(raw_path, make_absolute=True)
 
     setup.state["raw_path"] = raw_path
-    logging.debug(f"Set raw_path to {raw_path}")
+    logger.debug(f"Set raw_path to {raw_path}")
 
     if cal_path is not None:
 
         cal_path = check_path(cal_path, make_absolute=True)
 
     setup.state["cal_path"] = cal_path
-    logging.debug(f"Set cal_path to {cal_path}")
+    logger.debug(f"Set cal_path to {cal_path}")
                                     
     if proc_path is not None:
 
         proc_path = check_path(proc_path, make_absolute=True)
                                         
     setup.state["proc_path"] = proc_path
-    logging.debug(f"Set proc_path to {proc_path}")
+    logger.debug(f"Set proc_path to {proc_path}")
 
 
     if qa_path is not None:
@@ -316,7 +323,7 @@ def set_paths(raw_path:str,
         qa_path = check_path(qa_path, make_absolute=True)
 
     setup.state["qa_path"] = qa_path
-    logging.debug(f"Set qa_path to {qa_path}")
+    logger.debug(f"Set qa_path to {qa_path}")
     
     #
     # Now ensure that `raw_path` does not equal any of the other paths
@@ -445,7 +452,7 @@ def set_instrument(instrument_name: str):
     Bad Pixel Mask: {bad_pixel_mask_file}
     """
 
-    logging.debug(msg)
+    logger.debug(msg)
 
     return
 
