@@ -3,8 +3,8 @@ from astropy.io import fits
 from astropy.table.table import Table
 import astropy.units as u
 from astroquery.simbad import Simbad
+from astroquery.exceptions import NoResultsWarning
 import warnings
-
 
 from pyspextool.io.check import check_parameter
 from pyspextool.pyspextoolerror import pySpextoolError
@@ -83,14 +83,14 @@ def query_simbad(
         try:
 
             table = Simbad.query_object(info)
-        
-        except Warning as w:
+
+        except NoResultsWarning as w:
 
             message = (
-                'Standard name "{}"" was not found in SIMBAD; provide '
+                f'Standard name {info} was not found in SIMBAD; provide '
                 "the correct name, correct coordinates, or a dictionary "
                 'containing keys "id", "sptype", "bmag", '
-                'and "vmag".'.format(info))
+                f'and "vmag": {w}')
 
             raise pySpextoolError(message)
 
@@ -116,13 +116,13 @@ def query_simbad(
             table = Simbad.query_region(c, radius="0d1m0s")
 
 
-        except Warning as w:
+        except NoResultsWarning as w:
 
             message = (
                 f"Standard coordinates {info} were not found in SIMBAD; "
                 "provide the correct name, correct coordinates, or a "
                 'dictionary containing keys "id", "sptype", "bmag", '
-                'and "vmag".'
+                f'and "vmag": {w}'
             )
 
             raise pySpextoolError(message)
@@ -152,4 +152,5 @@ def query_simbad(
                   "vmag":float(f'{vmag:3f}'),
                   "bmag":float(f'{bmag:3f}')}
 
+    warnings.resetwarnings()
     return dictionary
