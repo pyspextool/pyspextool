@@ -5,7 +5,7 @@ from pyspextool.telluric import telluric
 import pytest
 import os
 
-@pytest.mark.parametrize("setup_name", ["spex_sxd"])
+@pytest.mark.parametrize("setup_name", ["uspex_sxd"])
 def test_telluric(setup_name, proc_setup):
     setup_dict = proc_setup[setup_name]
     proc_path = setup_dict["proc_path"]
