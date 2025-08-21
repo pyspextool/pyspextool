@@ -229,12 +229,12 @@ def make_correction_spectra(
         # Get EW scales
         #
 
-#        adjust_ews(
-#            verbose=qa['verbose'],
-#            qa_show=qa['show'],
-#            qa_showscale=qa['showscale'],
-#            qa_showblock=qa['showblock'],
-#            qa_write=qa['write'])
+        adjust_ews(
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
 
     #
     # Make the telluric correction spectra

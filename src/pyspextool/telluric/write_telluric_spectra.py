@@ -176,101 +176,94 @@ def write_telluric_spectra(
     #
         
     hdrinfo = {}
-#
-#    hdrinfo['RA'] = std_hdrinfo['RA']
-#
-#    hdrinfo['DEC'] = std_hdrinfo['DEC']
-#
-#    hdrinfo['AVE_AM'] = std_hdrinfo['AVE_AM']
-#
-#    hdrinfo['MODE'] = std_hdrinfo['MODE']
-#
-#    hdrinfo['SLTW_ARC'] = std_hdrinfo['SLTW_ARC']
-#        
-#    hdrinfo['NORDERS'] = std_hdrinfo['NORDERS']
-#
-#    hdrinfo['ORDERS'] = std_hdrinfo['ORDERS']
-#
-#    hdrinfo['NAPS'] = std_hdrinfo['NAPS']                
-#    
-#    hdrinfo['MODULE'] = std_hdrinfo['MODULE']
-#    hdrinfo['MODULE'][0] = 'telluric'
-#    
-#    hdrinfo['VERSION'] = std_hdrinfo['VERSION']
-#
-#    filename = [config.state['telluric_output_filename']+'.fits', ' File name']
-#    hdrinfo['FILENAME'] = filename
-#
-#    mag = float('{:.3f}'.format(config.state['standard_bmag']))
-#    hdrinfo['STD_BMAG'] = (mag, 'Telluric standard B mag')
-#    
-#    mag = float('{:.3f}'.format(config.state['standard_vmag']))
-#    hdrinfo['STD_VMAG'] = (mag, 'Telluric standard V mag')
-#        
-#    value = [config.state['standard_fullfilename'], 
-#             'Telluric standard input file']
-#    hdrinfo['TC_SFILE'] = value
-#    
-#    value = [config.state['standard_name'], 'Telluric standard']
-#    hdrinfo['TC_STDID'] = value
-#    
-#    value = [config.state['standard_sptype'], 'Telluric standard spectral type']
-#    hdrinfo['TC_STDST'] = value
-#    
-#    value = [int(config.state['standard_teff']), 
-#             'Telluric standard effective temperature (K)']
-#    hdrinfo['TC_STDT'] = value
-#    
-#    value = [float('{:.3f}'.format(config.state['standard_bmag'])),
-#             'Telluric standard B mag']
-#    hdrinfo['TC_STDB'] = value
-#    
-#    value = [float('{:.3f}'.format(config.state['standard_vmag'])),
-#             'Telluric standard V mag']
-#    hdrinfo['TC_STDV'] = value
-#    
-#    value = [float('{:.2f}'.format(config.state['standard_rv'])),
-#             'Telluric standard radial velocity (km s-1)']
-#    hdrinfo['TC_STDRV'] =  value
-#            
-#    value = [config.state['correction_type'],'Telluric correction type']
-#    hdrinfo['TC_TYPE'] = value
-#    
-#    value = [config.state['method'], 'Kernel creation method']
-#    hdrinfo['TC_METH'] = value
-#    
-#    if config.state['correction_method'] == 'deconvolution':
-#        
-#        value = [float('{:.5f}'.format(config.state['max_deviation'])),
-#                 'Telluric maxmimum % deviation of Vega-data']
-#        hdrinfo['TC_MXDEV'] = value
-#        
-#        value = [float('{:.5f}'.format(config.state['rms_deviation'])),
-#                 'Telluric RMS deviation of Vega-data']
-#        hdrinfo['TC_RMS'] = value
-#            
-#    # Add units to the hdrinfo
-#
-#    result = get_latex_fluxdensity(config.state['intensity_unit'])[0]
-#    
-#    hdrinfo['XUNITS'] = std_hdrinfo['XUNITS']
-#    hdrinfo['YUNITS'] = std_hdrinfo['YUNITS']
-#    hdrinfo['YUNITS'][0] = config.state['intensity_unit']+' / DN s-1'
-#    
-#    hdrinfo['LXUNITS'] = std_hdrinfo['LXUNITS']
-#    hdrinfo['LYUNITS'] = std_hdrinfo['LYUNITS']        
-#    hdrinfo['LYUNITS'][0] = result+' / DN s$^{-1}$'
-#    
-#    hdrinfo['LXLABEL'] = std_hdrinfo['LXLABEL']
+
+    hdrinfo['RA'] = std_hdrinfo['RA']
+
+    hdrinfo['DEC'] = std_hdrinfo['DEC']
+
+    hdrinfo['AVE_AM'] = std_hdrinfo['AVE_AM']
+
+    hdrinfo['MODE'] = std_hdrinfo['MODE']
+
+    hdrinfo['SLTW_ARC'] = std_hdrinfo['SLTW_ARC']
+        
+    hdrinfo['NORDERS'] = std_hdrinfo['NORDERS']
+
+    hdrinfo['ORDERS'] = std_hdrinfo['ORDERS']
+
+    hdrinfo['NAPS'] = std_hdrinfo['NAPS']                
+    
+    hdrinfo['MODULE'] = std_hdrinfo['MODULE']
+    hdrinfo['MODULE'][0] = 'telluric'
+    
+    hdrinfo['VERSION'] = std_hdrinfo['VERSION']
+
+    filename = [config.state['telluric_output_filename']+'.fits', ' File name']
+    hdrinfo['FILENAME'] = filename
+
+    mag = float('{:.3f}'.format(config.state['standard_bmag']))
+    hdrinfo['STD_BMAG'] = (mag, 'Telluric standard B mag')
+    
+    mag = float('{:.3f}'.format(config.state['standard_vmag']))
+    hdrinfo['STD_VMAG'] = (mag, 'Telluric standard V mag')
+        
+    value = [config.state['standard_fullfilename'], 
+             'Telluric standard input file']
+    hdrinfo['TC_SFILE'] = value
+    
+    value = [config.state['standard_name'], 'Telluric standard']
+    hdrinfo['TC_STDID'] = value
+    
+    value = [config.state['standard_sptype'], 'Telluric standard spectral type']
+    hdrinfo['TC_STDST'] = value
+    
+    value = [int(config.state['standard_teff']), 
+             'Telluric standard effective temperature (K)']
+    hdrinfo['TC_STDT'] = value
+    
+    value = [float('{:.3f}'.format(config.state['standard_bmag'])),
+             'Telluric standard B mag']
+    hdrinfo['TC_STDB'] = value
+    
+    value = [float('{:.3f}'.format(config.state['standard_vmag'])),
+             'Telluric standard V mag']
+    hdrinfo['TC_STDV'] = value
+    
+    value = [float('{:.2f}'.format(config.state['standard_rv'])),
+             'Telluric standard radial velocity (km s-1)']
+    hdrinfo['TC_STDRV'] =  value
+            
+    value = [config.state['correction_type'],'Telluric correction type']
+    hdrinfo['TC_TYPE'] = value
+    
+    value = [config.state['method'], 'Kernel creation method']
+    hdrinfo['TC_METH'] = value
+    
+    if config.state['correction_method'] == 'deconvolution':
+        
+        value = [float('{:.5f}'.format(config.state['max_deviation'])),
+                 'Telluric maxmimum % deviation of Vega-data']
+        hdrinfo['TC_MXDEV'] = value
+        
+        value = [float('{:.5f}'.format(config.state['rms_deviation'])),
+                 'Telluric RMS deviation of Vega-data']
+        hdrinfo['TC_RMS'] = value
+            
+    # Add units to the hdrinfo
+
+    result = get_latex_fluxdensity(config.state['intensity_unit'])[0]
+    
+    hdrinfo['XUNITS'] = std_hdrinfo['XUNITS']
+    hdrinfo['YUNITS'] = std_hdrinfo['YUNITS']
+    hdrinfo['YUNITS'][0] = config.state['intensity_unit']+' / DN s-1'
+    
+    hdrinfo['LXUNITS'] = std_hdrinfo['LXUNITS']
+    hdrinfo['LYUNITS'] = std_hdrinfo['LYUNITS']        
+    hdrinfo['LYUNITS'][0] = result+' / DN s$^{-1}$'
+    
+    hdrinfo['LXLABEL'] = std_hdrinfo['LXLABEL']
     hdrinfo['LYLABEL'] = std_hdrinfo['LYLABEL']        
-#    str = 'Ratio ('+result+' / DN s$^{-1}$)'
-#    print(str)
-#    print(len(str))
-#    hdrinfo['LYLABEL'][0] = str
-
-
-#    print(hdrinfo['LYLABEL'][0])
-#    print(hdrinfo['LYLABEL'][1])
+    hdrinfo['LYLABEL'][0] = 'Ratio ('+result+' / DN s$^{-1}$)'
 
     # Create the FITS header
 
@@ -279,36 +272,22 @@ def write_telluric_spectra(
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
 
-    str = 'Ratio (W m$^{-2}$ $\mu$m$^{-1}$ / DN s$^{-1}$)'
-    
-    hdr['LYLABEL'] = (str,' LateX y-axis flux label')
 
     
-#    # Add our keywords
-#    
-#    keys = list(hdrinfo.keys())
-#    
-##    for i in range(len(keys)):
-#    for i in range(30):
-#        
-#        if keys[i] == 'COMMENT':
-#            
-#            pass
-#        
-#        else:
-#            
-#            hdr[keys[i]] = (hdrinfo[keys[i]][0], 
-#                            hdrinfo[keys[i]][1])
-#
-#            print(hdr[keys[i]])
-#
-#
-#    print(hdr)
+    # Add our keywords
+    
+    keys = list(hdrinfo.keys())
+    
+    for i in range(len(keys)):
+        
+        if keys[i] == 'COMMENT':
             
-
-#            print(hdr[keys[i]])
-
-#    hdr['LONG'] = ("This is a very long string that will be split across multiple FITS header cards using the CONTINUE convention, as required by the FITS standard for long keyword values.",' long comment')
+            pass
+        
+        else:
+            
+            hdr[keys[i]] = (hdrinfo[keys[i]][0], 
+                            hdrinfo[keys[i]][1])
 
     #
     # Write the file out

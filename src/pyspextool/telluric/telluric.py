@@ -202,13 +202,13 @@ def telluric(
     # Correct the object spectra
     #
 
-#    correct_spectra(
-#        object_filenames ,
-#        telluric_filename+'.fits',
-#        corrected_filenames,
-#        verbose=qa['verbose'],
-#        qa_show=qa['show'],
-#        qa_showscale=qa['showscale'],
-#        qa_showblock=qa['showblock'],
-#        qa_write=qa['write'])
-#
+    correct_spectra(
+        object_filenames ,
+        telluric_filename+'.fits',
+        corrected_filenames,
+        verbose=qa['verbose'],
+        qa_show=qa['show'],
+        qa_showscale=qa['showscale'],
+        qa_showblock=qa['showblock'],
+        qa_write=qa['write'])
+
