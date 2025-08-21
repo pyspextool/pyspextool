@@ -19,44 +19,60 @@ from pyspextool.pyspextoolerror import pySpextoolError
 
 
 
-def extract(reduction_mode:str,
-            files:str | list,
-            flat_name:str,
-            wavecal_name:str,
-            aperture_findinfo:list,
-            aperture_radii:int | float | list,
-            output_filenames:str=None,
-            output_prefix:str='spectra',
-            input_extension:str='.fits*',
-            load_directory='raw',
-            flat_field=True,
-            linearity_correction=True,
-            detector_info:dict=None,
-            write_rectified_orders:bool=False,
-            seeing_fwhm:int | float=0.8,
-            profile_ybuffer:int=3,
-            aperture_signs:list=None,
-            include_orders:int | str | list=None,
-            exclude_orders:int | str | list=None,
-            trace_fitdegree:int=2,
-            trace_stepsize:int=5,
-            trace_summationwidth:int=5,
-            trace_centroidthreshold:int=2,
-            bg_annulus:list=None,
-            bg_regions:str=None,
-            bg_fitdegree:int=0,
-            psf_radius:int | float=None,
-            fix_badpixels:bool=True,
-            use_meanprofile:bool=False,
-            badpixel_thresh:int | float=7,                    
-            verbose:bool=None,
-            qa_show:bool=None,
-            qa_showscale:float | int=None,
-            qa_showblock:bool=None,
-            qa_write:bool=None):
+def extract(
+    reduction_mode:str,
+    filenames:str | list,
+    flat_name:str,
+    wavecal_name:str,
+    aperture_findinfo:list,
+    aperture_radii:int | float | list,
+    output_filenames:str=None,
+    output_prefix:str='spectra',
+    input_extension:str='.fits*',
+    load_directory='raw',
+    flat_field=True,
+    linearity_correction=True,
+    detector_info:dict=None,
+    write_rectified_orders:bool=False,
+    seeing_fwhm:int | float=0.8,
+    profile_ybuffer:int=3,
+    aperture_signs:list=None,
+    include_orders:int | str | list=None,
+    exclude_orders:int | str | list=None,
+    trace_fitdegree:int=2,
+    trace_stepsize:int=5,
+    trace_summationwidth:int=5,
+    trace_centroidthreshold:int=2,
+    bg_annulus:list=None,
+    bg_regions:str=None,
+    bg_fitdegree:int=0,
+    psf_radius:int | float=None,
+    fix_badpixels:bool=True,
+    use_meanprofile:bool=False,
+    badpixel_thresh:int | float=7,                    
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
+    To perform all steps necessary to extract spectra.
 
+    Parameters
+    ----------
+    reduction_mode : str
+
+    filenamess : str or list
+        If type is str, then a comma-separated string of full file names, 
+        e.g. 'spc00001.a.fits, spc00002.b.fits'.
+
+        If type is list, then a two-element list where
+        files[0] is a str giving the perfix, files[1] is a str giving the 
+        index numbers of the files, e.g. ['spc', '1-2,5-10,13,14'].
+    
+
+    flat_name
 
 
     """
@@ -72,21 +88,19 @@ def extract(reduction_mode:str,
     if load_directory == 'raw':
 
         load_path = setup.state['raw_path']
-#        image_type = 'raw'
         
     elif load_directory == 'proc':
 
         load_path = setup.state['proc_path']
-#        image_type = 'combined'
-    
 
     # Create the input file names
 
-    results = files_to_fullpath(load_path,
-                                files,
-                                setup.state['nint'],
-                                setup.state['suffix'],
-                                input_extension)
+    results = files_to_fullpath(
+        load_path,
+        filenames,
+        setup.state['nint'],
+        setup.state['suffix'],
+        input_extension)
 
     input_fullpaths = results[0]
     file_readmode = results[1]
@@ -122,11 +136,11 @@ def extract(reduction_mode:str,
         if file_readmode == 'index':
         
             result = files_to_fullpath('',
-                                       [output_prefix,files[1]],
-                                       setup.state['nint'],
-                                       '',
-                                       '',
-                                       exist=False)
+                        [output_prefix,filenames[1]],
+                        setup.state['nint'],
+                        '',
+                        '',
+                        exist=False)
 
             output_filenames = result[0]        
 
@@ -180,98 +194,106 @@ def extract(reduction_mode:str,
                     
         input_subset = ','.join(input_subset)
         
-        load_image(input_subset,
-                   flat_name,
-                   wavecal_name,
-                   output_filenames=output_subset,
-                   output_prefix=output_prefix,
-                   input_extension=input_extension,
-                   load_directory=load_directory,
-                   flat_field=flat_field,
-                   linearity_correction=linearity_correction,
-                   detector_info=detector_info,
-                   write_rectified_orders=write_rectified_orders,
-                   do_all_steps=do_all_steps,
-                   verbose=verbose,
-                   qa_show=qa_show,
-                   qa_showscale=qa_showscale,
-                   qa_showblock=qa_showblock,
-                   qa_write=qa_write)
+        load_image(
+            input_subset,
+            flat_name,
+            wavecal_name,
+            output_filenames=output_subset,
+            output_prefix=output_prefix,
+            input_extension=input_extension,
+            load_directory=load_directory,
+            flat_field=flat_field,
+            linearity_correction=linearity_correction,
+            detector_info=detector_info,
+            write_rectified_orders=write_rectified_orders,
+            do_all_steps=do_all_steps,
+            verbose=verbose,
+            qa_show=qa_show,
+            qa_showscale=qa_showscale,
+            qa_showblock=qa_showblock,
+            qa_write=qa_write)
 
         # Make the profile
 
-        make_profiles(verbose=verbose,
-                      qa_show=qa_show,
-                      qa_showscale=qa_showscale,
-                      qa_showblock=qa_showblock,
-                      qa_write=qa_write)
-
+        make_profiles(
+            verbose=verbose,
+            qa_show=qa_show,
+            qa_showscale=qa_showscale,
+            qa_showblock=qa_showblock,
+            qa_write=qa_write)
+        
         # Identify apertures
 
-        identify_apertures(aperture_findinfo,
-                           seeing_fwhm=seeing_fwhm,
-                           ybuffer=profile_ybuffer,
-                           verbose=verbose,
-                           qa_show=qa_show,
-                           qa_showscale=qa_showscale,
-                           qa_showblock=qa_showblock,
-                           qa_write=qa_write)
+        identify_apertures(
+            aperture_findinfo,
+            seeing_fwhm=seeing_fwhm,
+            ybuffer=profile_ybuffer,
+            verbose=verbose,
+            qa_show=qa_show,
+            qa_showscale=qa_showscale,
+            qa_showblock=qa_showblock,
+            qa_write=qa_write)
 
         # Select orders
 
         if include_orders is not None or exclude_orders is not None:
 
-            select_orders(include=include_orders,
-                          exclude=exclude_orders,
-                          verbose=verbose,
-                          qa_show=qa_show,
-                          qa_showscale=qa_showscale,
-                          qa_showblock=qa_showblock,
-                          qa_write=qa_write)
+            select_orders(
+                include=include_orders,
+                exclude=exclude_orders,
+                verbose=verbose,
+                qa_show=qa_show,
+                qa_showscale=qa_showscale,
+                qa_showblock=qa_showblock,
+                qa_write=qa_write)
 
         # Update aperture positions if requested
 
         if aperture_signs is not None:
 
-            override_aperturesigns(aperture_signs,
-                                   verbose=verbose)
+            override_aperturesigns(
+                aperture_signs,
+                verbose=verbose)
 
         # Trace the orders
 
-        trace_apertures(fit_degree=trace_fitdegree,
-                        step_size=trace_stepsize,
-                        summation_width=trace_summationwidth,
-                        centroid_threshold=trace_centroidthreshold,
-                        seeing_fwhm=seeing_fwhm,
-                        verbose=verbose,
-                        qa_show=qa_show,
-                        qa_showscale=qa_showscale,
-                        qa_showblock=qa_showblock,
-                        qa_write=qa_write)
-
+        trace_apertures(
+            fit_degree=trace_fitdegree,
+            step_size=trace_stepsize,
+            summation_width=trace_summationwidth,
+            centroid_threshold=trace_centroidthreshold,
+            seeing_fwhm=seeing_fwhm,
+            verbose=verbose,
+            qa_show=qa_show,
+            qa_showscale=qa_showscale,
+            qa_showblock=qa_showblock,
+            qa_write=qa_write)
+        
         # Define the aperture parameters
 
-        define_aperture_parameters(aperture_radii,
-                                   bg_annulus=bg_annulus,
-                                   bg_regions=bg_regions,
-                                   bg_fit_degree=bg_fitdegree,
-                                   psf_radius=psf_radius,
-                                   verbose=verbose,
-                                   qa_show=qa_show,
-                                   qa_showscale=qa_showscale,
-                                   qa_showblock=qa_showblock,
-                                   qa_write=qa_write)
+        define_aperture_parameters(
+            aperture_radii,
+            bg_annulus=bg_annulus,
+            bg_regions=bg_regions,
+            bg_fit_degree=bg_fitdegree,
+            psf_radius=psf_radius,
+            verbose=verbose,
+            qa_show=qa_show,
+            qa_showscale=qa_showscale,
+            qa_showblock=qa_showblock,
+            qa_write=qa_write)
 
         # Extract the apertures
 
-        extract_apertures(fix_badpixels=fix_badpixels,
-                          use_meanprofile=use_meanprofile,
-                          badpixel_thresh=badpixel_thresh,
-                          verbose=verbose,
-                          qa_show=qa_show,
-                          qa_showscale=qa_showscale,
-                          qa_showblock=qa_showblock,
-                          qa_write=qa_write)
+        extract_apertures(
+            fix_badpixels=fix_badpixels,
+            use_meanprofile=use_meanprofile,
+            badpixel_thresh=badpixel_thresh,
+            verbose=verbose,
+            qa_show=qa_show,
+            qa_showscale=qa_showscale,
+            qa_showblock=qa_showblock,
+            qa_write=qa_write)
 
 
 

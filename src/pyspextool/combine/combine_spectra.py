@@ -13,13 +13,14 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.plot.plot_spectra import plot_spectra
 
 
-def combine_spectra(statistic:str='robust weighted mean',
-                    robust_sigma:int | float=8,
-                    verbose:bool=None,
-                    qa_show:bool=None,
-                    qa_showscale:float | int=None,
-                    qa_showblock:bool=None,
-                    qa_write:bool=None):
+def combine_spectra(
+    statistic:str='robust weighted mean',
+    robust_sigma:int | float=8,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
 
     """
@@ -114,11 +115,12 @@ def combine_spectra(statistic:str='robust weighted mean',
     check_parameter('combine_spectra', 'qa_showblock', qa_showblock,
                     ['NoneType', 'bool'])
     
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
     
     #
     # Create output arrays
@@ -190,9 +192,7 @@ def combine_spectra(statistic:str='robust weighted mean',
              combine.state['npixels'])
     array = np.empty(shape)
 
-    #
-    # File the array
-    #
+    # File the array with the result of the combination
     
     for i in range(combine.state['norders']):
 
@@ -204,25 +204,19 @@ def combine_spectra(statistic:str='robust weighted mean',
             array[idx,2,:]  = uncertainty[j,i]
             array[idx,3,:]  = bitmask[j,i]
 
-    #
     # Determine useful things depending on combination mode
-    #
         
-    if combine.state['combine_type'] == 'standard':
+    if combine.state['combine_apertures'] is False:
 
         napertures_combined = 0
         avehdr = average_headerinfo(combine.state['headers'])
 
-    elif combine.state['combine_type'] == 'twoaperture':
+    else:
 
         napertures_combined = 2
         avehdr = combine.state['headers'][0]
         avehdr['TOTITIME'] = [2*avehdr['TOTITIME'][0],
                               ' Total integration time (sec)']
-
-    elif combine.state['combine_type'] == 'telluric':        
-
-        napertures_combined = 0
 
     # Store the history
 
@@ -238,7 +232,7 @@ def combine_spectra(statistic:str='robust weighted mean',
 
     avehdr['MODULE'][0] = 'combine'
 
-    avehdr['FILENAME'][0] = combine.state['output_name']+'.fits'
+    avehdr['FILENAME'][0] = combine.state['output_filename']+'.fits'
 
 
     avehdr['NAPS'][0] = combine.state['final_napertures']
@@ -260,7 +254,7 @@ def combine_spectra(statistic:str='robust weighted mean',
     for i in range(combine.state['norders']):
 
         name = 'SNRO' + str(combine.state['orders'][i]).zfill(3)
-        comment = ' Median S/N values for order ' + \
+        comment = ' Median S/N for order ' + \
             str(combine.state['orders'][i]).zfill(3)
 
         values = []
@@ -323,7 +317,7 @@ def combine_spectra(statistic:str='robust weighted mean',
 
         history += 'Aperture '+str(i+1)+' modifications: '
         
-        if combine.state['spectra_scaled'] == True:
+        if combine.state['spectra_scaled']:
 
             scales = [str(i) for i in combine.state['scales'][i,:]]
             
@@ -346,7 +340,7 @@ def combine_spectra(statistic:str='robust weighted mean',
     #
 
     full_path = osjoin(setup.state['proc_path'],
-                       combine.state['output_name']+'.fits')
+                       combine.state['output_filename']+'.fits')
 
     fits.writeto(full_path, array, hdr, overwrite=True)
 
@@ -370,7 +364,7 @@ def combine_spectra(statistic:str='robust weighted mean',
     if qa['write'] is True:
 
         qafullpath = osjoin(setup.state['qa_path'],
-                            combine.state['output_name']+\
+                            combine.state['output_filename']+\
                             setup.state['qa_extension'])
         
         plot_spectra(full_path,

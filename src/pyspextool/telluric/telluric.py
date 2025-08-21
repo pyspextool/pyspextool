@@ -1,48 +1,49 @@
 import logging
 
 from pyspextool import config as setup
-from pyspextool.telluric import config as tc
 from pyspextool.io.check import check_parameter, check_qakeywords
-from pyspextool.telluric.load_spectra import load_spectra
-from pyspextool.telluric.prepare_line import prepare_line
-from pyspextool.telluric.get_radialvelocity import get_radialvelocity
-from pyspextool.telluric.get_kernels import get_kernels
-from pyspextool.telluric.make_telluric_spectra import make_telluric_spectra
-from pyspextool.telluric.shift_spectra import shift_spectra
+from pyspextool.telluric.make_correction_spectra import make_correction_spectra
 from pyspextool.telluric.correct_spectra import correct_spectra
-from pyspextool.telluric.write_spectra import write_spectra
-from pyspextool.telluric.adjust_ews import adjust_ews
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
-def telluric(object_file:str,
-             standard_file:str,
-             standard_info:list | str | dict,
-             output_filename:str,
-             correction_type:str='A0 V',
-             output_units:str='W m-2 um-1',
-             default_shiftranges:bool=True,
-             user_shiftranges:list=None,
-             write_telluric_spectra:bool=True,
-             write_model_spectra:bool=False,                        
-             verbose:bool=None,
-             qa_show:bool=None,
-             qa_showscale:float=None,
-             qa_showblock:bool=None,
-             qa_write:bool=None,
-             new=False):
+def telluric(
+    object_filenames:str | list,
+    standard_filename:str,
+    standard_info:list | str | dict,
+    telluric_filename:str,
+    corrected_filenames:str,
+    correction_type:str='A0 V',
+    output_units:str='W m-2 um-1',
+    default_shiftranges:bool=True,
+    user_shiftranges:list=None,
+    write_model_spectra:bool=False,                        
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None,
+    new=False):
 
                         
     """
-    To correct spectra for telluric absorption and flux calibrate
+    To correct spectra for telluric absorption and flux calibrate.
 
+   
     Parameters
     ----------
-    object_file : str 
-        The name of the pySpextool FITS file containing the object spectra.
+    object_filenames : str or list
+        If type is str, then a comma-separated string of full pyspextool file names, 
+        e.g. 'spc00001.a.fits, spc00002.b.fits' or a single file 'spc00001.a.fits'
 
-    standard_file : str 
+        If type is list, then a two-element list where
+        files[0] is a string giving the perfix.
+        files[1] is a string giving the index numbers of the files.
+
+        e.g. ['spectra', '1-2']
+
+    standard_filename : str 
         The name of the pySpextool FITS file containing the standard star
         spectra.
 
@@ -69,9 +70,17 @@ def telluric(object_file:str,
 
         `"vmag"` : int or float
             The standard star V-band magnitude.
-      
-    output_filename : str
-        The output file name sans the suffix, e.g. 'Wolf359'.
+
+    telluric_filename : str 
+        The output name of the pySpextool FITS file containing the telluric correction
+        spectra.
+
+    corrected_filenames : str
+        If type `object_filenames` is str, then a comma-separated string of the full 
+        output file names, e.g. 'spectra00001, spectra00002'.  The number of input 
+        files must equal the the number of output files.
+
+        If type `object_filenames` is list, then the prefix, e.g. 'spectra'.  
 
     correction_type : {'A0 V', 'reflectance', 'basic'}
         The type of telluric correction requested.
@@ -100,9 +109,6 @@ def telluric(object_file:str,
     write_model_spectra : {False, True}
         Set to True to write the modified Vega model to disk.
 
-    write_telluric_spectra : {False, True}
-        Set to True to write the telluric correction spectrum to disk.
-    
     verbose : {None, True, False}
         Set to True to report updates to the command line.
         Set to False to not report updates to the command line.
@@ -126,13 +132,11 @@ def telluric(object_file:str,
         Set to True to write a QA plot to disk
         Set to False to not write a QA plot to disk.
         Set to None to default to setup.state['qa_write'].
-    
-    
-
+       
     Returns
     -------
     None
-        Writes pyspextool FITS file to disk.
+        Writes pyspextool FITS file(s) to disk.
 
     """
     
@@ -140,23 +144,21 @@ def telluric(object_file:str,
     # Check the parameters and keywords
     #
 
-    check_parameter('telluric', 'object_file', object_file, 'str')
+    check_parameter('telluric', 'object_filenames', object_filenames, ['str', 'list'])
 
-    check_parameter('telluric', 'standard_file', standard_file, 'str')
+    check_parameter('telluric', 'standard_filename', standard_filename, 'str')
 
     check_parameter('telluric', 'standard_info', standard_info,
                     ['str','list','dict'])
         
-    check_parameter('telluric', 'output_filename', output_filename, 'str')
+    check_parameter('telluric', 'telluric_filename', telluric_filename, 'str')
+
+    check_parameter('telluric', 'corrected_filenames', corrected_filenames, 'str')
 
     check_parameter('telluric', 'correction_type', correction_type, 'str',
                     possible_values=setup.state['telluric_correctiontypes'])
 
-    check_parameter('telluric', 'write_telluric_spectra',
-                    write_telluric_spectra, 'bool')
-
-    check_parameter('telluric', 'write_model_spectra',
-                    write_model_spectra, 'bool')
+    check_parameter('telluric', 'write_model_spectra', write_model_spectra, 'bool')
     
     check_parameter('telluric', 'output_units', output_units, 'str')
 
@@ -178,123 +180,35 @@ def telluric(object_file:str,
                           showscale=qa_showscale,
                           showblock=qa_showblock,
                           write=qa_write)
-    
-    #
-    # Load the spectra
-    #
-
-    load_spectra(object_file,
-                 standard_file,
-                 standard_info,
-                 output_filename,
-                 correction_type=correction_type,
-                 verbose=qa['verbose'],
-                 new=new)
 
     #
-    # Are we doing a solar system object?
+    # Make the telluric correction spectra
     #
 
-    if tc.state['type'] == 'A0V':
-
-        # Nope.  So do the full correction.
-    
-        #
-        # Prepare line
-        #
-
-        if tc.state['normalization_order'] is not None:
-    
-            prepare_line(tc.state['normalization_order'],
-                         tc.state['normalization_line'],
-                         tc.state['resolving_power'],                         
-                         tc.state['normalization_window'],
-                         tc.state['normalization_fittype'],
-                         tc.state['normalization_degree'],
-                         verbose=qa['verbose'],
-                         qa_show=qa['show'],
-                         qa_showscale=qa['showscale'],
-                         qa_showblock=qa['showblock'],
-                         qa_write=qa['write'])
-
-        #
-        # Measure radial velocity
-        #
-
-        if tc.state['radialvelocity_nfwhm'] is not None:    
-
-            get_radialvelocity(tc.state['radialvelocity_nfwhm'],
-                               verbose=qa['verbose'],
-                               qa_show=qa['show'],
-                               qa_showscale=qa['showscale'],
-                               qa_showblock=qa['showblock'],
-                               qa_write=qa['write'])
-
-        #
-        # Get kernels
-        #
-
-        if tc.state['deconvolution_nfwhm'] is not None:
-    
-            get_kernels(tc.state['deconvolution_nfwhm'],
-                        verbose=qa['verbose'],
-                        qa_show=qa['show'],
-                        qa_showscale=qa['showscale'],
-                        qa_showblock=qa['showblock'],
-                        qa_write=qa['write'])
-            
-        else:
-
-            get_kernels(verbose=qa['verbose'],
-                        qa_show=qa['show'],
-                        qa_showscale=qa['showscale'],
-                        qa_showblock=qa['showblock'],
-                        qa_write=qa['write'])
-
-        #
-        # Get EW scales
-        #
-
-        adjust_ews(verbose=qa['verbose'],
-                   qa_show=qa['show'],
-                   qa_showscale=qa['showscale'],
-                   qa_showblock=qa['showblock'],
-                   qa_write=qa['write'])
+    make_correction_spectra(
+        standard_filename,
+        standard_info,
+        telluric_filename,
+        correction_type=correction_type,
+        output_units=output_units,
+        write_model_spectra=write_model_spectra,                        
+        verbose=qa['verbose'],
+        qa_show=qa['show'],
+        qa_showscale=qa['showscale'],
+        qa_showblock=qa['showblock'],
+        qa_write=qa['write'])
 
     #
-    # Construct the telluric correction spectra
+    # Correct the object spectra
     #
 
-    make_telluric_spectra(intensity_unit=output_units,
-                          verbose=qa['verbose'],
-                          new=new)
+    correct_spectra(
+        object_filenames ,
+        telluric_filename+'.fits',
+        corrected_filenames,
+        verbose=qa['verbose'],
+        qa_show=qa['show'],
+        qa_showscale=qa['showscale'],
+        qa_showblock=qa['showblock'],
+        qa_write=qa['write'])
 
-    #
-    # Shift the spectra
-    #
-
-    if default_shiftranges is True or user_shiftranges is not None:
-
-        shift_spectra(default_shiftranges=default_shiftranges,
-                      user_shiftranges=user_shiftranges,
-                      verbose=qa['verbose'])
-
-    #
-    # Correct the spectra for telluric absorption and flux calibrate
-    #
-
-    correct_spectra()
-
-    #
-    # Write the corrected spectra to disk
-    #
-
-    write_spectra(write_model_spectra=write_model_spectra,
-                  write_telluric_spectra=write_telluric_spectra,
-                  verbose=qa['verbose'],
-                  qa_show=qa['show'],
-                  qa_showscale=qa['showscale'],
-                  qa_showblock=qa['showblock'],
-                  qa_write=qa['write'])
-    
-    

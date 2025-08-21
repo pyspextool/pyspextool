@@ -6,8 +6,9 @@ from pyspextool.io.check import check_parameter
 from pyspextool.utils import coords
 from pyspextool.utils.add_entry import add_entry
 
-def average_headerinfo(hdrs:list,
-                       pair:bool=False):
+def average_headerinfo(
+    hdrs:list,
+    pair:bool=False):
 
     """
     Averages a pySpextool header lists
@@ -288,9 +289,11 @@ def average_headerinfo(hdrs:list,
     return hdrinfo
 
 
-def get_headerinfo(hdr,
-                   keywords=None,
-                   ignore_missing_keywords=False):
+def get_headerinfo(
+    hdr,
+    keywords=None,
+    ignore_keywords=None,
+    ignore_missing_keywords=False):
 
     """
     Pulls (user requested) keyword values and comments from a FITS file
@@ -336,6 +339,9 @@ def get_headerinfo(hdr,
     check_parameter('get_header_info', 'keywords', keywords,
                     ['list','NoneType'])
 
+    check_parameter('get_header_info', 'ignore_keywords', ignore_keywords,
+                    ['list','NoneType'])
+
     check_parameter('get_header_info', 'ignore_missing_keywords',
                     ignore_missing_keywords, 'bool')    
 
@@ -348,6 +354,9 @@ def get_headerinfo(hdr,
 
     docomment = False
     dohistory = False
+
+    ignore = [] if ignore_keywords is None else ignore_keywords
+
     
     # Open an empty dict
 
@@ -418,11 +427,14 @@ def get_headerinfo(hdr,
                 continue
             
             if name == 'COMMENT':
-                docomment = 1
+                docomment = True
                 continue
 
             if name == 'HISTORY':
-                dohistory = 1
+                dohistory = True
+                continue
+
+            if name in ignore:
                 continue
 
             # Store the value
@@ -432,7 +444,7 @@ def get_headerinfo(hdr,
     #        
     # Now do the history and comments if need be
     #
-    
+
     if docomment is True:
 
         comments = []
@@ -447,6 +459,7 @@ def get_headerinfo(hdr,
 
         history = []
         for line in hdr['HISTORY']:
+
             history.append(str(line))
 
         hdrinfo['HISTORY'] = history

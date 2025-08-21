@@ -7,24 +7,23 @@ from os.path import join
 
 from pyspextool import config as setup
 from pyspextool.combine import config as combine
+
 from pyspextool.io.check import check_parameter, check_qakeywords, \
     check_file, check_sansfits
-
+from pyspextool.combine.qaplots import plot_allorders
 from pyspextool.io.files import files_to_fullpath
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.io.fitsheader import get_headerinfo
-from pyspextool.combine.core import plot_allorders
-
-from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def load_spectra(files:str | list,
-                 output_name:str,
-                 verbose:bool=None,
-                 qa_show:bool=None,
-                 qa_showscale:float | int=None,
-                 qa_showblock:bool=None,
-                 qa_write:bool=None):
+def load_spectra(
+    filenames:str | list,
+    output_filename:str,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
 
     """
@@ -32,18 +31,18 @@ def load_spectra(files:str | list,
 
     Parameters
     ----------
-    files : str or list
+    filenames : str or list
         If type is str, then a comma-separated string of full file names, 
         e.g. 'spc00001.a.fits, spc00002.b.fits'.
 
         If type is list, then a two-element list where
-        files[0] is a string giving the perfix.
-        files[1] is a string giving the index numbers of the files.
+        filenames[0] is a string giving the perfix.
+        filenames[1] is a string giving the index numbers of the files.
 
         e.g. ['spc', '1-2']
 
-    output_name : str
-        The output file name sans the suffix.
+    output_filename : str
+        The output file name sans '.fits'.
     
     verbose : {None, True, False}
         Set to True to report updates to the command line.
@@ -83,9 +82,9 @@ def load_spectra(files:str | list,
     # Check the parameters and QA keywords
     #
 
-    check_parameter('load_spectra', 'files', files, ['str', 'list'])
+    check_parameter('load_spectra', 'filenames', filenames, ['str', 'list'])
 
-    check_parameter('load_spectra', 'output_name', output_name, 'str')
+    check_parameter('load_spectra', 'output_filename', output_filename, 'str')
 
     check_parameter('load_spectra', 'verbose', verbose, ['NoneType', 'bool'])
     
@@ -100,28 +99,28 @@ def load_spectra(files:str | list,
                     ['NoneType', 'bool'])
     
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
 
     logging.info(' Combining Spectra\n-----------------------\n')
     logging.info(' Loading the spectra.')
-
     
     #
     # Create the file names
     #
 
-    results = files_to_fullpath(setup.state['proc_path'],
-                                files,
-                                setup.state['nint'],
-                                '',
-                                '.fits')
+    results = files_to_fullpath(
+        setup.state['proc_path'],
+        filenames,
+        setup.state['nint'],
+        '',
+        '.fits')
 
     input_files = results[0]
-    file_readmode = results[1]
     filenames = results[2]
 
     check_file(input_files)
@@ -130,8 +129,10 @@ def load_spectra(files:str | list,
     combine.state['filenames'] = filenames
     combine.state['nfiles'] = len(input_files)
 
-    check_sansfits(output_name,'output_name')
-    combine.state['output_name'] = output_name
+    check_sansfits(output_filename,
+        'output_filename')
+
+    combine.state['output_filename'] = output_filename
     
     #
     # Read the first file and store useful things
@@ -148,41 +149,11 @@ def load_spectra(files:str | list,
     combine.state['ylabel'] = info['lylabel']    
     combine.state['xunits'] = info['xunits']
 
-
     #
-    # Determine the combination parameters
+    # Determine the combination type
     #
 
-    # Start with the module that created the data
-
-    if combine.state['module'] == 'extract':
-
-        # Now check whether we are combining apertures.
-        # 1 file means yes, >1 files means no.
-
-        if combine.state['nfiles'] == 1:
-
-            # Single file means combining all apertures
-
-            combine.state['combine_apertures'] = True
-            combine.state['combine_type'] = 'twoaperture'
-
-        else:
-
-            # Multiple file means combining on aperture by aperture basis
-
-            combine.state['combine_apertures'] = False
-            combine.state["combine_type"] = "standard"
-
-    elif combine.state['module'] == 'telluric':
-
-        combine.state['combine_apertures'] = False
-        combine.state['combine_type'] = 'telluric'
-
-    else:
-
-        message = 'Unknown module.'
-        raise pySpextoolError(message)
+    combine.state['combine_apertures'] = True if combine.state['nfiles'] == 1 else False
 
     #
     #  Compute various values and build the various arrays and lists.
@@ -193,7 +164,8 @@ def load_spectra(files:str | list,
         combine.state['final_napertures'] = 1
         combine.state['nspectra'] = 2*combine.state['nfiles']
         combine.state['scales'] = np.full(combine.state['nspectra'], 1)
-
+        filenames.append(filenames[0])
+        
     else:
 
         combine.state['final_napertures'] = combine.state['napertures']
@@ -223,7 +195,7 @@ def load_spectra(files:str | list,
 
     headers = []
 
-    keywords  = setup.state['combine_keywords']
+    ignore_keywords  = setup.state['combine_ignore_keywords']
 
     for i in range(combine.state['nfiles']):
 
@@ -242,7 +214,7 @@ def load_spectra(files:str | list,
 
                 # Grab header keywords and store
 
-                info = get_headerinfo(header,keywords=keywords)
+                info = get_headerinfo(header,ignore_keywords=ignore_keywords)
                 headers.append(info)
 
                 # store the data
@@ -273,15 +245,14 @@ def load_spectra(files:str | list,
     combine.state['uncertainties'] = uncertainties
     combine.state['bitmasks'] = bitmasks
     combine.state['spectra_scaled'] = False
-    
-    
+        
     #
     # Do the QA
     #
 
     if qa['write'] is True:
 
-        plot_allorders(setup.plots['combine_spectra'],
+        plot_allorders(None,
                        setup.plots['landscape_size'],
                        setup.plots['font_size'],
                        setup.plots['spectrum_linewidth'],
@@ -291,7 +262,7 @@ def load_spectra(files:str | list,
                        title='Raw Spectra')
 
         
-        pl.savefig(join(setup.state['qa_path'],output_name+'_raw'+\
+        pl.savefig(join(setup.state['qa_path'],output_filename+'_raw'+\
                    setup.state['qa_extension']))
         pl.close()
 
@@ -312,7 +283,8 @@ def load_spectra(files:str | list,
                        title='Raw Spectra')
         
         pl.show(block=qa['showblock'])
-        if qa['showblock'] is False: pl.pause(1)
+        if qa['showblock'] is False: 
+            pl.pause(1)
 
 
     #

@@ -8,19 +8,20 @@ from pyspextool import config as setup
 from pyspextool.combine import config as combine
 from pyspextool.io.check import check_parameter, check_range, check_qakeywords
 from pyspextool.utils.math import scale_data_stack
-from pyspextool.combine.core import plot_allorders
+from pyspextool.combine.qaplots import plot_allorders
 
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def scale_spectra(order:int=None,
-                  wavelength_range:list=None,
-                  wavelength_fraction:int | float=0.8,
-                  verbose:bool=None,
-                  qa_show:bool=None,
-                  qa_showscale:float | int=None,
-                  qa_showblock:bool=None,
-                  qa_write:bool=None):
+def scale_spectra(
+    order:int=None,
+    wavelength_range:list=None,
+    wavelength_fraction:int | float=0.8,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     To scale the orders to a common intensity level
@@ -223,19 +224,27 @@ def scale_spectra(order:int=None,
     # Do the QA
     #
 
+    if combine.state['combine_apertures'] is True:
+
+        filenames = [combine.state['filenames'][0],combine.state['filenames'][0]]
+
+    else:
+
+        filenames = combine.state['filenames']
+
     if qa['write'] is True:
 
-        plot_allorders(setup.plots['combine_spectra'],
+        plot_allorders(None,
                        setup.plots['landscape_size'],
                        setup.plots['font_size'],
                        setup.plots['spectrum_linewidth'],
                        setup.plots['spine_linewidth'],                       
-                       combine.state['filenames'],
+                       filenames,
                        scalerange=scale_range,
                        title='Scaled Spectra')
 
         
-        pl.savefig(join(setup.state['qa_path'],combine.state['output_name']+\
+        pl.savefig(join(setup.state['qa_path'],combine.state['output_filename']+\
                         '_scaled'+setup.state['qa_extension']))
         pl.close()
 
@@ -251,12 +260,14 @@ def scale_spectra(order:int=None,
                        scaled_font,
                        setup.plots['spectrum_linewidth'],
                        setup.plots['spine_linewidth'],                       
-                       combine.state['filenames'],                       
+                       filenames,                       
                        scalerange=scale_range,
                        title='Scaled Spectra')                       
         
         pl.show(block=qa['showblock'])
-        if qa['showblock'] is False: pl.pause(1)
+
+        if qa['showblock'] is False: 
+            pl.pause(1)
 
     #
     # Set the done variable
