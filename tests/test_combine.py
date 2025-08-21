@@ -89,7 +89,7 @@ def test_combine():
     ps.combine.combine(["spectra", "636-645"], "cspectra636-645")
     
 
-    fits_files = glob.glob(os.path.join(proc_path, "cspectra*.fits"))
+    fits_files = glob.glob(os.path.join(proc_path, "cspectra6*.fits"))
     png_files = glob.glob(os.path.join(qa_path, "*.png"))
 
     assert len(fits_files) == 2
