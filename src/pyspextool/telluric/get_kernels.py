@@ -126,7 +126,7 @@ def get_kernels(*args:int | float,
     # Create and load the kernels
     #
     
-    if tc.state['method'] == 'deconvolution':
+    if tc.state['correction_method'] == 'deconvolution':
 
         logging.info(" Deconvolving line.")        
 
@@ -144,8 +144,8 @@ def get_kernels(*args:int | float,
         # Get QA set up
         #
 
-        xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
-        title = tc.state['mode']+' Order '+\
+        xlabel = tc.state['latex_xlabel']
+        title = tc.state['instrument_mode']+' Order '+\
             str(tc.state['normalization_order'])
 
         if qa['show'] is True:
@@ -176,7 +176,7 @@ def get_kernels(*args:int | float,
             # Build the qafile_info dictionary.        
 
             fullpath = osjoin(setup.state['qa_path'],
-                              tc.state['output_filename']+\
+                              tc.state['telluric_output_filename']+\
                               '_decon'+setup.state['qa_extension'])    
         
         # Build the qafile_info dictionary.        
@@ -264,7 +264,7 @@ def get_kernels(*args:int | float,
             
             kernels.append(rkernel)
 
-    if tc.state['method'] == 'ip':
+    if tc.state['correction_method'] == 'ip':
             
         logging.info(" Generating the kernels.")        
 

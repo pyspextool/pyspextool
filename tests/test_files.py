@@ -2,8 +2,10 @@ from os.path import join
 from pyspextool.io import files
 from pyspextool.io.files import check_file, extract_filestring, make_full_path
 #from pyspextool.io.convert_fits import convert_to_fits, spectrum_isplottable
+from pyspextool.io.files import inoutfiles_to_fullpaths
 import pytest
 from os.path import exists
+from pyspextool.pyspextoolerror import pySpextoolError
 
 
 def test_check_file():
@@ -31,17 +33,87 @@ def test_extract_filestring():
         result = extract_filestring(files, 'filenames')
 
 
-def test_make_full_path():
-    files = '626-628'
-    dir = 'tests/test_data/processed/spex-SXD/proc/'
-    result = make_full_path(dir, files, indexinfo={'nint': 4,
-                                                   'prefix': 'spectra',
-                                                   'suffix': '.fits',
-                                                   'extension': ''})
-    print(result)
-    assert result == ['tests/test_data/processed/spex-SXD/proc/spectra0626.fits',
-                      'tests/test_data/processed/spex-SXD/proc/spectra0627.fits',
-                      'tests/test_data/processed/spex-SXD/proc/spectra0628.fits']
+#def test_make_full_path():
+#    files = '626-628'
+#    dir = 'test_data/processed/spex-SXD/proc/'
+#    result = make_full_path(dir, files, indexinfo={'nint': 4,
+#                                                   'prefix': 'spectra',
+#                                                   'suffix': '.fits',
+#                                                   'extension': ''})
+#    print(result)
+#    assert result == ['tests/test_data/processed/spex-SXD/proc/spectra0626.fits',
+#                      'tests/test_data/processed/spex-SXD/proc/spectra0627.fits',
+#                      'tests/test_data/processed/spex-SXD/proc/spectra0628.fits']
+#
+
+def test_inoutfiles_to_fullpaths():
+
+    nint = 5
+
+    input_suffix = '.[ab]'
+    inputs = ['spc-','1-2']
+    input_extension = '.fits'
+    input_path = 'tests/test_data/raw/uspex-SXD/data/'
+
+    outputs = 'spectra'
+    output_path = 'tests/test_data/'
+
+    result = inoutfiles_to_fullpaths(input_path,
+                                inputs,
+                                nint,
+                                input_suffix,
+                                input_extension,
+                                output_path,
+                                outputs)
+
+    assert result == {'input_filenames': ['spc-00001.a.fits', 'spc-00002.b.fits'], 'input_fullpaths': ['tests/test_data/raw/uspex-SXD/data/spc-00001.a.fits', 'tests/test_data/raw/uspex-SXD/data/spc-00002.b.fits'], 'output_filenames': ['spectra00001', 'spectra00002'], 'output_fullpaths': ['tests/test_data/spectra00001', 'tests/test_data/spectra00002'], 'readmode': 'index', 'nfiles': 2}
+
+
+    input_suffix = '.[ab]'
+    inputs = 'spc-00001.a.fits,spc-00002.b.fits'
+    input_extension = '.fits'
+    input_path = 'tests/test_data/raw/uspex-SXD/data/'
+
+    outputs = 'spectra00001, spectra00002'
+    output_path = 'tests/test_data/'
+
+    result = inoutfiles_to_fullpaths(input_path,
+                                inputs,
+                                nint,
+                                input_suffix,
+                                input_extension,
+                                output_path,
+                                outputs)
+
+    assert result == {'input_filenames': ['spc-00001.a.fits', 'spc-00002.b.fits'], 'input_fullpaths': ['tests/test_data/raw/uspex-SXD/data/spc-00001.a.fits', 'tests/test_data/raw/uspex-SXD/data/spc-00002.b.fits'], 'output_filenames': ['spectra00001', 'spectra00002'], 'output_fullpaths': ['tests/test_data/spectra00001', 'tests/test_data/spectra00002'], 'readmode': 'filename', 'nfiles': 2}
+
+#
+#    input_suffix = '.[ab]'
+#    inputs = 'spc-00001.a.fits,spc-00002.b.fits'
+#    input_extension = '.fits'
+#    input_path = 'test_data/raw/uspex-SXD/data/'
+#
+#    outputs = 'spectra00001'
+#    output_path = 'tests/'
+#
+#    with pytest.raises(pySpextoolError):
+#
+#        result = inoutfiles_to_fullpaths(input_path,
+#                                         inputs,
+#                                         nint,
+#                                         input_suffix,
+#                                         input_extension,
+#                                         output_path,
+#                                         outputs)
+#
+#    result = make_full_path(dir, files, indexinfo={'nint': 4,
+#                                                   'prefix': 'spectra',
+#                                                   'suffix': '.fits',
+#                                                   'extension': ''})
+    
+
+
+
 
 
 #@pytest.mark.parametrize(

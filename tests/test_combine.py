@@ -25,10 +25,11 @@ def test_combine():
     ps.combine.combine(["spectra", "11-16"], "cspectra11-16", statistic="mean")
     
 
-    fits_files = glob.glob(os.path.join(proc_path, "cspectra*.fits"))
+    fits_files = [os.path.join(proc_path, "cspectra1-8.fits"), os.path.join(proc_path, "cspectra11-16.fits")]
     png_files = glob.glob(os.path.join(qa_path, "*.png"))
 
-    assert len(fits_files) == 2
+    assert os.path.exists(fits_files[0])
+    assert os.path.exists(fits_files[1])
     assert len(png_files) == 6
 
     # CLEANUP
@@ -89,7 +90,7 @@ def test_combine():
     ps.combine.combine(["spectra", "636-645"], "cspectra636-645")
     
 
-    fits_files = glob.glob(os.path.join(proc_path, "cspectra*.fits"))
+    fits_files = glob.glob(os.path.join(proc_path, "cspectra6*.fits"))
     png_files = glob.glob(os.path.join(qa_path, "*.png"))
 
     assert len(fits_files) == 2

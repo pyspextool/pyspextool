@@ -195,9 +195,9 @@ def get_radialvelocity(fwhm_scale:float,
     # Get QA set up
     #
 
-    xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
+    xlabel = tc.state['latex_xlabel']
     title = tc.state['standard_name']+', '+\
-        tc.state['mode']+' Order '+\
+        tc.state['instrument_mode']+' Order '+\
         str(tc.state['normalization_order'])
 
     if qa['show'] is True:
@@ -226,7 +226,7 @@ def get_radialvelocity(fwhm_scale:float,
     if qa['write'] is True:
 
         fullpath = osjoin(setup.state['qa_path'],
-                          tc.state['output_filename']+\
+                          tc.state['telluric_output_filename']+\
                           '_rv'+setup.state['qa_extension'])    
         
         # Build the qafile_info dictionary.        

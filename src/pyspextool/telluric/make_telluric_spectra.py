@@ -9,8 +9,6 @@ from pyspextool.io.check import check_parameter
 from pyspextool.utils.units import convert_fluxdensity
 from pyspextool.utils.irplanck import irplanck
 from pyspextool.telluric.core import make_telluric_spectrum
-from pyspextool.utils.interpolate import linear_interp1d
-from pyspextool.utils.interpolate import linear_bitmask_interp1d
 
 
 def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
@@ -80,7 +78,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     model_spectra[:,2,:] = 1.0
     model_spectra[:,3,:] = 0
         
-    if tc.state['type'] == 'A0V':
+    if tc.state['correction_type'] == 'A0V':
 
         tc.state['intensity_unit'] = intensity_unit
                 
@@ -123,7 +121,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             telluric_spectra[i,2,:] = result[1]
             model_spectra[i,1,:] = result[2]
             
-    if tc.state['type'] == 'basic':
+    if tc.state['correction_type'] == 'basic':
 
         tc.state['intensity_unit'] = intensity_unit
         
@@ -176,7 +174,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             telluric_spectra[i,2,:] = unc
             model_spectra[i,1,:] = planck
                                
-    if tc.state['type'] == 'reflectance':
+    if tc.state['correction_type'] == 'reflectance':
 
         tc.state['intensity_unit'] = 'reflectance'
 
@@ -199,30 +197,30 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     # Interpolate the telluric spectra onto the object wavelengths
     #
 
-    object_spectra = tc.state['object_spectra']
-    tmp = copy.deepcopy(tc.state['object_spectra'])    
-
-    for i in range(tc.state['object_norders']):
-
-        std_idx = np.where(tc.state['standard_orders'] == \
-                           tc.state['object_orders'][i])[0]
-        
-        for j in range(tc.state['object_napertures']):
-
-            obj_idx = i*tc.state['object_napertures'] + j
-
-            ri, ru = linear_interp1d(telluric_spectra[std_idx,0,:],
-                                     telluric_spectra[std_idx,1,:],
-                                     object_spectra[obj_idx,0,:],
-                                     input_u=telluric_spectra[std_idx,2,:])
-
-            tmp[obj_idx,1,:] = ri
-            tmp[obj_idx,2,:] = ru
-
-            rm = linear_bitmask_interp1d(telluric_spectra[std_idx,0,:],
-                    telluric_spectra[std_idx,3,:].astype(np.uint8),
-                                         object_spectra[obj_idx,0,:])
-            tmp[obj_idx,3,:] = rm
+#    object_spectra = tc.state['object_spectra']
+#    tmp = copy.deepcopy(tc.state['object_spectra'])    
+#
+#    for i in range(tc.state['object_norders']):
+#
+#        std_idx = np.where(tc.state['standard_orders'] == \
+#                           tc.state['object_orders'][i])[0]
+#        
+#        for j in range(tc.state['object_napertures']):
+#
+#            obj_idx = i*tc.state['object_napertures'] + j
+#
+#            ri, ru = linear_interp1d(telluric_spectra[std_idx,0,:],
+#                                     telluric_spectra[std_idx,1,:],
+#                                     object_spectra[obj_idx,0,:],
+#                                     input_u=telluric_spectra[std_idx,2,:])
+#
+#            tmp[obj_idx,1,:] = ri
+#            tmp[obj_idx,2,:] = ru
+#
+#            rm = linear_bitmask_interp1d(telluric_spectra[std_idx,0,:],
+#                    telluric_spectra[std_idx,3,:].astype(np.uint8),
+#                                         object_spectra[obj_idx,0,:])
+#            tmp[obj_idx,3,:] = rm
             
     #
     # Store the results.  Pre fill ewcorrected and shifted in case the
@@ -230,11 +228,11 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     #
 
     tc.state['model_spectra'] = model_spectra
-    tc.state['rawtc_spectra'] = np.array(tmp)
-    tc.state['ewcorrectedtc_spectra'] = np.array(tmp)
-    tc.state['shiftedtc_spectra'] = np.array(tmp)        
-    tc.state['shifts'] = np.zeros((tc.state['object_norders'],
-                                   tc.state['object_napertures']))
+    tc.state['rawtc_spectra'] = telluric_spectra
+#    tc.state['ewcorrectedtc_spectra'] = np.array(tmp)
+#    tc.state['shiftedtc_spectra'] = np.array(tmp)        
+#    tc.state['shifts'] = np.zeros((tc.state['object_norders'],
+#                                   tc.state['object_napertures']))
     
     tc.state['make_done'] = True
 
