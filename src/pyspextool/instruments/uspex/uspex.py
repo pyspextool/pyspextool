@@ -620,9 +620,9 @@ def get_uspexheader(hdr,
 
     except KeyError as e:
 
-        declination = 'nan'
+        ra = 'nan'
 
-    hdrinfo['RA'] = [declination, ' Right Ascension, FK5 J2000']
+    hdrinfo['RA'] = [ra, ' Right Ascension, FK5 J2000']
 
     # COADDS, ITIME
 

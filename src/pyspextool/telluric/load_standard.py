@@ -276,18 +276,23 @@ def load_standard(
     # Get and store the Vega model 
     #
 
-#    if new is True:
-#
-#        root = "Vega" + result["model"] + "_new.fits"
-#
-#    else:
-#
-#        root = "Vega" + result["model"] + ".fits"
-#
-#    fullpath = os.path.join(setup.state["package_path"], "data", root)
+    if new is True:
+
+        root = "Vega" + result["model"] + "_new.fits"
+
+    else:
+
+        root = "Vega" + result["model"] + ".fits"
+
+    fullpath = os.path.join(setup.state["package_path"], "data", root)
 
 
-    file_path = mishu.fetch("Vega50000.fits")
+#    root = "Vega" + result["model"] + ".fits"
+#    print(root)
+
+
+#    file_path = mishu.fetch(fullpath)
+#    print(file_path)
 
 
     hdul = fits.open(fullpath)
