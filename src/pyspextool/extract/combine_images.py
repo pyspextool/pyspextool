@@ -24,7 +24,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 
 
 def combine_images(files:str | list,
-                   output_filename:str,
+                   output_fileroot:str,
                    input_extension:str='.fits*',
                    output_directory:str='proc',
                    correct_nonlinearity:bool=True,
@@ -142,7 +142,7 @@ def combine_images(files:str | list,
     check_parameter('combine_images', 'files', files, ['str', 'list'],
                     list_types=['str','str'])
 
-    check_parameter('combine_images', 'output_filename', output_filename, 'str')
+    check_parameter('combine_images', 'output_fileroot', output_fileroot, 'str')
 
     check_parameter('combine_images', 'input_extension', input_extension, 'str')
 
@@ -199,11 +199,12 @@ def combine_images(files:str | list,
 #
     # Create the file names
 
-    input_files = files_to_fullpath(setup.state['raw_path'],
-                                    files,
-                                    setup.state['nint'],
-                                    setup.state['suffix'],
-                                    input_extension)
+    result = files_to_fullpath(setup.state['raw_path'],
+                               files,
+                               setup.state['nint'],
+                               setup.state['suffix'],
+                               input_extension)
+    input_files = result[0]
     check_file(input_files)
 
     #
@@ -270,26 +271,24 @@ def combine_images(files:str | list,
         unrotate = False
 
     # Check beam mode
-
-
-            
-    
+              
     # Load the instrument module for the read_fits program
 
-    module = 'pyspextool.instrument_data.' + setup.state['instrument'] + \
-             '_dir.' + setup.state['instrument']
+    module = 'pyspextool.instruments.' + setup.state['instrument'] + \
+             '.' + setup.state['instrument']
 
     instr = importlib.import_module(module)
 
     logging.info(' Loading images...')    
     
-    result = instr.read_fits(input_files,
-                             setup.state['linearity_info'],
-                             pair_subtract=pair,
-                             linearity_correction=correct_nonlinearity,
-                             keywords=setup.state['extract_keywords'],
-                             rotate=rotation,
-                             verbose=qa['verbose'])
+    result = instr.read_fits(
+        input_files,
+        setup.state['linearity_info'],
+        pair_subtract=pair,
+        linearity_correction=correct_nonlinearity,
+        keywords=setup.state['extract_keywords'],
+        rotate=rotation,
+        verbose=qa['verbose'])
 
     data = result[0]
     var = result[1]
@@ -367,6 +366,7 @@ def combine_images(files:str | list,
     mean = result[0]
     var = result[1] ** 2
 
+
     # Now do the mask
 
     mask = math.combine_flag_stack(mask)
@@ -443,7 +443,7 @@ def combine_images(files:str | list,
 
     avehdr['IC_BEAM'] = [beam_mode, ' Imagine combine: beam mode']
 
-    avehdr['FILENAME'] = [output_filename + '.fits', ' Filename']
+    avehdr['FILENAME'] = [output_fileroot + '.fits', ' Filename']
 
     # Create the history
 
@@ -508,7 +508,7 @@ def combine_images(files:str | list,
             
     if qa['write'] is True:
 
-        filename = output_filename + '_combined' + setup.state['qa_extension']
+        filename = output_fileroot + '_combined' + setup.state['qa_extension']
         fullpath = join(setup.state['qa_path'],filename)
 
         plot_image(mean,
@@ -558,7 +558,7 @@ def combine_images(files:str | list,
     flg_hdu = fits.ImageHDU(mask)
 
     hdu = fits.HDUList([phdu, img_hdu, var_hdu, flg_hdu])
-    hdu.writeto(join(setup.state['proc_path'], output_filename + '.fits'),
+    hdu.writeto(join(setup.state['proc_path'], output_fileroot + '.fits'),
                 overwrite=True)
 
-    logging.info(' Wrote ' + output_filename + '.fits to disk.')
+    logging.info(' Wrote ' + output_fileroot + '.fits to disk.')

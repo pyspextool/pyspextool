@@ -7,21 +7,21 @@ from pyspextool.combine.combine_spectra import combine_spectra
 
 logger = logging.getLogger("pyspextool")
 
-
-def combine(files:str | list,
-            output_name:str,
-            scale_spectra:bool=True,
-            scale_order:int=None,
-            scale_wavelengthrange:list=None,
-            scale_wavelengthfraction:float=0.7,
-            correct_spectral_shape:bool=False,
-            statistic:str='robust weighted mean',
-            robust_sigma:int | float=8,
-            verbose:bool=None,
-            qa_show:bool=None,
-            qa_showscale:float | int=None,
-            qa_showblock:bool=None,
-            qa_write:bool=None):    
+def combine(
+    files:str | list,
+    output_name:str,
+    scale_spectra:bool=True,
+    scale_order:int=None,
+    scale_wavelengthrange:list=None,
+    scale_wavelengthfraction:float=0.7,
+    correct_spectral_shape:bool=False,
+    statistic:str='robust weighted mean',
+    robust_sigma:int | float=8,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):    
 
     """
     To combine raw extracted spectra
@@ -117,7 +117,6 @@ def combine(files:str | list,
 
     check_parameter('combine', 'output_name', output_name, 'str')    
 
-
     check_parameter('combine', 'scale_spectra', scale_spectra, 'bool')
 
     check_parameter('combine', 'scale_order', scale_order, ['NoneType', 'int'])
@@ -180,7 +179,7 @@ def combine(files:str | list,
                    qa_showscale=qa['showscale'],
                    qa_showblock=qa['showblock'],
                    qa_write=qa['write'])
-    
+
     #
     # Combine and write the results to disk
     #

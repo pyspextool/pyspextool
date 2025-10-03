@@ -158,20 +158,22 @@ class runBatch():
 			nfold = os.path.join(base_folder,nm+'/')
 			if len(folders) <= i: folders.append(nfold)
 #			folders[i] = os.path.abspath(folders[i])
-			if os.path.exists(folders[i])==False:
+			if os.path.exists(folders[i])==False and args['only_qa']==False:
 				os.mkdir(folders[i])
 				if args['quiet']==False: logging.info('\nCreated {} folder {}'.format(nm,folders[i]))
 
 # check folders 
 #		folders = [os.path.abspath(f) for f in folders]
-		for i,f in enumerate(folders):
-			if f=='': raise ValueError('Empty path name for {} folder'.format(batch.REDUCTION_FOLDERS[i]))
-			if os.path.exists(f)==False: raise ValueError('Cannot find {} folder {}'.format(batch.REDUCTION_FOLDERS[i],f)) 
+		if args['only_qa']==False:
+			for i,f in enumerate(folders):
+				if f=='': raise ValueError('Empty path name for {} folder'.format(batch.REDUCTION_FOLDERS[i]))
+				if os.path.exists(f)==False: raise ValueError('Cannot find {} folder {}'.format(batch.REDUCTION_FOLDERS[i],f)) 
 
 # generate log csv and html files and put in qa folder
 # modification to give log a unique name
 		if log_file_prefix=='': log_file_prefix = '{}_{}'.format(LOG_FILE_PREFIX_DEFAULT,(os.path.abspath(base_folder)).split(os.sep)[-1])
 #		if log_file_prefix=='': log_file_prefix = copy.deepcopy(LOG_FILE_PREFIX_DEFAULT)
+		else: log_file_prefix = log_file_prefix[0]
 		log_file_prefix = os.path.join(folders[3],log_file_prefix)
 		if os.path.exists(log_file_prefix+'.html')==True and os.path.exists(log_file_prefix+'.csv')==True and args['overwrite']==False and args['rebuild_log']==False:
 			logging.info('\nWARNING: html log file {} and csv log file {} already exists; use --overwrite if you want to overwrite or --rebuild-log to rebuild'.format(log_file_prefix+'.html',log_file_prefix+'.csv'))
@@ -187,7 +189,7 @@ class runBatch():
 						batch.writeLog(dp,log_file=log_file_prefix+x)
 
 # query to pause and check log
-			if args['no_pause']==False and args['only_log']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
+				if args['no_pause']==False and args['only_log']==False: txt = input('\n\nCheck the LOG FILES {} and {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
 
 		if args['only_log']==True: 
 			logging.info('\n\nLog files {} and {} created.'.format(log_file_prefix+'.csv',log_file_prefix+'.html'))
@@ -198,6 +200,7 @@ class runBatch():
 # modification to give log a unique name
 #		if driver_file=='': driver_file = copy.deepcopy(DRIVER_FILE_DEFAULT)
 		if driver_file=='': driver_file = '{}_{}.txt'.format(DRIVER_FILE_PREFIX_DEFAULT,(os.path.abspath(base_folder)).split(os.sep)[-1])
+		else: driver_file = driver_file[0]
 		driver_file = os.path.join(folders[2],driver_file)
 		if os.path.exists(driver_file)==True and args['overwrite']==False and args['rebuild_driver']==False:
 			logging.info('\nWARNING: driver file {} already exists so not saving; use --overwrite to overwrite or --rebuild-driver to rebuild'.format(driver_file))
@@ -213,7 +216,7 @@ class runBatch():
 				batch.writeDriver(dp,driver_file,data_folder=folders[0],options={'CALS_FOLDER':folders[1],'PROC_FOLDER':folders[2],'QA_FOLDER':folders[3]},verbose=(not args['quiet']),check=True,create_folders=True)
 
 # query to pause and check driver
-			if args['no_pause']==False and args['only_driver']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
+				if args['no_pause']==False and args['only_driver']==False: txt = input('\n\nCheck the DRIVER FILE {} and press return when you are ready to proceed, or type CNTL-C to abort...\n\n'.format(driver_file))
 
 		if args['only_driver']==True: 
 			logging.info('\n\nDriver file {} created.'.format(driver_file))

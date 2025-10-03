@@ -6,9 +6,10 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.io.fitsheader import get_headerinfo
 
 
-def read_spectra_fits(file):
+def read_spectra_fits(file:str):
+
     """
-    To read a pyspextool FITS file and keywords.
+    To read a pyspextool FITS file and return ndarray and dictionary.
 
     Parameters
     ----------
@@ -20,37 +21,51 @@ def read_spectra_fits(file):
         tuple (ndarray, dict)
 
             tuple(0) : ndarray
-                A (norders*napertures, 4, nwavelength) array.
+                An (norders*napertures, 4, nwavelength) array of spectra.
 
-            tuple(1) : dic
+            tuple(1) : dict
 
                 `'header'` : astropy.io.fits.header.Header
 
                 `'instr'` : str
+                    A str giving the name of the instrument
 
                 `'obsmode'` : str
+                    A str giving the obseving mode.
 
                 `'norders'` : int
+                    An int giving the number of orders.
                 
                 `'orders'` : ndarray
+                    An (norders,) array giving the order numbers.
 
-                `'dispersions'` : ndarray
-                
                 `'xunits'` : str
+                    A str giving the xunits, e.g. 'um'.
                 
                 `'yunits'` : str
+                    A str giving the yunits, e.g. 'W m-2 um-1'
                 
                 `'slith_pix'` : int
+                    An int giving the nominal slit height in pixels.
                 
                 `'slith_arc'` : float
+                    A float giving the slit height in arcseconds.
                 
                 `'slitw_pix'` : int
+                    An int giving the slit width in pixels.
                 
                 `'slitw_arc'`: float
+                    A float giving the slight width in arcseconds.
                 
                 `'module'` : str 
+                    A str giving the pyspextool module that created the file.
                 
                 `'history'` : astropy.io.fits.header._HeaderCommentaryCards
+                    The astropy header.
+
+                `'wranges'` : list
+                    A (norders*naps) list of (2,) arrays giving the minimum 
+                    and maximum wavelength value for each order/aperture.
 
     """
 
@@ -70,22 +85,17 @@ def read_spectra_fits(file):
     spectra = hdul[0].data
     header = hdul[0].header
     hdul.close()
-
-    #
-    # Adjust if it is an old Spextool file
-    #
-
-    if np.ndim(spectra) == 2:
-
-        spectra = np.expand_dims(spectra, 0)
     
     #
-    # Check to see if it is a (py)Spextool FITS file.
+    # Check to see if it is a (py)Spextool FITS file.  Assume yes if it has 
+    # these three keywords that it is.
     #
 
     try:
 
         header['NAPS']
+        header['ORDERS']
+        header['NORDERS']
 
     except:
 
@@ -93,38 +103,74 @@ def read_spectra_fits(file):
         raise pySpextoolError(message)
 
     #
-    # Start pulling the keywords
+    # Now add minimum information to output dictionary
     #
-
-    dictionary = {'header': header,
-                  'instr': header['INSTR'],
-                  'obsmode': header['MODE'],
-                  'norders': header['NORDERS']}
 
     val = header['ORDERS'].split(',')
     orders = np.array([int(x) for x in val])
 
-    add = {'orders': orders,
-           'napertures': header['NAPS'],
-           'xunits': header['XUNITS'],
-           'yunits': header['YUNITS'],
-           'lxunits': header['LXUNITS'],
-           'lyunits': header['LYUNITS'],
-           'lxlabel': header['LXLABEL'],
-           'lylabel': header['LYLABEL'],
-#           'lulabel': header['LULABEL'], # this was failing in pytest - missing keyword
-           'slith_pix': header['SLTH_PIX'],
-           'slith_arc': header['SLTH_ARC'],
-           'slitw_pix': header['SLTW_PIX'],
-           'slitw_arc': header['SLTW_ARC'],
-#           'resolvingpower':header['RP'],
-           'module': header['MODULE'],
-           'history': header['HISTORY']}
+    dictionary = {'astropyheader': header,
+                  'napertures': header['NAPS'],
+                  'norders': header['NORDERS'],
+                  'orders':orders}
+    
+    #
+    # Now add optional things
+    #
 
-    dictionary.update(add)
+    # First set up a mapping between FITS keywords and dictionary keys.  
+
+    keys = [('instr', 'INSTR'),
+            ('obsmode', 'MODE'),
+            ('norders', 'NORDERS'),
+            ('xunits', 'XUNITS'),
+            ('yunits', 'YUNITS'),
+            ('lxunits', 'LXUNITS'),
+            ('lyunits', 'LYUNITS'),
+            ('lxlabel', 'LXLABEL'),
+            ('lylabel', 'LYLABEL'),
+            ('slith_pix', 'SLTH_PIX'),
+            ('slith_arc', 'SLTH_ARC'),
+            ('slitw_pix', 'SLTW_PIX'),
+            ('slitw_arc', 'SLTW_ARC'),
+            ('module', 'MODULE'),
+            ('resolving_power', 'RP'),            
+            ('history','HISTORY'),
+            ]
+            
+    # Now go through and search for these FITS keywords.
+
+    for key in keys:
+
+        try:
+
+            dictionary[key[0]] = header[key[1]]
+
+        except:
+
+            dictionary[key[0]] = None
 
     #
-    # Return the results
+    # Obtain the wavelength ranges of each order/aperture
+    #
+
+    wavelength_ranges = []
+
+    for i in range(header['NORDERS']):
+
+        for j in range(header['NAPS']):
+            
+            idx = i * header['NAPS'] + j
+            min = np.nanmin(spectra[idx, 0, :])
+            max = np.nanmax(spectra[idx, 0, :])
+            
+        wavelength_ranges.append(np.array([min, max]))
+
+    dictionary['wranges'] = wavelength_ranges
+    
+    #
+    # return results
     #
 
     return spectra, dictionary
+

@@ -8,24 +8,25 @@ import os
 
 from pyspextool import config as setup
 from pyspextool.pyspextoolerror import pySpextoolError
-from pyspextool.telluric import config as tc
+from pyspextool.telluric import config
 from pyspextool.io.check import check_parameter, check_range, check_qakeywords
 from pyspextool.fit.fit_peak1d import fit_peak1d
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.plot.limits import get_spectra_range
 from pyspextool.utils.arrays import find_index
 
-def prepare_line(order:int,
-                 line_wavelength:float,
-                 resolving_power:int | float,
-                 wavelength_range:npt.ArrayLike,
-                 fit_type:str,
-                 poly_degree:int,
-                 verbose:bool=None,
-                 qa_show:bool=None,
-                 qa_showscale:float=None,
-                 qa_showblock:bool=None,
-                 qa_write:bool=None):
+def prepare_line(
+        order:int,
+        line_wavelength:float,
+        resolving_power:int | float,
+        wavelength_range:npt.ArrayLike,
+        fit_type:str,
+        poly_degree:int,
+        verbose:bool=None,
+        qa_show:bool=None,
+        qa_showscale:float=None,
+        qa_showblock:bool=None,
+        qa_write:bool=None):
 
     """
     To normalize a spectrum around a line for RV/deconvolution work
@@ -79,11 +80,11 @@ def prepare_line(order:int,
     None
     Load data into memory and writes QA plots to disk.
 
-        tc.state['normalized_line_wavelength']
-        tc.state['normalized_line_flux']
-        tc.state['line_center']
-        tc.state['line_fwhm']
-        tc.state['prepare_done']
+        config.state['normalized_line_wavelength']
+        config.state['normalized_line_flux']
+        config.state['line_center']
+        config.state['line_fwhm']
+        config.state['prepare_done']
     
     """
 
@@ -91,9 +92,9 @@ def prepare_line(order:int,
     # Check the load_done variable
     #
     
-    if tc.state['load_done'] is False:
+    if config.state['load_done'] is False:
 
-        message = "Spectra have not been loaded.  Please run load_spectra.py."
+        message = "Spectra have not been loaded.  Please run load_standard.py."
         raise pySpextoolError(message)
 
     #
@@ -146,17 +147,17 @@ def prepare_line(order:int,
     
     # Find the order given the modeinfo file
 
-    z_order = np.where(tc.state['standard_orders'] == order)
-
+    z_order = np.where(config.state['standard_orders'] == order)
 
     # Store values in shorter variable names for ease
     
-    wavelength = np.squeeze(tc.state['standard_spectra'][z_order,0,:])
-    flux = np.squeeze(tc.state['standard_spectra'][z_order,1,:])
-    xlabel = tc.state['standard_hdrinfo']['LXLABEL'][0]
-    title = tc.state['standard_name']+', '+\
-        tc.state['mode']+' Order '+str(order)+', degree='+str(poly_degree)
-    
+    wavelength = np.squeeze(config.state['standard_spectra'][z_order,0,:])
+    flux = np.squeeze(config.state['standard_spectra'][z_order,1,:])
+    xlabel = config.state['latex_xlabel']
+    title = config.state['standard_name']+', '+\
+        config.state['instrument_mode']+' Order '+str(order)+', degree='+\
+        str(poly_degree)
+
     #
     # Determine if wavelength_range is monotonically increasing
     #
@@ -173,11 +174,9 @@ def prepare_line(order:int,
     #
 
     min = float(np.nanmin(wavelength))
-
     max = float(np.nanmax(wavelength))
     
     check_range(wavelength_range[0],[min,max],'gtlt','wavelength_range[0]')
-
     check_range(wavelength_range[1],[min,max],'gtlt','wavelength_range[1]')    
        
     # Cut the region out of the order
@@ -189,7 +188,7 @@ def prepare_line(order:int,
 
     wavelength = wavelength[zselection]
     flux = flux[zselection]
-    
+
     # Fit the line and continuum
 
     idx = find_index(wavelength,line_wavelength)
@@ -211,29 +210,22 @@ def prepare_line(order:int,
     continuum = poly_1d(wavelength, continuum_coefficients)    
     normalized_flux = flux/continuum
 
-    # added error message
-#    if len(normalized_flux[np.isfinite(normalized_flux)==False]==0):
-#        message = "Failure to fit a H I line in the fit range "+str(wavelength_range)+\
-#            "; verify there is a line in this spectrum."
-#        raise pySpextoolError(message)
-
-
     #
     # Store the reults
     #
 
-    tc.state['normalized_line_wavelength'] = wavelength
-    tc.state['normalized_line_flux'] = normalized_flux
-    tc.state['line_center'] = line_center
+    config.state['normalized_line_wavelength'] = wavelength
+    config.state['normalized_line_flux'] = normalized_flux
+    config.state['line_center'] = line_center
 
     if fit_type == 'gaussian':
 
-        tc.state['line_fwhm'] = 2.354*line_halfwidth
+        config.state['line_fwhm'] = 2.354*line_halfwidth
 
     else:
 
-        tc.state['line_fwhm'] = 2*line_halfwidth        
-        
+        config.state['line_fwhm'] = 2*line_halfwidth        
+
     #
     # Make the QA plot
     #
@@ -283,7 +275,7 @@ def prepare_line(order:int,
                            plot_title=title)
 
         pl.savefig(os.path.join(setup.state['qa_path'],
-                                tc.state['output_filename']+ \
+                                config.state['telluric_output_filename']+ \
                                 '_normalization' + \
                                 setup.state['qa_extension']))
         pl.close()
@@ -292,7 +284,7 @@ def prepare_line(order:int,
     # Set the done variable
     #
         
-    tc.state['prepare_done'] = True
+    config.state['prepare_done'] = True
 
         
 def plot_normalization(plot_number:int,

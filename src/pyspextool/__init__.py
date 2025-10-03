@@ -7,6 +7,7 @@ Python.
 from . import extract 
 from . import combine
 from . import telluric
+from . import merge
 from pyspextool.setup_utils import pyspextool_setup
 #import sys
 #sys.ps1 = "pyspextool> "
