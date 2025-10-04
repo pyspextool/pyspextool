@@ -6,7 +6,7 @@ from astropy.io import fits
 import astropy.units as u
 from specutils import Spectrum1D
 import matplotlib.pyplot as plt
-from astropy.table import Table
+from astropy.table import Table, vstack
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool import utils
 
@@ -106,7 +106,9 @@ def convert_to_fits(input_file, output_path="."):
     # expect files with individual orders
     # input file may have multiple orders and multiple aperatures (for extended sources)
     spectra, header_dict = read_spectra_fits(input_file)
-    header = header_dict["header"]
+    #print(header_dict)
+    #print(header_dict["XUNITS"])
+    header = header_dict["astropyheader"]
 
     spectrum_data_out = make_table_of_spectra(spectra, header)
     
@@ -144,8 +146,8 @@ def make_table_of_spectra(spectra, header):
         y_units = "count s-1"
         # TODO: fluxAxis.ucd = arith.rate;phot.count 
 
-    n_orders = header["NORDERS"] # each order has a different wavelength range
-    n_aperatures = header["NAPERATURES"]
+    n_orders     = header["NORDERS"] # each order has a different wavelength range
+    n_aperatures = header["NAPS"]
 
     for order in range(n_orders):
         for aperture in range(n_aperatures):
@@ -166,15 +168,12 @@ def make_table_of_spectra(spectra, header):
                     }
                 )
             else:
-                #TODO: make sure add_row is what we want
-                spectrum_data_out.add_row(
-                    {
-                        "wavelength": wavelength * u.Unit(x_units),
-                        "flux": flux * u.Unit(y_units),
-                        "flux_uncertainty": flux_unc * u.Unit(y_units),
-                        "mask": mask * u.Unit("1"),  # mask is a bitmask, so unit is 1
-                    }
-                )
+                # Create a new table and append to spectrum data out
+                spectrum_data_new = Table([wavelength * u.Unit(x_units), flux * u.Unit(y_units), 
+                                           flux_unc * u.Unit(y_units), mask * u.Unit("1")], 
+                                           names=('wavelength', 'flux', 'flux_uncertainty', 'mask'))
+                spectrum_data_out = vstack( [spectrum_data_out, spectrum_data_new] )
+                
 
     return spectrum_data_out
 
