@@ -175,6 +175,9 @@ def make_table_of_spectra(spectra, header):
                 spectrum_data_out = vstack( [spectrum_data_out, spectrum_data_new] )
                 
 
+    # Sort the order ov the wavelengths
+    spectrum_data_out.sort('wavelength')
+
     return spectrum_data_out
 
 
