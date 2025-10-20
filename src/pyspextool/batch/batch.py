@@ -952,7 +952,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 						for x in SIMBAD_EXCLUDE: dp_match = dp_match[dp_match['OTYPE']!=x]
 					if len(dp_match)>0:
 						dp_match.reset_index(inplace=True)
-						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
+						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.degree,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
 						dp_match.sort_values('SIMBAD_SEP',inplace=True,ignore_index=True)
 						for x in list(SIMBAD_COLS.keys()):
 							dpout.loc[dpout['TARGET_NAME']==tnm,x] = dp_match.loc[0,SIMBAD_COLS[x][1]]
@@ -1305,6 +1305,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	srcmodes.sort()
 
 # cal sets - determine here but print below
+# NOTE - NEED TO ADDRESS CASE WHERE WE HAVE MULTIPLE SETS OF FLATS AND SEPARATE OUT
 	cal_sets=''
 	dpcal = dpc[dpc['TARGET_TYPE']=='calibration']
 	dpcal.reset_index(inplace=True)
@@ -1370,7 +1371,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		dps.reset_index(inplace=True)
 		src_coord = SkyCoord(dps.loc[0,'RA']+' '+dps.loc[0,'DEC'],unit=(u.hourangle, u.deg))
 
-# loop over modes, dropping ignored modes
+# loop over modes
 		for m in srcmodes:
 			dpsrc = dps[dps['MODE']==m]
 			dpsrc.reset_index(inplace=True)
@@ -1398,7 +1399,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				dpstds = dpstds[dpstds['MODE']==m]
 				dpstds.reset_index(inplace=True)
 #				print(m,dpstds[['FILE NUMBER','MODE']])
-				ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
+				ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tnan\tnan\tnan\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
 				if len(dpstds)==0: 
 					if verbose==True: logging.info('WARNING: no flux standard files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
 					line+=ftxt
@@ -1436,10 +1437,13 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		# temporary fix while sorting out why this doesn't work in testing				
 						if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
 						else: tspt = 'UNK'
+						if tspt=='nan': print('\n** WARNING **: Standard {} is missing a spectral type'.format(tname))
 						if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
 						else: tbmag = 0.
+						if tbmag=='nan': print('\n** WARNING **: Standard {} is missing a B magnitude'.format(tname))
 						if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
 						else: tvmag = 0.
+						if tvmag=='nan': print('\n** WARNING **: Standard {} is missing a V magnitude'.format(tname))
 						line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
 	#				print(line)
 				f.write(line+'\n#\n')
@@ -2118,13 +2122,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 	cal_sets = parameters['CAL_SETS'].split(',')
 	if parameters['CALIBRATIONS']==True:
 		for cs in cal_sets:
-# check that science modes are present to ignore unneeded cals
-# HOLD OFF ON THIS
-		# scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
-		# if len(scikeys)==0: 
-		# 	if parameters['VERBOSE']==True: logging.info('No science files were obtained in mode {}; skipping '.format(finfo['mode']))
-		# else:
-
 # flats
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['FLAT_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
@@ -2156,17 +2153,15 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if len(input_files)==0: raise ValueError('Cannot find any of the arc files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['ARC_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
-#			print(fnum,fstr)
 
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
 
 # For LXD we need to set sky files to one of the source sequences
-# ERROR HERE!!!!
+# NOTE: THIS IS NOT THE BEST WAY TO DO THIS
 				finfo = read_flat_fits(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))
 #				print(finfo)
 				if 'Long' in finfo['mode'] or 'LXD' in finfo['mode']:
-#					if parameters['SKY'] != None:
 					scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 					pkeys = list(filter(lambda x: parameters[x]['MODE']==finfo['mode'],scikeys))
 					sky_files = [parameters[pkeys[0]]['TARGET_PREFIX'], parameters[pkeys[0]]['TARGET_FILES'].split(',')[0]]
