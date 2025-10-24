@@ -42,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 Aug 12'
+VERSION = '2025 Oct 24'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -108,6 +108,7 @@ BATCH_PARAMETERS = {
 	'SCIENCE_FILE_PREFIX': 'spc',
 	'SPECTRA_FILE_PREFIX': 'spectra',
 	'COMBINED_FILE_PREFIX': 'combspec',
+	'TELLURIC_FILE_PREFIX': 'telluric',
 	'CALIBRATED_FILE_PREFIX': 'calspec',
 	'CALIBRATED_FILE_SUFFIX': 'comb',
 	'MERGED_FILE_PREFIX': 'merged',
@@ -1296,7 +1297,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	f.write('\n# Folders and files\n')
 	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
-	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','MERGED_FILE_PREFIX']:
+	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','TELLURIC_FILE_PREFIX','CALIBRATED_FILE_PREFIX','MERGED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
 # modes
@@ -2387,28 +2388,31 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # prep file names
 				objfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf)
 				stdfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf)
+				tellfile = '{}{}'.format(spar['TELLURIC_FILE_PREFIX'],csuf)
 
 # depends on fixed or moving source which method we use
 # ADD A CHOICE HERE WHEN BASIC CORRECTION DESIRED AS INPUT PARAMETER: E.G. TELLURIC=BASIC
-				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
+				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
+					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
+					correction_type = 'reflectance'
+				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
 					if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
 					correction_type = 'A0 V'
 # raise error if B or V are nan - only an issue for A0V correction
-					if standard_data['bmag']==np.nan or standard_data['vmag']==np.nan: 
+					if str(standard_data['bmag'])=='nan' or str(standard_data['vmag'])=='nan': 
 						raise ValueError('One of the B = {:.2f} or V = {:.2f} magnitude of {} is nan; please correct the driver file'.format(standard_data['bmag'],standard_data['vmag'],standard_data['id']))
-				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
-					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
-					correction_type = 'reflectance'
 				else: 
 					if parameters['VERBOSE']==True: logging.info('\nTarget type {} not recognized, skipping flux/telluric correction'.format(spar['TARGET_TYPE'].split('-')[0]))			
 					continue
 
 # NOTE: NEED TO PARAMETERIZE DEFAULTS FOR WRITE TELLURIC AND WRITE MODEL
-				ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,verbose=parameters['VERBOSE'])
+				ps.telluric.telluric(objfile,stdfile,standard_data,tellfile,outfile,correction_type=correction_type,write_model_spectra=True,verbose=parameters['VERBOSE'])
 
 # Telluric calibrate all individual files
 # NOTE REPLACE THIS WITH THE TELLURIC "ALL" OPTION
 				if spar['TARGET_INDIVIDUAL']==True:
+					# objfiles = [spar['COMBINED_FILE_PREFIX'],tsuf]
+					# ps.telluric.telluric(objfiles,stdfile,standard_data,tellfile,spar['CALIBRATED_FILE_PREFIX'],correction_type=correction_type,write_model_spectra=True,verbose=parameters['VERBOSE'])
 					indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
 					fnums =  extract_filestring(spar['TARGET_FILES'],'index')
 					fnumstr = ''

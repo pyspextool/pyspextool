@@ -229,14 +229,16 @@ def write_telluric_spectra(
              'Telluric standard V mag']
     hdrinfo['TC_STDV'] = value
     
-    value = [float('{:.2f}'.format(config.state['standard_rv'])),
-             'Telluric standard radial velocity (km s-1)']
-    hdrinfo['TC_STDRV'] =  value
+    if 'standard_rv' in list(config.state.keys()):
+        value = [float('{:.2f}'.format(config.state['standard_rv'])),
+                 'Telluric standard radial velocity (km s-1)']
+        hdrinfo['TC_STDRV'] =  value
+    else: hdrinfo['TC_STDRV'] =  [0.,'Telluric standard radial velocity (km s-1)']
             
     value = [config.state['correction_type'],'Telluric correction type']
     hdrinfo['TC_TYPE'] = value
     
-    value = [config.state['method'], 'Kernel creation method']
+    value = [config.state['correction_method'], 'Kernel creation method']
     hdrinfo['TC_METH'] = value
     
     if config.state['correction_method'] == 'deconvolution':
