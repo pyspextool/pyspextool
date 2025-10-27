@@ -167,7 +167,7 @@ def make_correction_spectra(
 
     if config.state['correction_type'] == 'A0V':
 
-        # Nope.  So do the full correction.
+        # Nope.  So do the full correction. <-- but missing RV
     
         #
         # Prepare line
