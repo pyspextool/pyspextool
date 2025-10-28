@@ -39,7 +39,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     # Check the variable
     #
 
-    if tc.state['correction_method'] == 'deconvolution':
+    if tc.state['correction_method'] == 'deconvolution' and tc.state['correction_type'] == 'A0 V':
              
         if tc.state['kernel_done'] is False:
 
