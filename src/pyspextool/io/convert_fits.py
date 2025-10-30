@@ -165,18 +165,43 @@ def make_table_of_spectra(spectra, header):
                         "flux": flux * u.Unit(y_units),
                         "flux_uncertainty": flux_unc * u.Unit(y_units),
                         "mask": mask * u.Unit("1"),  # mask is a bitmask, so unit is 1
+                        "order": np.zeros(len(mask)) + order,  # keep track of the orders
                     }
                 )
             else:
                 # Create a new table and append to spectrum data out
                 spectrum_data_new = Table([wavelength * u.Unit(x_units), flux * u.Unit(y_units), 
-                                           flux_unc * u.Unit(y_units), mask * u.Unit("1")], 
-                                           names=('wavelength', 'flux', 'flux_uncertainty', 'mask'))
+                                           flux_unc * u.Unit(y_units), mask * u.Unit("1"), np.zeros(len(mask)) + order], 
+                                           names=('wavelength', 'flux', 'flux_uncertainty', 'mask', 'order'))
                 spectrum_data_out = vstack( [spectrum_data_out, spectrum_data_new] )
                 
 
-    # Sort the order ov the wavelengths
-    spectrum_data_out.sort('wavelength')
+    # Sort the order of the wavelengths
+    if n_orders == 1:
+
+        spectrum_data_out.sort('wavelength')
+
+    else: # conserve the list of orders by wavelength order
+
+        # find unique orders
+        orders = np.unique(spectrum_data_out['order'])
+
+        # compute the minimum wavelength for each order
+        min_wave_per_order = {o: np.min(spectrum_data_out[spectrum_data_out['order'] == o]['wavelength']) for o in orders}
+
+        # sort orders by their minimum wavelength
+        sorted_orders = sorted(orders, key=lambda o: min_wave_per_order[o])
+
+        # stack tables in the desired order, keeping wavelength sorted within each order
+        table_list = []
+        for o in sorted_orders:
+            spectrum_order = spectrum_data_out[spectrum_data_out['order'] == o]
+            spectrum_order.sort('wavelength')
+            table_list.append(spectrum_order)
+
+        # replace the spectrum data with the new table    
+        spectrum_data_out = vstack(table_list)
+
 
     return spectrum_data_out
 
