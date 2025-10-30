@@ -48,11 +48,14 @@ def load_atmosphere(resolving_power:int):
     # Find the closest one
 
     deltas = rps - resolving_power
-    z = deltas == np.min(np.abs(deltas))
-        
+#    z = deltas == np.min(np.abs(deltas)) # this line doesn't make any sense
+    z = np.argmin(np.abs(deltas))
+
     # Load that file and return the results
-    
-    array = fits.getdata(np.array(fullpath)[z][0])
+
+# changed this because occasionally did not land on right file    
+#    array = fits.getdata(np.array(fullpath)[z][0]) 
+    array = fits.getdata(np.array(fullpath)[z])
     
     return np.squeeze(array[0, :]), np.squeeze(array[1, :]) 
     

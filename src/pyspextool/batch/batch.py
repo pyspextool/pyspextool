@@ -42,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 Aug 12'
+VERSION = '2025 Oct 24'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -108,6 +108,7 @@ BATCH_PARAMETERS = {
 	'SCIENCE_FILE_PREFIX': 'spc',
 	'SPECTRA_FILE_PREFIX': 'spectra',
 	'COMBINED_FILE_PREFIX': 'combspec',
+	'TELLURIC_FILE_PREFIX': 'telluric',
 	'CALIBRATED_FILE_PREFIX': 'calspec',
 	'CALIBRATED_FILE_SUFFIX': 'comb',
 	'MERGED_FILE_PREFIX': 'merged',
@@ -184,7 +185,7 @@ QA_PARAMETERS = {
 	'HTML_TABLE_TAIL': ' </tr>\n</table>\n',
 }
 
-# columns to grab from SIMBAD
+# columns to grab from SIMBAD - note these are out of date
 # SIMBAD_COLS = {
 # 	'SIMBAD_SEP': 'angDist',
 # 	'SIMBAD_NAME': 'main_id',
@@ -952,7 +953,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 						for x in SIMBAD_EXCLUDE: dp_match = dp_match[dp_match['OTYPE']!=x]
 					if len(dp_match)>0:
 						dp_match.reset_index(inplace=True)
-						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.hourangle,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
+						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.degree,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
 						dp_match.sort_values('SIMBAD_SEP',inplace=True,ignore_index=True)
 						for x in list(SIMBAD_COLS.keys()):
 							dpout.loc[dpout['TARGET_NAME']==tnm,x] = dp_match.loc[0,SIMBAD_COLS[x][1]]
@@ -1296,7 +1297,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	f.write('\n# Folders and files\n')
 	for x in ['DATA_FOLDER','CALS_FOLDER','PROC_FOLDER','QA_FOLDER']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
-	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','CALIBRATED_FILE_PREFIX','MERGED_FILE_PREFIX']:
+	for x in ['SCIENCE_FILE_PREFIX','SPECTRA_FILE_PREFIX','COMBINED_FILE_PREFIX','TELLURIC_FILE_PREFIX','CALIBRATED_FILE_PREFIX','MERGED_FILE_PREFIX']:
 		f.write('{} = {}\n'.format(x,str(driver_param[x])))
 
 # modes
@@ -1305,6 +1306,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 	srcmodes.sort()
 
 # cal sets - determine here but print below
+# NOTE - NEED TO ADDRESS CASE WHERE WE HAVE MULTIPLE SETS OF FLATS AND SEPARATE OUT
 	cal_sets=''
 	dpcal = dpc[dpc['TARGET_TYPE']=='calibration']
 	dpcal.reset_index(inplace=True)
@@ -1370,7 +1372,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		dps.reset_index(inplace=True)
 		src_coord = SkyCoord(dps.loc[0,'RA']+' '+dps.loc[0,'DEC'],unit=(u.hourangle, u.deg))
 
-# loop over modes, dropping ignored modes
+# loop over modes
 		for m in srcmodes:
 			dpsrc = dps[dps['MODE']==m]
 			dpsrc.reset_index(inplace=True)
@@ -1398,7 +1400,7 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 				dpstds = dpstds[dpstds['MODE']==m]
 				dpstds.reset_index(inplace=True)
 #				print(m,dpstds[['FILE NUMBER','MODE']])
-				ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
+				ftxt = '\t{}\tUNKNOWN\t{}\t0-0\tnan\tnan\tnan\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],str(driver_param['SCIENCE_FILE_PREFIX']),cs,cs)
 				if len(dpstds)==0: 
 					if verbose==True: logging.info('WARNING: no flux standard files associated with mode {}'.format(dpsrc.loc[0,'MODE']))
 					line+=ftxt
@@ -1436,10 +1438,13 @@ def writeDriver(dp,driver_file='driver.txt',data_folder='',options={},create_fol
 		# temporary fix while sorting out why this doesn't work in testing				
 						if 'SIMBAD_TYPE' in list(dpstds.keys()): tspt =  str(dpstdx.loc[0,'SIMBAD_TYPE'])
 						else: tspt = 'UNK'
+						if tspt=='nan': print('\n** WARNING **: Standard {} is missing a spectral type'.format(tname))
 						if 'SIMBAD_BMAG' in list(dpstds.keys()): tbmag = str(dpstdx.loc[0,'SIMBAD_BMAG'])
 						else: tbmag = 0.
+						if tbmag=='nan': print('\n** WARNING **: Standard {} is missing a B magnitude'.format(tname))
 						if 'SIMBAD_VMAG' in list(dpstds.keys()): tvmag = str(dpstdx.loc[0,'SIMBAD_VMAG'])
 						else: tvmag = 0.
+						if tvmag=='nan': print('\n** WARNING **: Standard {} is missing a V magnitude'.format(tname))
 						line+='\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tflat{}.fits\twavecal{}.fits'.format(OBSERVATION_PARAMETERS_REQUIRED['STD_REDUCTION_MODE'],tname,tspt,tbmag,tvmag,str(dpstdx.loc[0,'PREFIX']),ss,cs,cs)
 	#				print(line)
 				f.write(line+'\n#\n')
@@ -1549,7 +1554,7 @@ def makeQApage(driver_input,log_input,image_folder=QA_IMAGE_FOLDER,spectra_folde
 	imfiles = glob.glob(os.path.join(qa_parameters['QA_FOLDER'],'*{}'.format(qa_parameters['PLOT_TYPE'])))
 	for im in imfiles:
 		if os.path.exists(im)==False or overwrite==True:
-			shutil.move(im,im.replace(qa_parameters['QA_FOLDER'],os.path,join(qa_parameters['QA_FOLDER'],image_folder,'')))
+			shutil.move(im,im.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,'')))
 
 # set up spectra folder
 	if spectra_folder!='':
@@ -1675,33 +1680,43 @@ def makeQApage(driver_input,log_input,image_folder=QA_IMAGE_FOLDER,spectra_folde
 		tmp = re.split('[,-]',sci_param['TARGET_FILES'])
 		fsuf = '{}-{}'.format(tmp[0],tmp[-1])
 
+# NOTE: MAY NEED TO MAKE ALLOWANCE FOR FITS FILE BEING PRESENT BUT NOT IMAGE
+
 # try in order: named merged
 		imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}-{}*{}-{}{}'.format(driver['INSTRUMENT'],sci_param['MODE'].lower(),fsuf,driver['MERGED_FILE_PREFIX'],qa_parameters['PLOT_TYPE']))
 		imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
 # named
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}-{}*{}{}'.format(driver['INSTRUMENT'],sci_param['MODE'].lower(),fsuf,qa_parameters['PLOT_TYPE']))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
 # merged
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['MERGED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE']))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
 # calibrated
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = os.path.join(qa_parameters['QA_FOLDER'],'{}{}{}'.format(driver['CALIBRATED_FILE_PREFIX'],fsuf,qa_parameters['PLOT_TYPE']))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)==0:
 			imfile = imfile.replace(qa_parameters['QA_FOLDER'],os.path.join(qa_parameters['QA_FOLDER'],image_folder,''))
 			imfiles = glob.glob(imfile)
+#		print(imfile,imfiles)
 		if len(imfiles)>0:
 			ptxt+=copy.deepcopy(single_txt).replace('[IMAGE]',os.path.join(image_folder,os.path.basename(imfiles[0]))).replace('[IMAGE_WIDTH]',str(qa_parameters['IMAGE_WIDTH'])).replace('[IMAGE_NAME]',os.path.basename(imfiles[0]))
 			fitsfile = os.path.join(qa_parameters['QA_FOLDER'],spectra_folder,os.path.basename(imfiles[0]).replace(qa_parameters['PLOT_TYPE'],'.fits'))
@@ -2108,13 +2123,6 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 	cal_sets = parameters['CAL_SETS'].split(',')
 	if parameters['CALIBRATIONS']==True:
 		for cs in cal_sets:
-# check that science modes are present to ignore unneeded cals
-# HOLD OFF ON THIS
-		# scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
-		# if len(scikeys)==0: 
-		# 	if parameters['VERBOSE']==True: logging.info('No science files were obtained in mode {}; skipping '.format(finfo['mode']))
-		# else:
-
 # flats
 			indexinfo = {'nint': setup.state['nint'], 'prefix': parameters['FLAT_FILE_PREFIX'],\
 				'suffix': '.a', 'extension': '.fits'}
@@ -2146,16 +2154,15 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			if len(input_files)==0: raise ValueError('Cannot find any of the arc files {}'.format(temp_files))
 			fnum = [int(os.path.basename(f).replace(parameters['ARC_FILE_PREFIX'],'').replace('.a.fits','').replace('.b.fits','')) for f in input_files]
 			fstr = '{}'.format(numberList(fnum))
-#			print(fnum,fstr)
 
 # if not present or overwrite, make the file
 			if os.path.exists(os.path.join(parameters['CALS_FOLDER'],'wavecal{}.fits'.format(cs)))==False or parameters['OVERWRITE']==True:
 
 # For LXD we need to set sky files to one of the source sequences
+# NOTE: THIS IS NOT THE BEST WAY TO DO THIS
 				finfo = read_flat_fits(os.path.join(parameters['CALS_FOLDER'],'flat{}.fits'.format(cs)))
 #				print(finfo)
 				if 'Long' in finfo['mode'] or 'LXD' in finfo['mode']:
-					if parameters['SKY'] != None: scikeys
 					scikeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD in x,list(parameters.keys())))
 					pkeys = list(filter(lambda x: parameters[x]['MODE']==finfo['mode'],scikeys))
 					sky_files = [parameters[pkeys[0]]['TARGET_PREFIX'], parameters[pkeys[0]]['TARGET_FILES'].split(',')[0]]
@@ -2381,28 +2388,31 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # prep file names
 				objfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],tsuf)
 				stdfile = '{}{}.fits'.format(spar['COMBINED_FILE_PREFIX'],csuf)
+				tellfile = '{}{}'.format(spar['TELLURIC_FILE_PREFIX'],csuf)
 
 # depends on fixed or moving source which method we use
 # ADD A CHOICE HERE WHEN BASIC CORRECTION DESIRED AS INPUT PARAMETER: E.G. TELLURIC=BASIC
-				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
+				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
+					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
+					correction_type = 'reflectance'
+				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
 					if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
 					correction_type = 'A0 V'
 # raise error if B or V are nan - only an issue for A0V correction
-					if standard_data['bmag']==np.nan or standard_data['vmag']==np.nan: 
+					if str(standard_data['bmag'])=='nan' or str(standard_data['vmag'])=='nan': 
 						raise ValueError('One of the B = {:.2f} or V = {:.2f} magnitude of {} is nan; please correct the driver file'.format(standard_data['bmag'],standard_data['vmag'],standard_data['id']))
-				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
-					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
-					correction_type = 'reflectance'
 				else: 
 					if parameters['VERBOSE']==True: logging.info('\nTarget type {} not recognized, skipping flux/telluric correction'.format(spar['TARGET_TYPE'].split('-')[0]))			
 					continue
 
 # NOTE: NEED TO PARAMETERIZE DEFAULTS FOR WRITE TELLURIC AND WRITE MODEL
-				ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,verbose=parameters['VERBOSE'])
+				ps.telluric.telluric(objfile,stdfile,standard_data,tellfile,outfile,correction_type=correction_type,write_model_spectra=True,verbose=parameters['VERBOSE'])
 
 # Telluric calibrate all individual files
 # NOTE REPLACE THIS WITH THE TELLURIC "ALL" OPTION
 				if spar['TARGET_INDIVIDUAL']==True:
+					# objfiles = [spar['COMBINED_FILE_PREFIX'],tsuf]
+					# ps.telluric.telluric(objfiles,stdfile,standard_data,tellfile,spar['CALIBRATED_FILE_PREFIX'],correction_type=correction_type,write_model_spectra=True,verbose=parameters['VERBOSE'])
 					indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
 					fnums =  extract_filestring(spar['TARGET_FILES'],'index')
 					fnumstr = ''

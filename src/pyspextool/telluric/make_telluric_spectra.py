@@ -39,7 +39,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     # Check the variable
     #
 
-    if tc.state['method'] == 'deconvolution':
+    if tc.state['correction_method'] == 'deconvolution' and tc.state['correction_type'] == 'A0 V':
              
         if tc.state['kernel_done'] is False:
 
@@ -125,7 +125,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
 
         tc.state['intensity_unit'] = intensity_unit
         
-        for i in range(tc.state['object_norders']):    
+        for i in range(tc.state['standard_norders']):    # fixed by AJB 10/24 from "object_norders"
 
             standard_wavelength = tc.state['standard_spectra'][i,0,:]
             standard_fluxdensity = tc.state['standard_spectra'][i,1,:]
@@ -183,7 +183,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
         vega_spectra[:,2,:] = 1.0
         vega_spectra[:,3,:] = 0
         
-        for i in range(tc.state['object_norders']):    
+        for i in range(tc.state['standard_norders']):   # fixed by AJB 10/24 from "object_norders"
             
             standard_fluxdensity = tc.state['standard_spectra'][i,1,:]
             standard_uncertainty = tc.state['standard_spectra'][i,2,:]
