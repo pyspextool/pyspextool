@@ -107,8 +107,10 @@ def plot_merges(plot_number:int,
     #
     
     # Set the fonts
+    # removed helvetica
 
-    font = {'family' : 'helvetica',
+    font = {
+    #'family' : 'helvetica',
             'weight' : 'normal',
             'size'   : font_size*scale}
 
