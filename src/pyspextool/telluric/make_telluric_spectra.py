@@ -11,9 +11,9 @@ from pyspextool.utils.irplanck import irplanck
 from pyspextool.telluric.core import make_telluric_spectrum
 
 
-def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
-                          verbose:bool=True,
-                          new=False):
+def make_telluric_spectra(
+    intensity_unit:str='W m-2 um-1',
+    verbose:bool=True):
 
     """
     To create telluric correction spectra.
@@ -22,6 +22,11 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     ----------
     intensity_unit : str, default='W m-2 um-1'
         The requested intensity units of the final output spectrum.  
+
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
 
     Returns
     -------
@@ -39,7 +44,8 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     # Check the variable
     #
 
-    if tc.state['correction_method'] == 'deconvolution' and tc.state['correction_type'] == 'A0 V':
+    if tc.state['correction_method'] == 'deconvolution' and \
+       tc.state['correction_type'] == 'A0 V':
              
         if tc.state['kernel_done'] is False:
 
@@ -70,7 +76,7 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     telluric_spectra = copy.deepcopy(tc.state['standard_spectra'])
 
     #
-    # Go by correction type
+    # Operate based on the correction type: A0 V, basic, reflectance
     #
 
     model_spectra = copy.deepcopy(tc.state['standard_spectra'])
@@ -78,6 +84,10 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
     model_spectra[:,2,:] = 1.0
     model_spectra[:,3,:] = 0
         
+    #
+    # A0 V correction
+    #
+
     if tc.state['correction_type'] == 'A0V':
 
         tc.state['intensity_unit'] = intensity_unit
@@ -98,39 +108,42 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             vega_fitted_continuum = tc.state['vega_fitted_continuum']
             kernel = tc.state['kernels'][i]
 
-            result = make_telluric_spectrum(standard_wavelength,
-                                            standard_fluxdensity,
-                                            standard_uncertainty,
-                                            standard_rv,
-                                            standard_bmag,
-                                            standard_vmag,
-                                            vega_wavelength,
-                                            vega_fluxdensity,
-                                            vega_continuum,
-                                            vega_fitted_continuum,
-                                            kernel,
-                                            tc.state['control_points'][i][0,:],
-                                            tc.state['control_points'][i][1,:],
-                                            int(tc.state['standard_orders'][i]),
-                                            intensity_unit,
-                                            new=new)
+            result = make_telluric_spectrum(
+                standard_wavelength,
+                standard_fluxdensity,
+                standard_uncertainty,
+                standard_rv,
+                standard_bmag,
+                standard_vmag,
+                vega_wavelength,
+                vega_fluxdensity,
+                vega_continuum,
+                vega_fitted_continuum,
+                kernel,
+                tc.state['control_points'][i][0,:],
+                tc.state['control_points'][i][1,:],
+                int(tc.state['standard_orders'][i]),
+                intensity_unit)
             
             # Store results
             
             telluric_spectra[i,1,:] = result[0]
             telluric_spectra[i,2,:] = result[1]
             model_spectra[i,1,:] = result[2]
-            
+
+    #
+    # Basic correction
+    #
+
     if tc.state['correction_type'] == 'basic':
 
         tc.state['intensity_unit'] = intensity_unit
         
-        for i in range(tc.state['standard_norders']):    # fixed by AJB 10/24 from "object_norders"
+        for i in range(tc.state['standard_norders']):
 
             standard_wavelength = tc.state['standard_spectra'][i,0,:]
             standard_fluxdensity = tc.state['standard_spectra'][i,1,:]
             standard_uncertainty = tc.state['standard_spectra'][i,2,:]
-
         
             telluric_spectrum = 1/standard_fluxdensity
             telluric_unc = 1/standard_fluxdensity**2 * standard_uncertainty
@@ -153,26 +166,33 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
             # Change units to those requested by the user
             #
             
-            flux = convert_fluxdensity(standard_wavelength,
-                                       telluric_spectrum,
-                                       'um','erg s-1 cm-2 A-1',
-                                       intensity_unit)
+            flux = convert_fluxdensity(
+                standard_wavelength,
+                telluric_spectrum,
+                'um','erg s-1 cm-2 A-1',
+                intensity_unit)
             
-            unc = convert_fluxdensity(standard_wavelength,
-                                      telluric_unc,
-                                      'um','erg s-1 cm-2 A-1',
-                                      intensity_unit)
+            unc = convert_fluxdensity(
+                standard_wavelength,
+                telluric_unc,
+                'um','erg s-1 cm-2 A-1',
+                intensity_unit)
             
-            planck = convert_fluxdensity(standard_wavelength,
-                                         planck,
-                                         'um','erg s-1 cm-2 A-1',
-                                         intensity_unit)
+            planck = convert_fluxdensity(
+                standard_wavelength,
+                planck,
+                'um','erg s-1 cm-2 A-1',
+                intensity_unit)
             
             # Updates labels
             
             telluric_spectra[i,1,:] = flux
             telluric_spectra[i,2,:] = unc
             model_spectra[i,1,:] = planck
+
+    #
+    # Reflectance correction
+    #
                                
     if tc.state['correction_type'] == 'reflectance':
 
@@ -183,58 +203,20 @@ def make_telluric_spectra(intensity_unit:str='W m-2 um-1',
         vega_spectra[:,2,:] = 1.0
         vega_spectra[:,3,:] = 0
         
-        for i in range(tc.state['standard_norders']):   # fixed by AJB 10/24 from "object_norders"
+        for i in range(tc.state['standard_norders']): 
             
             standard_fluxdensity = tc.state['standard_spectra'][i,1,:]
             standard_uncertainty = tc.state['standard_spectra'][i,2,:]
-
         
             telluric_spectra[i,1,:] = 1/standard_fluxdensity
             telluric_spectra[i,2,:] = 1/standard_fluxdensity**2 * \
                 standard_uncertainty
-
-    #
-    # Interpolate the telluric spectra onto the object wavelengths
-    #
-
-#    object_spectra = tc.state['object_spectra']
-#    tmp = copy.deepcopy(tc.state['object_spectra'])    
-#
-#    for i in range(tc.state['object_norders']):
-#
-#        std_idx = np.where(tc.state['standard_orders'] == \
-#                           tc.state['object_orders'][i])[0]
-#        
-#        for j in range(tc.state['object_napertures']):
-#
-#            obj_idx = i*tc.state['object_napertures'] + j
-#
-#            ri, ru = linear_interp1d(telluric_spectra[std_idx,0,:],
-#                                     telluric_spectra[std_idx,1,:],
-#                                     object_spectra[obj_idx,0,:],
-#                                     input_u=telluric_spectra[std_idx,2,:])
-#
-#            tmp[obj_idx,1,:] = ri
-#            tmp[obj_idx,2,:] = ru
-#
-#            rm = linear_bitmask_interp1d(telluric_spectra[std_idx,0,:],
-#                    telluric_spectra[std_idx,3,:].astype(np.uint8),
-#                                         object_spectra[obj_idx,0,:])
-#            tmp[obj_idx,3,:] = rm
             
     #
-    # Store the results.  Pre fill ewcorrected and shifted in case the
-    # user chooses to not correct the H lines or shift the standard.
+    # Store the results.  
     #
 
     tc.state['model_spectra'] = model_spectra
     tc.state['rawtc_spectra'] = telluric_spectra
-#    tc.state['ewcorrectedtc_spectra'] = np.array(tmp)
-#    tc.state['shiftedtc_spectra'] = np.array(tmp)        
-#    tc.state['shifts'] = np.zeros((tc.state['object_norders'],
-#                                   tc.state['object_napertures']))
-    
+
     tc.state['make_done'] = True
-
-
-    
