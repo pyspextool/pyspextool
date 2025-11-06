@@ -103,3 +103,49 @@ def proc_setup():
         },
     }
     return proc_setup
+
+
+@pytest.fixture
+def postextraction_setup():
+    """
+    Fixture for PostExtractionTests data.
+    Contains extracted spectra ready for combining and telluric correction.
+    """
+    postextraction_setup = {
+        "spex_prism": {
+            "instrument": "spex",
+            "proc_path": "tests/test_data/PostExtractionTests/spex-LowRes15/",
+            "object_files": ['spectra', '17-28'],
+            "standard_files": ['spectra', '29-40'],
+            "standard_name": "HD 101060",
+        },
+        "spex_sxd": {
+            "instrument": "spex",
+            "proc_path": "tests/test_data/PostExtractionTests/spex-ShortXD/",
+            "object_files": ['spectra', '626-635'],
+            "standard_files": ['spectra', '636-645'],
+            "standard_name": "HD 165029",
+        },
+        "spex_lxd": {
+            "instrument": "spex",
+            "proc_path": "tests/test_data/PostExtractionTests/spex-LongXD2.1/",
+            "object_files": ['spectra', '585-594'],
+            "standard_files": ['spectra', '595-614'],
+            "standard_name": "HD 165029",
+        },
+        "uspex_prism": {
+            "instrument": "uspex",
+            "proc_path": "tests/test_data/PostExtractionTests/uspex-prism/",
+            "object_files": ['spectra', '1-2'],
+            "standard_files": ['spectra', '7-8'],
+            "standard_name": "HD 223352",
+        },
+        "uspex_lxd_short": {
+            "instrument": "uspex",
+            "proc_path": "tests/test_data/PostExtractionTests/uspex-LXD_Short/",
+            "object_files": ['spectra', '11-20'],
+            "standard_files": ['spectra', '1-10'],
+            "standard_name": "HD 17778",
+        },
+    }
+    return postextraction_setup
