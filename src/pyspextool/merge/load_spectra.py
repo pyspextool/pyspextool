@@ -76,7 +76,8 @@ def load_spectra(
     spectra = spectra.astype(np.float64)
 
 
-    hdrinfo = get_headerinfo(data["header"])
+#    print(data.keys())
+    hdrinfo = get_headerinfo(data["astropyheader"])
     # commented this next line out as there are no "telluric_keywords" 
 #                             keywords=setup.state["telluric_keywords"])
 

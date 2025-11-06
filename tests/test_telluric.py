@@ -4,6 +4,7 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.telluric import telluric
 import pytest
 import os
+import glob
 
 @pytest.mark.parametrize("setup_name", ["uspex_sxd"])
 def test_telluric(setup_name, proc_setup):
@@ -25,6 +26,8 @@ def test_telluric(setup_name, proc_setup):
     # CLEANUP
     # remove generated files
     os.remove(telluric_path)
+    for files in glob.glob(os.path.join(proc_path, 'tcspectra*.fits')):
+        os.remove(files)
 
 
 #    [
