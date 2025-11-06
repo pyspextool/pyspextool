@@ -109,6 +109,96 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
             os.remove(filepath)
 
 
+@pytest.mark.parametrize("setup_name", ["spex_prism"])
+def test_telluric_precomputed(setup_name, postextraction_setup):
+    """
+    Test applying a pre-computed telluric correction file to individual spectra.
+    
+    This test:
+    1. Creates a telluric correction file from combined spectra
+    2. Applies that correction to individual uncorrected spectra
+    3. Verifies the corrected individual spectra are created
+    4. Cleans up generated files
+    
+    This tests the workflow where a telluric correction is computed once
+    and then applied to multiple individual observations.
+    """
+    setup_dict = postextraction_setup[setup_name]
+    proc_path = setup_dict["proc_path"]
+    
+    # Setup pyspextool
+    pyspextool_setup(
+        proc_path=proc_path,
+        qa_extension='.png',
+        qa_showblock=False,
+        verbose=False
+    )
+    
+    # Step 1: Create telluric correction file from combined spectra
+    # Combine object spectra
+    object_combined = f'cspectra_object_{setup_name}_precomp.fits'
+    combine(
+        files=setup_dict["object_files"],
+        output_name=object_combined.replace('.fits', ''),
+        verbose=False,
+        qa_show=False,
+        qa_write=False
+    )
+    
+    # Combine standard spectra
+    standard_combined = f'cspectra_standard_{setup_name}_precomp.fits'
+    combine(
+        files=setup_dict["standard_files"],
+        output_name=standard_combined.replace('.fits', ''),
+        verbose=False,
+        qa_show=False,
+        qa_write=False
+    )
+    
+    # Create telluric correction file
+    telluric(
+        object_filenames=object_combined,
+        standard_filename=standard_combined,
+        standard_info=setup_dict["standard_name"],
+        telluric_filename='telluric_precomp',
+        corrected_filenames='tcspectra_combined',
+        verbose=False,
+        qa_show=False,
+        qa_write=False
+    )
+    
+    telluric_path = os.path.join(proc_path, 'telluric_precomp.fits')
+    assert os.path.exists(telluric_path), "Pre-computed telluric correction file not created"
+    
+    # Step 2: Apply pre-computed telluric correction to individual spectra
+    # Use the first few individual object spectra
+    telluric(
+        object_filenames=setup_dict["object_files"],
+        standard_filename=standard_combined,
+        standard_info=setup_dict["standard_name"],
+        telluric_filename='telluric_precomp',  # Reuse the pre-computed correction
+        corrected_filenames='tcspectra_individual',
+        verbose=False,
+        qa_show=False,
+        qa_write=False
+    )
+    
+    # Verify corrected individual spectra were created
+    corrected_files = glob.glob(os.path.join(proc_path, 'tcspectra_individual*.fits'))
+    assert len(corrected_files) > 0, "No corrected individual spectra were created"
+    
+    # CLEANUP - remove generated files
+    os.remove(telluric_path)
+    os.remove(os.path.join(proc_path, object_combined))
+    os.remove(os.path.join(proc_path, standard_combined))
+    
+    # Remove corrected spectra
+    for filepath in glob.glob(os.path.join(proc_path, 'tcspectra_combined*.fits')):
+        os.remove(filepath)
+    for filepath in corrected_files:
+        os.remove(filepath)
+
+
 #    [
 #        ("spex_lxd", False, "Vega50000.fits"),
 #        ("spex_lxd", True, "Vega50000_new.fits"),
