@@ -167,7 +167,7 @@ OBSERVATION_PARAMETERS_OPTIONAL = {
 	'BACKGROUND_WIDTH': 4.,
 	'SCALE_RANGE': [1.0,1.5],
 	'SKY': None,
-	'INDIVIDUAL': False,
+	'INDIVIDUAL': True,
 }
 
 # these are default parameters for QA page creation
@@ -2393,10 +2393,10 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # depends on fixed or moving source which method we use
 # ADD A CHOICE HERE WHEN BASIC CORRECTION DESIRED AS INPUT PARAMETER: E.G. TELLURIC=BASIC
 				if (spar['TARGET_TYPE'].split('-')[0]).strip()=='moving': 
-					if parameters['VERBOSE']==True: logging.info('\nmoving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
+					if parameters['VERBOSE']==True: logging.info(' moving target; doing reflectance telluric correction and flux calibration assuming G2 V standard')
 					correction_type = 'reflectance'
 				elif (spar['TARGET_TYPE'].split('-')[0]).strip()=='fixed': 
-					if parameters['VERBOSE']==True: logging.info('\nfixed target; doing standard telluric correction and flux calibration')
+					if parameters['VERBOSE']==True: logging.info(' fixed target; doing standard telluric correction and flux calibration')
 					correction_type = 'A0 V'
 # raise error if B or V are nan - only an issue for A0V correction
 					if str(standard_data['bmag'])=='nan' or str(standard_data['vmag'])=='nan': 
@@ -2406,22 +2406,35 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 					continue
 
 # NOTE: NEED TO PARAMETERIZE DEFAULTS FOR WRITE TELLURIC AND WRITE MODEL
-				ps.telluric.telluric(objfile,stdfile,standard_data,tellfile,outfile,correction_type=correction_type,write_model_spectra=True,verbose=parameters['VERBOSE'])
+				ps.telluric.telluric(
+					objfile,stdfile,
+					standard_data,
+					tellfile,
+					outfile,
+					correction_type=correction_type,
+					write_model_spectra=True,qa_write=True,verbose=parameters['VERBOSE'])
 
 # Telluric calibrate all individual files
 # NOTE REPLACE THIS WITH THE TELLURIC "ALL" OPTION
-				if spar['TARGET_INDIVIDUAL']==True:
-					# objfiles = [spar['COMBINED_FILE_PREFIX'],tsuf]
-					# ps.telluric.telluric(objfiles,stdfile,standard_data,tellfile,spar['CALIBRATED_FILE_PREFIX'],correction_type=correction_type,write_model_spectra=True,verbose=parameters['VERBOSE'])
-					indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
-					fnums =  extract_filestring(spar['TARGET_FILES'],'index')
-					fnumstr = ''
-					for nnn in fnums:
-						objfile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
-						if os.path.exists(objfile)==True: 
-							outfile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX']).replace('.fits','')
-							ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,qa_write=False,verbose=parameters['VERBOSE'])
-						else: logging.info('WARNING: could not find file {}, not conducting telluric calibration'.format(os.path.basename(file)))
+				if spar['TARGET_INDIVIDUAL']==True and os.path.exists(os.path.join(spar['PROC_FOLDER'],'{}.fits'.format(tellfile))):
+					ps.telluric.correct_spectra(
+						[spar['SPECTRA_FILE_PREFIX'],tsuf],
+						'{}.fits'.format(tellfile),
+						spar['CALIBRATED_FILE_PREFIX'],
+						qa_write=True,verbose=parameters['VERBOSE'])
+				elif parameters['VERBOSE']==True and spar['TARGET_INDIVIDUAL']==True: 
+					logging.info('\nNot applying flux calibration to individual files {}; check for telluric file {}'.format(tsuf,os.path.join(spar['PROC_FOLDER'],tellfile)))
+				else: pass
+					# indexinfo = {'nint': setup.state['nint'], 'prefix': spar['SPECTRA_FILE_PREFIX'], 'suffix': '', 'extension': '.fits'}
+					# fnums =  extract_filestring(spar['TARGET_FILES'],'index')
+					# fnumstr = ''
+					# for nnn in fnums:
+					# 	objfile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
+					# 	if os.path.exists(objfile)==True: 
+					# 		outfile = objfile.replace(spar['SPECTRA_FILE_PREFIX'],spar['CALIBRATED_FILE_PREFIX']).replace('.fits','')
+					# 		ps.telluric.telluric(objfile,stdfile,standard_data,outfile,correction_type=correction_type,write_telluric_spectra=True,qa_write=False,verbose=parameters['VERBOSE'])
+					# 	else: logging.info('WARNING: could not find file {}, not conducting telluric calibration'.format(os.path.basename(file)))
+
 
 
 #####################
@@ -2451,11 +2464,13 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 					fnums =  extract_filestring(spar['TARGET_FILES'],'index')
 					fnumstr = ''
 					for nnn in fnums:
-						infile = make_full_path(spar['PROC_FOLDER'], [nnn], indexinfo=indexinfo,exist=False)[0]
-						if os.path.exists(objfile)==True: 
+						infile = make_full_path('', [nnn], indexinfo=indexinfo,exist=False)[0]
+						if os.path.exists(os.path.join(spar['PROC_FOLDER'],infile))==True: 
 							outfile = infile.replace(spar['CALIBRATED_FILE_PREFIX'],spar['MERGED_FILE_PREFIX']).replace('.fits','')
-							ps.merge.merge(infile,outfile,qa_show=False,qa_write=False,verbose=parameters['VERBOSE'])
-						else: logging.info('WARNING: could not find file {}, not conducting merging'.format(os.path.basename(file)))
+							print(infile)
+							print(outfile)
+							ps.merge.merge(os.path.join(spar['PROC_FOLDER'],infile),outfile,qa_show=False,qa_write=False,verbose=parameters['VERBOSE'])
+						else: logging.info('WARNING: could not find file {}, not conducting merging'.format(os.path.basename(infile)))
 
 
 ##################
