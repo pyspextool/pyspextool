@@ -21,8 +21,7 @@ def make_correction_spectra(
     qa_show:bool=None,
     qa_showscale:float=None,
     qa_showblock:bool=None,
-    qa_write:bool=None,
-    new=False):
+    qa_write:bool=None):
 
     """
     To create a "telluric correction" spectra and write a FITS file to disk.
@@ -158,8 +157,7 @@ def make_correction_spectra(
         standard_info,
         correction_filename,
         correction_type=correction_type,
-        verbose=qa['verbose'],
-        new=False)
+        verbose=qa['verbose'])
 
     #
     # Are we doing a solar system object?
@@ -242,8 +240,7 @@ def make_correction_spectra(
 
     make_telluric_spectra(
         intensity_unit=output_units,
-        verbose=qa['verbose'],
-        new=new)
+        verbose=qa['verbose'])
 
     #
     # Write the results to disk
