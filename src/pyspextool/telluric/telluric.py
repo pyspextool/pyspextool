@@ -23,8 +23,7 @@ def telluric(
     qa_show:bool=None,
     qa_showscale:float=None,
     qa_showblock:bool=None,
-    qa_write:bool=None,
-    new=False):
+    qa_write:bool=None):
 
                         
     """
