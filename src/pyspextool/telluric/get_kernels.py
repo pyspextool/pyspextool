@@ -126,7 +126,7 @@ def get_kernels(*args:int | float,
     # Create and load the kernels
     #
     
-    if tc.state['correction_method'] == 'deconvolution':
+    if tc.state['method'] == 'deconvolution':
 
         logging.info(" Deconvolving line.")        
 
@@ -264,7 +264,7 @@ def get_kernels(*args:int | float,
             
             kernels.append(rkernel)
 
-    if tc.state['correction_method'] == 'ip':
+    if tc.state['method'] == 'ip':
             
         logging.info(" Generating the kernels.")        
 
