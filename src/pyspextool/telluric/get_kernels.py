@@ -10,12 +10,13 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.telluric.core import deconvolve_line
 from pyspextool.telluric.core import make_instrument_profile
 
-def get_kernels(*args:int | float,
-                verbose:bool=None,
-                qa_show:bool=None,
-                qa_showscale:float | int=None,
-                qa_showblock:bool=None,
-                qa_write:bool=None):
+def get_kernels(
+    *args:int | float,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     Determines the convolution kernel.
@@ -57,7 +58,7 @@ def get_kernels(*args:int | float,
     None
     Loads data into memory and writes QA plots to disk.  
 
-        tc.state['method']
+        tc.state['kernel_method']
         tc.state['deconvolution_window']
         tc.state['rms_deviation']
         tc.state['max_deviation']
@@ -75,7 +76,7 @@ def get_kernels(*args:int | float,
 
         # We are doing the IP method
 
-        tc.state['method'] = 'ip'
+        tc.state['kernel_method'] = 'ip'
 
         if tc.state['load_done'] is False:
 
@@ -86,7 +87,7 @@ def get_kernels(*args:int | float,
         
     else:
 
-        tc.state['method'] = 'deconvolution'        
+        tc.state['kernel_method'] = 'deconvolution'        
               
         if tc.state['rv_done'] is False:
 
@@ -110,23 +111,24 @@ def get_kernels(*args:int | float,
         
     check_parameter('get_kernels', 'qa_write', qa_write, ['NoneType','bool'])
 
-    if tc.state['method'] == 'deconvolution':
+    if tc.state['kernel_method'] == 'deconvolution':
 
         check_parameter('get_kernels', 'args', args[0], ['float', 'int'])
             
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
     
-    logging.info(" Telluric method = "+tc.state['method'])
+    logging.info(" Telluric method = "+tc.state['kernel_method'])
 
     #
     # Create and load the kernels
     #
     
-    if tc.state['correction_method'] == 'deconvolution':
+    if tc.state['kernel_method'] == 'deconvolution':
 
         logging.info(" Deconvolving line.")        
 
@@ -198,15 +200,16 @@ def get_kernels(*args:int | float,
         # Do the deconvolution
         #
     
-        result = deconvolve_line(tc.state['normalized_line_wavelength'],
-                                 tc.state['normalized_line_flux'],
-                                 tc.state['vega_wavelength']*\
-                                 tc.state['1+z'],
-                                 tc.state['vega_normalized_fluxdensity'],
-                                 tc.state['deconvolution_window'],
-                                 qashow_info=qashow_info,
-                                 qafile_info=qafile_info,
-                                 verbose=verbose)
+        result = deconvolve_line(
+            tc.state['normalized_line_wavelength'],
+            tc.state['normalized_line_flux'],
+            tc.state['vega_wavelength']*\
+            tc.state['1+z'],
+            tc.state['vega_normalized_fluxdensity'],
+            tc.state['deconvolution_window'],
+            qashow_info=qashow_info,
+            qafile_info=qafile_info,
+            verbose=verbose)
         
         #
         # Store the result
@@ -264,7 +267,7 @@ def get_kernels(*args:int | float,
             
             kernels.append(rkernel)
 
-    if tc.state['correction_method'] == 'ip':
+    if tc.state['kernel_method'] == 'ip':
             
         logging.info(" Generating the kernels.")        
 
