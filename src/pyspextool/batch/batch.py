@@ -42,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 Oct 24'
+VERSION = '2025 Nov 6'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -2574,8 +2574,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 						if os.path.exists(outfile.replace('.fits','.csv'))==True and parameters['OVERWRITE']==False:
 							if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
 						else:
-							sp,_ = read_spectra_fits(os.path.join(spar['PROC_FOLDER'],outfile))
-							np.savetxt(os.path.exists(outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+							sp,_ = read_spectra_fits(outfile)
+							np.savetxt(outfile.replace('.fits','.csv'),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
 							if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
 							else:
 								if parameters['VERBOSE']==True: logging.info(' Individual calibrated file {} does not exist, skipping renaming'.format(os.path.basename(infile)))
@@ -2614,8 +2614,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 						if os.path.exists(outfile.replace('.fits','.csv'))==True and parameters['OVERWRITE']==False:
 							if parameters['VERBOSE']==True: logging.info(' {} already created, skipping (use --overwrite option to remake)'.format(outfile.replace('.fits','.csv')))
 						else:
-							sp,_ = read_spectra_fits(os.path.join(spar['PROC_FOLDER'],outfile))
-							np.savetxt(os.path.exists(outfile.replace('.fits','.csv')),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
+							sp,_ = read_spectra_fits(outfile)
+							np.savetxt(outfile.replace('.fits','.csv'),sp[0][:3].transpose(),header='wave,flux,unc',delimiter=',')
 							if parameters['VERBOSE']==True: logging.info(' wrote out csv file {}'.format(outfile.replace('.fits','.csv')))
 							else:
 								if parameters['VERBOSE']==True: logging.info(' Individual calibrated file {} does not exist, skipping renaming'.format(os.path.basename(infile)))
