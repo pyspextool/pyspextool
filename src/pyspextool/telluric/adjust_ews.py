@@ -8,11 +8,12 @@ from pyspextool.io.check import check_parameter, check_qakeywords, check_file
 from pyspextool.telluric.core import estimate_ewscales
 from pyspextool.utils.loop_progress import loop_progress
 
-def adjust_ews(verbose:bool=None,
-               qa_show:bool=None,
-               qa_showscale:float=None,
-               qa_showblock:bool=None,
-               qa_write:bool=None):
+def adjust_ews(
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     To adjust the EWs of absorption lines in the standard star spectrum.
@@ -68,11 +69,12 @@ def adjust_ews(verbose:bool=None,
     
     check_parameter('adjust_ews', 'qa_write', qa_write, ['NoneType','bool'])
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
     
     #
     # Log the action
@@ -180,7 +182,7 @@ def adjust_ews(verbose:bool=None,
         qashow_info = {'plot_number':setup.plots['deconvolution'],
                        'figure_size':figure_size,
                        'font_size':font_size,
-                    'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                       'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
                        'spine_linewidth':setup.plots['spine_linewidth'],
                        'block':qa['showblock'],
                        'xlabel':xlabel,
@@ -197,7 +199,7 @@ def adjust_ews(verbose:bool=None,
         
         qafile_info = {'figure_size':setup.plots['landscape_size'],
                        'font_size':setup.plots['font_size'],
-                     'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                       'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
                        'spine_linewidth':setup.plots['spine_linewidth'],
                        'file_fullpath':'',
                        'xlabel':xlabel,
@@ -285,25 +287,26 @@ def adjust_ews(verbose:bool=None,
 
             # Do the estimation
 
-            result = estimate_ewscales(standard_wavelength[z_standard],
-                                       standard_fluxdensity[z_standard],
-                                       standard_rv,
-                                       standard_vmag,
-                                       standard_bmag,
-                                       vega_wavelength,
-                                       vega_fluxdensity,
-                                       vega_continuum,
-                                       vega_fitted_continuum,
-                                       kernel,
-                                       ew_scale,
-                                       lines,
-                                       atmosphere[z_standard],
-                                       subdegrees[j].item(),
-                                       include_edges=False,
-                                       tolerance=subtolerances[j].item(),
-#                                       tolerance=1.0,
-                                       qashow_info=qashow_info,
-                                       qafile_info=qafile_info)
+            result = estimate_ewscales(
+                standard_wavelength[z_standard],
+                standard_fluxdensity[z_standard],
+                standard_rv,
+                standard_vmag,
+                standard_bmag,
+                vega_wavelength,
+                vega_fluxdensity,
+                vega_continuum,
+                vega_fitted_continuum,
+                kernel,
+                ew_scale,
+                lines,
+                atmosphere[z_standard],
+                subdegrees[j].item(),
+                include_edges=False,
+                tolerance=subtolerances[j].item(),
+#                tolerance=1.0,
+                qashow_info=qashow_info,
+                qafile_info=qafile_info)
 
             if qa['verbose'] is True:
                 

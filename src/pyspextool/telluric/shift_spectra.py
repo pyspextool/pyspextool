@@ -11,13 +11,14 @@ from pyspextool.telluric.qaplots import plot_shifts
 from pyspextool.utils.interpolate import linear_interp1d
 
 
-def shift_spectra(default_shiftranges:bool=True,
-                  user_shiftranges:tuple | list=None,
-                  verbose:bool=None,
-                  qa_show:bool=None,
-                  qa_showscale:float=None,
-                  qa_showblock:bool=None,
-                  qa_write:bool=None):
+def shift_spectra(
+        default_shiftranges:bool=True,
+        user_shiftranges:tuple | list=None,
+        verbose:bool=None,
+        qa_show:bool=None,
+        qa_showscale:float=None,
+        qa_showblock:bool=None,
+        qa_write:bool=None):
 
     """
     To shift the telluric spectra to minimize residual telluric noise.

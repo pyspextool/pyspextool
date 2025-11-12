@@ -10,13 +10,14 @@ from pyspextool.utils.arrays import find_index
 from pyspextool.telluric.core import measure_linerv
 from pyspextool.pyspextoolerror import pySpextoolError
 
-def get_radialvelocity(fwhm_scale:float,
-                       resolving_power:bool | float |int =None, 
-                       verbose:bool=None,
-                       qa_show:bool=None,
-                       qa_showscale:float | int=None,
-                       qa_showblock:bool=None,
-                       qa_write:bool=None):
+def get_radialvelocity(
+    fwhm_scale:float,
+    resolving_power:bool | float |int =None, 
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     To determine the radial velocity of the A0 V star using a model.
@@ -213,7 +214,7 @@ def get_radialvelocity(fwhm_scale:float,
         qashow_info = {'plot_number':setup.plots['radial_velocity'],
                        'figure_size':figure_size,
                        'font_size':font_size,
-                    'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                       'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
                        'spine_linewidth':setup.plots['spine_linewidth'],
                        'block':qa['showblock'],
                        'xlabel':xlabel,
@@ -233,7 +234,7 @@ def get_radialvelocity(fwhm_scale:float,
 
         qafile_info = {'figure_size':setup.plots['portrait_size'],
                        'font_size':setup.plots['font_size'],
-                    'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                       'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
                        'spine_linewidth':setup.plots['spine_linewidth'],
                        'file_fullpath':fullpath,
                        'xlabel':xlabel,

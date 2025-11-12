@@ -238,10 +238,10 @@ def write_telluric_spectra(
     value = [config.state['correction_type'],'Telluric correction type']
     hdrinfo['TC_TYPE'] = value
     
-    value = [config.state['correction_method'], 'Kernel creation method']
+    value = [config.state['kernel_method'], 'Kernel creation method']
     hdrinfo['TC_METH'] = value
     
-    if config.state['correction_method'] == 'deconvolution' and config.state['correction_type'] == 'A0 V':
+    if config.state['kernel_method'] == 'deconvolution' and config.state['correction_type'] == 'A0 V':
         
         value = [float('{:.5f}'.format(config.state['max_deviation'])),
                  'Telluric maxmimum % deviation of Vega-data']
