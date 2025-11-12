@@ -2469,7 +2469,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 							outfile = infile.replace(spar['CALIBRATED_FILE_PREFIX'],spar['MERGED_FILE_PREFIX']).replace('.fits','')
 							print(infile)
 							print(outfile)
-							ps.merge.merge(os.path.join(spar['PROC_FOLDER'],infile),outfile,qa_show=False,qa_write=False,verbose=parameters['VERBOSE'])
+							ps.merge.merge(infile,outfile,qa_show=False,qa_write=False,verbose=parameters['VERBOSE'])
 						else: logging.info('WARNING: could not find file {}, not conducting merging'.format(os.path.basename(infile)))
 
 
