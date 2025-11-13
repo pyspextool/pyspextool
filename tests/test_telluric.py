@@ -1,8 +1,6 @@
 #from pyspextool.telluric.load_spectra import _load_vegamodel
 from pyspextool.setup_utils import pyspextool_setup
-from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.telluric import telluric
-from pyspextool.combine import combine
 import pytest
 import os
 import glob
@@ -48,12 +46,11 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
     Test telluric correction for various instrument modes using PostExtractionTests data.
     
     This test:
-    1. Sets up the processing path
-    2. Combines object spectra
-    3. Combines standard spectra  
-    4. Runs telluric correction
-    5. Verifies telluric correction file is created
-    6. Cleans up generated files
+    1. Sets up the processing path from the postextraction_setup fixture from conftest.py
+    2. Reads the combined object and standard spectra 
+    3. Runs telluric correction
+    4. Verifies telluric correction file is created
+    5. Cleans up generated files
     """
     setup_dict = postextraction_setup[setup_name]
     proc_path = setup_dict["proc_path"]
@@ -67,25 +64,8 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
         verbose=False
     )
     
-    # Combine object spectra
     object_combined = f'cspectra_object_{setup_name}.fits'
-    combine(
-        files=setup_dict["object_files"],
-        output_name=object_combined.replace('.fits', ''),
-        verbose=False,
-        qa_show=False,
-        qa_write=False
-    )
-    
-    # Combine standard spectra
     standard_combined = f'cspectra_standard_{setup_name}.fits'
-    combine(
-        files=setup_dict["standard_files"],
-        output_name=standard_combined.replace('.fits', ''),
-        verbose=False,
-        qa_show=False,
-        qa_write=False
-    )
     
     # Run telluric correction
     telluric(
@@ -104,14 +84,12 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
     assert os.path.exists(telluric_path), f"Telluric correction file not created for {setup_name}"
     
     # CLEANUP - remove generated files
-    #os.remove(telluric_path)
+    os.remove(telluric_path)
     
-    # Remove combined spectra
-    #for pattern in [f'cspectra_object_{setup_name}.fits', 
-    #                 f'cspectra_standard_{setup_name}.fits',
-    #                 'tcspectra_object*.fits']:
-    #    for filepath in glob.glob(os.path.join(proc_path, pattern)):
-    #        os.remove(filepath)
+    # Remove corrected spectra
+    for pattern in ['tcspectra_object*.fits']:
+       for filepath in glob.glob(os.path.join(proc_path, pattern)):
+           os.remove(filepath)
 
 
 @pytest.mark.parametrize("setup_name", ["spex_prism"])
@@ -140,26 +118,8 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
         verbose=False
     )
     
-    # Step 1: Create telluric correction file from combined spectra
-    # Combine object spectra
     object_combined = f'cspectra_object_{setup_name}_precomp.fits'
-    combine(
-        files=setup_dict["object_files"],
-        output_name=object_combined.replace('.fits', ''),
-        verbose=False,
-        qa_show=False,
-        qa_write=False
-    )
-    
-    # Combine standard spectra
     standard_combined = f'cspectra_standard_{setup_name}_precomp.fits'
-    combine(
-        files=setup_dict["standard_files"],
-        output_name=standard_combined.replace('.fits', ''),
-        verbose=False,
-        qa_show=False,
-        qa_write=False
-    )
     
     # Create telluric correction file
     telluric(
@@ -191,18 +151,15 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
     
     # Verify corrected individual spectra were created
     corrected_files = glob.glob(os.path.join(proc_path, 'tcspectra_individual*.fits'))
-    assert len(corrected_files) > 0, "No corrected individual spectra were created"
+    assert len(corrected_files) == 12, "Twelve corrected individual spectra were created"
     
     # CLEANUP - remove generated files
-    os.remove(telluric_path)
-    os.remove(os.path.join(proc_path, object_combined))
-    os.remove(os.path.join(proc_path, standard_combined))
-    
     # Remove corrected spectra
-    # for filepath in glob.glob(os.path.join(proc_path, 'tcspectra_combined*.fits')):
-    #    os.remove(filepath)
-    #for filepath in corrected_files:
-    #    os.remove(filepath)
+    os.remove(telluric_path)
+    for filepath in glob.glob(os.path.join(proc_path, 'tcspectra_combined*.fits')):
+       os.remove(filepath)
+    for filepath in corrected_files:
+       os.remove(filepath)
 
 
 #    [
