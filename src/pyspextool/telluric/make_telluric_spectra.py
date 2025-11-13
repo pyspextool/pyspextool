@@ -44,7 +44,7 @@ def make_telluric_spectra(
     # Check the variable
     #
 
-    if tc.state['correction_method'] == 'deconvolution' and \
+    if tc.state['kernel_method'] == 'deconvolution' and \
        tc.state['correction_type'] == 'A0 V':
              
         if tc.state['kernel_done'] is False:

@@ -209,6 +209,7 @@ def load_standard(
     config.state['standard_vmag'] = result['vmag']
     config.state['standard_bmag'] = result['bmag']
     config.state['standard_teff'] = sptype2teff(result['sptype'])
+    config.state['standard_rv'] = 0.0
 
     #
     # Load and store the hydrogen lines
@@ -262,7 +263,7 @@ def load_standard(
 
     result = _load_modeinfo(fullpath, dict["obsmode"])
 
-    config.state["correction_method"] = result['method'].replace(" ", "")
+    config.state["kernel_method"] = result['kernel_method'].replace(" ", "")
     config.state["vega_model"] = result['model']
     config.state["normalization_order"] = result['normalization_order']
     config.state["normalization_line"] = result['normalization_line']
@@ -366,7 +367,7 @@ def _load_modeinfo(
 
     Loads data into memory:
 
-        tc.state['method']
+        tc.state['kernel_method']
         tc.state['model']
         tc.state['normalized_order']
         tc.state['normalization_line']
@@ -438,7 +439,7 @@ def _load_modeinfo(
     # Save and return the results
     #
     
-    dict = {'method':method,
+    dict = {'kernel_method':method,
             'model':model,
             'normalization_order':order,
             'normalization_line':line,            
