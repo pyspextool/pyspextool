@@ -42,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2025 Nov 6'
+VERSION = '2025 Nov 13'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -168,6 +168,8 @@ OBSERVATION_PARAMETERS_OPTIONAL = {
 	'SCALE_RANGE': [1.0,1.5],
 	'SKY': None,
 	'INDIVIDUAL': True,
+	'SCALE_ORDER': None,
+	'SCALE_WAVELENGTHRANGE': None,
 }
 
 # these are default parameters for QA page creation
@@ -1103,9 +1105,23 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 # shorthand for order/orders
 			for k in ['ORDER','ORDERS']:
 				if k in list(new_opar.keys()): new_opar['TARGET_ORDERS'] = new_opar[k]
-# shorthand for STANDARD order/orders (separated on 5/14/2025)
+# shorthand for STANDARD order/orders
 			for k in ['STDORDER','STDORDERS']:
 				if k in list(new_opar.keys()): new_opar['STD_ORDERS'] = new_opar[k]
+# shorthand for order used to scale science spectra
+			for k in ['SCLORDER','SCALE']:
+				if k in list(new_opar.keys()): 
+					try:
+						x = int(new_opar[k])
+						new_opar['TARGET_SCALE_ORDER'] = x
+					except: logging.info(' Warning: could not interpret scaling order {} which must be an int; retaining {}'.format(new_opar[k],new_opar['TARGET_SCALE_ORDER']))
+# shorthand for order used to scale STANDARD spectra
+			for k in ['STDSCLORDER','STDSCALE']:
+				if k in list(new_opar.keys()): 
+					try:
+						x = int(new_opar[k])
+						new_opar['STD_SCALE_ORDER'] = x
+					except: logging.info(' Warning: could not interpret scaling order {} which must be an int; retaining {}'.format(new_opar[k],new_opar['STD_SCALE_ORDER']))
 # shorthand for individual extractions
 			for k in ['INDIVIDUAL','IND','EACH']:
 				if k in list(new_opar.keys()): 
@@ -2324,7 +2340,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				ps.combine.combine(
 					[spar['SPECTRA_FILE_PREFIX'],fnumstr],
 					outfile,
-					verbose=parameters['VERBOSE']
+					verbose=parameters['VERBOSE'],
+					scale_order=spar['TARGET_SCALE_ORDER'],
+					scale_wavelengthrange=spar['TARGET_SCALE_WAVELENGTHRANGE'],
 				)
 
 ### FLUX CAL ###
@@ -2356,7 +2374,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				ps.combine.combine(
 					[spar['SPECTRA_FILE_PREFIX'],fnumstr],
 					outfile,
-					verbose=parameters['VERBOSE']
+					verbose=parameters['VERBOSE'],
+					scale_order=spar['STD_SCALE_ORDER'],
+					scale_wavelengthrange=spar['STD_SCALE_WAVELENGTHRANGE'],
 				)
 
 ####################
