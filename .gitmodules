@@ -1,0 +1,3 @@
+[submodule "tests/test_data"]
+	path = tests/test_data
+	url = git@github.com:pyspextool/test_data.git
