@@ -56,6 +56,7 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
     
     # Setup pyspextool
     pyspextool_setup(
+        instrument=setup_dict["instrument"],
         proc_path=proc_path,
         qa_extension='.png',
         qa_showblock=False,
@@ -99,14 +100,14 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
     assert os.path.exists(telluric_path), f"Telluric correction file not created for {setup_name}"
     
     # CLEANUP - remove generated files
-    os.remove(telluric_path)
+    #os.remove(telluric_path)
     
     # Remove combined spectra
-    for pattern in [f'cspectra_object_{setup_name}.fits', 
-                     f'cspectra_standard_{setup_name}.fits',
-                     'tcspectra_object*.fits']:
-        for filepath in glob.glob(os.path.join(proc_path, pattern)):
-            os.remove(filepath)
+    #for pattern in [f'cspectra_object_{setup_name}.fits', 
+    #                 f'cspectra_standard_{setup_name}.fits',
+    #                 'tcspectra_object*.fits']:
+    #    for filepath in glob.glob(os.path.join(proc_path, pattern)):
+    #        os.remove(filepath)
 
 
 @pytest.mark.parametrize("setup_name", ["spex_prism"])
@@ -128,6 +129,7 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
     
     # Setup pyspextool
     pyspextool_setup(
+        instrument=setup_dict["instrument"],
         proc_path=proc_path,
         qa_extension='.png',
         qa_showblock=False,
@@ -193,10 +195,10 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
     os.remove(os.path.join(proc_path, standard_combined))
     
     # Remove corrected spectra
-    for filepath in glob.glob(os.path.join(proc_path, 'tcspectra_combined*.fits')):
-        os.remove(filepath)
-    for filepath in corrected_files:
-        os.remove(filepath)
+    # for filepath in glob.glob(os.path.join(proc_path, 'tcspectra_combined*.fits')):
+    #    os.remove(filepath)
+    #for filepath in corrected_files:
+    #    os.remove(filepath)
 
 
 #    [
