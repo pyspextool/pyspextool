@@ -126,12 +126,26 @@ def postextraction_setup():
             "standard_files": ['spectra', '636-645'],
             "standard_name": "HD 165029",
         },
-        "spex_lxd": {
+        "spex_lxd_1_9": {
+            "instrument": "spex",
+            "proc_path": "tests/test_data/PostExtractionTests/spex-LongXD1.9/",
+            "object_files": ['spectra', '200-205'],
+            "standard_files": ['spectra', '176-189'],
+            "standard_name": "HD 7927",
+        },
+        "spex_lxd_2_1": {
             "instrument": "spex",
             "proc_path": "tests/test_data/PostExtractionTests/spex-LongXD2.1/",
             "object_files": ['spectra', '585-594'],
             "standard_files": ['spectra', '595-614'],
             "standard_name": "HD 165029",
+        },
+        "spex_lxd_2_3": {
+            "instrument": "spex",
+            "proc_path": "tests/test_data/PostExtractionTests/spex-LongXD2.3/",
+            "object_files": ['spectra', '555-564'],
+            "standard_files": ['spectra', '565-574'],
+            "standard_name": "BS3314",
         },
         "uspex_prism": {
             "instrument": "uspex",
@@ -146,6 +160,20 @@ def postextraction_setup():
             "object_files": ['spectra', '11-20'],
             "standard_files": ['spectra', '1-10'],
             "standard_name": "HD 17778",
+        },
+        "uspex_lxd_long": {
+            "instrument": "uspex",
+            "proc_path": "tests/test_data/PostExtractionTests/uspex-LXD_Long/",
+            "object_files": ['spectra', '23-32'],
+            "standard_files": ['spectra', '33-42'],
+            "standard_name": "HD 223352",
+        },
+        "uspex_sxd": {
+            "instrument": "uspex",
+            "proc_path": "tests/test_data/PostExtractionTests/uspex-ShortXD/",
+            "object_files": ['spectra', '1-6'],
+            "standard_files": ['spectra', '9-16'],
+            "standard_name": "HD 222332",
         },
     }
     return postextraction_setup

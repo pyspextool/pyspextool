@@ -35,9 +35,13 @@ def test_telluric(setup_name, proc_setup):
 @pytest.mark.parametrize("setup_name", [
     "spex_prism",      # Minimum requirement - crucial
     "spex_sxd",        # Optional
-    "spex_lxd",        # Preferred
+    "spex_lxd_1_9",    # Optional - LongXD 1.9
+    "spex_lxd_2_1",    # Preferred - LongXD 2.1
+    "spex_lxd_2_3",    # Optional - LongXD 2.3
     "uspex_prism",     # Optional
     "uspex_lxd_short", # Optional
+    "uspex_lxd_long",  # Optional
+    "uspex_sxd",       # Optional
 ])
 def test_telluric_postextraction(setup_name, postextraction_setup):
     """
