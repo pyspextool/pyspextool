@@ -19,6 +19,7 @@ NOTEBOOKS = [
     "uspex-prism-example.ipynb",
     "uspex-sxd-example.ipynb",
     "uspex-lxd-example.ipynb",
+    "merge-orders-example.ipynb",
 ]
 
 
