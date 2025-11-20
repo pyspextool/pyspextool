@@ -58,4 +58,4 @@ jobs:
     
     - name: Test with pytest
       run: |
-        pytest -o log_cli=true --log-level=DEBUG 
+        pytest -o log_cli=true --log-level=DEBUG -m "not slow"

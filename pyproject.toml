@@ -39,3 +39,8 @@ include-package-data = true
 "*" = ["*.dat","*.fits","*.csv","*.txt","*.css"] # includes the data files in instrument_data/ and data/ and batch/
 
 [tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: mark test as slow",
+]
