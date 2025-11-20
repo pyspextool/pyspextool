@@ -5,30 +5,6 @@ import pytest
 import os
 import glob
 
-@pytest.mark.parametrize("setup_name", ["uspex_sxd"])
-def test_telluric(setup_name, proc_setup):
-    """Test telluric correction with uspex SXD data (existing test)"""
-    setup_dict = proc_setup[setup_name]
-    proc_path = setup_dict["proc_path"]
-    qa_extension = '.png'
-    qa_showblock = False  # Changed to False to avoid blocking
-    pyspextool_setup(
-                    proc_path=proc_path, 
-                    qa_extension=qa_extension,
-                    qa_showblock=qa_showblock,
-                    verbose=False)
-    telluric(['spectra','1-6'] ,'cspectra9-16.fits', 'HD17778', \
-                     'telluric', 'tcspectra')
-
-    telluric_path = os.path.join(proc_path, 'telluric.fits')
-    assert os.path.exists(telluric_path)
-
-    # CLEANUP
-    # remove generated files
-    os.remove(telluric_path)
-    for files in glob.glob(os.path.join(proc_path, 'tcspectra*.fits')):
-        os.remove(files)
-
 
 @pytest.mark.parametrize("setup_name", [
     "spex_prism",
