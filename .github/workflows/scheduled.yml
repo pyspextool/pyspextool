@@ -5,10 +5,8 @@ name: Python package
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: '*'
+  schedule:
+    - cron: '0 3 * * 0' # At 03:00 on Sundays
 
 jobs:
   build:
@@ -58,4 +56,4 @@ jobs:
     
     - name: Test with pytest
       run: |
-        pytest -o log_cli=true --log-level=DEBUG -m "not slow"
+        pytest -o log_cli=true --log-level=DEBUG
