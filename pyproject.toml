@@ -45,3 +45,11 @@ include-package-data = true
 markers = [
     "slow: mark test as slow",
 ]
+
+[tool.coverage.run]
+source = ["pyspextool"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
