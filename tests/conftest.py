@@ -1,4 +1,31 @@
+import os
 import pytest
+
+_TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), "test_data")
+_TEST_DATA_AVAILABLE = os.path.isdir(_TEST_DATA_PATH) and bool(os.listdir(_TEST_DATA_PATH))
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests that require the test_data submodule when it is not available."""
+    if not _TEST_DATA_AVAILABLE:
+        skip_marker = pytest.mark.skip(reason="test_data submodule not cloned")
+        requires_test_data_files = {
+            "test_combine.py",
+            "test_locate_orders.py",
+            "test_make_flat.py",
+            "test_make_wavecal.py",
+            "test_override_aperturesigns.py",
+            "test_telluric.py",
+        }
+        requires_test_data_tests = {
+            ("test_files.py", "test_inoutfiles_to_fullpaths"),
+        }
+        for item in items:
+            basename = os.path.basename(str(item.fspath))
+            if basename in requires_test_data_files:
+                item.add_marker(skip_marker)
+            elif (basename, item.originalname) in requires_test_data_tests:
+                item.add_marker(skip_marker)
 
 
 @pytest.fixture
