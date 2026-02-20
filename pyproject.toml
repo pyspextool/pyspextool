@@ -28,7 +28,8 @@ dynamic = ["version"]
 [project.optional-dependencies]
 test = [
     "pytest",
-    "ruff"
+    "ruff",
+    "pytest-cov",
     ]
 
 [tool.setuptools]
