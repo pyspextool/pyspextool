@@ -41,6 +41,16 @@ jobs:
     
     - name: Git LFS Pull
       run: git lfs pull
+
+    - name: Get test_data submodule commit SHA
+      id: test_data_sha
+      run: echo "sha=$(git ls-tree HEAD tests/test_data | awk '{print $3}')" >> $GITHUB_OUTPUT
+
+    - name: Restore test_data cache
+      uses: actions/cache/restore@v4
+      with:
+        path: tests/test_data
+        key: ${{ runner.os }}-test-data-${{ steps.test_data_sha.outputs.sha }}
   
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5

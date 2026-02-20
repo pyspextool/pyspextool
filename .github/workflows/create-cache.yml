@@ -25,6 +25,16 @@ jobs:
     
     - name: Git LFS Pull
       run: git lfs pull
+
+    - name: Get test_data submodule commit SHA
+      id: test_data_sha
+      run: echo "sha=$(git ls-tree HEAD tests/test_data | awk '{print $3}')" >> $GITHUB_OUTPUT
+
+    - name: Save test_data cache
+      uses: actions/cache/save@v4
+      with:
+        path: tests/test_data
+        key: ${{ runner.os }}-test-data-${{ steps.test_data_sha.outputs.sha }}
   
     - name: Save LFS Cache 
       uses: actions/cache/save@v4
