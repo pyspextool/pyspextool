@@ -683,7 +683,7 @@ def processFolder(folder,verbose=False):
 # generate pandas data frame
 	dp = pd.DataFrame()
 	dp['FILE'] = [os.path.basename(f) for f in files]
-	for k in list(HEADER_DATA.keys()): dp[k] = ['']*len(dp)
+	for k in list(HEADER_DATA.keys()): dp[k] = pd.Series(['']*len(dp), dtype=object)
 
 # run through each file header and populate the dataframe
 	for i,f in enumerate(files):
@@ -922,8 +922,8 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 
 # add in SIMBAD information using astroquery.simbad
 # try statement to catch cases where simbad is not accessible
-	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
-	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
+	dpout.loc[:,'SIMBAD_SEP'] = pd.Series(['']*len(dpout), dtype=object, index=dpout.index)
+	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = pd.Series(['']*len(dpout), dtype=object, index=dpout.index)
 #	try:
 	sb = Simbad()
 	for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
@@ -973,7 +973,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 #	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 
 # add on a NOTES column
-	dpout['NOTES'] = ['']*len(dpout)
+	dpout['NOTES'] = pd.Series(['']*len(dpout), dtype=object)
 	
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
