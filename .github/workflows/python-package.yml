@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python package
+name: Fast tests and code coverage
 
 on:
   workflow_dispatch:
@@ -39,7 +39,7 @@ jobs:
           ${{ runner.os }}-lfs-
           ${{ runner.os }}
     
-    - name: Git LFS Pull
+    - name: Update LFS files
       run: git lfs pull
   
     - name: Set up Python ${{ matrix.python-version }}
@@ -54,7 +54,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install ".[test]"
     
-    - name: Test with pytest
+    - name: Test with pytest and generate coverage reports
       run: |
         pytest -o log_cli=true --log-level=DEBUG -m "not slow" --cov --cov-branch --cov-report=xml
 
