@@ -52,10 +52,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        python -m pip install pytest pytest-cov
-        python -m pip install .
+        python -m pip install ".[test]"
     
-    - name: Test with pytest
+    - name: Test with pytest and generate coverage reports
       run: |
         pytest -o log_cli=true --log-level=DEBUG -m "not slow" --cov --cov-branch --cov-report=xml
 
