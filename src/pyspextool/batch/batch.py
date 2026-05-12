@@ -42,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2026 Feb 20'
+VERSION = '2026 Apr 21'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -108,12 +108,13 @@ BATCH_PARAMETERS = {
 	'SCIENCE_FILE_PREFIX': 'spc',
 	'SPECTRA_FILE_PREFIX': 'spectra',
 	'COMBINED_IMAGE_FILE_PREFIX': 'combim',
+	'COMBINED_SPECTRA_FILE_PREFIX': 'spectra-combim',
 	'COMBINED_FILE_PREFIX': 'combspec',
 	'TELLURIC_FILE_PREFIX': 'telluric',
 	'CALIBRATED_FILE_PREFIX': 'calspec',
 	'CALIBRATED_FILE_SUFFIX': 'comb',
-	'MERGED_FILE_PREFIX': 'merged',
-	'MERGED_FILE_SUFFIX': 'merged',
+	'MERGED_FILE_PREFIX': 'merged-orders',
+	'MERGED_FILE_SUFFIX': 'merged-orders',
 	'PROGRAM': '',
 	'OBSERVER': '',
 	# 'qa_write': True,
@@ -685,7 +686,7 @@ def processFolder(folder,verbose=False):
 # generate pandas data frame
 	dp = pd.DataFrame()
 	dp['FILE'] = [os.path.basename(f) for f in files]
-	for k in list(HEADER_DATA.keys()): dp[k] = pd.Series(['']*len(dp), dtype=object)
+	for k in list(HEADER_DATA.keys()): dp[k] = ['']*len(dp)
 
 # run through each file header and populate the dataframe
 	for i,f in enumerate(files):
@@ -924,8 +925,8 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 
 # add in SIMBAD information using astroquery.simbad
 # try statement to catch cases where simbad is not accessible
-	dpout.loc[:,'SIMBAD_SEP'] = pd.Series(['']*len(dpout), dtype=object, index=dpout.index)
-	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = pd.Series(['']*len(dpout), dtype=object, index=dpout.index)
+	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
+	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 #	try:
 	sb = Simbad()
 	for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
@@ -975,7 +976,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 #	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 
 # add on a NOTES column
-	dpout['NOTES'] = pd.Series(['']*len(dpout), dtype=object)
+	dpout['NOTES'] = ['']*len(dpout)
 	
 # save depends on file name
 	ftype = parameters['FILENAME'].split('.')[-1]
@@ -1007,6 +1008,8 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 ##### BATCH DRIVER FILE #####
 #############################
 
+# TO BE ADDED:
+# - OPTIONS FOR EXTRACTING/REDUCING STANDARD IN NON-REGULAR WAYS (A-SKY, ORDERS, IMCOMBINE)
 def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 	'''
 	Purpose
@@ -1096,10 +1099,15 @@ def readDriver(driver_file,options={},verbose=ERROR_CHECKING):
 			new_opar = dict([l.strip().split('=') for l in opars])
 			for k in list(new_opar.keys()): new_opar[k.upper()] = new_opar.pop(k)
 # process special cases
-# Use guess or fixed apertures
-			for k in ['GUESS','FIXED']:
+# Use guess apertures
+			for k in ['GUESS','TRY','MAYBE']:
 				if k in list(new_opar.keys()):
-					new_opar['TARGET_APERTURE_METHOD'] = k.lower()
+					new_opar['TARGET_APERTURE_METHOD'] = 'guess'
+					new_opar['TARGET_APERTURE_POSITIONS'] = [float(x) for x in new_opar[k].split(',')]
+# Use fixed apertures
+			for k in ['FORCE','FIXED','FIX']:
+				if k in list(new_opar.keys()):
+					new_opar['TARGET_APERTURE_METHOD'] = 'fixed'
 					new_opar['TARGET_APERTURE_POSITIONS'] = [float(x) for x in new_opar[k].split(',')]
 # override for subtraction mode - necessary?
 			if 'SUB' in list(new_opar.keys()):
@@ -2140,7 +2148,10 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 	ps.pyspextool_setup(parameters['INSTRUMENT'],raw_path=parameters['DATA_FOLDER'], cal_path=parameters['CALS_FOLDER'], \
 		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],
 		qa_show=False,qa_showblock=False,qa_write=True,verbose=parameters['VERBOSE'])
-
+# make sure qa image and spectra folders are in place
+	for x in ['QA_IMAGE_FOLDER','QA_SPECTRA_FOLDER']:
+		if os.path.exists(os.path.combine(parameters['DATA_FOLDER'],x))==False:
+		shutil.mkdir(os.path.combine(parameters['DATA_FOLDER'],x))
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
@@ -2196,6 +2207,15 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 			else:
 				if parameters['VERBOSE']==True: logging.info(' wavecal{}.fits already created, skipping (use --overwrite option to remake)'.format(cs))
 
+
+# TO DO - CHANGE THE ORDER OF THIS:
+#  - DO ALL PAIRWISE SUBTRACTIONS AND SAVE IMAGES --> MAKE QA PAGE
+#  - DO ALL STANDARDS (EXTRACT AND COMBINE AND FLUX COORECTION) --> MAKE QA PAGE
+#  - DO ALL SOURCES:
+#    - EXTRACT --> MAKE QA PAGE
+#    - COMBINE --> MAKE QA PAGE
+#    - CORRECT --> MAKE QA PAGE
+#    - MERGE --> MAKE QA PAGE
 
 # extract all sources and standards
 	bkeys = list(filter(lambda x: OBSERVATION_SET_KEYWORD not in x,list(parameters.keys())))
@@ -2287,20 +2307,20 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 						[spar['TARGET_PREFIX'],spar['TARGET_FILES']],
 						output_fileroot=outfile,
 						beam_mode='A-B',
-						flatfield=True,
+						flatfield=False,
 						flatfield_filename=spar['STD_FLAT_FILE'],
 						verbose=parameters['VERBOSE'],
 					)
 
 # extract combined images
-				outfile = '{}{}'.format(spar['SPECTRA_FILE_PREFIX'],fsuf)
+				infile = '{}{}'.format(spar['COMBINED_IMAGE_FILE_PREFIX'],fsuf)
+				outfile = '{}{}'.format(spar['COMBINED_SPECTRA_FILE_PREFIX'],fsuf)
 				if os.path.exists(os.path.join(spar['PROC_FOLDER'],'{}.fits'.format(outfile)))==True and parameters['OVERWRITE']==False:
 					if parameters['VERBOSE']==True: logging.info(' Extracted spectrum {}.fits already created (use --overwrite option to reextract)'.format(outfile))
 				else:
-					print(spar['PROC_FOLDER'])
 					ps.extract.extract(
 						'A',
-						'{}{}.fits'.format(spar['COMBINED_IMAGE_FILE_PREFIX'],spar['TARGET_FILES']),
+						'{}.fits'.format(infile),
 						spar['TARGET_FLAT_FILE'],
 						spar['TARGET_WAVECAL_FILE'],
 						aperture_find,
@@ -2379,7 +2399,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 # combine spectra from combined image extraction
 				if spar['IMCOMBINE']==True:
 					ps.combine.combine(
-						'{}{}.fits'.format(spar['SPECTRA_FILE_PREFIX'],fsuf),
+						'{}{}.fits'.format(spar['COMBINED_SPECTRA_FILE_PREFIX'],fsuf),
 						outfile,
 						scale_spectra=True,
 #						correct_spectral_shape=False,
@@ -2641,7 +2661,7 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 				qainfile = '{}{}{}'.format(spar['MERGED_FILE_PREFIX'],tsuf,parameters['PLOT_TYPE'])
 				qainfull = os.path.join(qafold,qainfile)
 				if os.path.exists(qainfull)==False:
-					qafold = os.path.join(qafold,'images')
+					qafold = os.path.join(qafold,QA_IMAGE_FOLDER)
 					qainfull = os.path.join(qafold,qainfile)
 				if os.path.exists(qainfull)==True:
 					qaoutfile = '{}-{}_{}_{}_{}_{}-{}{}'.format(parameters['INSTRUMENT'],spar['MODE'].lower(),name,date,parameters['PROGRAM'],tsuf,spar['MERGED_FILE_SUFFIX'],parameters['PLOT_TYPE'])
@@ -2773,6 +2793,8 @@ def test(verbose=ERROR_CHECKING):
 	'''	
 	testdatafold = os.path.join(CODEDIR,"../../tests/test_data/")
 	if os.path.exists(testdatafold)==False:  testdatafold = os.path.join(CODEDIR,"tests","test_data/")
+	if os.path.exists(testdatafold)==False: 
+		raise ValueError('Cannot find test data in {} or {}'.format(os.path.join(CODEDIR,"../../tests/test_data/"),os.path.join(CODEDIR,"tests","test_data/")))
 	instrumentdatafold = os.path.join(CODEDIR,"instruments/")
 	reductiondatafold = os.path.join(CODEDIR,"data/")
 #########	
