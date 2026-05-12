@@ -63,7 +63,7 @@ def extract(
     ----------
     reduction_mode : str
 
-    filenamess : str or list
+    filenames : str or list
         If type is str, then a comma-separated string of full file names, 
         e.g. 'spc00001.a.fits, spc00002.b.fits'.
 
@@ -72,8 +72,64 @@ def extract(
         index numbers of the files, e.g. ['spc', '1-2,5-10,13,14'].
     
 
-    flat_name
+    flat_name :
 
+    wavecal_name :
+
+    aperture_findinfo : list
+        A (2,) list if
+
+        list[0] = 'auto' then list[1] is the number of apertures to
+        search for.
+
+        list[0] = 'guess' then list[1] is a (2,) list giving guess positions
+
+        list[0] = 'fixed' then list[1] is a (2,) list giving positions
+
+    aperture_radii :
+
+    output_filenames : str, default=None
+
+    output_prefix : str, default = 'spectra'
+
+    input_extension : str, default = '.fits*'
+
+    load_directory : default = 'raw'
+
+    flat_field : bool, default = True,
+
+    linearity_correction : bool, default = True,
+
+    detector_info : dict, default = None,
+
+    write_rectified_orders:bool=False,
+
+    seeing_fwhm : float, default = 0.8 (arcseconds).
+        The approximate FWHM of the peak to be identified.  Only used 
+        if `method` is 'auto' or 'guess'.
+
+    ybuffer : int, default 3
+        The number of pixels on the edge of the orders to ignore.  Useful
+        as sometimes there is a downturn that can mess with the finding
+        routine.
+       
+    qa_show : {None, True, False}, optional
+        Set to True/False to override config.state['qa_show'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be interactively generated.
+
+    qa_showsize : tuple, default None
+        A (2,) tuple giving the plot size that is passed to matplotlib as,
+        pl.figure(figsize=(qa_showsize)) for the interactive plot.
+
+    qa_write : {None, True, False}, optional
+        Set to True/False to override config.state['qa_write'] in the
+        pyspextool config file.  If set to True, quality assurance
+        plots will be written to disk.
+
+    verbose : {None, True, False}, optional
+        Set to True/False to override config.state['verbose'] in the
+        pyspextool config file.
 
     """
 
@@ -147,7 +203,7 @@ def extract(
         else:
 
             output_filenames = []
-            for file in files:
+            for file in filenames:
 
                 root = os.path.splitext(os.path.basename(file))
                 if root[1] == '.gz':

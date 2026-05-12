@@ -189,6 +189,10 @@ def prepare_line(
     wavelength = wavelength[zselection]
     flux = flux[zselection]
 
+    pl.figure()
+    pl.plot(wavelength,flux)
+    pl.show()
+    
     # Fit the line and continuum
 
     idx = find_index(wavelength,line_wavelength)
@@ -205,7 +209,7 @@ def prepare_line(
 
     continuum_coefficients = result['parms'][3:]
     line_center = float(result['parms'][1])
-    line_halfwidth = float(result['parms'][2])
+    line_halfwidth = float(np.absolute(float(result['parms'][2])))
 
     continuum = poly_1d(wavelength, continuum_coefficients)    
     normalized_flux = flux/continuum

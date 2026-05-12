@@ -19,6 +19,7 @@ dependencies = [
     "git-lfs",
     "astroquery >0.4.8",
     "specutils",
+    "regions",
     "dust_extinction",
     "jinja2",
     "pooch",

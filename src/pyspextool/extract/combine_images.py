@@ -258,10 +258,11 @@ def combine_images(files:str | list,
 
         flatinfo = read_flat_fits(file_name)
         rotation = flatinfo['rotation']
-        edgecoeffs = flatinfo['edgecoeffs']
-        xranges = flatinfo['xranges']
-        orders = flatinfo['orders']
-        ybuffer = flatinfo['ybuffer']
+        # edgecoeffs = flatinfo['edgecoeffs']
+        # xranges = flatinfo['xranges']
+        # orders = flatinfo['orders']
+        # ybuffer = flatinfo['ybuffer']
+
 
         unrotate = True
 
@@ -304,12 +305,16 @@ def combine_images(files:str | list,
             logging.info(' Scaling the orders to a common intensity level.')
 
             result = scale_order_background(data,
-                                            orders,
-                                            edgecoeffs,
-                                            xranges,
+                                            flatinfo['orders'],
+                                            flatinfo['edgecoeffs'],
+                                            flatinfo['xranges'],
+            #                                 orders,
+            #                                 edgecoeffs,
+            #                                 xranges,
                                             var_stack=var,
                                             ybuffer=ybuffer,
                                             verbose=qa['verbose'])
+
 
             data = result[0]
             var = result[1]
@@ -379,8 +384,8 @@ def combine_images(files:str | list,
 
         logging.info(' Flat fielding the image.')
 
-        np.divide(mean, extract.state['flat'], out=mean)
-        np.divide(var, extract.state['flat'] ** 2, out=var)
+        np.divide(mean, flatinfo['flat'], out=mean)
+        np.divide(var, flatinfo['flat'] ** 2, out=var)
 
     #
     # Unrotate the images if necessary

@@ -397,7 +397,7 @@ def load_image(
 #            z = deltas == np.min(np.abs(deltas))
             zind = np.argmin(np.abs(deltas))
                              
-            logging.info(' Loading the atmospheric tranmission at R='+\
+            logging.info(' Loading the atmospheric transmission at R='+\
                          str(rps[zind])+'.')
             
             # Load that file

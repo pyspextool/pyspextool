@@ -134,6 +134,12 @@ def get_radialvelocity(
     window[0] = max(window[0],np.nanmin(wavelength))
     window[1] = min(window[1],np.nanmax(wavelength))                   
     
+    print(window)
+    print(tc.state['line_fwhm'])
+    print(fwhm_scale)
+    print(range)
+    print(tc.state['line_center'])
+
     tc.state['rv_window'] = window
         
     #
