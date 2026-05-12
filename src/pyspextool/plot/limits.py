@@ -166,11 +166,13 @@ def get_spectra_range(*args,
         
         longlist = longlist+tmp
     
-    # Get the min and max value, ignoring NaNs
+    # Get the min and max value, ignoring NaNs - changed to quantile
 
-    minval = np.nanmin(longlist)
+    # minval = np.nanmin(longlist)
+    # maxval = np.nanmax(longlist)
 
-    maxval = np.nanmax(longlist)
+    minval = np.nanquantile(longlist,0.05)
+    maxval = np.nanquantile(longlist,0.95)    
 
     # Expand the range if asked
     
@@ -234,11 +236,14 @@ def get_stack_range(stack:npt.ArrayLike,
             duplicate[i,:] = result['fit']
 
     #
-    # Find the range
+    # Find the range - changed to quantile
     #
             
-    minval = np.nanmin(duplicate)
-    maxval = np.nanmax(duplicate)    
+    # minval = np.nanmin(duplicate)
+    # maxval = np.nanmax(duplicate)    
+
+    minval = np.nanquantile(duplicate,0.05)
+    maxval = np.nanquantile(duplicate,0.95)    
 
     #
     # Expand the range if asked

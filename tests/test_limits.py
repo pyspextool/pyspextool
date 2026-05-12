@@ -20,12 +20,12 @@ def test_get_spectra_range():
     spec2 = np.array([4,5,6])
 
     range = get_spectra_range(spec1,spec2)
-    assert range[0] == 1.0
-    assert range[1] == 6.0
+    assert range[0] == 1.25
+    assert range[1] == 5.75
 
     range = get_spectra_range(spec1,spec2,frac=0.1)
-    assert range[0] == 0.5
-    assert range[1] == 6.5
+    assert range[0] == 0.8
+    assert range[1] == 6.2
 
 
     

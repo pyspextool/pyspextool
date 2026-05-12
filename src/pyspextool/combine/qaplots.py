@@ -113,13 +113,13 @@ def plot_allorders(
         wavelength_ranges[i,:] = np.array([np.nanmin(wavelength[0,i]),
                                            np.nanmax(wavelength[0,i])])
 
-        intensity_ranges[i,:] = get_stack_range(intensity[0,i], savgol=True,
+        intensity_ranges[i,:] = get_stack_range(intensity[0,i], savgol=False, # changed
                                                 frac=0.05)
 
-        uncertainty_ranges[i,:] = get_stack_range(uncertainty[0,i], savgol=True,
+        uncertainty_ranges[i,:] = get_stack_range(uncertainty[0,i], savgol=False,
                                                 frac=0.05)        
 
-        snr_ranges[i,:] = get_stack_range(snr[0,i], savgol=True, frac=0.05)
+        snr_ranges[i,:] = get_stack_range(snr[0,i], savgol=False, frac=0.05)
         
         
     # Find the minimum and maximum values
