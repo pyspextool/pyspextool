@@ -32,3 +32,4 @@ develop-eggs
 
 .tmp
 .vscode
+.coverage
