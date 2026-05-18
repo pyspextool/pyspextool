@@ -18,10 +18,10 @@ def write_telluric_spectra(
     qa_write:bool=None):
 
     """
-    Write telluric-corrected spectra in pySpextool FITS files to disk.
+    Write telluric-corrected spectra (pySpextool FITS format) to disk.
 
-    Will write the telluric-corrected spectra to disk, and optionally the
-    telluric correction spectra and the (Vega) model spectra.  
+    Will write the telluric-corrected spectra to disk, and optionally 1) the
+    telluric correction spectra and 2) the (Vega) model spectra.  
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def write_telluric_spectra(
     Returns
     -------
     None
-        Writes pyspextool FITS files and QA plots to disk.
+        Writes pyspextool FITS files to disk.
     
     """
 
@@ -65,23 +65,23 @@ def write_telluric_spectra(
     # Check parameters and keywords
     #
 
-    check_parameter('write_telluric_spectra', 'write_model_spectra', \
+    check_parameter('write_telluric_spectra', 'write_model_spectra',
                     write_model_spectra, 'bool')
 
-    check_parameter('write_telluric_spectra', 'verbose', verbose, \
-                    ['NoneType','bool'])
+    check_parameter('write_telluric_spectra', 'verbose', 
+                    verbose, ['NoneType','bool'])
     
-    check_parameter('write_telluric_spectra', 'qa_show', qa_show, \
-                    ['NoneType','bool'])
+    check_parameter('write_telluric_spectra', 'qa_show', 
+                    qa_show, ['NoneType','bool'])
 
-    check_parameter('write_telluric_spectra', 'qa_showscale', qa_showscale,
-                    ['NoneType','float','int'])
+    check_parameter('write_telluric_spectra', 'qa_showscale', 
+                    qa_showscale, ['NoneType','float','int'])
     
-    check_parameter('write_telluric_spectra', 'qa_showblock', qa_showblock,
-                    ['NoneType','bool'])
+    check_parameter('write_telluric_spectra', 'qa_showblock', 
+                    qa_showblock, ['NoneType','bool'])
         
-    check_parameter('write_telluric_spectra', 'qa_write', qa_write, \
-                    ['NoneType','bool'])
+    check_parameter('write_telluric_spectra', 'qa_write', 
+                    qa_write, ['NoneType','bool'])
 
     check_qakeywords(
         verbose=verbose,
@@ -161,12 +161,16 @@ def write_telluric_spectra(
         # Write the file out
         #
 
-        full_path = os.path.join(setup.state['proc_path'],
-                                 config.state['telluric_output_filename']+\
-                                 '_model.fits')    
+        full_path = os.path.join(
+            setup.state['proc_path'],
+            config.state['telluric_output_filename']+\
+            '_model.fits')    
 
-        fits.writeto(full_path, config.state['model_spectra'], newhdr,
-                     overwrite=True)
+        fits.writeto(
+            full_path, 
+            config.state['model_spectra'], 
+            newhdr,
+            overwrite=True)
         
         logging.info(' Wrote file '+os.path.basename(full_path) + \
                      ' to the proc directory.')
@@ -230,18 +234,21 @@ def write_telluric_spectra(
     hdrinfo['TC_STDV'] = value
     
     if 'standard_rv' in list(config.state.keys()):
+
         value = [float('{:.2f}'.format(config.state['standard_rv'])),
                  'Telluric standard radial velocity (km s-1)']
         hdrinfo['TC_STDRV'] =  value
-    else: hdrinfo['TC_STDRV'] =  [0.,'Telluric standard radial velocity (km s-1)']
+    else: 
+
+        hdrinfo['TC_STDRV'] =  [0.,'Telluric standard radial velocity (km s-1)']
             
-    value = [config.state['correction_type'],'Telluric correction type']
-    hdrinfo['TC_TYPE'] = value
+    type = [config.state['correction_type'],'Telluric correction type']
+    hdrinfo['TC_TYPE'] = type
     
-    value = [config.state['kernel_method'], 'Kernel creation method']
-    hdrinfo['TC_METH'] = value
+    method = [config.state['telluric_method'], 'Kernel creation method']
+    hdrinfo['TC_METH'] = method
     
-    if config.state['kernel_method'] == 'deconvolution' and config.state['correction_type'] == 'A0 V':
+    if method == 'deconvolution' and type == 'A0 V':
         
         value = [float('{:.5f}'.format(config.state['max_deviation'])),
                  'Telluric maxmimum % deviation of Vega-data']
@@ -251,10 +258,16 @@ def write_telluric_spectra(
                  'Telluric RMS deviation of Vega-data']
         hdrinfo['TC_RMS'] = value
             
+    if method == 'IP' and config.state['pixel_shift_info'] is not None:
+
+        value = [float('{:.5f}'.format(config.state['model_pixelshift'])),
+                 ' Telluric model shift (pixels)']
+        hdrinfo['TC_MDSHT'] = value
+        
     # Add units to the hdrinfo
 
     result = get_latex_fluxdensity(config.state['intensity_unit'])[0]
-    
+
     hdrinfo['XUNITS'] = std_hdrinfo['XUNITS']
     hdrinfo['YUNITS'] = std_hdrinfo['YUNITS']
     hdrinfo['YUNITS'][0] = config.state['intensity_unit']+' / DN s-1'
@@ -273,8 +286,6 @@ def write_telluric_spectra(
         
     phdu = fits.PrimaryHDU()
     hdr = phdu.header
-
-
     
     # Add our keywords
     
@@ -288,8 +299,7 @@ def write_telluric_spectra(
         
         else:
             
-            hdr[keys[i]] = (hdrinfo[keys[i]][0], 
-                            hdrinfo[keys[i]][1])
+            hdr[keys[i]] = (hdrinfo[keys[i]][0], hdrinfo[keys[i]][1])
 
     #
     # Write the file out
@@ -300,7 +310,6 @@ def write_telluric_spectra(
         config.state['telluric_output_filename']+\
         '.fits')    
 
-    
     fits.writeto(
         telluric_fullpath,
         config.state['rawtc_spectra'],

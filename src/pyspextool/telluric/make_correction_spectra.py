@@ -3,9 +3,9 @@ from pyspextool.telluric import config
 
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.telluric.load_standard import load_standard
-from pyspextool.telluric.prepare_line import prepare_line
-from pyspextool.telluric.get_radialvelocity import get_radialvelocity
-from pyspextool.telluric.get_kernels import get_kernels
+from pyspextool.telluric.normalize_line import normalize_line
+from pyspextool.telluric.measure_radialvelocity import measure_radialvelocity
+from pyspextool.telluric.make_kernel import make_kernel
 from pyspextool.telluric.adjust_ews import adjust_ews
 from pyspextool.telluric.make_telluric_spectra import make_telluric_spectra
 from pyspextool.telluric.write_telluric_spectra import write_telluric_spectra
@@ -113,40 +113,44 @@ def make_correction_spectra(
     check_parameter('make_correction_spectra', 'standard_filename', 
                     standard_filename, 'str')
 
-    check_parameter('make_correction_spectra', 'standard_info', standard_info,
-                    ['str','list','dict'])
+    check_parameter('make_correction_spectra', 'standard_info', 
+                    standard_info, ['str','list','dict'])
         
     check_parameter('make_correction_spectra', 'correction_filename', 
                     correction_filename, 'str')
 
-    check_parameter('make_correction_spectra', 'correction_type', correction_type, \
-                    'str', possible_values=setup.state['telluric_correctiontypes'])
+    check_parameter('make_correction_spectra', 'correction_type', 
+                    correction_type, 'str', 
+                    possible_values=setup.state['telluric_correctiontypes'])
 
 
     check_parameter('make_correction_spectra', 'write_model_spectra',
                     write_model_spectra, 'bool')
     
-    check_parameter('make_correction_spectra', 'output_units', output_units, 'str')
+    check_parameter('make_correction_spectra', 'output_units', 
+                    output_units, 'str')
 
-    check_parameter('make_correction_spectra', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('make_correction_spectra', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
     
-    check_parameter('make_correction_spectra', 'qa_write', qa_write, \
-                    ['NoneType', 'bool'])
+    check_parameter('make_correction_spectra', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
 
-    check_parameter('make_correction_spectra', 'qa_show', qa_show, \
-                    ['NoneType', 'bool'])
+    check_parameter('make_correction_spectra', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
 
-    check_parameter('make_correction_spectra', 'qa_showscale', qa_showscale,
-                    ['int', 'float', 'NoneType'])
+    check_parameter('make_correction_spectra', 'qa_showscale', 
+                    qa_showscale, ['int', 'float', 'NoneType'])
 
-    check_parameter('make_correction_spectra', 'qa_showblock', qa_showblock,
-                    ['NoneType', 'bool'])
+    check_parameter('make_correction_spectra', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
 
     #
     # Load and store the standard spectra
@@ -165,63 +169,44 @@ def make_correction_spectra(
 
     if config.state['correction_type'] == 'A0V':
 
-        # Nope.  So do the full correction. <-- but missing RV
-    
-        #
-        # Prepare line
-        #
+        # No.  Do we need to deconvolve?
 
-        if config.state['normalization_order'] is not None:
-    
-            prepare_line(
-                config.state['normalization_order'],
-                config.state['normalization_line'],
+        if config.state['telluric_method'] == 'deconvolution':
+
+            # Yes.  Prepare line
+                
+            normalize_line(
+                config.state['deconvolution_line_order'],
+                config.state['deconvolution_line'],
                 config.state['resolving_power'],                         
-                config.state['normalization_window'],
-                config.state['normalization_fittype'],
-                config.state['normalization_degree'],
-                verbose=qa['verbose'],
-                qa_show=qa['show'],
-                qa_showscale=qa['showscale'],
-                qa_showblock=qa['showblock'],
-                qa_write=qa['write'])
-
-        #
-        # Measure radial velocity
-        #
-
-        if config.state['radialvelocity_nfwhm'] is not None:    
-
-            get_radialvelocity(
-                config.state['radialvelocity_nfwhm'],
+                config.state['deconvolution_continuum_fit_range'],
+                config.state['deconvolution_line_fit_type'],
+                config.state['deconvolution_continuum_fit_degree'],
                 verbose=qa['verbose'],
                 qa_show=qa['show'],
                 qa_showscale=qa['showscale'],
                 qa_showblock=qa['showblock'],
                 qa_write=qa['write'])
             
-        #
-        # Get kernels
-        #
+            # Measure radial velocity
 
-        if config.state['deconvolution_nfwhm'] is not None:
-    
-            get_kernels(
-                config.state['deconvolution_nfwhm'],
+            measure_radialvelocity(
                 verbose=qa['verbose'],
                 qa_show=qa['show'],
                 qa_showscale=qa['showscale'],
                 qa_showblock=qa['showblock'],
                 qa_write=qa['write'])
-            
-        else:
 
-            get_kernels(
-                verbose=qa['verbose'],
-                qa_show=qa['show'],
-                qa_showscale=qa['showscale'],
-                qa_showblock=qa['showblock'],
-                qa_write=qa['write'])
+        #
+        # Build the kernel
+        #
+
+        make_kernel(
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
 
         #
         # Get EW scales
@@ -233,7 +218,7 @@ def make_correction_spectra(
             qa_showscale=qa['showscale'],
             qa_showblock=qa['showblock'],
             qa_write=qa['write'])
-
+        
     #
     # Make the telluric correction spectra
     # 
@@ -253,6 +238,9 @@ def make_correction_spectra(
         qa_showscale=qa['showscale'],
         qa_showblock=qa['showblock'],
         qa_write=qa['write'])
+
+
+
 
     
 

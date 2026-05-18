@@ -8,6 +8,8 @@ import matplotlib
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_spectra_range
 
+
+
 def plot_deconvolve_line(
     plot_number:int,
     figure_size:tuple,
@@ -237,7 +239,8 @@ def plot_estimate_ewscales(
     atmospheric_transmission:npt.ArrayLike,
     line_wavelengths:npt.ArrayLike | float,
     line_scales:npt.ArrayLike | float,
-    default_scale:float):
+    default_scale:float,
+    continuum):
 
     #
     # Now start the plotting
@@ -272,6 +275,8 @@ def plot_estimate_ewscales(
     axes1.step(wavelength,new_fluxdensity,where='mid',color='red',
                label='Adjusted Correction')
 
+    axes1.plot(wavelength, continuum)
+
     
     axes1.set_xlim(xrange)
 
@@ -283,7 +288,6 @@ def plot_estimate_ewscales(
 
     axes1.set_ylabel('Relative Intensity')
     axes1.set_title(title)
-
 
 
     axes1b = axes1.twinx() 
@@ -325,7 +329,133 @@ def plot_estimate_ewscales(
     axes2.axhline(y=default_scale,linestyle='dashed',color='black')
 
     yrange = get_spectra_range(line_scales, [default_scale], frac=0.1)
+    yrange = (0.5,1.5)
     axes2.set_ylim(yrange)
+
+
+
+def plot_find_modelshift(            
+    plot_number:int,
+    figure_size:tuple,
+    font_size:int,
+    spectrum_linewidth:int,
+    spine_linewidth:int,
+    standard_wavelength:npt.ArrayLike,
+    standard_fluxdensity:npt.ArrayLike,
+    model_fluxdensity:npt.ArrayLike,
+    pixel_shift:float,
+    shifted_model_fluxdensity:npt.ArrayLike,
+    xlabel:str):
+
+    """
+
+
+    """
+
+    #
+    # Set the fonts
+    #
+    
+    font = {'weight' : 'normal', 'size'   : font_size}
+    matplotlib.rc('font', **font)
+
+    #
+    # Create the figure
+    #
+    
+    fig = pl.figure(num=plot_number, figsize=figure_size)
+    pl.subplots_adjust(left=0.1,
+                    bottom=0.1, 
+                    right=0.95, 
+                    top=0.9, 
+                    hspace=0.2)
+
+
+    yrange = get_spectra_range(
+        standard_fluxdensity,
+        model_fluxdensity,
+        shifted_model_fluxdensity,
+        frac=0.1)
+
+
+
+    axes1 = fig.add_subplot(211)    
+    axes1.step(standard_wavelength, standard_fluxdensity, 'black', 
+               lw=spectrum_linewidth,where='mid', label='Standard Star')
+
+    axes1.step(standard_wavelength, model_fluxdensity, 'red', 
+               lw=spectrum_linewidth,where='mid', label='Raw Vega Spectrum')
+
+    axes1.step(standard_wavelength, shifted_model_fluxdensity, 'green', 
+               lw=spectrum_linewidth,where='mid', label='Shifted Vega Spectrum')
+
+    axes1.set_ylim(ymin=yrange[0], ymax=yrange[1])
+
+
+    axes1.set(ylabel='Relative Intensity')
+    axes1.set_title('Shift='+'%+.2f' %pixel_shift+' pixels')    
+
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in',width=spine_linewidth)
+    axes1.tick_params(which='minor', length=3)
+    axes1.tick_params(which='major', length=5)
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())
+
+    # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes1.spines[axis].set_linewidth(spine_linewidth)
+
+    axes1.legend(
+        ncols=1,
+        frameon=False,
+        loc='upper right',
+        handlelength=1)
+
+
+    axes2 = fig.add_subplot(212)
+    axes2.set(xlabel=xlabel)
+    
+
+
+    ratio1 = standard_fluxdensity/model_fluxdensity
+    ratio2 = standard_fluxdensity/shifted_model_fluxdensity
+
+
+
+    yrange = get_spectra_range(
+        ratio1,
+        ratio2, 
+        frac=0.1)
+
+    axes2.step(standard_wavelength,ratio1,where='mid',label='Raw Ratio')
+    axes2.step(standard_wavelength,ratio2,where='mid',label='Shifted Ratio')
+
+    axes2.set_ylim(ymin=yrange[0], ymax=yrange[1])
+
+    axes2.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes2.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in',width=spine_linewidth)
+    axes2.tick_params(which='minor', length=3)
+    axes2.tick_params(which='major', length=5)
+    axes2.yaxis.set_minor_locator(AutoMinorLocator())
+
+    # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes2.spines[axis].set_linewidth(spine_linewidth)
+
+    axes2.set(ylabel='Relative Intensity')
+
+    axes2.legend(
+        ncols=1,
+        frameon=False,
+        loc='upper right',
+        handlelength=1)
+    
+
+
+
+
 
 
 def plot_measure_linerv(
@@ -571,6 +701,197 @@ def plot_measure_linerv(
         axes1.spines[axis].set_linewidth(spine_linewidth)
 
 
+def plot_normalize_line(
+    plot_number:int,
+    figure_size:tuple,
+    font_size:int,
+    spectrum_linewidth:int | float,
+    spine_linewidth:int | float,        
+    wavelength:npt.ArrayLike,
+    intensity:npt.ArrayLike,
+    fit:npt.ArrayLike,
+    goodbad:npt.ArrayLike,
+    line_center:float,
+    line_halfwidth:float,
+    continuum:npt.ArrayLike,
+    plot_xlabel:str=None,
+    plot_title:str=None):
+
+    
+    """
+    To plot the results of prepare_line in a device independent way
+
+    Parameters
+    ----------
+    wavelength : ndarray
+        A (nwave,) array of wavelengths.
+
+    intensity : ndarray
+        A (nwave,) array of "intensities".
+
+    fit : ndarray
+        A (nwave,) array of the fitted values of the line+continuum.
+        
+    line_center : float
+        The line center in units of `wavelength`.
+
+    line_halfwidth : float
+        The line "half width" either the HWHM of the Lorentzian fit or standard
+        deviation of the gaussisn fit.  In units of `wavelength`.
+
+    continuum : ndarray
+        A (nwave,) array of the fitted continuum values.
+
+    plot_scale : float
+        A value by which to scale the default size of the figure.  
+    
+    plot_number : int or None
+        The plot number to be passed back in to update the same plot.
+        Useful if you are doing to-screen plotting.
+
+    plot_xlabel : str, optional, default=None
+        A latex string giving the xlabel.
+
+    plot_title : str, optional, default=None
+        A latex string giving the title of the plot.
+    
+    Returns
+    -------
+    int
+    The plot number of the window.
+
+    """
+
+    #
+    # Check the parameters
+    #
+    
+    check_parameter('plot_normalization', 'wavelength', 
+                    wavelength, 'ndarray')
+
+    check_parameter('plot_normalization', 'intensity', 
+                    intensity, 'ndarray')
+    
+    check_parameter('plot_normalization', 'fit', 
+                    fit, 'ndarray')
+
+    check_parameter('plot_normalization', 'line_center', 
+                    line_center, 'float')
+    
+    check_parameter('plot_normalization', 'line_halfwidth', 
+                    line_halfwidth, 'float')
+    
+    check_parameter('plot_normalization', 'continuum', 
+                    continuum, 'ndarray')    
+
+    check_parameter('plot_normalization', 'plot_xlabel', 
+                    plot_xlabel, 'str')
+
+    check_parameter('plot_normalization', 'plot_title', 
+                    plot_title, 'str')    
+        
+    #
+    # Make the two-panel figure
+    #
+    
+    # Set the fonts
+
+    # removed helvetica - problem for windows OS
+    font = {
+    #'family' : 'helvetica',
+            'weight' : 'normal',
+            'size'   : font_size}
+
+    matplotlib.rc('font', **font)
+
+    # Start the figure, and set the spacing
+    
+    fig = pl.figure(num=plot_number, figsize=figure_size)
+    pl.clf()
+    pl.subplots_adjust(left=0.1,
+                       bottom=0.1, 
+                       right=0.95, 
+                       top=0.9, 
+                       hspace=0.05)
+    
+    # Get the plot range for x axis
+
+    xrange = [np.min(wavelength), np.max(wavelength)]
+    
+    #
+    # Create the spectral plot with the fit
+    #
+
+    # Determine the yrange for spectral plot
+    
+    yrange = get_spectra_range([intensity,continuum],frac=0.1)
+
+
+    
+    axes1 = fig.add_subplot(211)    
+    axes1.step(wavelength, intensity, 'black',lw=spectrum_linewidth)
+    axes1.set_title(plot_title)
+    axes1.set_ylim(ymin = yrange[0], ymax=yrange[1])
+    axes1.set_xlim(xmin = xrange[0], xmax=xrange[1])    
+    axes1.set_ylabel('Normalized Intensity')
+
+    axes1.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes1.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in', width=spine_linewidth,
+                      labelbottom=False)
+    axes1.tick_params(which='minor', length=3)
+    axes1.tick_params(which='major', length=5)
+    axes1.yaxis.set_minor_locator(AutoMinorLocator())
+    axes1.step(wavelength, fit, 'red')
+
+    z = goodbad == 0
+    axes1.plot(wavelength[z], intensity[z], 'or')
+
+    
+    # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes1.spines[axis].set_linewidth(spine_linewidth)
+    
+    # Plot the continuum
+    
+    axes1.step(wavelength, continuum, 'green')    
+
+    #
+    # Now plot the normalized spectrum
+    #
+
+    # Normalize and get the plot range
+    
+    normalized = intensity/continuum
+    yrange = get_spectra_range(normalized, frac=0.1)
+
+    
+    axes2 = fig.add_subplot(212)    
+    axes2.step(wavelength, normalized, 'black',lw=spectrum_linewidth)
+    axes2.set_ylim(ymin = yrange[0], ymax=yrange[1])
+    axes2.set_xlim(xmin = xrange[0], xmax=xrange[1])    
+    axes2.set_xlabel(plot_xlabel)
+    axes2.set_ylabel('Normalized Intensity')    
+    axes2.axvline(x=line_center, linestyle='--', color='red')
+    axes2.axvline(x=line_center-line_halfwidth, linestyle='--', color='red')
+    axes2.axvline(x=line_center+line_halfwidth, linestyle='--', color='red')
+        
+    axes2.xaxis.set_minor_locator(AutoMinorLocator())    
+    axes2.tick_params(right=True, left=True, top=True, bottom=True,
+                      which='both', direction='in', width=spine_linewidth)
+    axes2.tick_params(which='minor', length=3)
+    axes2.tick_params(which='major', length=5)
+    axes2.yaxis.set_minor_locator(AutoMinorLocator())    
+    axes2.axhline(y=1, linestyle='--', color='green')
+
+
+    # change all spines
+    for axis in ['top','bottom','left','right']:
+        axes2.spines[axis].set_linewidth(spine_linewidth)
+
+
+
+
 def plot_shifts(
     plot_number:int,
     subplot_size:tuple,
@@ -655,39 +976,50 @@ def plot_shifts(
     # Check parameters
     #
 
-    check_parameter('plot_shifts', 'plot_number', plot_number,
-                    ['int', 'NoneType'])
+    check_parameter('plot_shifts', 'plot_number', 
+                    plot_number, ['int', 'NoneType'])
 
-    check_parameter('plot_shifts', 'subplot_size', subplot_size, 'tuple')
+    check_parameter('plot_shifts', 'subplot_size', 
+                    subplot_size, 'tuple')
 
-    check_parameter('plot_shifts', 'subplot_stackmax', subplot_stackmax, 'int')
+    check_parameter('plot_shifts', 'subplot_stackmax', 
+                    subplot_stackmax, 'int')
 
-    check_parameter('plot_shifts', 'font_size', font_size, 'int')
+    check_parameter('plot_shifts', 'font_size', 
+                    font_size, 'int')
 
-    check_parameter('plot_shifts', 'scale', scale, ['int','float'])
+    check_parameter('plot_shifts', 'scale', 
+                    scale, ['int','float'])
 
-    check_parameter('plot_shifts', 'spectrum_linewidth', spectrum_linewidth,
-                    ['int','float'])        
+    check_parameter('plot_shifts', 'spectrum_linewidth', 
+                    spectrum_linewidth, ['int','float'])        
 
-    check_parameter('plot_shifts', 'spine_linewidth', spine_linewidth,
-                    ['int','float'])        
+    check_parameter('plot_shifts', 'spine_linewidth', 
+                    spine_linewidth, ['int','float'])        
 
-    check_parameter('plot_shifts', 'xlabel', xlabel, 'str')
+    check_parameter('plot_shifts', 'xlabel', 
+                    xlabel, 'str')
 
-    check_parameter('plot_shifts', 'orders', orders, 'ndarray')
+    check_parameter('plot_shifts', 'orders', 
+                    orders, 'ndarray')
     
-    check_parameter('plot_shifts', 'object_spectra', object_spectra, 'ndarray')
+    check_parameter('plot_shifts', 'object_spectra', 
+                    object_spectra, 'ndarray')
 
-    check_parameter('plot_shifts', 'rawtc_spectra', rawtc_spectra, 'ndarray')
+    check_parameter('plot_shifts', 'rawtc_spectra', 
+                    rawtc_spectra, 'ndarray')
 
-    check_parameter('plot_shifts', 'shiftedtc_spectra', shiftedtc_spectra,
-                    'ndarray')    
+    check_parameter('plot_shifts', 'shiftedtc_spectra', 
+                    shiftedtc_spectra, 'ndarray')    
     
-    check_parameter('plot_shifts', 'shift_ranges', shift_ranges, 'ndarray')
+    check_parameter('plot_shifts', 'shift_ranges', 
+                    shift_ranges, 'ndarray')
 
-    check_parameter('plot_shifts', 'shifts', shifts, 'ndarray')        
+    check_parameter('plot_shifts', 'shifts', 
+                    shifts, 'ndarray')        
 
-    check_parameter('plot_shifts', 'reverse_order', reverse_order, 'bool') 
+    check_parameter('plot_shifts', 'reverse_order', 
+                    reverse_order, 'bool') 
        
     #
     # Get important information
@@ -738,12 +1070,13 @@ def plot_shifts(
     pl.figure(num=plot_number,
               figsize=figure_size)
     pl.clf()    
-    pl.subplots_adjust(hspace=0.5,
-                       wspace=0.2,
-                       left=0.1,
-                       right=0.95,
-                       bottom=0.075,
-                       top=0.95)
+    pl.subplots_adjust(
+        hspace=0.5,
+        wspace=0.2,
+        left=0.1,
+        right=0.95,
+        bottom=0.075,
+        top=0.95)
 
     m = 0
     for i in range(norders):

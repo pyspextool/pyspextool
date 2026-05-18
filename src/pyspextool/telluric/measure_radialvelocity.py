@@ -10,8 +10,8 @@ from pyspextool.utils.arrays import find_index
 from pyspextool.telluric.core import measure_linerv
 from pyspextool.pyspextoolerror import pySpextoolError
 
-def get_radialvelocity(
-    fwhm_scale:float,
+def measure_radialvelocity(
+    *args:int | float,
     resolving_power:bool | float |int =None, 
     verbose:bool=None,
     qa_show:bool=None,
@@ -24,8 +24,9 @@ def get_radialvelocity(
 
     Parameters
     ----------
-    fwhm_scale : float
-        The number of FWHMs of the line around which to do the cross correlation
+    args : int, float
+        If given, the number of FWHMs of the line to do the cross correlation
+        If not given, then the default value is used.
 
     resolving_power : int, float, NoneType
         If given, an attempt is made to smooth the model to the resolving
@@ -59,82 +60,102 @@ def get_radialvelocity(
     
     Returns
     -------
-    None
-    Loads data into the config state variable.
+    Later
 
-        tc.state['rv_nfwhm']
-        tc.state['ew_scale'] 
-        tc.state['standard_rv']
-        tc.state['standard_redshift']
-        tc.state['1+z']
-        tc.state['rv_done']
-    
     """
 
+    #
+    # Setup output dictionary
+    #
+
+    output = {}
+    
     #
     # Check the load_done variable
     #
     
-    if tc.state['prepare_done'] is False:
+    if tc.state['normalize_done'] is False:
 
-        message = "Line has not been prepared.  Please run prepare_line.py."
+        message = "Line has not been normalized.  Please run normalize_line.py."
         raise pySpextoolError(message)
     
     #
-    # Check parameters and keywords
+    # Did the user pass a value for number of FWHMs around line center?
     #
 
-    check_parameter('get_radialvelocity', 'fwhm_scale', fwhm_scale,
-                    ['int','float'])
+    if len(args) == 0:
 
-    check_parameter('get_radialvelocity', 'resolving_power', resolving_power,
-                    ['float','bool','NoneType'])
-    
-    check_parameter('get_radialvelocity', 'verbose', verbose,
-                    ['NoneType','bool'])
+        # No.  We are using the default value
 
-    check_parameter('get_radialvelocity', 'qa_show', qa_show,
-                    ['NoneType','bool'])
+        output['deconvolution_rvfit_nfwhm'] = [tc.state['deconvolution_rvfit_nfwhm'][0],
+                                               tc.state['deconvolution_rvfit_nfwhm'][1]]
 
-    check_parameter('get_radialvelocity', 'qa_showscale', qa_showscale,
-                    ['NoneType','float','int'])
-    
-    check_parameter('get_radialvelocity', 'qa_showblock', qa_showblock,
-                    ['NoneType','bool'])    
-    
-    check_parameter('get_radialvelocity', 'qa_write', qa_write,
-                    ['NoneType','bool'])
+    else:
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+        # Yes.  Check and store it.
+
+        check_parameter('measure_radialvelocity', args[0], 
+                        args[0], 'int')
+
+        output['deconvolution_rvfit_nfwhm'] = [tc.state['deconvolution_rvfit_nfwhm'][0],
+                                               args[0]]
 
     #
-    # Log the action
+    # Check the remaining parameters and keywords
+    #
+
+    check_parameter('get_radialvelocity', 'resolving_power', 
+                    resolving_power, ['float','bool','NoneType'])
+    
+    check_parameter('get_radialvelocity', 'verbose', 
+                    verbose, ['NoneType','bool'])
+
+    check_parameter('get_radialvelocity', 'qa_show', 
+                    qa_show, ['NoneType','bool'])
+
+    check_parameter('get_radialvelocity', 'qa_showscale', 
+                    qa_showscale, ['NoneType','float','int'])
+    
+    check_parameter('get_radialvelocity', 'qa_showblock', 
+                    qa_showblock, ['NoneType','bool'])    
+    
+    check_parameter('get_radialvelocity', 'qa_write', 
+                    qa_write, ['NoneType','bool'])
+
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
+    
+    #
+    # Log the action and setup outout
     #
     
-    logging.info(f" Computing radial velocity.")
+    logging.info(" Computing radial velocity.")
 
-    tc.state['rv_nfwhm'] = fwhm_scale
+
+
+#    tc.state['rv_nfwhm'] = fwhm_scale
     
     #
     # Determine the wavelength window over which to measure the radial velocity
     #
     
-    range = tc.state['line_fwhm']*fwhm_scale
-    window = np.array([tc.state['line_center']-range/2.,
-                      tc.state['line_center']+range/2.])
+    wrange = tc.state['normalizedline_fwhm']*\
+        output['deconvolution_rvfit_nfwhm'][1]
+    window = np.array([tc.state['normalizedline_linecenter']-wrange/2.,
+                      tc.state['normalizedline_linecenter']+wrange/2.])
     
     # Now ensure the range doesn't go beyond what is available.
 
-    wavelength = tc.state['normalized_line_wavelength']
+    wavelength = tc.state['normalizedline_wavelengths']
 
     window[0] = max(window[0],np.nanmin(wavelength))
     window[1] = min(window[1],np.nanmax(wavelength))                   
     
-    tc.state['rv_window'] = window
+    output['deconvolution_rvwindow'] = window
         
     #
     # Smooth model to approximate resolving power of line
@@ -148,9 +169,7 @@ def get_radialvelocity(
                                    floor(tc.state['slitw_pix']))
         resolving_powers = wavelength/delta
     
-        line = np.sum(np.array(tc.state['normalization_window']))/2
-        
-        idx = floor(find_index(wavelength, tc.state['line_center']))
+        idx = floor(find_index(wavelength, tc.state['normalizedline_linecenter']))
         resolving_power = floor(resolving_powers[idx])
 
     if resolving_power is not False:
@@ -160,14 +179,14 @@ def get_radialvelocity(
         # Find the dispersion of the Vega model at this wavelength
         
         idx = int(find_index(tc.state['vega_wavelength'],
-                             tc.state['line_center']))
+                             tc.state['normalizedline_linecenter']))
 
         model_dispersion = tc.state['vega_wavelength'][idx]- \
             tc.state['vega_wavelength'][idx-1] 
         
         # Determine the number of pixels for the resolving power.
 
-        fwhm_kernel = int(tc.state['line_center']/resolving_power/ \
+        fwhm_kernel = int(tc.state['normalizedline_linecenter']/resolving_power/ \
                           model_dispersion)
 
         # Create a Gaussian kernel
@@ -199,7 +218,7 @@ def get_radialvelocity(
     xlabel = tc.state['latex_xlabel']
     title = tc.state['standard_name']+', '+\
         tc.state['instrument_mode']+' Order '+\
-        str(tc.state['normalization_order'])
+        str(tc.state['deconvolution_line_order'])
 
     if qa['show'] is True:
 
@@ -211,14 +230,15 @@ def get_radialvelocity(
         font_size = setup.plots['font_size']*qa['showscale']
 
         
-        qashow_info = {'plot_number':setup.plots['radial_velocity'],
-                       'figure_size':figure_size,
-                       'font_size':font_size,
-                       'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
-                       'spine_linewidth':setup.plots['spine_linewidth'],
-                       'block':qa['showblock'],
-                       'xlabel':xlabel,
-                       'title':title}
+        qashow_info = {
+            'plot_number':setup.plots['radial_velocity'],
+            'figure_size':figure_size,
+            'font_size':font_size,
+            'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+            'spine_linewidth':setup.plots['spine_linewidth'],
+            'block':qa['showblock'],
+            'xlabel':xlabel,
+            'title':title}
 
     else:
 
@@ -232,13 +252,14 @@ def get_radialvelocity(
         
         # Build the qafile_info dictionary.        
 
-        qafile_info = {'figure_size':setup.plots['portrait_size'],
-                       'font_size':setup.plots['font_size'],
-                       'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
-                       'spine_linewidth':setup.plots['spine_linewidth'],
-                       'file_fullpath':fullpath,
-                       'xlabel':xlabel,
-                       'title':title}
+        qafile_info = {
+            'figure_size':setup.plots['portrait_size'],
+            'font_size':setup.plots['font_size'],
+            'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+            'spine_linewidth':setup.plots['spine_linewidth'],
+            'file_fullpath':fullpath,
+            'xlabel':xlabel,
+            'title':title}
 
     else:
 
@@ -250,38 +271,50 @@ def get_radialvelocity(
 
     # Locate the region for the object and Vega
 
-    zd = np.where((tc.state['normalized_line_wavelength'] >= window[0]) &
-                  (tc.state['normalized_line_wavelength'] <= \
+    zd = np.where((tc.state['normalizedline_wavelengths'] >= window[0]) &
+                  (tc.state['normalizedline_wavelengths'] <= \
                    window[1]))[0]
     
     zm = np.where((tc.state['vega_wavelength'] >= window[0]) & 
                   (tc.state['vega_wavelength'] <= window[1]))[0]
     
-    result = measure_linerv(tc.state['normalized_line_wavelength'][zd],
-                            tc.state['normalized_line_flux'][zd],
-                            tc.state['vega_wavelength'][zm],
-                            model[zm],
-                            qashow_info=qashow_info,
-                            qafile_info=qafile_info)
+    # Do the fit
 
-    # Did we show it?
+    result = measure_linerv(
+        tc.state['normalizedline_wavelengths'][zd],
+        tc.state['normalizedline_fluxes'][zd],
+        tc.state['vega_wavelength'][zm],
+        model[zm],
+        qashow_info=qashow_info,
+        qafile_info=qafile_info)
 
-    if qa['show'] is True:
-
-        logging.info(f" Radial velocity = "+\
+    # Report the value
+    
+    logging.info(" Radial velocity = "+\
                  '{:g}'.format(float('{:.4g}'.format(result['rv'])))+" km s-1")
 
     #
     # Store the results
     #
 
-    tc.state['ew_scale'] = 1.0
-    tc.state['standard_rv'] = result['rv']
-    tc.state['standard_redshift'] = result['z']
-    tc.state['1+z'] = (1+result['z'])
+    output['standard_rv'] = result['rv']
+    output['standard_redshift'] = result['z']
+    output['1+z'] = (1+result['z'])
+
+    
+    # Update the telluric config file
+
+    keys = list(output.keys())
+    vals = list(output.values())
+
+    for i in range(len(keys)):
+
+        tc.state[keys[i]] = vals[i]
         
     #
-    # Set the done variable
+    # Set the done variable and return output
     #
         
     tc.state['rv_done'] = True
+
+    return output

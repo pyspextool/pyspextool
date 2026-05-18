@@ -6,18 +6,19 @@ from pyspextool.fit.robust_savgol import robust_savgol
 from pyspextool.io.check import check_parameter
 
 
-def buffer_range(range:tuple,
-                 frac:float=0.1):
+def buffer_range(
+        range:tuple,
+        frac:float=0.1):
 
     """
     To expand a numerical range by a given fraction.
 
-    Typically used to make a nice y-axis plot range.
+    Typically used to help make a nice y-axis plot ranges.
 
     Parameters
     ----------
     range : tuple
-        (2,) range to be expanded.
+        (2,) tuple giving the range to be expanded.
 
     frac : float, default 0.1
         The fraction by which to expand the range if desired.
@@ -42,15 +43,17 @@ def buffer_range(range:tuple,
 
 
 
-def get_image_range(arr, info):
+def get_image_range(
+        arr:npt.ArrayLike,
+        info):
 
     """
-    a wrapper for astropy to get image ranges
+    A wrapper for astropy to get image ranges
 
     Parameters
     ----------
-    arr : numpy.ndarray
-        an array (typically a 2D image)
+    arr : ndarray
+        An array (typically a 2D image)
 
     info : float or str
         float - the fraction of pixels to keep in the range (0,1)
@@ -60,14 +63,6 @@ def get_image_range(arr, info):
     -------
     tuple
          interval based on user request
-
-    Procedure
-    ---------
-    calls astropy.visualization routines and uses all default settings
-
-    Examples
-    --------
-    later
 
     """
     
@@ -99,10 +94,12 @@ def get_image_range(arr, info):
 
         return None
 
-def get_spectra_range(*args,
-                      robust=False,
-                      savgol_window:int=11,
-                      frac:float=0.0):
+def get_spectra_range(
+        *args,
+        robust:bool=False,
+        savgol_window:int=9,
+        robust_threshold:float=3,
+        frac:float=0.0):
 
     """
     To return a nice y-axis plot range
@@ -110,16 +107,21 @@ def get_spectra_range(*args,
     Parameters
     ----------
     *args : array-like
-        Array(s) of y values to be plotted.
+        Array(s) of y values (spectra) to be plotted.
 
-    robust : bool, default False
+    robust : bool, {False, True}
         Set to True to deal with outliers.  Each spectrum is smoothed
         with a robust Savitsky-Golay filter to "fix" bad before identifying
         the minimum and maximum.
         Set to False to keep outliers in the spectra.
 
+    robust_threshold : float, default 3
+        
+
     savgol_window : int, default 11
         The number of 
+
+
     
     frac : float, default 0.0
         The fraction by which to expand the range if desired.
@@ -129,10 +131,6 @@ def get_spectra_range(*args,
     tuple
          (2,) tuple of the range.
 
-    Notes
-    -----
-    The minimum and maximum values of `*args` are first determined.
-    If `frac` is not 0, then the range is expanded by `frac`*(max-min).
 
 
     """
@@ -158,7 +156,13 @@ def get_spectra_range(*args,
 
             array = np.ravel(arg)
             x_values = np.arange(len(array))
-            tmp = list(robust_savgol(x_values, array, savgol_window)['fit'])
+            result = robust_savgol(
+                x_values, 
+                array, 
+                savgol_window,
+                thresh=robust_threshold)
+            
+            tmp = list(result['fit'])
             
         else:
 
@@ -179,10 +183,11 @@ def get_spectra_range(*args,
     return range
 
 
-def get_stack_range(stack:npt.ArrayLike,
-                    savgol:bool=False,
-                    savgol_window:int=11,
-                    frac:float=0.0):
+def get_stack_range(
+        stack:npt.ArrayLike,
+        savgol:bool=False,
+        savgol_window:int=11,
+        frac:float=0.0):
 
     """
     To obtain the plotting range of a stack of data.

@@ -5,9 +5,73 @@ import re
 from pyspextool.io.check import check_parameter
 
 
-def find_index(x:npt.ArrayLike,
-               x_want:npt.ArrayLike | int | float,
-               ends_to_nan:bool=False):
+#def extend_wavelengths(
+#    wavelengths:npt.ArrayLike,
+#    nleft:int,
+#    nright:int):
+#
+#    """
+#    To (linearly) extend a wavelength array to longer and shorter wavelengths.
+#
+#    Parameters
+#    ----------
+#    wavelengths : ndarray
+#        An (nwave,) array of increasing wavelengths.
+#
+#    nleft : int
+#        The number of pixels to add to the left side of the array.
+#
+#    nright : int
+#        The number of pixels to add to the right side of the array.
+#
+#    Returns
+#    -------
+#    ndarray
+#        An (nwave+nleft+nright,) array of wavelengths.
+#
+#    """
+#
+#    #
+#    # Check Parameters
+#    #
+#
+#    check_parameter('extend_wavelengths', 'wavelengths', 
+#                    wavelengths, 'ndarray', 1)
+#
+#    check_parameter('extend_wavelengths', 'nleft', 
+#                    nleft, 'int')
+#
+#    check_parameter('extend_wavelengths', 'nright', 
+#                    nright, 'int')
+#
+#    #
+#    # Get started
+#    #
+#
+#    ndat = np.size(wavelengths)
+#
+#    #
+#    # Build the left and right additions
+#    #
+#
+#    delta = (wavelengths[1]-wavelengths[0])
+#    left = -1*np.flip((np.arange(nleft)+1)*delta)+ wavelengths[0]
+#
+#    delta = (wavelengths[-1]-wavelengths[-2])
+#    right = (np.arange(nright)+1)*delta + wavelengths[-1]
+#
+#    #
+#    # Concatenate and return
+#    #
+#
+#    return np.concatenate((left, wavelengths, right))
+
+
+
+def find_index(
+    x:npt.ArrayLike,
+    x_want:npt.ArrayLike | int | float,
+    ends_to_nan:bool=False):
 
     """
     Finds the effective index of a value(s) in an ordered array.
@@ -127,9 +191,10 @@ def find_index(x:npt.ArrayLike,
     return ieff[0] if single is True else ieff
 
 
-def make_image_indices(nrows:int,
-                       ncols:int,
-                       dtype=int):
+def make_image_indices(
+    nrows:int,
+    ncols:int,
+    dtype=int):
 
     """
 
@@ -192,9 +257,10 @@ def make_image_indices(nrows:int,
 
 
 
-def trim_nan(arr:npt.ArrayLike,
-             flag:int=0,
-             trim:bool=False):
+def trim_nan(
+    arr:npt.ArrayLike,
+    flag:int=0,
+    trim:bool=False):
 
     """
     To clip NaNs from an array.
@@ -288,7 +354,9 @@ def trim_nan(arr:npt.ArrayLike,
         return z
 
 
-def idl_rotate(img, direction):
+def idl_rotate(
+    img:npt.ArrayLike, 
+    direction:int):
 
     """
     Rotates and/or tranposes an image (rotate is in multiples of 90deg)
@@ -337,11 +405,6 @@ def idl_rotate(img, direction):
     [8 5 2]
     [7 4 1]]
 
-    Modification History
-    --------------------
-    2022-06-02 - Written by M. Cushing, University of Toledo.
-    Based on the IDL program rotate.pro
-
     """
     
     if direction == 0:
@@ -381,7 +444,9 @@ def idl_rotate(img, direction):
         raise ValueError('Unknown rotation direction.')
 
 
-def idl_unrotate(img, direction):
+def idl_unrotate(
+    img:npt.ArrayLike, 
+    direction:int):
 
     """
     Rotates and/or tranposes an image (rotate is in multiples of 90deg).
@@ -434,11 +499,6 @@ def idl_unrotate(img, direction):
     [8 5 2]
     [7 4 1]]
 
-    Modification History
-    --------------------
-    2022-06-02 - Written by M. Cushing, University of Toledo.
-    Based on the IDL program rotate.pro
-
     """
     
     if direction == 0:
@@ -479,6 +539,7 @@ def idl_unrotate(img, direction):
         
         
 def numberList(inp,sort=True):
+
     '''
     Purpose
     -------
