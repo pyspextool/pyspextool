@@ -8,12 +8,17 @@ from scipy import interpolate
 from pyspextool.fit.polyfit import goodbad_init
 
 
-def robust_savgol(x, y, window_length, polyorder=2, thresh=4, eps=0.1,
-                  goodbad=None):
+def robust_savgol(
+        x, 
+        y, 
+        window_length, 
+        polyorder=2, 
+        thresh=4, 
+        eps=0.1,
+        goodbad=None):
 
     """
     To robustly perform a savizky-golay smoothing.
-
 
     Parameters
     ----------

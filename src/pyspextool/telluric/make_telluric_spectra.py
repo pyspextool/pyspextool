@@ -1,4 +1,3 @@
-import numpy as np
 import copy
 import logging
 
@@ -30,13 +29,7 @@ def make_telluric_spectra(
 
     Returns
     -------
-    None
-    Loads data into memory.
-
-        telluric.load['intensity_unit']
-        telluric.state['telluric_spectra']
-        telluric.state['model_spectra']
-        telluric.state['make_done']    
+    later
 
     """
 
@@ -44,7 +37,7 @@ def make_telluric_spectra(
     # Check the variable
     #
 
-    if tc.state['kernel_method'] == 'deconvolution' and \
+    if tc.state['telluric_method'] == 'deconvolution' and \
        tc.state['correction_type'] == 'A0 V':
              
         if tc.state['kernel_done'] is False:
@@ -90,40 +83,27 @@ def make_telluric_spectra(
 
     if tc.state['correction_type'] == 'A0V':
 
-        tc.state['intensity_unit'] = intensity_unit
+        # Loop over each order and create the telluric spectrum
                 
         for i in range(tc.state['standard_norders']):    
-            
-            standard_wavelength = tc.state['standard_spectra'][i,0,:]
-            standard_fluxdensity = tc.state['standard_spectra'][i,1,:]
-            standard_uncertainty = tc.state['standard_spectra'][i,2,:]
-            
-            standard_bmag = tc.state['standard_bmag']
-            standard_vmag = tc.state['standard_vmag']
-            standard_rv = tc.state['standard_rv']                
-            
-            vega_wavelength = tc.state['vega_wavelength']
-            vega_fluxdensity = tc.state['vega_fluxdensity']
-            vega_continuum = tc.state['vega_continuum']
-            vega_fitted_continuum = tc.state['vega_fitted_continuum']
-            kernel = tc.state['kernels'][i]
 
             result = make_telluric_spectrum(
-                standard_wavelength,
-                standard_fluxdensity,
-                standard_uncertainty,
-                standard_rv,
-                standard_bmag,
-                standard_vmag,
-                vega_wavelength,
-                vega_fluxdensity,
-                vega_continuum,
-                vega_fitted_continuum,
-                kernel,
-                tc.state['control_points'][i][0,:],
-                tc.state['control_points'][i][1,:],
+                tc.state['standard_spectra'][i,0,:],
+                tc.state['standard_spectra'][i,1,:],
+                tc.state['standard_spectra'][i,2,:],
+                tc.state['standard_rv'],                
+                tc.state['standard_bmag'],
+                tc.state['standard_vmag'],
+                tc.state['vega_wavelength'],
+                tc.state['vega_fluxdensity'],
+                tc.state['vega_continuum'],
+                tc.state['vega_fitted_continuum'],
+                tc.state['kernel'],
+                tc.state['vega_pixelshift'],
+                tc.state['control_points'][i][0],
+                tc.state['control_points'][i][2],
                 int(tc.state['standard_orders'][i]),
-                intensity_unit)
+                intensity_unit=tc.state['intensity_unit'])
             
             # Store results
             

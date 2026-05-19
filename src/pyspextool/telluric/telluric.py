@@ -16,7 +16,6 @@ def telluric(
     corrected_filenames:str,
     correction_type:str='A0 V',
     output_units:str='W m-2 um-1',
-    default_shiftranges:bool=True,
     user_shiftranges:list=None,
     write_model_spectra:bool=False,                        
     verbose:bool=None,
@@ -94,13 +93,11 @@ def telluric(
 
         If `correction_type`=True, this has no effect.
 
-    default_shiftranges : {True, False}
-        Minimize telluric noise by shifting the telluric spectra relative
-        to the object spectra using the default wavelength ranges.
-
     user_shiftranges : tuple, list, deafult None
-        If a tuple, then a (3,) tuple as
+        If a (3,) tuple, then 
         (order number, lower wavelength, upper wavelength).
+
+        If a (0,) tuple, then no shifts are requested.
 
         If a list, then a (norders,) list of (3,) tuples as
         (order number, lower wavelength, upper wavelength).
@@ -143,42 +140,53 @@ def telluric(
     # Check the parameters and keywords
     #
 
-    check_parameter('telluric', 'object_filenames', object_filenames, ['str', 'list'])
+    check_parameter('telluric', 'object_filenames', 
+                    object_filenames, ['str', 'list'])
 
-    check_parameter('telluric', 'standard_filename', standard_filename, 'str')
+    check_parameter('telluric', 'standard_filename', 
+                    standard_filename, 'str')
 
-    check_parameter('telluric', 'standard_info', standard_info,
-                    ['str','list','dict'])
+    check_parameter('telluric', 'standard_info', 
+                    standard_info, ['str','list','dict'])
         
-    check_parameter('telluric', 'telluric_filename', telluric_filename, 'str')
+    check_parameter('telluric', 'telluric_filename', 
+                    telluric_filename, 'str')
 
-    check_parameter('telluric', 'corrected_filenames', corrected_filenames, 'str')
+    check_parameter('telluric', 'corrected_filenames', 
+                    corrected_filenames, 'str')
 
-    check_parameter('telluric', 'correction_type', correction_type, 'str',
+    check_parameter('telluric', 'correction_type', 
+                    correction_type, 'str',
                     possible_values=setup.state['telluric_correctiontypes'])
 
-    check_parameter('telluric', 'write_model_spectra', write_model_spectra, 'bool')
+    check_parameter('telluric', 'write_model_spectra', 
+                    write_model_spectra, 'bool')
     
-    check_parameter('telluric', 'output_units', output_units, 'str')
+    check_parameter('telluric', 'output_units', 
+                    output_units, 'str')
 
-    check_parameter('telluric', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('telluric', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
     
-    check_parameter('telluric', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('telluric', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
 
-    check_parameter('telluric', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter('telluric', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
 
-    check_parameter('telluric', 'qa_showscale', qa_showscale,
-                    ['int', 'float', 'NoneType'])
+    check_parameter('telluric', 'qa_showscale', 
+                    qa_showscale, ['int', 'float', 'NoneType'])
 
-    check_parameter('telluric', 'qa_showblock', qa_showblock,
-                    ['NoneType', 'bool'])
+    check_parameter('telluric', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
 
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
 
     #
     # Make the telluric correction spectra
@@ -205,6 +213,7 @@ def telluric(
         object_filenames ,
         telluric_filename+'.fits',
         corrected_filenames,
+        user_shiftranges=user_shiftranges,
         verbose=qa['verbose'],
         qa_show=qa['show'],
         qa_showscale=qa['showscale'],
