@@ -2150,8 +2150,8 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		qa_show=False,qa_showblock=False,qa_write=True,verbose=parameters['VERBOSE'])
 # make sure qa image and spectra folders are in place
 	for x in ['QA_IMAGE_FOLDER','QA_SPECTRA_FOLDER']:
-		if os.path.exists(os.path.combine(parameters['DATA_FOLDER'],x))==False:
-			shutil.mkdir(os.path.combine(parameters['DATA_FOLDER'],x))
+		if os.path.exists(os.path.join(parameters['DATA_FOLDER'],x))==False:
+			os.mkdir(os.path.join(parameters['DATA_FOLDER'],x))
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
