@@ -2375,7 +2375,7 @@ def find_shift(
     wavelength_object:npt.ArrayLike,
     intensity_object:npt.ArrayLike,
     intensity_telluric:npt.ArrayLike,
-    wavelength_range:list,
+    wavelength_range:list | tuple,
     pixel_range:list=[-1.5,1.5],
     nsteps:int=301,
     qa_show=False,
@@ -2430,7 +2430,7 @@ def find_shift(
                     intensity_telluric, 'ndarray')
     
     check_parameter('find_shift', 'wavelength_range', 
-                    wavelength_range, 'list')
+                    wavelength_range, ['list','tuple'])
 
     check_parameter('find_shift', 'nsteps', 
                     nsteps, 'int')

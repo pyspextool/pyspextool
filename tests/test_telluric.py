@@ -45,11 +45,11 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
     
     # Run telluric correction
     telluric(
-        object_filenames=object_combined,
-        standard_filename=standard_combined,
-        standard_info=setup_dict["standard_name"],
-        telluric_filename='telluric',
-        corrected_filenames='tcspectra_object',
+        object_combined,
+        standard_combined,
+        setup_dict["standard_name"],
+        'telluric',
+        'tcspectra_object',
         verbose=False,
         qa_show=False,
         qa_write=False
@@ -99,11 +99,11 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
     
     # Create telluric correction file
     telluric(
-        object_filenames=object_combined,
-        standard_filename=standard_combined,
-        standard_info=setup_dict["standard_name"],
-        telluric_filename='telluric_precomp',
-        corrected_filenames='tcspectra_combined',
+        object_combined,
+        standard_combined,
+        setup_dict["standard_name"],
+        'telluric_precomp',
+        'tcspectra_combined',
         verbose=False,
         qa_show=False,
         qa_write=False
@@ -115,11 +115,11 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
     # Step 2: Apply pre-computed telluric correction to individual spectra
     # Use the first few individual object spectra
     telluric(
-        object_filenames=setup_dict["object_files"],
-        standard_filename=standard_combined,
-        standard_info=setup_dict["standard_name"],
-        telluric_filename='telluric_precomp',  # Reuse the pre-computed correction
-        corrected_filenames='tcspectra_individual',
+        setup_dict["object_files"],
+        standard_combined,
+        setup_dict["standard_name"],
+        'telluric_precomp',  # Reuse the pre-computed correction
+        'tcspectra_individual',
         verbose=False,
         qa_show=False,
         qa_write=False
