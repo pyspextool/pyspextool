@@ -13,28 +13,31 @@ from pyspextool.pyspextoolerror import pySpextoolError
 from pyspextool.utils.math import bit_set
 
 
-def plot_spectra(file:str,
-                 ytype:str='flux',
-                 apertures:int=None,
-                 title:str=None,
-                 colors:str | list=['green','black'],
-                 spectrum_linewidth:int | float=0.5,
-                 spine_linewidth:int | float=1.5,
-                 yrange_buffer:int | float=0.05,
-                 order_numbers:bool=True,
-                 figure_size:tuple=(9,7),
-                 font_size:int=12,               
-                 output_fullpath:str=None,
-                 showblock:bool=False,
-                 showscale:float | int=1.0,
-                 plot_number:int=None,
-                 flag_linearity:bool=False,
-                 flag_optimal:bool=False,
-                 flag_replace:bool=False,
-                 flag_fix:bool=False):
+def plot_spectra(
+        file:str,
+        ytype:str='flux',
+        apertures:int=None,
+        title:str=None,
+        colors:str | list=['green','black'],
+        spectrum_linewidth:int | float=0.5,
+        spine_linewidth:int | float=1.5,
+        yrange_buffer:int | float=0.05,
+        order_numbers:bool=True,
+        figure_size:tuple=(9,7),
+        font_size:int=12,               
+        output_fullpath:str=None,
+        showblock:bool=False,
+        showscale:float | int=1.0,
+        plot_number:int=None,
+        flag_linearity:bool=False,
+        flag_optimal:bool=False,
+        flag_replace:bool=False,
+        flag_fix:bool=False):
 
     """
     To plot a pyspextool FITS file.
+
+    The plot can either be to the display or to disk.
 
     Parameters
     ----------
@@ -68,25 +71,17 @@ def plot_spectra(file:str,
         Set to True to label the order numbers on the plot.
         Set to False to not label the order numbers on the plot.
 
-    
-    
-    
-
     plot_size : tuple of (float, float), optional
         A (2,) tuple giving the page size.
 
     ytype : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}
         Which spectrum to plot.
 
-
     title : str, optional
         The title.
-
         
     line_width : float or int, default=1
         The line width value passed to maplotlib.
-
-
 
     block : {False, True}, optional
         Set to make the plot block access to the command line, e.g. pl.ioff().
@@ -248,7 +243,8 @@ def plot_spectra(file:str,
         if showblock is False: pl.pause(1)
 
 
-def doplot(spectra:npt.ArrayLike,
+def doplot(
+    spectra:npt.ArrayLike,
            norders:int,
            napertures:int,
            plot_apertures:list,
@@ -344,8 +340,10 @@ def doplot(spectra:npt.ArrayLike,
 
         idx = np.arange(norders)*napertures+i
         
-        wranges, yranges = get_ranges(spectra[idx,:,:], ytype,
-                                      ybuffer_fraction=yrange_buffer)
+        wranges, yranges = get_plot_ranges(
+            spectra[idx,:,:], 
+            ytype,
+            ybuffer_fraction=yrange_buffer)
 
         xrange = [np.nanmin(wranges), np.nanmax(wranges)]
         yrange = [np.nanmin(yranges), np.nanmax(yranges)]
@@ -484,12 +482,14 @@ def doplot(spectra:npt.ArrayLike,
 
             
             
-def get_ranges(spectra:npt.ArrayLike,
-               ytype:str,
-               ybuffer_fraction:int | float=0.05):
+def get_plot_ranges(
+        spectra:npt.ArrayLike,
+        ytype:str,
+        ybuffer_fraction:float=0.05,
+        robust_ybuffer_threshold:float=3):
 
     """
-    To determine the plot range of the spectra
+    To determine the plot ranges of the spectra.
 
     Parameters
     ----------
@@ -497,9 +497,9 @@ def get_ranges(spectra:npt.ArrayLike,
         An (norders*naps, 4, nwavelength) array of spectra.
 
     ytype : {'flux', 'uncertainty', 'snr', 'flux and uncertainty'}
-        A string with the type of spectrum to plot:
+        A string with the type of spectrum being plotted.  
 
-    ybuffer_fraction : int or float, default 0.05
+    ybuffer_fraction : float, default 0.05
         The 
 
     Returns
@@ -513,11 +513,11 @@ def get_ranges(spectra:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('get_ranges', 'spectra', spectra, 'ndarray')
+    check_parameter('get_plot_ranges', 'spectra', spectra, 'ndarray')
 
-    check_parameter('get_ranges', 'ytype', ytype, 'str')
+    check_parameter('get_plot_ranges', 'ytype', ytype, 'str')
 
-    check_parameter('get_ranges', 'ybuffer_fraction', ybuffer_fraction,
+    check_parameter('get_plot_ranges', 'ybuffer_fraction', ybuffer_fraction,
                     ['int','float'])        
 
     #
@@ -534,7 +534,7 @@ def get_ranges(spectra:npt.ArrayLike,
     
     for i in range(norders):
 
-        # Do the wavelengths
+        # Find the wavlength range
 
         wave = spectra[i, 0, :]
         wranges[i, :] = [np.nanmin(wave), np.nanmax(wave)]
@@ -542,47 +542,39 @@ def get_ranges(spectra:npt.ArrayLike,
         ndat = len(wave)
         x_values = np.arange(ndat)
 
-        # Now do the "flux"
+        # Find the "intensity" range
         
         if ytype == 'flux':
-
-#            array = spectra[i, 1, :]
-#            sg_array = robust_savgol(x_values, array, 11)['fit']
             
-            yranges[i, :] = get_spectra_range(spectra[i, 1, :], robust=True,
-                                              frac=ybuffer_fraction)
+            yranges[i, :] = get_spectra_range(
+                spectra[i, 1, :], 
+                robust=True,
+                robust_threshold=robust_ybuffer_threshold,
+                frac=ybuffer_fraction)
 
         if ytype == 'uncertainty':
-
-#            array = spectra[i, 2, :]
-#            sg_array = robust_savgol(x_values, array, 11)['fit']
             
-            yranges[i, :] = get_spectra_range(spectra[i, 2, :], robust=True,
-                                              frac=ybuffer_fraction)
+            yranges[i, :] = get_spectra_range(
+                spectra[i, 2, :], 
+                robust=True,
+                robust_threshold=robust_ybuffer_threshold,
+                frac=ybuffer_fraction)
 
         if ytype == 'snr':
-
-#            array = spectra[i, 1, :]/spectra[i, 2, :]
-#            sg_array = robust_savgol(x_values, array, 11)['fit']
             
-            yranges[i, :] = get_spectra_range(spectra[i, 1, :]/spectra[i, 2, :],
-                                              robust=True,
-                                              frac=ybuffer_fraction)
+            yranges[i, :] = get_spectra_range(
+                spectra[i, 1, :]/spectra[i, 2, :],
+                robust=True,
+                robust_threshold=robust_ybuffer_threshold,
+                frac=ybuffer_fraction)
 
         if ytype == 'flux and uncertainty':
 
-# the following is very buggy
-            # array1 = spectra[i, 1, :]
-            # sg_array1 = robust_savgol(x_values, array1, 11)['fit']
-            
-            # array2 = spectra[i, 2, :]
-            # sg_array2 = robust_savgol(x_values, array2, 11)['fit']            
-                    
-            # yranges[i, :] = get_spectra_range(sg_array1, sg_array2,
-            #                                frac=ybuffer_fraction)
-
-            yranges[i, :] = get_spectra_range(spectra[i, 1, :], robust=True,
-                                              frac=ybuffer_fraction)
+            yranges[i, :] = get_spectra_range(
+                spectra[i, 1, :], 
+                robust=True,
+                robust_threshold=robust_ybuffer_threshold,
+                frac=ybuffer_fraction)
             
     return wranges, yranges
     

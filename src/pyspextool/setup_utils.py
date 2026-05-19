@@ -45,18 +45,19 @@ def set_version():
     logger.debug(f"Version set to {setup.state['version']}")
 
 
-def pyspextool_setup(instrument=setup.state["instruments"][0],
-                     raw_path:str=None,
-                     cal_path:str=None,
-                     proc_path:str=None,
-                     qa_path:str=None,
-                     search_extension:str=setup.state["search_extensions"][0],
-                     verbose:bool=True,
-                     qa_show:bool=False,
-                     qa_showscale:float=1.0,
-                     qa_showblock:bool=False,
-                     qa_write:bool=False,
-                     qa_extension:str=setup.state["qa_extensions"][0]):
+def pyspextool_setup(
+    instrument=setup.state["instruments"][0],
+    raw_path:str=None,
+    cal_path:str=None,
+    proc_path:str=None,
+    qa_path:str=None,
+    search_extension:str=setup.state["search_extensions"][0],
+    verbose:bool=True,
+    qa_show:bool=False,
+    qa_showscale:float=1.0,
+    qa_showblock:bool=False,
+    qa_write:bool=False,
+    qa_extension:str=setup.state["qa_extensions"][0]):
 
     """
     Set the pyspextool instrument, paths, and quality assurance settings
@@ -230,7 +231,57 @@ def pyspextool_setup(instrument=setup.state["instruments"][0],
 
     logger.info(" QA settings set")
 
+    # Set the default qa_info dictionaries
+
+    qafile_info = {'figure_size':setup.plots['landscape_size'],
+                   'font_size':setup.plots['font_size'],
+                   'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                   'spine_linewidth':setup.plots['spine_linewidth'],
+                   'file_fullpath':'',
+                   'xlabel':'',
+                   'title':''}
+
+#    qafile_info : dict, optional    
+#        
+#        `"figure_size"` : tuple
+#            A (2,) tuple of the figure size in inches.
+#
+#        `"font_size"` : int
+#            The font size.
+#
+#        `"spectrum_linewidth"` : float
+#            The line thickness of the spectrum.
+#
+#        `"spine_linewidth"` : float
+#            The spine thickness of the spectrum.
+#
+#        `"file_fullpath"`: str
+#            The fullpath to the file to be written to.
+#
+#        `'xlabel'` : str, optional
+#            A latex string giving the xlabel.
+#
+#        `'title'` : str, optional
+#            A (latex) string giving the title of the plot.
+
+
+
+    
+    qashow_info = {'plot_number':0,
+                   'figure_size':(0,0),
+                   'font_size':12,
+                   'spectrum_linewidth':setup.plots['zoomspectrum_linewidth'],
+                   'spine_linewidth':setup.plots['spine_linewidth'],
+                   'block':setup.state['qa_showblock'],
+                   'xlabel':'',
+                   'title':''}
+
+    setup.plots['qafile_info'] = qafile_info
+    setup.plots['qashow_info'] = qashow_info
+
+
     # Set the version number
+
     set_version()
 
     msg = f"""

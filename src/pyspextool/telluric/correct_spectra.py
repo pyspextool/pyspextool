@@ -9,7 +9,7 @@ from astropy.coordinates import angular_separation
 from pyspextool import config as setup
 from pyspextool.telluric import config
 
-from pyspextool.io.check import check_parameter, check_qakeywords, check_file
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.io.files import inoutfiles_to_fullpaths
 from pyspextool.io.files import make_full_path
@@ -17,6 +17,7 @@ from pyspextool.telluric.core import find_shift
 from pyspextool.telluric.qaplots import plot_shifts
 from pyspextool.plot.plot_spectra import plot_spectra
 from pyspextool.pyspextoolerror import pySpextoolError
+from pyspextool.io import read
 from pyspextool.utils.coords import ten
 from pyspextool.utils.interpolate import linear_interp1d
 from pyspextool.utils.math import combine_flag_stack
@@ -26,7 +27,6 @@ def correct_spectra(
     object_filenames:str | list,
     telluric_fullfilename:str,
     output_filenames:str,
-    default_shiftranges:bool=True,
     user_shiftranges:tuple | list=None,
     verbose:bool=None,
     qa_show:bool=None,
@@ -63,14 +63,12 @@ def correct_spectra(
 
         If type `object_filenames` is list, then the prefix, e.g. 'spectra'.  
 
-    default_shiftranges : {True, False}
-        Set to True to use the default ranges.
-        Set to False to not use the default ranges.
-
-    user_shiftranges : tuple, list, deafult None
-        If a tuple, then a (3,) tuple as
+    user_shiftranges : tuple, list, default None
+        If a (3,) tuple, then 
         (order number, lower wavelength, upper wavelength).
 
+        If a (0,) tuple, then no shifts are applied.
+  
         If a list, then a (norders,) list of (3,) tuples as
         (order number, lower wavelength, upper wavelength).
 
@@ -110,32 +108,32 @@ def correct_spectra(
     # Check the parameters and QA keywords
     #
     
-    check_parameter('correct_spectra', 'object_filenames', object_filenames, 
-                    ['str', 'list'], list_types=['str','str'])
+    check_parameter('correct_spectra', 'object_filenames', 
+                    object_filenames, ['str', 'list'], list_types=['str','str'])
 
-    check_parameter('correct_spectra', 'telluric_fullfilename', telluric_fullfilename, 
-                    'str')
+    check_parameter('correct_spectra', 'telluric_fullfilename', 
+                    telluric_fullfilename, 'str')
 
-    check_parameter('correct_spectra', 'output_filenames', output_filenames, 
-                    ['str', 'list'])
+    check_parameter('correct_spectra', 'output_filenames', 
+                    output_filenames, ['str', 'list'])
 
-    check_parameter('correct_spectra', 'default_shiftranges',
-                    default_shiftranges, 'bool')
+    check_parameter('correct_spectra', 'user_shiftranges', 
+                    user_shiftranges, ['tuple', 'list', 'NoneType'])    
 
-    check_parameter('correct_spectra', 'user_shiftranges', user_shiftranges,
-                    ['tuple', 'list', 'NoneType'])    
+    check_parameter('correct_spectra', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
 
-    check_parameter('correct_spectra', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('correct_spectra', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
 
-    check_parameter('correct_spectra', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('correct_spectra', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
 
-    check_parameter('correct_spectra', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter('correct_spectra', 'qa_showscale', 
+                    qa_showscale, ['int', 'float', 'NoneType'])
 
-    check_parameter('correct_spectra', 'qa_showscale', qa_showscale,
-                    ['int', 'float', 'NoneType'])
-
-    check_parameter('correct_spectra', 'qa_showblock', qa_showblock,
-                    ['NoneType', 'bool'])
+    check_parameter('correct_spectra', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
     
     qa = check_qakeywords(
         verbose=verbose,
@@ -179,15 +177,16 @@ def correct_spectra(
     # Now get the telluric correction file
     #
 
-    logging.info(" Loading the telluric correction spectrum.\n")
+    logging.info(" Loading the telluric correction file "+telluric_fullfilename+".")
 
-    fullpath = make_full_path(setup.state["proc_path"], 
-                              telluric_fullfilename, 
-                              exist=True)
-
+    fullpath = make_full_path(
+        setup.state["proc_path"], 
+        telluric_fullfilename, 
+        exist=True)
+    
     telluric_spectra, telluric_dict = read_spectra_fits(fullpath)
 
-    # Ensure the standard has only one aperture.
+    # Ensure the telluric file has only one aperture.
 
     if telluric_dict["napertures"] != 1:
 
@@ -200,14 +199,42 @@ def correct_spectra(
     config.state['telluric_dictionary'] = telluric_dict
     config.state['telluric_astropyheader'] = telluric_dict['astropyheader']
     config.state["telluric_orders"] = telluric_dict["orders"]
+    config.state["telluric_norders"] = telluric_dict["norders"]
+    config.state["instrument_mode"] = telluric_dict["obsmode"]
 
+    #
+    # Get the wavelength ranges for the telluric correction spectra
+    #
+
+    wavelength_ranges = []
+    for i in range(telluric_dict["norders"]):
+
+        # Do min max first
+
+        min = np.nanmin(telluric_spectra[i, 0, :])
+        max = np.nanmax(telluric_spectra[i, 0, :])
+
+        wavelength_ranges.append(np.array([min, max]))
+
+    # Store the results
+
+    config.state["telluric_wavelengthranges"] = wavelength_ranges
+
+    #
+    # Get set up for minimizing residual telluric noise
+    #
+
+    logging.info(' Loading residuals telluric noise minimization ranges. ')
+    shift_requests = _get_shiftinfo(        
+        user_shiftranges)
+    
     #
     # Now start the loop over each `input_file`.
     #
 
     for i in range(len(input_fullpaths)):
 
-        logging.info(' Loading file '+input_filenames[i]+".")
+        logging.info(' Loading object file '+input_filenames[i]+".")
         
         object_spectra, object_dict = read_spectra_fits(input_fullpaths[i])
 
@@ -215,8 +242,9 @@ def correct_spectra(
         # Check to ensure the telluric spectrum is compatible with the object.
         #
 
-        airmass, angle = _check_telluric(object_dict['astropyheader'], 
-                                         telluric_dict['astropyheader'])
+        airmass, angle = _check_telluric(
+            object_dict['astropyheader'], 
+            telluric_dict['astropyheader'])
 
         config.state['airmass_difference'] = airmass
         config.state['angular_separation'] = angle
@@ -241,8 +269,9 @@ def correct_spectra(
         telluric_spectra = np.copy(object_spectra)
         for j in range(config.state['object_norders']):
 
-            tidx = np.where(config.state['telluric_orders'] == \
-                            config.state['object_orders'][j])[0]
+            tidx = np.where(
+                config.state['telluric_orders'] == \
+                config.state['object_orders'][j])[0]
 
             for k in range(config.state['object_napertures']):
                 
@@ -261,26 +290,23 @@ def correct_spectra(
         config.state['telluric_spectra'] = telluric_spectra
         config.state['shifted_telluric_spectra'] = np.copy(telluric_spectra)
 
-
         # 
         # Shift the telluric spectra to minimize residual telluric noise
         #
 
-        if default_shiftranges is True or user_shiftranges is not None:
-
-            _shift_spectra(default_shiftranges,
-                           user_shiftranges,
-                           output_filenames[i],
-                           qa['verbose'],
-                           qa['show'],
-                           qa['showscale'],
-                           qa['showblock'],
-                           qa['write'])
+        shifts = _shift_spectra(
+            shift_requests,
+            output_filenames[i],
+            qa['verbose'],
+            qa['show'],
+            qa['showscale'],
+            qa['showblock'],
+            qa['write'])
 
         #
         # Now do the correction
         #
-
+        
         message = " Correcting spectra for telluric absorption and flux calibrating."
         logging.info(message)
 
@@ -345,21 +371,37 @@ def correct_spectra(
         output_astropyheader['FILENAME'] = output_filenames[i]+'.fits'
         output_astropyheader['MODULE'] = 'telluric'
             
-
         # Deal with the units
 
         yunits = config.state['telluric_astropyheader']['YUNITS'].split('/')[0].strip()
 
         result = get_latex_fluxdensity(yunits)
-        
+
         output_astropyheader['LYUNITS'] = result[0]
         output_astropyheader['LYLABEL'] = result[1]
         output_astropyheader['LuLABEL'] = result[2]
 
-        fits.writeto(output_fullpaths[i]+'.fits',
-                     corrected_spectra,
-                     output_astropyheader,
-                     overwrite=True)
+        #
+        #  Add the shift ranges and values
+        #
+
+        shifts = config.state['shifts']
+        np.nan_to_num(shifts,copy=False,nan=0.0)
+        for j in range(config.state['object_norders']):
+
+            order = str(config.state['object_orders'][j]).zfill(3)
+            keyword = 'SHFTO'+order
+            string = ", ".join(map(str,shifts[j,:]))
+
+            output_astropyheader[keyword] = (string, 
+                                             ' shift of order '+order+\
+                                             ' telluric spectrum (pixels).')
+
+        fits.writeto(
+            output_fullpaths[i]+'.fits',
+            corrected_spectra,
+            output_astropyheader,
+            overwrite=True)
         
         logging.info(' Wrote file '+output_filenames[i]+'.fits' + \
                      " to the proc directory.\n")
@@ -399,7 +441,6 @@ def correct_spectra(
                 font_size=font_size,
                 colors=['green','black'])
             
-
         if qa['write'] is True:
                 
             file_fullpath = os.path.join(
@@ -437,278 +478,10 @@ def correct_spectra(
                 font_size=setup.plots['font_size'],
                 colors=['green','black'])
 
-            
-def _shift_spectra(
-    default_shiftranges:bool,
-    user_shiftranges:tuple | list | None,
-    output_filename:str,
-    verbose:bool,
-    qa_show:bool | None,
-    qa_showscale:float | None,
-    qa_showblock:bool | None,
-    qa_write:bool | None):
-
-    """
-    To shift the telluric spectra to minimize residual telluric noise.
-    
-    The telluric spectrum is shifted relative to the object spectrum by sub pixel 
-    shifts in order to minimize the noise over a particular wavelength range.
-
-    Parameters
-    ----------
-    default_shiftranges : {True, False}
-        Set to True to use the default ranges.
-        Set to False to not use the default ranges.
-
-    user_shiftranges : tuple, list, deafult None
-        If a tuple, then a (3,) tuple as
-        (order number, lower wavelength, upper wavelength).
-
-        If a list, then a (norders,) list of (3,) tuples as
-        (order number, lower wavelength, upper wavelength).
-            
-    verbose : {None, True, False}
-        Set to True to report updates to the command line.
-        Set to False to not report updates to the command line.
-        Set to None to default to setup.state['verbose'].
-    
-    qa_show : {None, True, False}
-        Set to True to show a QA plot on the screen.
-        Set to False to not show a QA plot on the screen.
-        Set to None to default to setup.state['qa_show'].
-
-    qa_showblock : {None, True, False}
-        Set to True to block the screen QA plot.
-        Set to False to not block the screen QA plot.
-        Set to None to default to setup.state['qa_block'].
-    
-    qa_showscale : float or int, default None
-        The scale factor by which to increase or decrease the default size of
-        the plot window.  Set to None to default to setup.state['qa_scale'].    
-
-    qa_write : {None, True, False}
-        Set to True to write a QA plot to disk
-        Set to False to not write a QA plot to disk.
-        Set to None to default to setup.state['qa_write'].
-    
-    Returns
-    -------
-    None
-    Loads data into memory:
-
-        config.state['shift_ranges']
-        config.state['shifts']
-        config.state['shiftedtc_spectra']
-    
-    """
-
-    #
-    # Check the parameters and keywords
-    #
-
-    check_parameter('shift_spectra', 'default_shiftranges',
-                    default_shiftranges, 'bool')
-
-    check_parameter('shift_spectra', 'user_shiftranges', user_shiftranges,
-                    ['tuple', 'list', 'NoneType'])    
-                   
-    check_parameter('shift_spectra', 'verbose', verbose, 'bool')
-
-    check_parameter('shift_spectra', 'qa_show', qa_show, 'bool')
-
-    check_parameter('shift_spectra', 'qa_showscale', qa_showscale,
-                    ['float','int'])
-
-    check_parameter('shift_spectra', 'qa_showblock', qa_showblock, 'bool')
-    
-    check_parameter('shift_spectra', 'qa_write', qa_write, 'bool')
-
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
-
-    logging.info(" Shifting the telluric spectra to minimize residual telluric noise.")
-
-    #
-    # Create an empty shift_ranges array
-    #
-
-    shift_orders = config.state['object_orders']
-    shift_ranges = np.full((config.state['object_norders'],2), np.nan)
-
-    #
-    # Now update with the default ranges if requested.
-    #
-    
-    if default_shiftranges is True:
-
-        # Read the telluric_shiftinfo.dat file.
-        
-        file = os.path.join(setup.state['instrument_path'],
-                            'telluric_shiftinfo.dat')
-
-        result = check_file(file, raise_error=False)
-
-        if result is None:
-
-            message = ' File telluric_shiftinfo.dat not found.  '+\
-                'Skipping default shifts.'
-            logging.info( message)
-
-        else:
-            
-            mode, order, minwave, maxwave = np.loadtxt(file,
-                                                       comments='#',
-                                                       dtype='str',
-                                                       unpack=True)
-            
-            order = order.astype(int)
-            minwave = minwave.astype(float)
-            maxwave = maxwave.astype(float)    
-            
-            #
-            # yank out the pertinent information for the mode
-            #
-            
-            z = mode == config.state['instrument_mode']
-            if not np.sum(z):
-
-                message = ' Default shift ranges for mode '+\
-                    config.state['instrument_mode']+\
-                    ' not found.  Skipping default shifts.'
-                logging.info(message)
-            
-            default_orders = order[z]
-            minwave = minwave[z]
-            maxwave = maxwave[z]
-        
-            for i in range(len(shift_orders)):
-
-                z = np.where(default_orders == shift_orders[i])[0]
-                if len(z) == 1:
                     
-                    shift_ranges[i,0] = minwave[z][0]
-                    shift_ranges[i,1] = maxwave[z][0]                    
-                                       
-    #
-    # Update the shifts_ranges for the user values
-    #
-
-    if isinstance(user_shiftranges,tuple):
-
-        z = np.where(shift_orders == user_shiftranges[0])[0]
-        if len(z) == 1:
-
-            user_range = _check_inrange(user_shiftranges,
-                                        verbose=qa['verbose'])
-            if user_range is not None:
-
-                shift_ranges[z,:] = user_range
-
-    config.state['shift_ranges'] = shift_ranges
-                
-    #
-    # Now do the shifts
-    #
-
-    shifts = np.zeros((config.state['object_norders'],
-                       config.state['object_napertures']))
-
-    for i in range(config.state['object_norders']):
-
-        if np.isnan(shift_ranges[i][1]):
-
-            continue
-        
-        for j in range(config.state['object_napertures']):
-
-            idx = i*config.state['object_napertures'] + j
-
-            shifts[i,j] = find_shift(config.state['object_spectra'][idx,0,:],
-                                     config.state['object_spectra'][idx,1,:],
-                                     config.state['telluric_spectra'][idx,1,:],
-                                    list(shift_ranges[i][0:2]))
-
-    config.state['shifts'] = np.round(shifts, decimals=2)
-
-    #
-    # Perform the shifts
-    #
-
-    for i in range(config.state['object_norders']):
-        
-        for j in range(config.state['object_napertures']):
-
-            idx = i*config.state['object_napertures'] + j
-
-            x = np.arange(len(config.state['object_spectra'][idx,0,:]))
-            tc_f = config.state['telluric_spectra'][idx,1,:]
-            tc_u = config.state['telluric_spectra'][idx,2,:]            
-
-            rtc_f, rtc_u = linear_interp1d(
-                x+config.state['shifts'][i,j].item(),
-                tc_f,
-                x,
-                input_u=tc_u)
-            
-            config.state['shifted_telluric_spectra'][idx,1,:] = rtc_f
-            config.state['shifted_telluric_spectra'][idx,2,:] = rtc_u
-
-    #
-    # Do the QA plots
-    #
-
-    if qa['show'] is True and np.sum(config.state['shifts']) != 0:
-
-        plot_shifts(setup.plots['shifts'],
-                    setup.plots['subplot_size'],
-                    setup.plots['stack_max'],
-                    setup.plots['font_size'],
-                    qa['showscale'],
-                    setup.plots['spectrum_linewidth'],
-                    setup.plots['spine_linewidth'],
-                    config.state['latex_xlabel'],
-                    config.state['object_orders'],
-                    config.state['object_spectra'],
-                    config.state['telluric_spectra'],
-                    config.state['shifted_telluric_spectra'],
-                    config.state['shift_ranges'],
-                    config.state['shifts'])
-        
-        pl.show(block=qa['showblock'])
-        if qa['showblock'] is False:
-
-            pl.pause(1)
-        
-    if qa['write'] is True  and np.sum(config.state['shifts']) != 0:
-
-        plot_shifts(None,
-                    setup.plots['subplot_size'],
-                    setup.plots['stack_max'],
-                    setup.plots['font_size'],
-                    1,
-                    setup.plots['spectrum_linewidth'],
-                    setup.plots['spine_linewidth'],
-                    config.state['latex_xlabel'],
-                    config.state['object_orders'],
-                    config.state['object_spectra'],
-                    config.state['telluric_spectra'],
-                    config.state['shifted_telluric_spectra'],
-                    config.state['shift_ranges'],
-                    config.state['shifts'],
-                    reverse_order=True)
-        
-        pl.savefig(os.path.join(setup.state['qa_path'],
-                                output_filename+ \
-                                '_shifts' + \
-                                setup.state['qa_extension']))
-        pl.close()
-
-            
 def _check_inrange(
-    test:tuple,
+    test_order,
+    test_range:list,
     verbose:bool=True):
 
     """
@@ -716,9 +489,12 @@ def _check_inrange(
 
     Parameters
     ----------
-    test : tuple
-        A (3,) tuple where test[0] is the order number, test[1] is the
-        lower wavelength limit and test[2] is the upper wavelength limit.
+    test_order : int
+        The order number associated with `test_range`.
+
+    test_range : list
+        A (2,) list where test_range[0] is the lower wavelength limit and 
+        test[1] is the upper wavelength limit.
 
     verbose : {True, False}
         Set to True to report updates to the command line.
@@ -738,7 +514,9 @@ def _check_inrange(
     # Check parameters
     #
 
-    check_parameter('_check_inrange', 'test', test, 'tuple')
+    check_parameter('_check_inrange', 'test_order', test_order, 'int')
+
+    check_parameter('_check_inrange', 'test_range', test_range, 'list')
 
     check_qakeywords(verbose=verbose)
     
@@ -748,46 +526,37 @@ def _check_inrange(
         
     # Rename the object wavelength ranges for ease.
     
-    object_ranges = config.state['standard_wavelengthranges']
+    telluric_ranges = config.state['telluric_wavelengthranges']
     
-    z = np.where(config.state['object_orders'] == test[0])[0]
-
-    # Does the requested order exist?
-    
-    if len(z) == 0:
-
-        message = ' Requested telluric shift '+str(config.state['instrument_mode'])+\
-            ' order '+str(test[0])+' not extracted.  Skipping this order.'
-        logging.info(message)
-
-        return None
+    z = np.where(config.state['telluric_orders'] == test_order)[0]
            
     # Is the range in order?
 
     z = int(z)
-    lower = np.logical_and(test[1] >= object_ranges[z][0], 
-                           test[0] <= object_ranges[z][1])
+    lower = np.logical_and(test_range[1] >= telluric_ranges[z][0], 
+                           test_range[0] <= telluric_ranges[z][1])
     
-    upper = np.logical_and(test[2] >= object_ranges[z][0], 
-                           test[1] <= object_ranges[z][1])
+    upper = np.logical_and(test_range[1] >= telluric_ranges[z][0], 
+                           test_range[0] <= telluric_ranges[z][1])
     
     if not lower*upper:
         
         message = ' Requested telluric shift range for '+\
             str(config.state['instrument_mode'])+\
-            ' Order '+str(test[0])+' of '+\
-            ' and '.join([str(test[1]),str(test[2])])+\
+            ' Order '+str(test_order)+' of '+\
+            ' and '.join([str(test_range[0]),str(test_range[1])])+\
             ' is out of range.  Skipping this order.'
 
         logging.info(message)
 
         return None
         
-    return np.array(test[1:3])
+    return list(test_range[0:2])
 
 
-def _check_telluric(object_astropyheader,
-                    telluric_astropyheader):
+def _check_telluric(
+    object_astropyheader,
+    telluric_astropyheader):
 
     """
     To ensure the object and telluric files are compatible.
@@ -816,11 +585,11 @@ def _check_telluric(object_astropyheader,
     # Check input parameters
     #
 
-    check_parameter('_check_telluric', 'object_astropyheader', object_astropyheader,
-                    'Header')
+    check_parameter('_check_telluric', 'object_astropyheader', 
+                    object_astropyheader, 'Header')
 
-    check_parameter('_check_telluric', 'telluric_astropyheader', telluric_astropyheader,
-                    'Header')
+    check_parameter('_check_telluric', 'telluric_astropyheader', 
+                    telluric_astropyheader, 'Header')
 
     #
     # Check to ensure object and telluric files are compatible
@@ -901,3 +670,324 @@ def _check_telluric(object_astropyheader,
 
 
     return delta_airmass, angle
+
+def _get_shiftinfo(
+    user_shifts:tuple | list | None,
+    verbose:bool=None):
+
+    """
+    To merge the default shift information and user shift information
+
+    Parameters
+    ----------
+    user_shifts : tuple | list | None
+        If a (3,) tuple, then
+        (order number, lower wavelength, upper wavelength).
+
+        If a (0,) tuple, then no shifts
+
+        If a list, then a (norders,) list of (3,) tuples as
+        (order number, lower wavelength, upper wavelength).
+   
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+
+    Returns
+    -------
+    list or None
+        A (nshiftorders,) list of dictionaries:
+
+        'Order Number' : int
+            The order number.
+
+        'Wavelength Range' : list
+            A (2,) list giving the wavelength range over which to determine shifts.
+
+    """
+
+    #
+    # Check parameters and QA
+    #
+
+    check_parameter('_merge_shiftinfo', 'user_shifts',
+                    user_shifts, ['NoneType','list','tuple'])
+
+    check_parameter('merge_shiftinfo', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
+
+    qa = check_qakeywords(
+        verbose=verbose)
+
+    shifts = None
+    
+    if user_shifts is not None:
+
+        # The user did pass shift information. 
+        
+        if len(user_shifts) == 0:
+
+            # The user is requesting no shifts
+
+            return shifts
+    
+        if isinstance(user_shifts,tuple) is True:
+
+            # embed in a list for ease of looping.
+
+            user_shifts = [user_shifts]
+
+        # Loop over user shifts and create dictionary
+
+        shifts = []
+        for element in user_shifts:
+                
+            range = _check_inrange(
+                element[0],
+                [element[1],element[2]],
+                verbose=qa['verbose'])
+            
+            if range is not None:
+                    
+                dict = {'Order Number':element[0],'Wavelength Range':range}
+                shifts.append(dict)
+
+    else:
+
+        # Get and store the mode telluric information
+        
+        fullpath = os.path.join(
+            setup.state["instrument_path"], 
+            config.state['telluric_dictionary']['obsmode']+"_telluric.dat")
+        
+        result = read.read_telluric_file(fullpath)
+        shifts = result['telluric_noise_info']
+
+
+    return shifts
+
+
+def _shift_spectra(
+    shift_requests:list | None,
+    output_filename:str,
+    verbose:bool,
+    qa_show:bool | None,
+    qa_showscale:float | None,
+    qa_showblock:bool | None,
+    qa_write:bool | None):
+
+    """
+    To shift the telluric spectra to minimize residual telluric noise.
+    
+    The telluric spectrum is shifted relative to the object spectrum by sub pixel 
+    shifts in order to minimize the noise over a particular wavelength range.
+
+    Parameters
+    ----------
+    shift_requests : dict, None
+            
+    verbose : {None, True, False}
+        Set to True to report updates to the command line.
+        Set to False to not report updates to the command line.
+        Set to None to default to setup.state['verbose'].
+    
+    qa_show : {None, True, False}
+        Set to True to show a QA plot on the screen.
+        Set to False to not show a QA plot on the screen.
+        Set to None to default to setup.state['qa_show'].
+
+    qa_showblock : {None, True, False}
+        Set to True to block the screen QA plot.
+        Set to False to not block the screen QA plot.
+        Set to None to default to setup.state['qa_block'].
+    
+    qa_showscale : float or int, default None
+        The scale factor by which to increase or decrease the default size of
+        the plot window.  Set to None to default to setup.state['qa_scale'].    
+
+    qa_write : {None, True, False}
+        Set to True to write a QA plot to disk
+        Set to False to not write a QA plot to disk.
+        Set to None to default to setup.state['qa_write'].
+    
+    Returns
+    -------
+    None
+    Loads data into memory:
+
+        config.state['shift_ranges']
+        config.state['shifts']
+        config.state['shiftedtc_spectra']
+    
+    """
+
+    #
+    # Check the parameters and keywords
+    #
+
+    check_parameter('shift_spectra', 'shift_requests', 
+                    shift_requests, ['list', 'NoneType'])    
+                   
+    check_parameter('shift_spectra', 'verbose', 
+                    verbose, 'bool')
+
+    check_parameter('shift_spectra', 'qa_show', 
+                    qa_show, 'bool')
+
+    check_parameter('shift_spectra', 'qa_showscale', 
+                    qa_showscale, ['float','int'])
+
+    check_parameter('shift_spectra', 'qa_showblock', 
+                    qa_showblock, 'bool')
+    
+    check_parameter('shift_spectra', 'qa_write', 
+                    qa_write, 'bool')
+
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
+
+    #
+    # Create an empty shift and ranges array
+    #
+
+    shifts = np.full(
+        (config.state['object_norders'],config.state['object_napertures']),np.nan)
+
+    ranges = np.full((config.state['object_norders'],2),np.nan)
+
+    
+    if shift_requests is None:
+
+        config.state['shifted_telluric_spectra'] = config.state['telluric_spectra']
+        config.state['shifts'] = shifts
+        config.state['shift_ranges'] = ranges
+
+        return
+
+    #
+    # Determine the shifts
+    #
+
+    message = " Determining subpixel shifts to minimize residual telluric noise."
+    logging.info(message)
+
+    # Start the loop over the object number
+
+    order_requests = np.array([x['Order Number'] for x in shift_requests])
+
+    for i in range(config.state['object_norders']):
+
+        z = np.where(order_requests == config.state['object_orders'][i])[0]
+
+        if z.size == 0: # no match
+
+            continue
+
+        else:
+
+            z = z[0]
+
+        ranges[i,:] = shift_requests[z]['Wavelength Range']
+
+        for j in range(config.state['object_napertures']):
+            
+            idx = i*config.state['object_napertures'] + j
+            
+            shifts[i,j] = find_shift(
+                config.state['object_spectra'][idx,0,:],
+                config.state['object_spectra'][idx,1,:],
+                config.state['telluric_spectra'][idx,1,:],
+                shift_requests[z]['Wavelength Range'])
+            
+    config.state['shifts'] = np.round(shifts, decimals=2)
+    config.state['shift_ranges'] = ranges
+                    
+    #
+    # Perform the shifts
+    #
+        
+    for i in range(config.state['object_norders']):
+
+        for j in range(config.state['object_napertures']):
+
+            if np.isnan(config.state['shifts'][i,j]):
+
+                continue
+
+            else:
+
+                idx = i*config.state['object_napertures'] + j
+
+                x = np.arange(len(config.state['object_spectra'][idx,0,:]))
+                tc_f = config.state['telluric_spectra'][idx,1,:]
+                tc_u = config.state['telluric_spectra'][idx,2,:]            
+                
+                rtc_f, rtc_u = linear_interp1d(
+                    x+config.state['shifts'][i,j].item(),
+                    tc_f,
+                    x,
+                    input_u=tc_u)
+                
+                config.state['shifted_telluric_spectra'][idx,1,:] = rtc_f
+                config.state['shifted_telluric_spectra'][idx,2,:] = rtc_u
+
+    #
+    # Do the QA plots
+    #
+
+    if qa['show'] is True:
+
+        plot_shifts(
+            setup.plots['shifts'],
+            setup.plots['subplot_size'],
+            setup.plots['stack_max'],
+            setup.plots['font_size'],
+            qa['showscale'],
+            setup.plots['spectrum_linewidth'],
+            setup.plots['spine_linewidth'],
+            config.state['latex_xlabel'],
+            config.state['object_orders'],
+            config.state['object_spectra'],
+            config.state['telluric_spectra'],
+            config.state['shifted_telluric_spectra'],
+            config.state['shift_ranges'],
+            config.state['shifts'])
+        
+        pl.show(block=qa['showblock'])
+        if qa['showblock'] is False:
+
+            pl.pause(1)
+        
+    if qa['write'] is True  and np.sum(config.state['shifts']) != 0:
+
+        plot_shifts(
+            None,
+            setup.plots['subplot_size'],
+            setup.plots['stack_max'],
+            setup.plots['font_size'],
+            1,
+            setup.plots['spectrum_linewidth'],
+            setup.plots['spine_linewidth'],
+            config.state['latex_xlabel'],
+            config.state['object_orders'],
+            config.state['object_spectra'],
+            config.state['telluric_spectra'],
+            config.state['shifted_telluric_spectra'],
+            config.state['shift_ranges'],
+            config.state['shifts'],
+            reverse_order=True)
+        
+        pl.savefig(
+            os.path.join(
+                setup.state['qa_path'],
+                output_filename+ \
+                '_shifts' + \
+                setup.state['qa_extension']))
+
+        pl.close()
+
