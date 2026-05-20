@@ -5,8 +5,9 @@ from scipy.stats import describe
 
 from pyspextool.io.check import check_parameter
 
-def bit_set(array:npt.ArrayLike,
-            bits:int | list | npt.ArrayLike):
+def bit_set(
+    array:npt.ArrayLike,
+    bits:int | list | npt.ArrayLike):
 
     """
     To determine if the given bits are set in an array.
@@ -53,9 +54,11 @@ def bit_set(array:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('bit_set', 'array', array, 'ndarray')
+    check_parameter('bit_set', 'array', 
+                    array, 'ndarray')
 
-    check_parameter('bit_set', 'bits', bits, ['int', 'list', 'ndarray'])    
+    check_parameter('bit_set', 'bits', 
+                    bits, ['int', 'list', 'ndarray'])    
 
     #  Define empty mask
 
@@ -83,8 +86,9 @@ def bit_set(array:npt.ArrayLike,
 
 
 
-def combine_flag_stack(stack:npt.ArrayLike,
-                       nbits:int=8):
+def combine_flag_stack(
+    stack:npt.ArrayLike,
+    nbits:int=8):
 
     """
     To combine bit-set flag arrays.
@@ -137,9 +141,11 @@ def combine_flag_stack(stack:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('combine_flag_stack', 'stack', stack, 'ndarray')
+    check_parameter('combine_flag_stack', 'stack', 
+                    stack, 'ndarray')
 
-    check_parameter('combine_flag_stack', 'nbits', nbits, 'int')    
+    check_parameter('combine_flag_stack', 'nbits', 
+                    nbits, 'int')    
 
     # Determine whether this is a spectral stack or image stack
 
@@ -180,10 +186,11 @@ def combine_flag_stack(stack:npt.ArrayLike,
 
 
 
-def find_outliers(data, 
-                  thresh, 
-                  leave_nans=True, 
-                  silent=False):
+def find_outliers(
+    data:npt.ArrayLike, 
+    thresh:float, 
+    leave_nans:bool=True, 
+    silent:bool=False):
 
     '''
     To identify outliers in a distribution of data.
@@ -242,11 +249,14 @@ def find_outliers(data,
     # Check parameters
     #
 
-    check_parameter('find_outliers', 'data', data, 'ndarray')
+    check_parameter('find_outliers', 'data', 
+                    data, 'ndarray')
 
-    check_parameter('find_outliers', 'thresh', thresh, ['int', 'float'])
+    check_parameter('find_outliers', 'thresh', 
+                    thresh, ['int', 'float'])
 
-    check_parameter('find_outliers', 'silent', silent, 'bool')        
+    check_parameter('find_outliers', 'silent', 
+                    silent, 'bool')        
 
     #
     # Deal with NaNs
@@ -307,11 +317,12 @@ def find_outliers(data,
 
 
     
-def mean_data_stack(data:npt.ArrayLike,
-                    weights:npt.ArrayLike=None,
-                    goodbad:npt.ArrayLike=None,
-                    robust:float=None,
-                    stderr:bool=True):
+def mean_data_stack(
+    data:npt.ArrayLike,
+    weights:npt.ArrayLike=None,
+    goodbad:npt.ArrayLike=None,
+    robust:float=None,
+    stderr:bool=True):
 
     """
     (Robustly) Compute the mean of a spectral or image stack
@@ -346,10 +357,10 @@ def mean_data_stack(data:npt.ArrayLike,
             The mean of the data stack
 
         tuple(1) : ndarray
-            The sample variance of the stack.  That is, the result is divided 
+            The sample stddev of the stack.  That is, the result is divided 
               by (n-1).  
             If `stderr` is True, and `weights` is None, then the 
-            `mvar` is the standard error which is the sample standard 
+            the result is the standard error which is the sample standard 
             deviation divided by sqrt(n).  
 
         tuple(2) : ndarray
@@ -360,18 +371,20 @@ def mean_data_stack(data:npt.ArrayLike,
     # Check the parameters
     #
 
-    check_parameter('mean_data_stack', 'data', data, 'ndarray', [2, 3])
+    check_parameter('mean_data_stack', 'data', 
+                    data, 'ndarray', [2, 3])
 
-    check_parameter('mean_data_stack', 'weights', weights,
-                    ['NoneType','ndarray'], [2, 3])
+    check_parameter('mean_data_stack', 'weights', 
+                    weights, ['NoneType','ndarray'], [2, 3])
 
-    check_parameter('mean_data_stack', 'goodbad', goodbad,
-                    ['NoneType','ndarray'], [2, 3])
+    check_parameter('mean_data_stack', 'goodbad', 
+                    goodbad, ['NoneType','ndarray'], [2, 3])
 
-    check_parameter('mean_data_stack', 'robust', robust,
-                    ['NoneType','int', 'float'])    
+    check_parameter('mean_data_stack', 'robust', 
+                    robust, ['NoneType','int', 'float'])    
 
-    check_parameter('mean_data_stack', 'stderr', stderr, 'bool')        
+    check_parameter('mean_data_stack', 'stderr', 
+                    stderr, 'bool')        
 
     # Get array dimensions and get set up
 
@@ -478,13 +491,14 @@ def mean_data_stack(data:npt.ArrayLike,
         mean[z_allnan] = np.nan
         mvar[z_allnan] = np.nan
 
-    return (mean, mvar, goodbad)
+    return (mean, np.sqrt(mvar), goodbad)
     
 
 
-def median_data_stack(data,
-                      mask=None,
-                      stderr=True):
+def median_data_stack(
+    data:npt.ArrayLike,
+    mask:npt.ArrayLike=None,
+    stderr=True):
 
     """
     Median a spectral or image stack with optional mask

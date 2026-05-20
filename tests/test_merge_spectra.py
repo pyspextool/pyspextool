@@ -23,14 +23,15 @@ def test_merge_spectra():
 
     # Data+bitmask+uncertainty w/ overlap
 
-    result = merge_spectra(anchor_wavelength,
-                           anchor_intensity,
-                           add_wavelength,
-                           add_intensity,
-                           anchor_uncertainty=anchor_uncertainty,
-                           add_uncertainty=add_uncertainty,
-                           anchor_bitmask=anchor_bitmask,
-                           add_bitmask=add_bitmask)
+    result = merge_spectra(
+        anchor_wavelength,
+        anchor_intensity,
+        add_wavelength,
+        add_intensity,
+        anchor_uncertainty=anchor_uncertainty,
+        add_uncertainty=add_uncertainty,
+        anchor_bitmask=anchor_bitmask,
+        add_bitmask=add_bitmask)
 
     np.testing.assert_array_equal(result['wavelength'], 
                                   np.array([1,2,3,4,5,6,6.5,7]))
@@ -58,14 +59,15 @@ def test_merge_spectra():
     add_uncertainty = np.array([1,1,1.])
     add_bitmask = np.array([1,1,0])
 
-    result = merge_spectra(anchor_wavelength,
-                           anchor_intensity,
-                           add_wavelength,
-                           add_intensity,
-                           anchor_uncertainty=anchor_uncertainty,
-                           add_uncertainty=add_uncertainty,
-                           anchor_bitmask=anchor_bitmask,
-                           add_bitmask=add_bitmask)
+    result = merge_spectra(
+        anchor_wavelength,
+        anchor_intensity,
+        add_wavelength,
+        add_intensity,
+        anchor_uncertainty=anchor_uncertainty,
+        add_uncertainty=add_uncertainty,
+        anchor_bitmask=anchor_bitmask,
+        add_bitmask=add_bitmask)
 
 
     np.testing.assert_array_equal(result['wavelength'], 
@@ -100,14 +102,15 @@ def test_merge_spectra():
     anchor_bitmask = np.array([0,1,0,0])
 
 
-    result = merge_spectra(add_wavelength,
-                           add_intensity,
-                           anchor_wavelength,
-                           anchor_intensity,
-                           anchor_uncertainty=add_uncertainty,
-                           add_uncertainty=anchor_uncertainty,
-                           anchor_bitmask=add_bitmask,
-                           add_bitmask=anchor_bitmask)
+    result = merge_spectra(
+        add_wavelength,
+        add_intensity,
+        anchor_wavelength,
+        anchor_intensity,
+        anchor_uncertainty=add_uncertainty,
+        add_uncertainty=anchor_uncertainty,
+        anchor_bitmask=add_bitmask,
+        add_bitmask=anchor_bitmask)
 
     
     np.testing.assert_array_equal(result['wavelength'], 
@@ -137,14 +140,15 @@ def test_merge_spectra():
     anchor_uncertainty = np.array([1,1,1.])
     anchor_bitmask = np.array([1,1,0])
 
-    result = merge_spectra(add_wavelength,
-                           add_intensity,
-                           anchor_wavelength,
-                           anchor_intensity,
-                           anchor_uncertainty=add_uncertainty,
-                           add_uncertainty=anchor_uncertainty,
-                           anchor_bitmask=add_bitmask,
-                           add_bitmask=anchor_bitmask)
+    result = merge_spectra(
+        add_wavelength,
+        add_intensity,
+        anchor_wavelength,
+        anchor_intensity,
+        anchor_uncertainty=add_uncertainty,
+        add_uncertainty=anchor_uncertainty,
+        anchor_bitmask=add_bitmask,
+        add_bitmask=anchor_bitmask)
 
 
     np.testing.assert_array_equal(result['wavelength'], 
@@ -174,15 +178,16 @@ def test_merge_spectra():
     add_uncertainty = np.array([2.,2,2,2])
     add_bitmask = np.array([0,1,0,0])
 
-    result = merge_spectra(anchor_wavelength,
-                           anchor_intensity,
-                           add_wavelength,
-                           add_intensity,
-                           anchor_uncertainty=anchor_uncertainty,
-                           add_uncertainty=add_uncertainty,
-                           anchor_bitmask=anchor_bitmask,
-                           add_bitmask=add_bitmask)
-
+    result = merge_spectra(
+        anchor_wavelength,
+        anchor_intensity,
+        add_wavelength,
+        add_intensity,
+        anchor_uncertainty=anchor_uncertainty,
+        add_uncertainty=add_uncertainty,
+        anchor_bitmask=anchor_bitmask,
+        add_bitmask=add_bitmask)
+    
     np.testing.assert_array_equal(result['wavelength'], 
                                   np.array([1,2,3,4,5,6]))
 

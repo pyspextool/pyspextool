@@ -184,36 +184,38 @@ def merge_spectra(
     # Check parameters and qa values
     # 
 
-    check_parameter("merge_spectra", "anchor_wavelength", anchor_wavelength, 
-                    "ndarray")
+    check_parameter("merge_spectra", "anchor_wavelength", 
+                    anchor_wavelength, "ndarray")
 
-    check_parameter("merge_spectra", "anchor_intensity", anchor_intensity, 
-                    "ndarray", ndarray_size=np.size(anchor_wavelength),
+    check_parameter("merge_spectra", "anchor_intensity", 
+                    anchor_intensity, "ndarray", 
+                    ndarray_size=np.size(anchor_wavelength), 
                     ndarray_dtype='float')
 
-    check_parameter("merge_spectra", "add_wavelength", add_wavelength, 
-                    "ndarray")
+    check_parameter("merge_spectra", "add_wavelength", 
+                    add_wavelength, "ndarray")
 
-    check_parameter("merge_spectra", "add_intensity", add_intensity, 
-                    "ndarray", ndarray_size=np.size(add_wavelength),
-                    ndarray_dtype='float')
-
-    check_parameter("merge_spectra", "anchor_uncertainty", anchor_uncertainty, 
-                    ["ndarray", "NoneType"], 
-                    ndarray_size=np.size(anchor_wavelength),
-                    ndarray_dtype='float')
-
-    check_parameter("merge_spectra", "anchor_bitmask", anchor_bitmask, 
-                    ["ndarray", "NoneType"], 
-                    ndarray_size=np.size(anchor_wavelength))
-
-    check_parameter("merge_spectra", "add_uncertainty", add_uncertainty, 
-                    ["ndarray", "NoneType"], 
+    check_parameter("merge_spectra", "add_intensity", 
+                    add_intensity, "ndarray", 
                     ndarray_size=np.size(add_wavelength),
                     ndarray_dtype='float')
 
-    check_parameter("merge_spectra", "add_bitmask", add_bitmask, 
-                    ["ndarray", "NoneType"], 
+    check_parameter("merge_spectra", "anchor_uncertainty", 
+                    anchor_uncertainty, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(anchor_wavelength),
+                    ndarray_dtype='float')
+
+    check_parameter("merge_spectra", "anchor_bitmask", 
+                    anchor_bitmask, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(anchor_wavelength))
+
+    check_parameter("merge_spectra", "add_uncertainty", 
+                    add_uncertainty, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(add_wavelength),
+                    ndarray_dtype='float')
+
+    check_parameter("merge_spectra", "add_bitmask", 
+                    add_bitmask, ["ndarray", "NoneType"], 
                     ndarray_size=np.size(add_wavelength))
 
     #
@@ -321,61 +323,52 @@ def merge_spectra(
 
     if position == 'Right':
 
-        result = _merge_onright(tanchor_wavelength,
-                                tanchor_intensity,
-                                tanchor_uncertainty,
-                                tanchor_bitmask,
-                                tadd_wavelength,
-                                tadd_intensity,
-                                tadd_uncertainty,
-                                tadd_bitmask)
+        result = _merge_onright(
+            tanchor_wavelength,
+            tanchor_intensity,
+            tanchor_uncertainty,
+            tanchor_bitmask,
+            tadd_wavelength,
+            tadd_intensity,
+            tadd_uncertainty,
+            tadd_bitmask)
 
     if position == 'Left':
 
-        result = _merge_onright(tadd_wavelength,
-                               tadd_intensity,
-                               tadd_uncertainty,
-                               tadd_bitmask,
-                               tanchor_wavelength,
-                               tanchor_intensity,
-                               tanchor_uncertainty,
-                               tanchor_bitmask)
+        result = _merge_onright(
+            tadd_wavelength,
+            tadd_intensity,
+            tadd_uncertainty,
+            tadd_bitmask,
+            tanchor_wavelength,
+            tanchor_intensity,
+            tanchor_uncertainty,
+            tanchor_bitmask)
 
     if position == 'Inside':
 
-        result = _merge_inmiddle(tanchor_wavelength,
-                                 tanchor_intensity,
-                                 tanchor_uncertainty,
-                                 tanchor_bitmask,
-                                 tadd_wavelength,
-                                 tadd_intensity,
-                                 tadd_uncertainty,
-                                 tadd_bitmask)
-
-
+        result = _merge_inmiddle(
+            tanchor_wavelength,
+            tanchor_intensity,
+            tanchor_uncertainty,
+            tanchor_bitmask,
+            tadd_wavelength,
+            tadd_intensity,
+            tadd_uncertainty,
+            tadd_bitmask)
 
     return result
 
 
-def scale_order():
-
-    """
-    
-
-
-    """
-
-
-
-
-def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
-                   anchor_intensity:npt.ArrayLike,
-                   anchor_uncertainty:npt.ArrayLike | None,
-                   anchor_bitmask:npt.ArrayLike | None,
-                   add_wavelength:npt.ArrayLike,
-                   add_intensity:npt.ArrayLike,
-                   add_uncertainty:npt.ArrayLike | None,
-                   add_bitmask:npt.ArrayLike | None):
+def _merge_inmiddle(
+    anchor_wavelength:npt.ArrayLike,
+    anchor_intensity:npt.ArrayLike,
+    anchor_uncertainty:npt.ArrayLike | None,
+    anchor_bitmask:npt.ArrayLike | None,
+    add_wavelength:npt.ArrayLike,
+    add_intensity:npt.ArrayLike,
+    add_uncertainty:npt.ArrayLike | None,
+    add_bitmask:npt.ArrayLike | None):
 
     """
     Merges two spectra when the add spectrum is on the right.
@@ -428,33 +421,35 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     # Check input parameters
     #
 
-    check_parameter("merge_inmiddle", "anchor_wavelength", anchor_wavelength, 
-                    "ndarray")
+    check_parameter("merge_inmiddle", "anchor_wavelength", 
+                    anchor_wavelength, "ndarray")
 
-    check_parameter("merge_inmiddle", "anchor_intensity", anchor_intensity, 
-                    "ndarray", ndarray_size=np.size(anchor_wavelength),
+    check_parameter("merge_inmiddle", "anchor_intensity", 
+                    anchor_intensity, "ndarray", 
+                    ndarray_size=np.size(anchor_wavelength),
                     ndarray_dtype='float')
 
-    check_parameter("merge_inmiddle", "add_wavelength", add_wavelength, 
-                    "ndarray")
+    check_parameter("merge_inmiddle", "add_wavelength", 
+                    add_wavelength, "ndarray")
 
-    check_parameter("merge_inmiddle", "add_intensity", add_intensity, 
-                    "ndarray", ndarray_size=np.size(add_wavelength))
-
-    check_parameter("merge_inmiddle", "anchor_uncertainty", anchor_uncertainty, 
-                    ["ndarray", "NoneType"], 
-                    ndarray_size=np.size(anchor_wavelength))
-
-    check_parameter("merge_inmiddle", "anchor_bitmask", anchor_bitmask, 
-                    ["ndarray", "NoneType"], 
-                    ndarray_size=np.size(anchor_wavelength))
-
-    check_parameter("merge_inmiddle", "add_uncertainty", add_uncertainty, 
-                    ["ndarray", "NoneType"], 
+    check_parameter("merge_inmiddle", "add_intensity", 
+                    add_intensity, "ndarray", 
                     ndarray_size=np.size(add_wavelength))
 
-    check_parameter("merge_inmiddle", "add_bitmask", add_bitmask, 
-                    ["ndarray", "NoneType"], 
+    check_parameter("merge_inmiddle", "anchor_uncertainty", 
+                    anchor_uncertainty, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(anchor_wavelength))
+
+    check_parameter("merge_inmiddle", "anchor_bitmask", 
+                    anchor_bitmask, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(anchor_wavelength))
+
+    check_parameter("merge_inmiddle", "add_uncertainty", 
+                    add_uncertainty, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(add_wavelength))
+
+    check_parameter("merge_inmiddle", "add_bitmask", 
+                    add_bitmask, ["ndarray", "NoneType"], 
                     ndarray_size=np.size(add_wavelength))
 
     #
@@ -505,10 +500,11 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
     
     if anchor_uncertainty is None:
             
-        iflux = linear_interp1d(add_wavelength, 
-                                add_intensity,
-                                anchor_wavelength, 
-                                leave_nans=True)
+        iflux = linear_interp1d(
+            add_wavelength, 
+            add_intensity,
+            anchor_wavelength, 
+            leave_nans=True)
         
         mean = np.sum(np.vstack((iflux,anchor_intensity)),axis=0)/2
             
@@ -523,11 +519,12 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
 
     else:
 
-        iflux, iunc = linear_interp1d(add_wavelength, 
-                                      add_intensity,
-                                      anchor_wavelength, 
-                                      input_u=add_uncertainty, 
-                                      leave_nans=True)
+        iflux, iunc = linear_interp1d(
+            add_wavelength, 
+            add_intensity,
+            anchor_wavelength, 
+            input_u=add_uncertainty, 
+            leave_nans=True)
         
         
         weights = 1/np.vstack((anchor_uncertainty,iunc))**2
@@ -535,7 +532,7 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
                                  weights=weights)
         
         imean = result[0]
-        iunc = np.sqrt(result[1])
+        iunc = result[1]
         
         # Figure which pixels are in the overlap by exploiting the fact
         # that the pixels outside of overlap are set to NaNs in the 
@@ -549,10 +546,11 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
         
     if anchor_bitmask is not None:
             
-        result = linear_bitmask_interp1d(add_wavelength, 
-                                         add_bitmask,
-                                         anchor_wavelength)
-            
+        result = linear_bitmask_interp1d(
+            add_wavelength, 
+            add_bitmask,
+            anchor_wavelength)
+        
         bitmask = combine_flag_stack(np.vstack((result,anchor_bitmask)))
 
         
@@ -603,14 +601,15 @@ def _merge_inmiddle(anchor_wavelength:npt.ArrayLike,
 
 
             
-def _merge_onright(anchor_wavelength:npt.ArrayLike,
-                   anchor_intensity:npt.ArrayLike,
-                   anchor_uncertainty:npt.ArrayLike | None,
-                   anchor_bitmask:npt.ArrayLike | None,
-                   add_wavelength:npt.ArrayLike,
-                   add_intensity:npt.ArrayLike,
-                   add_uncertainty:npt.ArrayLike | None,
-                   add_bitmask:npt.ArrayLike | None):
+def _merge_onright(
+    anchor_wavelength:npt.ArrayLike,
+    anchor_intensity:npt.ArrayLike,
+    anchor_uncertainty:npt.ArrayLike | None,
+    anchor_bitmask:npt.ArrayLike | None,
+    add_wavelength:npt.ArrayLike,
+    add_intensity:npt.ArrayLike,
+    add_uncertainty:npt.ArrayLike | None,
+    add_bitmask:npt.ArrayLike | None):
 
     """
     Merges two spectra when the add spectrum is on the right.
@@ -666,33 +665,35 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
     # Check input parameters
     #
 
-    check_parameter("merge_onright", "anchor_wavelength", anchor_wavelength, 
-                    "ndarray")
+    check_parameter("merge_onright", "anchor_wavelength", 
+                    anchor_wavelength, "ndarray")
 
-    check_parameter("merge_onright", "anchor_intensity", anchor_intensity, 
-                    "ndarray", ndarray_size=np.size(anchor_wavelength),
+    check_parameter("merge_onright", "anchor_intensity", 
+                    anchor_intensity, "ndarray", 
+                    ndarray_size=np.size(anchor_wavelength),
                     ndarray_dtype='float')
 
-    check_parameter("merge_onright", "add_wavelength", add_wavelength, 
-                    "ndarray")
+    check_parameter("merge_onright", "add_wavelength", 
+                    add_wavelength, "ndarray")
 
-    check_parameter("merge_onright", "add_intensity", add_intensity, 
-                    "ndarray", ndarray_size=np.size(add_wavelength))
-
-    check_parameter("merge_onright", "anchor_uncertainty", anchor_uncertainty, 
-                    ["ndarray", "NoneType"], 
-                    ndarray_size=np.size(anchor_wavelength))
-
-    check_parameter("merge_onright", "anchor_bitmask", anchor_bitmask, 
-                    ["ndarray", "NoneType"], 
-                    ndarray_size=np.size(anchor_wavelength))
-
-    check_parameter("merge_onright", "add_uncertainty", add_uncertainty, 
-                    ["ndarray", "NoneType"], 
+    check_parameter("merge_onright", "add_intensity", 
+                    add_intensity, "ndarray", 
                     ndarray_size=np.size(add_wavelength))
 
-    check_parameter("merge_onright", "add_bitmask", add_bitmask, 
-                    ["ndarray", "NoneType"], 
+    check_parameter("merge_onright", "anchor_uncertainty", 
+                    anchor_uncertainty, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(anchor_wavelength))
+
+    check_parameter("merge_onright", "anchor_bitmask", 
+                    anchor_bitmask, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(anchor_wavelength))
+
+    check_parameter("merge_onright", "add_uncertainty", 
+                    add_uncertainty, ["ndarray", "NoneType"], 
+                    ndarray_size=np.size(add_wavelength))
+
+    check_parameter("merge_onright", "add_bitmask", 
+                    add_bitmask, ["ndarray", "NoneType"], 
                     ndarray_size=np.size(add_wavelength))
 
     #
@@ -781,10 +782,11 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
     
         if anchor_uncertainty is None:
             
-            iflux = linear_interp1d(add_wavelength, 
-                                    add_intensity,
-                                    anchor_wavelength, 
-                                    leave_nans=True)
+            iflux = linear_interp1d(
+                add_wavelength, 
+                add_intensity,
+                anchor_wavelength, 
+                leave_nans=True)
             
             mean = np.sum(np.vstack((iflux,anchor_intensity)),axis=0)/2
             
@@ -799,11 +801,12 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
 
         else:
 
-            iflux, iunc = linear_interp1d(add_wavelength, 
-                                          add_intensity,
-                                          anchor_wavelength, 
-                                          input_u=add_uncertainty, 
-                                          leave_nans=True)
+            iflux, iunc = linear_interp1d(
+                add_wavelength, 
+                add_intensity,
+                anchor_wavelength, 
+                input_u=add_uncertainty, 
+                leave_nans=True)
 
 
             weights = 1/np.vstack((anchor_uncertainty,iunc))**2
@@ -811,7 +814,7 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
                                      weights=weights)
 
             imean = result[0]
-            iunc = np.sqrt(result[1])
+            iunc = result[1]
 
             # Figure which pixels are in the overlap by exploiting the fact
             # that the pixels outside of overlap are set to NaNs in the 
@@ -825,9 +828,10 @@ def _merge_onright(anchor_wavelength:npt.ArrayLike,
 
         if anchor_bitmask is not None:
             
-            result = linear_bitmask_interp1d(add_wavelength, 
-                                             add_bitmask,
-                                             anchor_wavelength)
+            result = linear_bitmask_interp1d(
+                add_wavelength, 
+                add_bitmask,
+                anchor_wavelength)
             
             bitmask = combine_flag_stack(np.vstack((result,anchor_bitmask)))
 

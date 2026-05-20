@@ -424,7 +424,7 @@ def make_1d_profile(rectified_order:dict,
         
     # Collapse the profile using a mean, weighted by `weights`.
     
-    mean, mvar, mask = mean_data_stack(np.fliplr(np.rot90(img, 3)),
+    mean, unc, mask = mean_data_stack(np.fliplr(np.rot90(img, 3)),
                                        weights=weights,
                                        robust=robust_threshold)
     
