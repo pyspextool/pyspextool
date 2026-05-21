@@ -142,30 +142,44 @@ def combine_spectra(
         for j in range(combine.state['norders']):
 
             data = combine.state['intensities'][i,j,:,:]
+            unc = combine.state['uncertainties'][i,j,:,:]
             var = combine.state['uncertainties'][i,j,:,:]**2
 
             # First do the data
 
             if statistic == 'robust weighted mean':
 
-                result = math.mean_data_stack(data, robust=robust_sigma,
-                                              weights=1/var, stderr=True)
+                result = math.mean_data_stack(
+                    data, 
+                    robust=robust_sigma,
+                    weights=1/var, 
+                    stderr=True)
 
             elif statistic == 'robust mean':
 
-                result = math.mean_data_stack(data, robust=sigma, stderr=True)
+                result = math.mean_data_stack(
+                    data, 
+                    robust=sigma, 
+                    stderr=True)
 
             elif statistic == 'weighted mean':
 
-                result = math.mean_data_stack(data,weights=1/var, stderr=True)
+                result = math.mean_data_stack(
+                    data,
+                    weights=1/var, 
+                    stderr=True)
 
             elif statistic == 'mean':
 
-                result = math.mean_data_stack(data,stderr=True)
+                result = math.mean_data_stack(
+                    data,
+                    stderr=True)
 
             elif statistic == 'median':                        
 
-                result = math.median_data_stack(data,stderr=True)
+                result = math.median_data_stack(
+                    data,
+                    stderr=True)
 
             mean = result[0]
             unc = result[1]
