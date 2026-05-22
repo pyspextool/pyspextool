@@ -4,22 +4,24 @@ import matplotlib.pyplot as pl
 from matplotlib import rc
 from matplotlib.ticker import AutoMinorLocator
 
+from pyspextool.utils.arrays import idl_plotunrotate
 from pyspextool.fit.polyfit import poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.plot.limits import get_image_range
 
-def plot_image(image:npt.ArrayLike,
-               zrange:str | list | float=None,
-               mask:npt.ArrayLike=None,
-               orders_plotinfo:dict=None,
-               trace_plotinfo:dict=None,
-               locateorders_plotinfo:dict=None,
-               figure_size:tuple=(7,7),
-               font_size:int=12,               
-               output_fullpath:str=None,
-               showblock:bool=False,
-               showscale:float | int=1.0,
-               plot_number:int=None):
+def plot_image(
+    image:npt.ArrayLike,
+    zrange:str | list | float=None,
+    mask:npt.ArrayLike=None,
+    orders_plotinfo:dict=None,
+    trace_plotinfo:dict=None,
+    locateorders_plotinfo:dict=None,
+    figure_size:tuple=(7,7),
+    font_size:int=12,               
+    output_fullpath:str=None,
+    showblock:bool=False,
+    showscale:float | int=1.0,
+    plot_number:int=None):
     
     """
     To plot a spectral image along with the edges and order numbers
@@ -57,6 +59,11 @@ def plot_image(image:npt.ArrayLike,
         'orders' : list of int
             (norders,) int array of the order numbers.  By Spextool convention, 
             orders[0] is the order closest to the bottom of the array.
+
+        'idl_unrotate' : int
+            If `image` is a raw image, then the order edgecoefficients may not
+            have been determined at the same IDL rotation value.  If given, 
+            the orders are unrotated by `idl_unrotate`.
 
     trace_plotinfo : dict, optional
         'x' : list
@@ -125,28 +132,32 @@ def plot_image(image:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('plot_image', 'image', image, 'ndarray', 2)
+    check_parameter('plot_image', 'image', 
+                    image, 'ndarray', 2)
 
-    check_parameter('plot_image', 'mask', mask, ['NoneType', 'ndarray'], 2)
+    check_parameter('plot_image', 'mask', 
+                    mask, ['NoneType', 'ndarray'], 2)
 
     check_parameter('plot_image', 'locateorders_plotinfo',
                     locateorders_plotinfo, ['NoneType', 'dict'])
 
-    check_parameter('plot_image', 'orders_plotinfo', orders_plotinfo,
-                    ['NoneType', 'dict'])
+    check_parameter('plot_image', 'orders_plotinfo', 
+                    orders_plotinfo, ['NoneType', 'dict'])
 
-    check_parameter('plot_image', 'trace_plotinfo', trace_plotinfo,
-                    ['NoneType', 'dict'])
+    check_parameter('plot_image', 'trace_plotinfo', 
+                    trace_plotinfo, ['NoneType', 'dict'])
 
-    check_parameter('plot_image', 'output_fullpath', output_fullpath,
-                    ['NoneType', 'str'])
+    check_parameter('plot_image', 'output_fullpath', 
+                    output_fullpath, ['NoneType', 'str'])
 
-    check_parameter('plot_image', 'plot_number', plot_number,
-                    ['NoneType', 'int'])
+    check_parameter('plot_image', 'plot_number', 
+                    plot_number, ['NoneType', 'int'])
 
-    check_parameter('plot_image', 'showblock', showblock, 'bool')
+    check_parameter('plot_image', 'showblock', 
+                    showblock, 'bool')
 
-    check_parameter('plot_image', 'showscale', showscale, ['int','float'])
+    check_parameter('plot_image', 'showscale', 
+                    showscale, ['int','float'])
 
     
     #
@@ -191,21 +202,23 @@ def plot_image(image:npt.ArrayLike,
 
         
     
-def doplot(plot_number:int,
-           figure_size:tuple,
-           font_size:float | int,
-           image:npt.ArrayLike,
-           zrange=None,
-           mask:npt.ArrayLike=None,
-           locateorders_plotinfo:dict=None,
-           orders_plotinfo:dict=None,
-           trace_plotinfo:dict=None):
+def doplot(
+    plot_number:int,
+    figure_size:tuple,
+    font_size:float | int,
+    image:npt.ArrayLike,
+    zrange=None,
+    mask:npt.ArrayLike=None,
+    locateorders_plotinfo:dict=None,
+    orders_plotinfo:dict=None,
+    trace_plotinfo:dict=None):
 
     """
     To plot the image "independent of the device"
 
 
     """
+    img_size = np.shape(image)
 
     # Set the fonts
 
@@ -227,7 +240,7 @@ def doplot(plot_number:int,
         
     else:
 
-        type = 'zscale' if zrange == None else zrange
+        type = 'zscale' if zrange is None else zrange
 
         minmax = get_image_range(image, type)
         if minmax[0] > minmax[1]:
@@ -277,9 +290,20 @@ def doplot(plot_number:int,
         norders = len(orders)
 
         for i in range(norders):
+
+
             x = np.arange(xranges[i, 0], xranges[i, 1] + 1)
             bot = poly_1d(x, edgecoeffs[i, 0, :])
             top = poly_1d(x, edgecoeffs[i, 1, :])
+
+            x, bot = idl_plotunrotate(
+                x,bot,[0,img_size[1]],[0,img_size[0]],
+                orders_plotinfo['idl_unrotate'])
+
+            x = np.arange(xranges[i, 0], xranges[i, 1] + 1)
+            x, top = idl_plotunrotate(
+                x,top,[0,img_size[1]],[0,img_size[0]],
+                orders_plotinfo['idl_unrotate'])
 
             pl.plot(x, bot, color='purple')
             pl.plot(x, top, color='purple')
