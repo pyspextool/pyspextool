@@ -187,7 +187,7 @@ def make_wavecal(
         arc_files,
         setup.state['nint'],
         setup.state['suffix'],
-        setup.state['search_extension'])
+        setup.state['input_suffix'])
 
     arcs_fullpath = result[0]
 

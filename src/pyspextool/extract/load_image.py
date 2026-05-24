@@ -4,6 +4,7 @@ from astropy.io import fits
 from os.path import join, basename as osbasename, splitext
 import logging
 import glob
+#import time
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -22,6 +23,9 @@ from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
 
+from pyspextool.extract.core import rectify_orders
+
+
 
 def load_image(
     files:str | list,
@@ -29,11 +33,12 @@ def load_image(
     wavecal_name:str,
     output_filenames:str=None,
     output_prefix:str='spectra',
-    input_extension:str='.fits*',
+    input_suffix:str='.fits*',
     load_directory='raw',
     flat_field=True,
     linearity_correction=True,
     detector_info:dict=None,
+    rectification_method='cubic',
     write_rectified_orders:bool=False,
     do_all_steps:bool=False,
     verbose:bool=None,
@@ -210,7 +215,7 @@ def load_image(
         files,
         setup.state['nint'],
         setup.state['suffix'],
-        input_extension)
+        input_suffix)
 
     input_files = results[0]
     file_readmode = results[1]
@@ -576,34 +581,46 @@ def load_image(
     # Rectify the orders
     #
 
-    logging.info(' Rectifying the orders.')                
-    
-    rectorders = []
-    indices = extract.state['rectindices']
-    for i in range(extract.state['norders']):
+    logging.info(' Rectifying the orders.  Method='+rectification_method)
+            
+#    start = time.perf_counter()
+ 
+    extract.state['rectorders'] = rectify_orders(            
+        img,
+        extract.state['rectindices'],
+        variance=var,
+        bad_pixel_mask=bad_pixel_mask,
+        flag_mask=flag_mask,
+        interpolation_method=rectification_method)
 
-        loop_progress(i,0,extract.state['norders'])
-        result = rectify_order(
-            img,
-            indices[i]['xidx'],
-            indices[i]['yidx'],
-            variance=var,
-            bad_pixel_mask=bad_pixel_mask,
-            flag_mask=flag_mask)
+#    rectorders = []
+#    for i in range(extract.state['norders']):
+#
+#        result = rectify_order(
+#            img,
+#            indices[i]['xidx'],
+#            indices[i]['yidx'],
+#            variance=var,
+#            bad_pixel_mask=bad_pixel_mask,
+#            flag_mask=flag_mask)
+#
+#
+#        rectorder = {'wavelengths':indices[i]['w'],
+#                     'angles':indices[i]['a'],
+#                     'image':result['image'],
+#                     'variance':result['variance'],
+#                     'badpixel_mask':result['bpmask'],
+#                     'flag_mask':result['flagmask']}
+#
+#        rectorders.append(rectorder)        
+#
+#   # Store the results
+#
+#    extract.state['rectorders'] = rectorders
+#
+#    end = time.perf_counter()
+#    print(f"Elapsed time: {end - start:.6f} seconds")
 
-        rectorder = {'wavelengths':indices[i]['w'],
-                     'angles':indices[i]['a'],
-                     'image':result['image'],
-                     'variance':result['variance'],
-                     'badpixel_mask':result['bpmask'],
-                     'flag_mask':result['flagmask']}
-
-        rectorders.append(rectorder)        
-
-
-    # Store the results
-
-    extract.state['rectorders'] = rectorders
 
     #        
     # Make the QA plot
@@ -644,6 +661,8 @@ def load_image(
     #
 
     if write_rectified_orders is True:
+
+        rectorders = extract.state['rectorders']
 
         # Get output file name 
         

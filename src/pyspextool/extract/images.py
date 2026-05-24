@@ -1,6 +1,8 @@
 import numpy as np
 import numpy.typing as npt
 from scipy import interpolate
+import time
+from scipy.sparse.linalg import spsolve
 
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.math import bit_set
@@ -116,14 +118,15 @@ def make_ordermask(ncols:int,
 
 
 
-def rectify_order(image:npt.ArrayLike,
-                  xidx:npt.ArrayLike,
-                  yidx:npt.ArrayLike,
-                  variance:npt.ArrayLike=None,
-                  bad_pixel_mask:npt.ArrayLike=None,
-                  flag_mask:npt.ArrayLike=None,
-                  ybuffer:int=0,
-                  nbits:int=8):
+def rectify_order(
+    image:npt.ArrayLike,
+    xidx:npt.ArrayLike,
+    yidx:npt.ArrayLike,
+    variance:npt.ArrayLike=None,
+    bad_pixel_mask:npt.ArrayLike=None,
+    flag_mask:npt.ArrayLike=None,
+    ybuffer:int=0,
+    nbits:int=8):
 
     """
     To rectify a spectral order 
@@ -185,7 +188,13 @@ def rectify_order(image:npt.ArrayLike,
 
     # Do the resampling
     
-    f = interpolate.RegularGridInterpolator(points, image,method='cubic')
+
+
+    f = interpolate.RegularGridInterpolator(
+        points, 
+        image,
+        method='cubic')
+
     image = f((yidx, xidx))
 
     ny, nx = image.shape

@@ -155,7 +155,7 @@ def make_flat(
         files,
         setup.state['nint'],
         setup.state['suffix'],
-        setup.state['search_extension'])
+        setup.state['input_suffix'])
         
     files = result[0]
     

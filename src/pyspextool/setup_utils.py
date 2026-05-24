@@ -51,7 +51,7 @@ def pyspextool_setup(
     cal_path:str=None,
     proc_path:str=None,
     qa_path:str=None,
-    search_extension:str=setup.state["search_extensions"][0],
+    input_suffix:str=setup.state["input_suffixes"][0],
     verbose:bool=True,
     qa_show:bool=False,
     qa_showscale:float=1.0,
@@ -84,7 +84,7 @@ def pyspextool_setup(
         If qa_write is True, this is the path where the files will be written.
         Default: current working directory
 
-    search_extension : setup.state['search_extensions']
+    input_suffix : setup.state['input_suffixes']
         The file extension used to search for files in `raw_path`.
     
     verbose : bool, default True
@@ -161,8 +161,8 @@ def pyspextool_setup(
     check_parameter('pyspextool_setup', 'qa_path', qa_path, 
                     ['NoneType', 'str'])
 
-    check_parameter('pyspextool_setup', 'search_extension', search_extension, 
-                    'str', possible_values=setup.state['search_extensions'])
+    check_parameter('pyspextool_setup', 'input_suffix', input_suffix, 
+                    'str', possible_values=setup.state['input_suffixes'])
 
     check_parameter('pyspextool_setup', 'qa_show', qa_show, 'bool')
 
@@ -188,7 +188,7 @@ def pyspextool_setup(
     # Store the search extension
     #
 
-    setup.state['search_extension'] = search_extension
+    setup.state['input_suffix'] = input_suffix
 
     #
     # Set up verbose scale and logging

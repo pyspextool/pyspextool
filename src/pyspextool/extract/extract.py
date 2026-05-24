@@ -1,5 +1,6 @@
 import os
 
+from pyspextool import config as setup
 
 from pyspextool.extract import load_image
 from pyspextool.extract import make_profiles
@@ -9,15 +10,9 @@ from pyspextool.extract import override_aperturesigns
 from pyspextool.extract import trace_apertures
 from pyspextool.extract import define_aperture_parameters
 from pyspextool.extract import extract_apertures
-
-from pyspextool import config as setup
-from pyspextool.extract import config as extract
-
-
+from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import files_to_fullpath
 from pyspextool.pyspextoolerror import pySpextoolError
-
-
 
 def extract(
     reduction_mode:str,
@@ -28,11 +23,12 @@ def extract(
     aperture_radii:int | float | list,
     output_filenames:str=None,
     output_prefix:str='spectra',
-    input_extension:str='.fits*',
+    input_suffix:str=setup.state['input_suffixes'][0],
     load_directory='raw',
     flat_field=True,
     linearity_correction=True,
     detector_info:dict=None,
+    rectification_method:str='cubic',
     write_rectified_orders:bool=False,
     seeing_fwhm:int | float=0.8,
     profile_ybuffer:int=3,
@@ -49,7 +45,7 @@ def extract(
     psf_radius:int | float=None,
     fix_badpixels:bool=True,
     use_meanprofile:bool=False,
-    badpixel_thresh:int | float=7,                    
+    badpixel_threshold:int | float=7,                    
     verbose:bool=None,
     qa_show:bool=None,
     qa_showscale:float | int=None,
@@ -61,7 +57,10 @@ def extract(
 
     Parameters
     ----------
-    reduction_mode : str
+    reduction_mode : setup.state['reduction_modes']
+        The reduction mode to be used.
+        If 'A', then no pair subtraction is done.
+        If 'A-B', then each pair of images is subtracted.
 
     filenames : str or list
         If type is str, then a comma-separated string of full file names, 
@@ -71,10 +70,11 @@ def extract(
         files[0] is a str giving the perfix, files[1] is a str giving the 
         index numbers of the files, e.g. ['spc', '1-2,5-10,13,14'].
     
+    flat_name : str
+        The full name of a pySpextool flat file.
 
-    flat_name :
-
-    wavecal_name :
+    wavecal_name : str or None
+        The full name of a pySpextool wavecal file.
 
     aperture_findinfo : list
         A (2,) list if
@@ -86,39 +86,118 @@ def extract(
 
         list[0] = 'fixed' then list[1] is a (2,) list giving positions
 
-    aperture_radii :
+    aperture_radii : int, float, list
+        If int or float, then the aperture radius to use for all apertures.
+        If list, then a (naps,) list of aperture radii.  
 
-    output_filenames : str, default=None
-
+    output_filenames : str, list str, optional
+        A str or list of str of output files names.  Only required if 
+        `filenames` gives file names instead of a prefix and index numbers.
+ 
     output_prefix : str, default = 'spectra'
+        The prefix for output spectral files if `filenames` is a (2,) list 
+        with a prefix and index numbers.
 
-    input_extension : str, default = '.fits*'
+    input_suffix : setup.state['reduction_modes'], default='.fits*'
+        The suffix for raw data files.
 
-    load_directory : default = 'raw'
+    load_directory : {'raw', 'proc'}
+        The directory in which to look for raw data.
 
-    flat_field : bool, default = True,
+    flat_field : {True, False}
+        Set to True to flat field the data.
+        Set to False to not flat field the data.
 
-    linearity_correction : bool, default = True,
+    linearity_correction : {True, False}
+        Set to True to correct raw images for non-linearity.
+        Set to False to not correct raw images for non-linearity.
 
-    detector_info : dict, default = None,
+    detector_info : dict, optional
+        A dictionary with any information that needs to be passed to the
+        instrument specific readfits program.  
 
-    write_rectified_orders:bool=False,
+    'rectification_method' : setup.state['rectification_methods']
+        If 'linear', then bi-linear interpolation is used.  See 
+        scipy.interpolate.RegularGridInterpolator.
+
+        If 'cubic', k=3 tensor-product spline is used.  See
+        scipy.interpolate.RegularGridInterpolator.
+
+    write_rectified_orders: {False, True}
+        If False, then the rectified orders are not written to disk.
+        If True, then the rectified orders are written to disk.
 
     seeing_fwhm : float, default = 0.8 (arcseconds).
         The approximate FWHM of the peak to be identified.  Only used 
-        if `method` is 'auto' or 'guess'.
+        if `aperture_findinfo`[0] is 'auto' or 'guess'.
 
-    ybuffer : int, default 3
+    profile_ybuffer : int, default=3
         The number of pixels on the edge of the orders to ignore.  Useful
         as sometimes there is a downturn that can mess with the finding
         routine.
+
+    aperture_signs : list, optional
+        If given, an (naps,) list of aperture signs, e.g. '-','+' that will
+        override results computed by the software.
+
+    include_orders : int, list, str, optional
+        If the type is int, the single order to include.
+        If the type is list, a list of integer orders to include.
+        If the type is str, a str giving the orders, e.g. '1-3,4,5'.
+
+    exclude_orders : int, list, str, optional
+        If the type is int, the single order to exclude.  
+        If the type is list, a list of integer orders to include.
+        If the type is str, a str giving the orders, e.g. '1-3,4,5'.
+
+    trace_fitdegree : int, default=2
+        The polynomial degree for the fit.
+
+    trace_stepsize : int, default=5
+        The step size as the function moves across the array identifying
+        the peaks in the spatial dimension.
+
+    trace_summationwidth : int, default=5
+        The number of columns to combine in order to increase the S/N
+        of the data fit to identify the peaks in the spatial dimension.
+
+    trace_centroidthreshold : int, default=2
+        If (fit-guess) > centroid_threshold to peak identification is found
+        to fail.
+    
+    bg_annulus : list, optional
+        A (2,) list giving the bg start radius and bg width (arcseconds).
+
+    bg_regions : str, optional
+        A string giving bg regions, e.g. '1-2,14,15'.
+
+    bg_fitdegree: int, default=0
+        The polynomial degree of the background fit.
+
+    psf_radius:int, float, optional
+        The PSF radius (in arcsconds) used in optimal extraction.  
+
+    fix_badpixels : {True, False}
+        Set to True to fix bad pixels.  Only used when not optimal extraction.
+        Set to False to not fix bad pixels.  Only used when not optimal 
+        extraction.
+
+    use_meanprofile {False, True}
+        Set to False to use the wavelength-dependent spatial profile for 
+        bad pixel finding and/or optimal extraction.
+
+        Set to True to use the mean of the wavelength-dependent spatial 
+        profile for bad pixel finding and/or optimal extraction.
+
+    badpixel_threshold : int, float, default=7
+        The sigma threshold used to identify bad pixels.
        
     qa_show : {None, True, False}, optional
         Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
 
-    qa_showsize : tuple, default None
+    qa_showsize : tuple, optional
         A (2,) tuple giving the plot size that is passed to matplotlib as,
         pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
@@ -132,6 +211,128 @@ def extract(
         pyspextool config file.
 
     """
+
+    #
+    # Check the parameters and QA keywords
+    #
+
+    check_parameter('extract', 'reduction_mode', 
+                    reduction_mode, 'str', 
+                    possible_values=setup.state['reduction_modes'])
+
+    check_parameter('extract', 'filenames', 
+                    filenames, ['str', 'list'], list_types=['str','str'])
+
+    check_parameter('extract', 'flat_name', 
+                    flat_name, 'str')
+
+    check_parameter('extract', 'wavecal_name', 
+                    wavecal_name, ['NoneType','str'])
+
+    check_parameter('extract', 'aperture_findinfo', 
+                    aperture_findinfo, 'list')
+
+    check_parameter('extract', 'aperture_radii', 
+                    aperture_radii, ['int', 'float','list'])
+
+    check_parameter('extract', 'output_filenames', 
+                    output_filenames, ['NoneType','str','list'])
+
+    check_parameter('extract', 'output_prefix', 
+                    output_prefix, 'str')
+
+    check_parameter('extract', 'input_suffix', 
+                    input_suffix, 'str', 
+                    possible_values=setup.state['input_suffixes'])
+
+    check_parameter('extract', 'load_directory', 
+                    load_directory, 'str', possible_values=['raw','proc'])
+
+    check_parameter('extract', 'flat_field', 
+                    flat_field, 'bool')
+
+    check_parameter('extract', 'linearity_correction', 
+                    linearity_correction, 'bool')
+
+    check_parameter('extract', 'detector_info', 
+                    detector_info, ['dict','NoneType'])
+
+    check_parameter('extract', 'rectification_method', 
+                    rectification_method, 'str', 
+                    possible_values=setup.state['rectification_methods'])
+
+    check_parameter('extract', 'write_rectified_orders', 
+                    write_rectified_orders, 'bool')
+
+    check_parameter('extract', 'seeing_fwhm', 
+                    seeing_fwhm, ['int','float'])
+
+    check_parameter('extract', 'profile_ybuffer', 
+                    profile_ybuffer, 'int')
+
+    check_parameter('extract', 'aperture_signs', 
+                    aperture_signs, ['list', 'NoneType'])
+
+    check_parameter('extract', 'include_orders', 
+                    include_orders, ['NoneType', 'int', 'list', 'str'])
+
+    check_parameter('extract', 'exclude_orders', 
+                    exclude_orders, ['NoneType', 'int', 'list', 'str'])    
+
+    check_parameter("extract", "trace_fitdegree", 
+                    trace_fitdegree, "int")
+    
+    check_parameter("extract", "trace_stepsize", 
+                    trace_stepsize, "int")
+    
+    check_parameter("extract", "trace_summationwidth", 
+                    trace_summationwidth, "int")
+
+    check_parameter("extract", "trace_centroidthreshold", 
+                    trace_centroidthreshold, "int")
+
+    check_parameter('extract', 'bg_annulus', 
+                    bg_annulus, ['ndarray', 'list','NoneType'])    
+
+    check_parameter('extract', 'bg_regions', 
+                    bg_regions, ['str','NoneType'])    
+
+    check_parameter('extract', 'bg_fitdegree', 
+                    bg_fitdegree, ['int','NoneType'])    
+    
+    check_parameter('extract', 'psf_radius', 
+                    psf_radius, ['int','float', 'NoneType'])
+
+    check_parameter('extract', 'fix_badpixels', 
+                    fix_badpixels, 'bool')
+
+    check_parameter('extract', 'use_meanprofile', 
+                    use_meanprofile, 'bool')
+
+    check_parameter('extract', 'badpixel_threshold', 
+                    badpixel_threshold, ['int','float'])
+
+    check_parameter('extract', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
+    
+    check_parameter('extract', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
+
+    check_parameter('extract', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
+
+    check_parameter('extract', 'qa_showscale', 
+                    qa_showscale, ['int', 'float', 'NoneType'])
+
+    check_parameter('extract', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
+
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
 
 
 
@@ -156,7 +357,7 @@ def extract(
         filenames,
         setup.state['nint'],
         setup.state['suffix'],
-        input_extension)
+        input_suffix)
 
     input_fullpaths = results[0]
     file_readmode = results[1]
@@ -256,27 +457,29 @@ def extract(
             wavecal_name,
             output_filenames=output_subset,
             output_prefix=output_prefix,
-            input_extension=input_extension,
+            input_suffix=input_suffix,
             load_directory=load_directory,
             flat_field=flat_field,
             linearity_correction=linearity_correction,
             detector_info=detector_info,
+            rectification_method=rectification_method,
             write_rectified_orders=write_rectified_orders,
             do_all_steps=do_all_steps,
-            verbose=verbose,
-            qa_show=qa_show,
-            qa_showscale=qa_showscale,
-            qa_showblock=qa_showblock,
-            qa_write=qa_write)
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
+
 
         # Make the profile
 
         make_profiles(
-            verbose=verbose,
-            qa_show=qa_show,
-            qa_showscale=qa_showscale,
-            qa_showblock=qa_showblock,
-            qa_write=qa_write)
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
         
         # Identify apertures
 
@@ -284,11 +487,12 @@ def extract(
             aperture_findinfo,
             seeing_fwhm=seeing_fwhm,
             ybuffer=profile_ybuffer,
-            verbose=verbose,
-            qa_show=qa_show,
-            qa_showscale=qa_showscale,
-            qa_showblock=qa_showblock,
-            qa_write=qa_write)
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
+
 
         # Select orders
 
@@ -297,11 +501,11 @@ def extract(
             select_orders(
                 include=include_orders,
                 exclude=exclude_orders,
-                verbose=verbose,
-                qa_show=qa_show,
-                qa_showscale=qa_showscale,
-                qa_showblock=qa_showblock,
-                qa_write=qa_write)
+                verbose=qa['verbose'],
+                qa_show=qa['show'],
+                qa_showscale=qa['showscale'],
+                qa_showblock=qa['showblock'],
+                qa_write=qa['write'])
 
         # Update aperture positions if requested
 
@@ -309,7 +513,7 @@ def extract(
 
             override_aperturesigns(
                 aperture_signs,
-                verbose=verbose)
+                verbose=qa['verbose'])
 
         # Trace the orders
 
@@ -319,11 +523,11 @@ def extract(
             summation_width=trace_summationwidth,
             centroid_threshold=trace_centroidthreshold,
             seeing_fwhm=seeing_fwhm,
-            verbose=verbose,
-            qa_show=qa_show,
-            qa_showscale=qa_showscale,
-            qa_showblock=qa_showblock,
-            qa_write=qa_write)
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
         
         # Define the aperture parameters
 
@@ -333,24 +537,23 @@ def extract(
             bg_regions=bg_regions,
             bg_fit_degree=bg_fitdegree,
             psf_radius=psf_radius,
-            verbose=verbose,
-            qa_show=qa_show,
-            qa_showscale=qa_showscale,
-            qa_showblock=qa_showblock,
-            qa_write=qa_write)
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
 
         # Extract the apertures
 
         extract_apertures(
             fix_badpixels=fix_badpixels,
             use_meanprofile=use_meanprofile,
-            badpixel_thresh=badpixel_thresh,
-            verbose=verbose,
-            qa_show=qa_show,
-            qa_showscale=qa_showscale,
-            qa_showblock=qa_showblock,
-            qa_write=qa_write)
-
+            badpixel_thresh=badpixel_threshold,
+            verbose=qa['verbose'],
+            qa_show=qa['show'],
+            qa_showscale=qa['showscale'],
+            qa_showblock=qa['showblock'],
+            qa_write=qa['write'])
 
 
 
