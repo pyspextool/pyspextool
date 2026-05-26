@@ -2,10 +2,9 @@ import importlib
 from os.path import join, basename
 import numpy as np
 import logging
-from decimal import *
+from decimal import Decimal, getcontext
 
 from pyspextool import config as setup
-from pyspextool.extract import config as extract
 from pyspextool.io.check import check_parameter, check_qakeywords
 from pyspextool.io.files import files_to_fullpath
 from pyspextool.io.fitsheader import average_headerinfo
@@ -15,19 +14,19 @@ from pyspextool.extract.images import make_ordermask
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.utils import math
 from pyspextool.utils.split_text import split_text
-from pyspextool.utils.arrays import idl_rotate
 
 
-def make_flat(files:list | str,
-              output_name:str,
-              linearity_correction=False,
-              detector_info:dict=None,
-              normalize:bool=True,
-              verbose:bool=None,
-              qa_show:bool=None,
-              qa_showscale:int | float=None,
-              qa_showblock:bool=None,
-              qa_write:bool=None):
+def make_flat(
+    files:list | str,
+    output_name:str,
+    linearity_correction=False,
+    detector_info:dict=None,
+    normalize:bool=True,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:int | float=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
 
     """
     To create a (normalized) pySpextool flat field file.
@@ -93,35 +92,42 @@ def make_flat(files:list | str,
     # Check the input parmameters
     #
 
-    check_parameter('make_flat', 'files', files, ['str', 'list'])
+    check_parameter('make_flat', 'files', 
+                    files, ['str', 'list'])
 
-    check_parameter('make_flat', 'output_name', output_name, 'str')
+    check_parameter('make_flat', 'output_name', 
+                    output_name, 'str')
 
-    check_parameter('make_flat', 'linearity_correction', linearity_correction,
-                    'bool')
+    check_parameter('make_flat', 'linearity_correction', 
+                    linearity_correction, 'bool')
 
-    check_parameter('make_flat', 'detector_info', detector_info,
-                    ['dict', 'NoneType'])
+    check_parameter('make_flat', 'detector_info', 
+                    detector_info, ['dict', 'NoneType'])
     
-    check_parameter('make_flat', 'normalize', normalize, 'bool')
+    check_parameter('make_flat', 'normalize', 
+                    normalize, 'bool')
 
-    check_parameter('make_flat', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('make_flat', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
 
-    check_parameter('make_flat', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('make_flat', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
 
-    check_parameter('make_flat', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter('make_flat', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
 
-    check_parameter('make_flat', 'qa_showscale', qa_showscale,
-                    ['NoneType', 'int', 'float'])    
+    check_parameter('make_flat', 'qa_showscale', 
+                    qa_showscale, ['NoneType', 'int', 'float'])    
 
-    check_parameter('make_flat', 'qa_showblock', qa_showblock,
-                    ['NoneType', 'bool'])
+    check_parameter('make_flat', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
     
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)        
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)        
     #
     # Let the user know what you are doing.
     #
@@ -144,21 +150,22 @@ def make_flat(files:list | str,
 
     # Create the file names
 
-    result = files_to_fullpath(setup.state['raw_path'],
-                               files,
-                               setup.state['nint'],
-                               setup.state['suffix'],
-                               setup.state['search_extension'])
+    result = files_to_fullpath(
+        setup.state['raw_path'],
+        files,
+        setup.state['nint'],
+        setup.state['suffix'],
+        setup.state['input_suffix'])
         
     files = result[0]
-    readmode = result[1]
     
     # Get the mode name from the first file in order to get the array
     # rotation value.
 
-    result = instr.read_fits(files,
-                             setup.state['linearity_info'],
-                             verbose=False)
+    result = instr.read_fits(
+        files,
+        setup.state['linearity_info'],
+        verbose=False)
     hdr = result[2]
     
     mode = hdr[0]['MODE'][0]
@@ -169,16 +176,17 @@ def make_flat(files:list | str,
     # Load the FITS files into memory
 
     logging.info(' Loading the images.')
-    result = instr.read_fits(files,
-                             setup.state['linearity_info'],
-                             rotate=modeinfo['rotation'],
-                             keywords=setup.state['extract_keywords'],
-                             linearity_correction=linearity_correction,
-                             extra=detector_info,
-                             verbose=qa['verbose'])
+    result = instr.read_fits(
+        files,
+        setup.state['linearity_info'],
+        rotate=modeinfo['rotation'],
+        keywords=setup.state['extract_keywords'],
+        linearity_correction=linearity_correction,
+        extra=detector_info,
+        verbose=qa['verbose'])
     
     img = result[0]
-    var = result[1]
+#    var = result[1]
     hdr = result[2]
     mask = result[3]
 
@@ -225,24 +233,25 @@ def make_flat(files:list | str,
             
     logging.info(' Locating the orders.')
 
-    result = locate_orders(med,
-                           modeinfo['guesspos'],
-                           modeinfo['xranges'],
-                           modeinfo['step'],
-                           modeinfo['slith_range'],
-                           modeinfo['edgedeg'],
-                           modeinfo['ybuffer'],
-                           modeinfo['flatfrac'],
-                           modeinfo['comwidth'],
-                           qa_plotnumber=setup.plots['locate_orders'],
-                           qa_fontsize=setup.plots['font_size'],
-                           qa_figuresize=setup.plots['square_size'],
-                           qa_show=qa['show'],
-                           qa_showblock=qa['showblock'],
-                           qa_showscale=qa['showscale'],
-                           qa_fullpath=fullpath,
-                           debug=False)
-
+    result = locate_orders(
+        med,
+        modeinfo['guesspos'],
+        modeinfo['xranges'],
+        modeinfo['step'],
+        modeinfo['slith_range'],
+        modeinfo['edgedeg'],
+        modeinfo['ybuffer'],
+        modeinfo['flatfrac'],
+        modeinfo['comwidth'],
+        qa_plotnumber=setup.plots['locate_orders'],
+        qa_fontsize=setup.plots['font_size'],
+        qa_figuresize=setup.plots['square_size'],
+        qa_show=qa['show'],
+        qa_showblock=qa['showblock'],
+        qa_showscale=qa['showscale'],
+        qa_fullpath=fullpath,
+        debug=False)
+    
     edgecoeffs = result[0]
     xranges = result[1]
 
@@ -254,16 +263,17 @@ def make_flat(files:list | str,
 
         logging.info(' Normalizing the median flat.')
 
-        nimg, nvar, rms = normalize_flat(med,
-                                         edgecoeffs,
-                                         xranges,
-                                         modeinfo['slith_arc'],
-                                         modeinfo['nxgrid'],
-                                         modeinfo['nygrid'],
-                                         var=munc ** 2,
-                                         ybuffer=modeinfo['ybuffer'],
-                                         verbose=qa['verbose'])
-
+        nimg, nvar, rms = normalize_flat(
+            med,
+            edgecoeffs,
+            xranges,
+            modeinfo['slith_arc'],
+            modeinfo['nxgrid'],
+            modeinfo['nygrid'],
+            var=munc ** 2,
+            ybuffer=modeinfo['ybuffer'],
+            verbose=qa['verbose'])
+        
     else:
 
         nimg = med
@@ -280,11 +290,12 @@ def make_flat(files:list | str,
     #
 
     nrows, ncols = np.shape(med)
-    ordermask = make_ordermask(ncols,
-                               nrows,
-                               edgecoeffs,
-                               xranges,
-                               modeinfo['orders'])
+    ordermask = make_ordermask(
+        ncols,
+        nrows,
+        edgecoeffs,
+        xranges,
+        modeinfo['orders'])
 
     #        
     # Make the QA plot
@@ -292,31 +303,34 @@ def make_flat(files:list | str,
     
     orders_plotinfo = {'edgecoeffs': edgecoeffs,
                        'xranges': xranges,
-                       'orders': modeinfo['orders']}
+                       'orders': modeinfo['orders'],
+                       'idl_unrotate':0}
               
     if qa['show'] is True:
         
-        plot_image(nimg,
-                   mask=flag,
-                   orders_plotinfo=orders_plotinfo,
-                   figure_size=(setup.plots['square_size'][0]*qa['showscale'],
-                                setup.plots['square_size'][1]*qa['showscale']),
-                   font_size=setup.plots['font_size']*qa['showscale'],
-                   showblock=qa['showblock'],
-                   plot_number=setup.plots['flat'])
-            
+        plot_image(
+            nimg,
+            mask=flag,
+            orders_plotinfo=orders_plotinfo,
+            figure_size=(setup.plots['square_size'][0]*qa['showscale'],
+                         setup.plots['square_size'][1]*qa['showscale']),
+            font_size=setup.plots['font_size']*qa['showscale'],
+            showblock=qa['showblock'],
+            plot_number=setup.plots['flat'])
+        
     if qa['write'] is True:
 
         filename = output_name + '_normalized' + setup.state['qa_extension']
         fullpath = join(setup.state['qa_path'],filename)
 
-        plot_image(nimg,
-                   mask=flag,
-                   orders_plotinfo=orders_plotinfo,
-                   output_fullpath=fullpath,
-                   figure_size=setup.plots['square_size'],
-                   font_size=setup.plots['font_size'])
-
+        plot_image(
+            nimg,
+            mask=flag,
+            orders_plotinfo=orders_plotinfo,
+            output_fullpath=fullpath,
+            figure_size=setup.plots['square_size'],
+            font_size=setup.plots['font_size'])
+        
     #
     # Write the file to disk
     #
@@ -349,27 +363,28 @@ def make_flat(files:list | str,
     
     output_fullpath =  join(setup.state['cal_path'], output_name + '.fits')
 
-    write_flat(nimg,
-               nvar,
-               flag,
-               ordermask,
-               average_header,
-               modeinfo['rotation'],
-               modeinfo['orders'],
-               edgecoeffs,
-               xranges,
-               modeinfo['ybuffer'],
-               modeinfo['ps'],
-               modeinfo['slith_pix'],
-               modeinfo['slith_arc'],
-               slitw_pix,
-               slitw_arc,
-               mode,
-               rms,
-               resolvingpower,
-               setup.state['version'],
-               history,
-               output_fullpath,
-               overwrite=True)
-
+    write_flat(
+        nimg,
+        nvar,
+        flag,
+        ordermask,
+        average_header,
+        modeinfo['rotation'],
+        modeinfo['orders'],
+        edgecoeffs,
+        xranges,
+        modeinfo['ybuffer'],
+        modeinfo['ps'],
+        modeinfo['slith_pix'],
+        modeinfo['slith_arc'],
+        slitw_pix,
+        slitw_arc,
+        mode,
+        rms,
+        resolvingpower,
+        setup.state['version'],
+        history,
+        output_fullpath,
+        overwrite=True)
+    
     logging.info(' Flat field file ' + output_name + '.fits written to disk.\n')

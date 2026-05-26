@@ -354,6 +354,72 @@ def trim_nan(
         return z
 
 
+def idl_plotunrotate(
+    x:npt.ArrayLike,
+    y:npt.ArrayLike, 
+    xrange:npt.ArrayLike,
+    yrange:npt.ArrayLike, 
+    direction:int):
+
+    """
+    Unrotates and/or tranposes a x and y array (rotate is in multiples of 90deg)
+
+    Input Parameters
+    ----------------
+    img : ndarray
+        an image
+
+    direction : int
+
+        Direction  Transpose?  Rotation Counterclockwise
+        -------------------------------------------------
+
+        0          No          None
+        1          No          90 deg
+        2          No          180 deg
+        3          No          270 deg
+        4          Yes         None
+        5          Yes         90 deg
+        6          Yes         180 deg
+        7          Yes         270 deg
+
+        The directions follow the IDL rotate function convention.
+
+
+    Returns
+    --------
+    ndarray, ndarray
+        The unrotated/untransposed x and y arrays.
+
+    Notes
+    -----
+    Compete set when motivated to do so.
+
+    """
+
+    if direction == 0:
+
+        return x, y
+
+#    if direction == 1:
+#
+#        return y, np.flip(x)-min(x)
+#
+#    if direction == 2:
+#
+#        return x, np.flip(y)+min(y)
+#
+#    if direction == 3:
+#
+#        return y+min(y), np.flip(x)
+
+    if direction == 7:
+
+        return x, yrange[1]-y
+
+
+
+
 def idl_rotate(
     img:npt.ArrayLike, 
     direction:int):

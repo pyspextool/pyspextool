@@ -4,6 +4,7 @@ from astropy.io import fits
 from os.path import join, basename as osbasename, splitext
 import logging
 import glob
+#import time
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -22,6 +23,9 @@ from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.utils.math import combine_flag_stack
 from pyspextool.pyspextoolerror import pySpextoolError
 
+from pyspextool.extract.core import rectify_orders
+
+
 
 def load_image(
     files:str | list,
@@ -29,11 +33,12 @@ def load_image(
     wavecal_name:str,
     output_filenames:str=None,
     output_prefix:str='spectra',
-    input_extension:str='.fits*',
+    input_suffix:str='.fits*',
     load_directory='raw',
     flat_field=True,
     linearity_correction=True,
     detector_info:dict=None,
+    rectification_method='cubic',
     write_rectified_orders:bool=False,
     do_all_steps:bool=False,
     verbose:bool=None,
@@ -121,45 +126,51 @@ def load_image(
     # Check the parameters and QA keywords
     #
     
-    check_parameter('load_image', 'files', files, ['str', 'list'],
-                    list_types=['str','str'])
+    check_parameter('load_image', 'files', 
+                    files, ['str', 'list'], list_types=['str','str'])
 
-    check_parameter('load_image', 'flat_name', flat_name, 'str')
+    check_parameter('load_image', 'flat_name', 
+                    flat_name, 'str')
 
-    check_parameter('load_image', 'wavecal_name', wavecal_name,
-                    ['NoneType','str'])
+    check_parameter('load_image', 'wavecal_name', 
+                    wavecal_name, ['NoneType','str'])
     
-    check_parameter('load_image', 'output_filenames', output_filenames,
-                    ['NoneType','str','list'])
+    check_parameter('load_image', 'output_filenames', 
+                    output_filenames, ['NoneType','str','list'])
         
-    check_parameter('load_image', 'load_directory', load_directory, 'str',
-                    possible_values=['raw', 'proc'])
+    check_parameter('load_image', 'load_directory', 
+                    load_directory, 'str', possible_values=['raw', 'proc'])
 
-    check_parameter('load_image', 'flat_field', flat_field, 'bool')
+    check_parameter('load_image', 'flat_field', 
+                    flat_field, 'bool')
 
     check_parameter('load_image', 'linearity_correction',
                     linearity_correction, 'bool')
 
-    check_parameter('load_image', 'detector_info', detector_info,
-                    ['NoneType','dict'])
+    check_parameter('load_image', 'detector_info', 
+                    detector_info, ['NoneType','dict'])
     
-    check_parameter('load_image', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('load_image', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_write', qa_write, ['NoneType', 'bool'])
+    check_parameter('load_image', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter('load_image', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
 
-    check_parameter('load_image', 'qa_showscale', qa_showscale,
-                    ['int', 'float', 'NoneType'])
+    check_parameter('load_image', 'qa_showscale', 
+                    qa_showscale, ['int', 'float', 'NoneType'])
 
-    check_parameter('load_image', 'qa_showblock', qa_showblock,
-                    ['NoneType', 'bool'])
+    check_parameter('load_image', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
     
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
 
     #
     # Create and ensure that the flat field and wavecal file existence
@@ -204,7 +215,7 @@ def load_image(
         files,
         setup.state['nint'],
         setup.state['suffix'],
-        input_extension)
+        input_suffix)
 
     input_files = results[0]
     file_readmode = results[1]
@@ -414,11 +425,12 @@ def load_image(
                         
         else:
 
-            result = simulate_wavecal_1dxd(flatinfo['ncols'],
-                                           flatinfo['nrows'],
-                                           flatinfo['edgecoeffs'],
-                                           flatinfo['xranges'],
-                                           flatinfo['slith_arc'])
+            result = simulate_wavecal_1dxd(
+                flatinfo['ncols'],
+                flatinfo['nrows'],
+                flatinfo['edgecoeffs'],
+                flatinfo['xranges'],
+                flatinfo['slith_arc'])
 
             wavecal = result[0]
             spatcal = result[1]            
@@ -569,34 +581,46 @@ def load_image(
     # Rectify the orders
     #
 
-    logging.info(' Rectifying the orders.')                
-    
-    rectorders = []
-    indices = extract.state['rectindices']
-    for i in range(extract.state['norders']):
+    logging.info(' Rectifying the orders.  Method='+rectification_method)
+            
+#    start = time.perf_counter()
+ 
+    extract.state['rectorders'] = rectify_orders(            
+        img,
+        extract.state['rectindices'],
+        variance=var,
+        badpixel_mask=bad_pixel_mask,
+        flag_mask=flag_mask,
+        interpolation_method=rectification_method)
 
-        loop_progress(i,0,extract.state['norders'])
-        result = rectify_order(
-            img,
-            indices[i]['xidx'],
-            indices[i]['yidx'],
-            variance=var,
-            bad_pixel_mask=bad_pixel_mask,
-            flag_mask=flag_mask)
+#    rectorders = []
+#    for i in range(extract.state['norders']):
+#
+#        result = rectify_order(
+#            img,
+#            indices[i]['xidx'],
+#            indices[i]['yidx'],
+#            variance=var,
+#            bad_pixel_mask=bad_pixel_mask,
+#            flag_mask=flag_mask)
+#
+#
+#        rectorder = {'wavelengths':indices[i]['w'],
+#                     'angles':indices[i]['a'],
+#                     'image':result['image'],
+#                     'variance':result['variance'],
+#                     'badpixel_mask':result['bpmask'],
+#                     'flag_mask':result['flagmask']}
+#
+#        rectorders.append(rectorder)        
+#
+#   # Store the results
+#
+#    extract.state['rectorders'] = rectorders
+#
+#    end = time.perf_counter()
+#    print(f"Elapsed time: {end - start:.6f} seconds")
 
-        rectorder = {'wavelengths':indices[i]['w'],
-                     'angles':indices[i]['a'],
-                     'image':result['image'],
-                     'variance':result['variance'],
-                     'badpixel_mask':result['bpmask'],
-                     'flag_mask':result['flagmask']}
-
-        rectorders.append(rectorder)        
-
-
-    # Store the results
-
-    extract.state['rectorders'] = rectorders
 
     #        
     # Make the QA plot
@@ -604,36 +628,41 @@ def load_image(
 
     orders_plotinfo = {'xranges': extract.state['xranges'],
                        'edgecoeffs': extract.state['edgecoeffs'],
-                       'orders': extract.state['orders']}
+                       'orders': extract.state['orders'],
+                       'idl_unrotate':0}
               
     if qa['show'] is True:
         
-        plot_image(img,
-                   mask=linearity_mask,
-                   orders_plotinfo=orders_plotinfo,
-                   figure_size=(setup.plots['square_size'][0]*qa['showscale'],
-                                setup.plots['square_size'][1]*qa['showscale']),
-                   font_size=setup.plots['font_size']*qa['showscale'],
-                   showblock=qa['showblock'],
-                   plot_number=setup.plots['combine_image'])
-            
+        plot_image(
+            img,
+            mask=linearity_mask,
+            orders_plotinfo=orders_plotinfo,
+            figure_size=(setup.plots['square_size'][0]*qa['showscale'],
+                         setup.plots['square_size'][1]*qa['showscale']),
+            font_size=setup.plots['font_size']*qa['showscale'],
+            showblock=qa['showblock'],
+            plot_number=setup.plots['combine_image'])
+        
     if qa['write'] is True:
 
         filename = qafilename + '_image' + setup.state['qa_extension']
         fullpath = join(setup.state['qa_path'],filename)
 
-        plot_image(img,
-                   mask=linearity_mask,
-                   orders_plotinfo=orders_plotinfo,
-                   output_fullpath=fullpath,
-                   figure_size=setup.plots['square_size'],
-                   font_size=setup.plots['font_size'])
+        plot_image(
+            img,
+            mask=linearity_mask,
+            orders_plotinfo=orders_plotinfo,
+            output_fullpath=fullpath,
+            figure_size=setup.plots['square_size'],
+            font_size=setup.plots['font_size'])
 
     #
     # Write rectified orders
     #
 
     if write_rectified_orders is True:
+
+        rectorders = extract.state['rectorders']
 
         # Get output file name 
         

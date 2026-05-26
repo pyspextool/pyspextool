@@ -142,15 +142,16 @@ def check_file(files:str,
         return files
 
 
-def check_parameter(caller_name:str,
-                    parameter_name:str,
-                    parameter,
-                    types,
-                    *dimens,
-                    possible_values=None,
-                    list_types=None,
-                    ndarray_size=None,
-                    ndarray_dtype=None):
+def check_parameter(
+    caller_name:str,
+    parameter_name:str,
+    parameter,
+    types,
+    *dimens,
+    possible_values=None,
+    list_types=None,
+    ndarray_size=None,
+    ndarray_dtype=None):
 
     """
     Checks input parameters for a variety of characterisitcs.

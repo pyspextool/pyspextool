@@ -5,41 +5,39 @@ from astropy.io import fits
 import logging
 
 from pyspextool import config as setup
-from pyspextool.extract import config as extract
 
 from pyspextool.extract import background_subtraction as background
 from pyspextool.extract.images import scale_order_background
 from pyspextool.io.check import check_parameter, check_qakeywords, check_file
-from pyspextool.io.files import make_full_path
 from pyspextool.extract.flat import read_flat_fits
 from pyspextool.io.reorder_irtf_files import reorder_irtf_files
 from pyspextool.io.fitsheader import average_headerinfo
 from pyspextool.utils import math
 from pyspextool.utils.arrays import idl_unrotate
 from pyspextool.utils.split_text import split_text
-from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.plot.plot_image import plot_image
 from pyspextool.io.files import files_to_fullpath
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def combine_images(files:str | list,
-                   output_fileroot:str,
-                   input_extension:str='.fits*',
-                   output_directory:str='proc',
-                   correct_nonlinearity:bool=True,
-                   beam_mode:str='A',
-                   scale_background:bool=False,
-                   subtract_background:bool=False,
-                   flatfield_filename:str=None,
-                   flatfield:bool=False,
-                   statistic:str='robust weighted mean',
-                   robust_sigma:int | float=8,
-                   verbose=None,
-                   qa_show=None,
-                   qa_showscale:float | int=1.0,
-                   qa_showblock:bool=None,
-                   qa_write=None):
+def combine_images(
+    files:str | list,
+    output_fileroot:str,
+    input_extension:str='.fits*',
+    output_directory:str='proc',
+    correct_nonlinearity:bool=True,
+    beam_mode:str='A',
+    scale_background:bool=False,
+    subtract_background:bool=False,
+    flatfield_filename:str=None,
+    flatfield:bool=False,
+    statistic:str='robust weighted mean',
+    robust_sigma:int | float=8,
+    verbose=None,
+    qa_show=None,
+    qa_showscale:float | int=1.0,
+    qa_showblock:bool=None,
+    qa_write=None):
 
     """
     To combine (pair-subtracted) images for later extraction.
@@ -139,57 +137,64 @@ def combine_images(files:str | list,
     #  Check parameters and QA keywords
     #
 
-    check_parameter('combine_images', 'files', files, ['str', 'list'],
-                    list_types=['str','str'])
+    check_parameter('combine_images', 'files', 
+                    files, ['str', 'list'], list_types=['str','str'])
 
-    check_parameter('combine_images', 'output_fileroot', output_fileroot, 'str')
+    check_parameter('combine_images', 'output_fileroot', 
+                    output_fileroot, 'str')
 
-    check_parameter('combine_images', 'input_extension', input_extension, 'str')
+    check_parameter('combine_images', 'input_extension', 
+                    input_extension, 'str')
 
-    check_parameter('combine_images', 'output_directory', output_directory,
-                    'str', possible_values=['proc', 'cal'])
+    check_parameter('combine_images', 'output_directory', 
+                    output_directory, 'str', possible_values=['proc', 'cal'])
     
     check_parameter('combine_images', 'correct_nonlinearity',
                     correct_nonlinearity, 'bool')
 
-    check_parameter('combine_images', 'beam_mode', beam_mode, 'str',
-                    possible_values=['A', 'A-B'])
+    check_parameter('combine_images', 'beam_mode', 
+                    beam_mode, 'str', possible_values=['A', 'A-B'])
 
-    check_parameter('combine_images', 'scale_background', scale_background,
-                    'bool')
+    check_parameter('combine_images', 'scale_background', 
+                    scale_background, 'bool')
 
     check_parameter('combine_images', 'subtract_background',
                     subtract_background, 'bool')
 
-    check_parameter('combine_images', 'flatfield_fiename', flatfield_filename,
-                    ['NoneType', 'str'])
+    check_parameter('combine_images', 'flatfield_fiename', 
+                    flatfield_filename, ['NoneType', 'str'])
 
-    check_parameter('combine_images', 'flatfield', flatfield, 'bool')
+    check_parameter('combine_images', 'flatfield', 
+                    flatfield, 'bool')
 
-    check_parameter('combine_spectra', 'statistic', statistic, 'str')
+    check_parameter('combine_spectra', 'statistic', 
+                    statistic, 'str')
 
-    check_parameter('combine_spectra', 'robust_sigma', robust_sigma,
-                    ['int', 'float'])
+    check_parameter('combine_spectra', 'robust_sigma', 
+                    robust_sigma, ['int', 'float'])
 
-    check_parameter('combine_images', 'verbose', verbose, ['NoneType', 'bool'])
+    check_parameter('combine_images', 'verbose', 
+                    verbose, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'qa_write', qa_write,
-                    ['NoneType', 'bool'])
+    check_parameter('combine_images', 'qa_write', 
+                    qa_write, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'qa_show', qa_show, ['NoneType', 'bool'])
+    check_parameter('combine_images', 'qa_show', 
+                    qa_show, ['NoneType', 'bool'])
 
-    check_parameter('combine_images', 'qa_showscale', qa_showscale,
-                    ['int', 'float'])
+    check_parameter('combine_images', 'qa_showscale', 
+                    qa_showscale, ['int', 'float'])
 
-    check_parameter('combine_images', 'qa_showblock', qa_showblock,
-                    ['NoneType', 'bool'])
+    check_parameter('combine_images', 'qa_showblock', 
+                    qa_showblock, ['NoneType', 'bool'])
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
-
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
+    
     #
     # Let the user know what you are doing.
     #
@@ -199,11 +204,12 @@ def combine_images(files:str | list,
 #
     # Create the file names
 
-    result = files_to_fullpath(setup.state['raw_path'],
-                               files,
-                               setup.state['nint'],
-                               setup.state['suffix'],
-                               input_extension)
+    result = files_to_fullpath(
+        setup.state['raw_path'],
+        files,
+        setup.state['nint'],
+        setup.state['suffix'],
+        input_extension)
     input_files = result[0]
     check_file(input_files)
 
@@ -258,12 +264,6 @@ def combine_images(files:str | list,
 
         flatinfo = read_flat_fits(file_name)
         rotation = flatinfo['rotation']
-        # edgecoeffs = flatinfo['edgecoeffs']
-        # xranges = flatinfo['xranges']
-        # orders = flatinfo['orders']
-        # ybuffer = flatinfo['ybuffer']
-
-
         unrotate = True
 
     else:
@@ -304,17 +304,14 @@ def combine_images(files:str | list,
 
             logging.info(' Scaling the orders to a common intensity level.')
 
-            result = scale_order_background(data,
-                                            flatinfo['orders'],
-                                            flatinfo['edgecoeffs'],
-                                            flatinfo['xranges'],
-            #                                 orders,
-            #                                 edgecoeffs,
-            #                                 xranges,
-                                            var_stack=var,
-                                            ybuffer=ybuffer,
-                                            verbose=qa['verbose'])
-
+            result = scale_order_background(
+                data,
+                flatinfo['orders'],
+                flatinfo['edgecoeffs'],
+                flatinfo['xranges'],
+                var_stack=var,
+                ybuffer=flatinfo['ybuffer'],
+                verbose=qa['verbose'])
 
             data = result[0]
             var = result[1]
@@ -329,11 +326,13 @@ def combine_images(files:str | list,
         
         for i in range(nimages):
             
-            result = background.median_1dxd(data[i, :, :],
-                                            flatinfo['edgecoeffs'],
-                                            flatinfo['xranges'],
-                                            var=var[i, :, :],
-                                            ybuffer=ybuffer)
+            result = background.median_1dxd(
+                data[i, :, :],
+                flatinfo['edgecoeffs'],
+                flatinfo['xranges'],
+                var=var[i, :, :],
+                ybuffer=flatinfo['ybuffer'])
+
             data[i, :, :] = result[0]
             var[i, :, :] = result[1]
 
@@ -366,7 +365,7 @@ def combine_images(files:str | list,
     else:
 
         message = '`statistic` is unknown.'
-        raise pySpextool(message)
+        raise pySpextoolError(message)
 
     mean = result[0]
     var = result[1] ** 2
@@ -492,9 +491,11 @@ def combine_images(files:str | list,
 
     if (scale_background or subtract_background or flatfield) is True:
     
-        orders_plotinfo = {'xranges': flatinfo['xranges'],
-                           'edgecoeffs': flatinfo['edgecoeffs'],
-                           'orders': flatinfo['orders']}
+        orders_plotinfo = {
+            'xranges': flatinfo['xranges'],
+            'edgecoeffs': flatinfo['edgecoeffs'],
+            'orders': flatinfo['orders'],
+            'idl_unrotate':flatinfo['rotation']}
 
     else:
 
@@ -502,29 +503,28 @@ def combine_images(files:str | list,
         
     if qa['show'] is True:
         
-        plot_image(mean,
-                   mask=mask,
-                   orders_plotinfo=orders_plotinfo,
-                   figure_size=(setup.plots['square_size'][0]*qa['showscale'],
-                                setup.plots['square_size'][1]*qa['showscale']),
-                   font_size=setup.plots['font_size']*qa['showscale'],
-                   showblock=qa['showblock'],
-                   plot_number=setup.plots['flat'])
-            
+        plot_image(
+            mean,
+            mask=mask,
+            orders_plotinfo=orders_plotinfo,
+            figure_size=(setup.plots['square_size'][0]*qa['showscale'],
+                         setup.plots['square_size'][1]*qa['showscale']),
+            font_size=setup.plots['font_size']*qa['showscale'],
+            showblock=qa['showblock'],
+            plot_number=setup.plots['flat'])
+        
     if qa['write'] is True:
 
         filename = output_fileroot + '_combined' + setup.state['qa_extension']
         fullpath = join(setup.state['qa_path'],filename)
 
-        plot_image(mean,
-                   mask=mask,
-                   orders_plotinfo=orders_plotinfo,
-                   output_fullpath=fullpath,
-                   figure_size=setup.plots['square_size'],
-                   font_size=setup.plots['font_size'])
-
-
-        
+        plot_image(
+            mean,
+            mask=mask,
+            orders_plotinfo=orders_plotinfo,
+            output_fullpath=fullpath,
+            figure_size=setup.plots['square_size'],
+            font_size=setup.plots['font_size'])
 
     #
     # Write the file to disk
@@ -541,11 +541,7 @@ def combine_images(files:str | list,
 
     for i in range(len(keys)):
 
-        if keys[i] == 'COMMENT':
-
-            junk = 1
-
-        else:
+        if keys[i] != 'COMMENT':
 
             hdr[keys[i]] = (avehdr[keys[i]][0], avehdr[keys[i]][1])
 
