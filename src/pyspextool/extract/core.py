@@ -12,7 +12,7 @@ def rectify_orders(
     indices:list,
     interpolation_method:str='cubic',
     variance:npt.ArrayLike=None,
-    bad_pixel_mask:npt.ArrayLike=None,
+    badpixel_mask:npt.ArrayLike=None,
     flag_mask:npt.ArrayLike=None,
     ybuffer:int=0,
     nbits:int=8):
@@ -21,7 +21,7 @@ def rectify_orders(
     To rectify spectral orders.
 
     The function "straightens" a spectral order onto a uniform rectangular 
-    grid
+    ndarray of size (nwavelengths, nangles).
 
     Parameters
     ----------
@@ -33,10 +33,73 @@ def rectify_orders(
         with the columns of `img.  That is, orders go left-right and 
         not up-down. 
 
+    indices : list
+        An (norders,) list of dictionaries with the following keys:
+
+        'order' : int
+            The order number.
     
+        'w' : ndarray
+            An (nwavelengths,) array of wavelengths on which the order 
+            is rectified.
+
+        'a' : ndarray
+            An (nangles,) array of angles on which the rectified 
+            order.
+
+        'xidx': ndarray
+            An (nwavelengths, nangles) array of zero-based x positions in `image`
+            at which to interpolate.
+
+        'yidx': ndarray
+            An (nwavelengths, nangles) array of zero-based y positions in `image`
+            at which to interpolate.
+
+    interpolation_method : {'cubic', 'linear'}
+        A string giving the interpolation method passed to 
+        sci.interpolate.RegularGridInterpolator.  
+
+    badpixel_mask : ndarray
+        An (nrows, ncols) bad pixel mask.  Good=1, bad=0.
+
+    flag_mask : ndarray
+        An (nrows, ncols) flag array.  This is a bit-set array with values 
+        up to `nbit`.
+
+    ybuffer : int
+        Number of pixels at the top and bottom of the rectified image set 
+
+    nbits : int, default=8
+        The number of bits used in each pixel of `flag_mask`.
+
     Returns
     -------
+    list
+        An (norders,) list of dictionaries with the following keys:
 
+        'wavelengths' : ndarray
+            An (nwavelengths,) array of wavelengths on which the order 
+            is rectified.
+
+        'angles' : ndarray
+            An (nangles,) array of angles on which the rectified 
+            order.
+
+        'image' : ndarray
+            An (nangles, nwavelengths) array of interpolated values from `image` 
+            at positions indices['xidx'] and indices['yidx'].
+
+        'variance' : ndarray, None
+            An (nangles, nwavelengths) array of interpolated values from `variance` 
+            at positions indices['xidx'] and indices['yidx'].
+
+        'badpixel_mask' : ndarray, None
+            An (nangles, nwavelengths) array of interpolated values from 
+            `badpixel_mask` at positions indices['xidx'] and indices['yidx'].  
+
+        'flag_mask' : ndarray, None
+            An (nangles, nwavelengths) array of interpolated values from 
+            `flagmask_mask` at positions indices['xidx'] and indices['yidx'].  
 
     """
 
@@ -51,16 +114,16 @@ def rectify_orders(
                     indices, 'list', 2)
 
     check_parameter('rectify_orders','interpolation_method', 
-                    interpolation_method, 'str')
+                    interpolation_method, 'str', possible_values=['linear', 'cubic'])
 
     check_parameter('rectify_orders','variance', 
                     variance, ['NoneType', 'ndarray'])
 
-    check_parameter('rectify_orders','bad_pixel_mask', 
-                    bad_pixel_mask, ['NoneType', 'ndarray'])    
+    check_parameter('rectify_orders','badpixel_mask', 
+                    badpixel_mask, ['NoneType', 'ndarray'], 2)    
 
     check_parameter('rectify_orders','flag_mask', 
-                    flag_mask, ['NoneType', 'ndarray'])    
+                    flag_mask, ['NoneType', 'ndarray'], 2)    
     
     check_parameter('rectify_orders','ybuffer', 
                     ybuffer, 'int')
@@ -92,11 +155,11 @@ def rectify_orders(
             variance,
             method=interpolation_method)
 
-    if bad_pixel_mask is not None:
+    if badpixel_mask is not None:
 
         badpixel_function = interpolate.RegularGridInterpolator(
             points, 
-            bad_pixel_mask,
+            badpixel_mask,
             fill_value=1)
 
     if flag_mask is not None:
@@ -150,7 +213,7 @@ def rectify_orders(
         # Do the bad pixel mask if requested.
                 
         rbp = None
-        if bad_pixel_mask is not None:
+        if badpixel_mask is not None:
 
             # The interpolation alone will give values between [0,1] because
             # the original mask has just zeros or ones.  So we floor the values
@@ -178,12 +241,13 @@ def rectify_orders(
 
         # Store the results for return
 
-        rectorders.append({'wavelengths':order['w'],
-                           'angles':order['a'],
-                           'image':rimg,
-                           'variance':rvar,
-                           'badpixel_mask':rbp,
-                           'flag_mask':rfl})
+        rectorders.append(
+            {'wavelengths':order['w'],
+             'angles':order['a'],
+             'image':rimg,
+             'variance':rvar,
+             'badpixel_mask':rbp,
+             'flag_mask':rfl})
 
     return rectorders
 

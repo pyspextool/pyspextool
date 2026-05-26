@@ -589,7 +589,7 @@ def load_image(
         img,
         extract.state['rectindices'],
         variance=var,
-        bad_pixel_mask=bad_pixel_mask,
+        badpixel_mask=bad_pixel_mask,
         flag_mask=flag_mask,
         interpolation_method=rectification_method)
 
