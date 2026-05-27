@@ -1,12 +1,12 @@
 import numpy as np
 import numpy.typing as npt
 from numpy.polynomial.polynomial import polyval
-import matplotlib.pyplot as pl
 
 from pyspextool.io.check import check_parameter
 
-def goodbad_init(*args,
-                 goodbad:npt.ArrayLike=None):
+def _goodbad_init(
+    *args,
+    goodbad:npt.ArrayLike=None):
 
     """
     To set up the goodbad array for a robust fit.
@@ -32,30 +32,18 @@ def goodbad_init(*args,
     in either a user-passed goodbad array or a function-created goodbad 
     array to 2.
 
-    Examples
-    --------
-
-    > x= [1,2,np.nan,5,6]
-    > y = [0,1,2,3,np.nan]
-
     """
 
     #
     # Check parameters
     #
 
-    check_parameter('goodbad_init', 'args', args, 'tuple')
+    check_parameter('_goodbad_init', 'args', 
+                    args, 'tuple')
 
-    check_parameter('goodbad_init', 'goodbad', goodbad, ['NoneType', 'ndarray'])
+    check_parameter('_goodbad_init', 'goodbad', 
+                    goodbad, ['NoneType', 'ndarray'])
 
-    #
-    # Make sure the arrays are all the same size
-    #
-
-    
-
-
-    
     #  Was a goodbad array passed?
     
     if goodbad is None:
@@ -86,8 +74,9 @@ def goodbad_init(*args,
 
 
 
-def image_poly(img:npt.ArrayLike,
-               coeffs:npt.ArrayLike):
+def image_poly(
+    img:npt.ArrayLike,
+    coeffs:npt.ArrayLike):
 
     """
     Evaluates a polynomial function of a variable for images
@@ -113,19 +102,21 @@ def image_poly(img:npt.ArrayLike,
     Follows the IDL poly.pro technique to evaluate a polynomial but does 
     it for each value in the array at once
 
-    Examples
-    --------
-    > import numpy as np
-    > img = np.array([[1,1,1],[2,2,2],[3,3,3]])
-    > coeffs0 = np.array([[2,2,2],[2,2,2],[2,2,2]])
-    > coeffs1 = np.array([[0.5,0.5,0.5],[0.5,0.5,0.5],[0.5,0.5,0.5]])
-    > coeffs = np.stack((coeffs0,coeffs1))
-
-    [[2.5 2.5 2.5]
-     [3.  3.  3. ]
-     [3.5 3.5 3.5]]
-
     """
+
+    #
+    # Check parameters
+    #
+
+    check_parameter('image_poly', 'img', 
+                    img, 'ndarray', 2)
+
+    check_parameter('image_poly', 'coeffs', 
+                    coeffs, 'ndarray')
+
+    #
+    # Do the work
+    #
 
     n = coeffs.shape[0] - 1
 
@@ -138,11 +129,12 @@ def image_poly(img:npt.ArrayLike,
 
 
 
-def make_alphabeta_1d(x:npt.ArrayLike,
-                      y:npt.ArrayLike,
-                      yunc:npt.ArrayLike,
-                      order:int,
-                      doalpha:bool=False):
+def _make_alphabeta_1d(
+    x:npt.ArrayLike,
+    y:npt.ArrayLike,
+    yunc:npt.ArrayLike,
+    order:int,
+    doalpha:bool=False):
 
     """
     Creates the alpha and beta arrays of the normal equations of
@@ -151,16 +143,16 @@ def make_alphabeta_1d(x:npt.ArrayLike,
     Parameters
     ----------
     x : ndarray
-        (ndat, ) array of independent values.
+        An (ndat, ) array of independent values.
 
     y : ndarray
-        (ndat, ) array of dependent values.
+        An (ndat, ) array of dependent values.
 
     yunc : ndarray
-        (ndat,) array of uncertainties.
+        An (ndat,) array of uncertainties.
 
     order : int
-        The polynomial order.
+        An The polynomial order.
 
     doalpha : {False, True}
         Set to True to create the alpha directly.  See Notes.
@@ -182,6 +174,21 @@ def make_alphabeta_1d(x:npt.ArrayLike,
     #
     # Check parameters
     #
+
+    check_parameter('_make_alphabeta_1d', 'x', 
+                    x, 'ndarray', 1)
+
+    check_parameter('_make_alphabeta_1d', 'y', 
+                    y, 'ndarray', 1)
+
+    check_parameter('_make_alphabeta_1d', 'yunc', 
+                    yunc, 'ndarray', 1)
+
+    check_parameter('_make_alphabeta_1d', 'order', 
+                    order, 'int')
+
+    check_parameter('_make_alphabeta_1d', 'doalpha', 
+                    doalpha, 'bool')
 
     # How many coefficients
 
@@ -227,13 +234,14 @@ def make_alphabeta_1d(x:npt.ArrayLike,
 
 
 
-def make_alphabeta_2d(x:npt.ArrayLike,
-                      y:npt.ArrayLike,
-                      z:npt.ArrayLike,
-                      zunc:npt.ArrayLike,
-                      xorder:int,
-                      yorder:int,
-                      doalpha:bool=False):
+def _make_alphabeta_2d(
+    x:npt.ArrayLike,
+    y:npt.ArrayLike,
+    z:npt.ArrayLike,
+    zunc:npt.ArrayLike,
+    xorder:int,
+    yorder:int,
+    doalpha:bool=False):
 
     """
     Creates the alpha and beta arrays of the normal equations of
@@ -283,19 +291,26 @@ def make_alphabeta_2d(x:npt.ArrayLike,
     #
 
     
-    check_parameter('make_alphabeta_2d', 'x', x, 'ndarray')
+    check_parameter('_make_alphabeta_2d', 'x', 
+                    x, 'ndarray')
 
-    check_parameter('make_alphabeta_2d', 'y', y, 'ndarray')
+    check_parameter('_make_alphabeta_2d', 'y', 
+                    y, 'ndarray')
 
-    check_parameter('make_alphabeta_2d', 'z', z, 'ndarray')
+    check_parameter('_make_alphabeta_2d', 'z', 
+                    z, 'ndarray')
 
-    check_parameter('make_alphabeta_2d', 'zunc', zunc, 'ndarray')
+    check_parameter('_make_alphabeta_2d', 'zunc', 
+                    zunc, 'ndarray')
 
-    check_parameter('make_alphabeta_2d', 'xorder', xorder, 'int')
+    check_parameter('_make_alphabeta_2d', 'xorder', 
+                    xorder, 'int')
 
-    check_parameter('make_alphabeta_2d', 'yorder', yorder, 'int')    
+    check_parameter('_make_alphabeta_2d', 'yorder', 
+                    yorder, 'int')    
     
-    check_parameter('make_alphabeta_2d', 'doalpha', doalpha, 'bool')        
+    check_parameter('_make_alphabeta_2d', 'doalpha', 
+                    doalpha, 'bool')        
     
     # How many coefficients
 
@@ -350,13 +365,13 @@ def make_alphabeta_2d(x:npt.ArrayLike,
     return alpha, beta
 
 
-def poly_1d(x:int | float | npt.ArrayLike,
-            coeffs:npt.ArrayLike,
-            covar:npt.ArrayLike=None,
-            talk=False):
+def poly_1d(
+    x:int | float | npt.ArrayLike,
+    coeffs:npt.ArrayLike,
+    covar:npt.ArrayLike=None):
     
     """
-    Evaluates a polynomial function of an independent variables
+    Evaluates a polynomial function of an independent variables.
     
 
     Parameters
@@ -381,13 +396,16 @@ def poly_1d(x:int | float | npt.ArrayLike,
     #
     # Check the parameters
     #
-    
-    check_parameter('poly_1d', 'x', x,
-                    ['int', 'float', 'float64', 'list', 'ndarray'])
+    all = ['int', 'int8', 'float', 'float64', 'ndarray']
 
-    check_parameter('poly_1d', 'coeffs', coeffs, 'ndarray')
+    check_parameter('poly_1d', 'x', 
+                    x, all)
 
-    check_parameter('poly_1d', 'covar', covar, ['ndarray', 'NoneType'])
+    check_parameter('poly_1d', 'coeffs', 
+                    coeffs, 'ndarray')
+
+    check_parameter('poly_1d', 'covar', 
+                    covar, ['ndarray', 'NoneType'])
 
     #
     # Get set up
@@ -396,7 +414,7 @@ def poly_1d(x:int | float | npt.ArrayLike,
     x = x.astype(np.float64)
     ncoeffs = np.size(coeffs)
     ndat = np.size(x)
-    if talk is True: print('first', ncoeffs)
+
     #
     # Compute the values at x
     #
@@ -407,7 +425,6 @@ def poly_1d(x:int | float | npt.ArrayLike,
 
     # Compute the variances if requested
 
-    if talk is True:  print('second',ncoeffs)
     if covar is not None:
 
         var = np.zeros(ndat, dtype=np.float64)
@@ -415,8 +432,6 @@ def poly_1d(x:int | float | npt.ArrayLike,
 
             for j in range(ncoeffs):
                 var = var + covar[j, i] * x ** i * x ** j
-                if talk is True:  print(i,j,covar[j, i])
-#                print(covar[j, i] * x ** i * x ** j)
                 
         return z, var
 
@@ -425,11 +440,12 @@ def poly_1d(x:int | float | npt.ArrayLike,
         return z
 
 
-def poly_2d(x:int | float | npt.ArrayLike,
-            y:int | float | npt.ArrayLike,
-            xorder:int,
-            yorder:int,
-            coefficients:npt.ArrayLike):
+def poly_2d(
+    x:int | float | npt.ArrayLike,
+    y:int | float | npt.ArrayLike,
+    xorder:int,
+    yorder:int,
+    coefficients:npt.ArrayLike):
 
     """
     Evaluates a polynomial function of two independent variables
@@ -464,15 +480,20 @@ def poly_2d(x:int | float | npt.ArrayLike,
     #
 
     all = ['int', 'int8', 'float', 'float64', 'ndarray']
-    check_parameter('poly_2d', 'x', x, all)
+    check_parameter('poly_2d', 'x', 
+                    x, all)
 
-    check_parameter('poly_2d', 'y', y, all)
+    check_parameter('poly_2d', 'y', 
+                    y, all)
 
-    check_parameter('poly_2d', 'xorder', xorder, 'int')
+    check_parameter('poly_2d', 'xorder', 
+                    xorder, 'int')
 
-    check_parameter('poly_2d', 'yorder', yorder, 'int')            
+    check_parameter('poly_2d', 'yorder', 
+                    yorder, 'int')            
 
-    check_parameter('poly_2d', 'coefficients', coefficients, 'ndarray')    
+    check_parameter('poly_2d', 'coefficients', 
+                    coefficients, 'ndarray')    
 
     x = np.float64(x)
     y = np.float64(y)
@@ -490,15 +511,16 @@ def poly_2d(x:int | float | npt.ArrayLike,
     return z
 
 
-def polyfit_1d(x:npt.ArrayLike,
-               y:npt.ArrayLike,
-               order:int,
-               yunc:npt.ArrayLike=None,
-               goodbad:npt.ArrayLike=None,
-               robust:dict=None,
-               doalpha:bool=False,
-               justfit:bool=False,
-               silent:bool=True):
+def polyfit_1d(
+    x:npt.ArrayLike,
+    y:npt.ArrayLike,
+    order:int,
+    yunc:npt.ArrayLike=None,
+    goodbad:npt.ArrayLike=None,
+    robust:dict=None,
+    doalpha:bool=False,
+    justfit:bool=False,
+    silent:bool=True):
 
     """
     Fits a (robust) polynomial to a set of 1D data.
@@ -524,11 +546,11 @@ def polyfit_1d(x:npt.ArrayLike,
 
     robust : dict of {str:int or float, str:int or float}, optional
 
-        `"thresh"` : int or float
+        'thresh' : int or float
             The standard deviation threshold over which to identify pixels as
             an outlier.
 
-        `"eps"` : int or float
+        'eps' : int or float
             The epsilon value to decide when to stop trying to identify
             outliers.  If (stddev_i-1 - stddev_i) / stddev_i < `"eps"` then
             the search is ended.
@@ -550,34 +572,34 @@ def polyfit_1d(x:npt.ArrayLike,
     Returns
     -------
     dict
-        `"coeffs"` : ndarray
+        'coeffs' : ndarray
             The polynomial coefficients
 
-        `"coeff_var"`: ndarray
+        'coeff_var': ndarray
             The variances of the coefficients
 
-        `"coeff_covar"` : ndarray
+        'coeff_covar' : ndarray
             The covariance matrix
 
-        `"yfit"` : ndarray 
+        'yfit' : ndarray 
             The polynomial evaluated at `x`
 
-        `"yfit_var"` : ndarray 
+        'yfit_var' : ndarray 
             The variances of `yfit` calculated using `coeff_covar`.
 
-        `"nparm"` : int
+        'nparm' : int
             The number of parameters of the fit
 
-        `"ndof"` : int
+        'ndof' : int
             The number of degrees of freedom
 
-        `"chi2"` : float64
+        'chi2' : float64
             The chi^2 value of the fit
 
-        `"rchi2"`: float64
+        'rchi2': float64
             The reduced chi^2 value of the fit
 
-        `"rms"`: float64
+        'rms': float64
             The rms of the fit (1/N, not 1/(N-1))
 
     Notes
@@ -614,23 +636,32 @@ def polyfit_1d(x:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('polyfit_1d','x', x, 'ndarray')
+    check_parameter('polyfit_1d','x', 
+                    x, 'ndarray')
 
-    check_parameter('polyfit_1d','y', y, 'ndarray')
+    check_parameter('polyfit_1d','y', 
+                    y, 'ndarray')
 
-    check_parameter('polyfit_1d','order', order, 'int')
+    check_parameter('polyfit_1d','order', 
+                    order, 'int')
 
-    check_parameter('polyfit_1d','yunc', yunc, ['ndarray','NoneType'])
+    check_parameter('polyfit_1d','yunc', 
+                    yunc, ['ndarray','NoneType'])
 
-    check_parameter('polyfit_1d','goodbad', goodbad, ['ndarray','NoneType'])
+    check_parameter('polyfit_1d','goodbad', 
+                    goodbad, ['ndarray','NoneType'])
 
-    check_parameter('polyfit_1d','robust', robust, ['dict','NoneType'])
+    check_parameter('polyfit_1d','robust', 
+                    robust, ['dict','NoneType'])
 
-    check_parameter('polyfit_1d','doalpha', doalpha, 'bool')
+    check_parameter('polyfit_1d','doalpha', 
+                    doalpha, 'bool')
 
-    check_parameter('polyfit_1d','silent', silent, 'bool')    
+    check_parameter('polyfit_1d','silent', 
+                    silent, 'bool')    
 
-    check_parameter('polyfit_1d','justfit', justfit, 'bool')                
+    check_parameter('polyfit_1d','justfit', 
+                    justfit, 'bool')                
 
 
     # Construct the uncertainty array if need be
@@ -640,7 +671,7 @@ def polyfit_1d(x:npt.ArrayLike,
 
     # Create the goodbad array
 
-    goodbad = goodbad_init(y, yunc, goodbad=goodbad)
+    goodbad = _goodbad_init(y, yunc, goodbad=goodbad)
 
     # Find the NaNs
 
@@ -660,7 +691,7 @@ def polyfit_1d(x:npt.ArrayLike,
 
     # Create the alpha and beta arrays of the normal equatioon
 
-    alpha, beta = make_alphabeta_1d(xx, yy, yyunc, order, doalpha=doalpha)
+    alpha, beta = _make_alphabeta_1d(xx, yy, yyunc, order, doalpha=doalpha)
 
     # Solve things
 
@@ -699,10 +730,11 @@ def polyfit_1d(x:npt.ArrayLike,
 
                 itter += 1
                 old_stddev = stddev
-                alpha, beta = make_alphabeta_1d(xx[z_good], yy[z_good],
-                                                yyunc[z_good], order,
-                                                doalpha=doalpha)
-
+                alpha, beta = _make_alphabeta_1d(
+                    xx[z_good], yy[z_good],
+                    yyunc[z_good], order,
+                    doalpha=doalpha)
+                
                 coeffs = np.linalg.solve(alpha, beta)
 
                 residual = yy[z_good] - polyval(xx[z_good], coeffs)
@@ -801,17 +833,18 @@ def polyfit_1d(x:npt.ArrayLike,
 #
 # ==============================================================================
 #
-def polyfit_2d(x:npt.ArrayLike,
-               y:npt.ArrayLike,
-               z:npt.ArrayLike,
-               xorder:int,
-               yorder:int,
-               zunc:npt.ArrayLike=None,
-               goodbad:npt.ArrayLike=None,
-               robust:dict=None,
-               doalpha:bool=False,
-               silent:bool=True,
-               justfit:bool=False):
+def polyfit_2d(
+    x:npt.ArrayLike,
+    y:npt.ArrayLike,
+    z:npt.ArrayLike,
+    xorder:int,
+    yorder:int,
+    zunc:npt.ArrayLike=None,
+    goodbad:npt.ArrayLike=None,
+    robust:dict=None,
+    doalpha:bool=False,
+    silent:bool=True,
+    justfit:bool=False):
     
     """
     Fits a 2D polynomial to a set of 2D data
@@ -871,31 +904,31 @@ def polyfit_2d(x:npt.ArrayLike,
     -------
     dict
 
-        `"coeffs"` : ndarray 
+        'coeffs' : ndarray 
             The polynomial coefficients
 
-        `"var"` : ndarray 
+        'var' : ndarray 
             The variances of the coefficients
 
-        `"covar"` : ndarray
+        'covar' : ndarray
             The covariance matrix
 
-        `"zfit"` : ndarray 
+        'zfit' : ndarray 
             The polynomial evaluated at `x` and `y`
 
-        `"nparm"` : int
+        'nparm' : int
             The number of parameters of the fit
 
-        `"ndof"` : int
+        'ndof' : int
             The number of degrees of freedom
 
-        `"chi2"` : float64
+        'chi2' : float64
             The chi^2 value of the fit
 
-        `"rchi2"` : float64
+        'rchi2' : float64
             The reduced chi^2 value of the fit
 
-        `"rms"` : float64
+        'rms' : float64
             The rms of the fit (1/N, not 1/(N-1))
 
     Notes
@@ -924,27 +957,38 @@ def polyfit_2d(x:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('polyfit_2d','x', x, 'ndarray')
+    check_parameter('polyfit_2d','x', 
+                    x, 'ndarray')
 
-    check_parameter('polyfit_2d','y', y, 'ndarray')
+    check_parameter('polyfit_2d','y', 
+                    y, 'ndarray')
 
-    check_parameter('polyfit_2d','z', z, 'ndarray')
+    check_parameter('polyfit_2d','z', 
+                    z, 'ndarray')
 
-    check_parameter('polyfit_2d','xorder', xorder, 'int')
+    check_parameter('polyfit_2d','xorder', 
+                    xorder, 'int')
 
-    check_parameter('polyfit_2d','yorder', yorder, 'int')
+    check_parameter('polyfit_2d','yorder', 
+                    yorder, 'int')
 
-    check_parameter('polyfit_2d','zunc', zunc, ['ndarray','NoneType'])
+    check_parameter('polyfit_2d','zunc', 
+                    zunc, ['ndarray','NoneType'])
 
-    check_parameter('polyfit_2d','goodbad', goodbad, ['ndarray','NoneType'])
+    check_parameter('polyfit_2d','goodbad', 
+                    goodbad, ['ndarray','NoneType'])
 
-    check_parameter('polyfit_2d','robust', robust, 'dict')
+    check_parameter('polyfit_2d','robust', 
+                    robust, 'dict')
 
-    check_parameter('polyfit_2d','doalpha', doalpha, 'bool')
+    check_parameter('polyfit_2d','doalpha', 
+                    doalpha, 'bool')
 
-    check_parameter('polyfit_2d','silent', silent, 'bool')    
+    check_parameter('polyfit_2d','silent', 
+                    silent, 'bool')    
 
-    check_parameter('polyfit_2d','justfit', justfit, 'bool')                
+    check_parameter('polyfit_2d','justfit', 
+                    justfit, 'bool')                
 
     #
     # Get set up
@@ -963,7 +1007,7 @@ def polyfit_2d(x:npt.ArrayLike,
 
     # Create the goodbad array
 
-    goodbad = goodbad_init(z, zunc, goodbad=goodbad)
+    goodbad = _goodbad_init(z, zunc, goodbad=goodbad)
 
     # Find the NaNs
 
@@ -988,13 +1032,14 @@ def polyfit_2d(x:npt.ArrayLike,
     
     # Create the alpha and beta arrays of the normal equatioon
 
-    alpha, beta = make_alphabeta_2d(xx,
-                                    yy,
-                                    zz,
-                                    zzunc,
-                                    xorder,
-                                    yorder,
-                                    doalpha=doalpha)
+    alpha, beta = _make_alphabeta_2d(
+        xx,
+        yy,
+        zz,
+        zzunc,
+        xorder,
+        yorder,
+        doalpha=doalpha)
 
     # Solve things
 
@@ -1025,10 +1070,11 @@ def polyfit_2d(x:npt.ArrayLike,
 
                 itter += 1
                 old_stddev = stddev
-                alpha, beta = make_alphabeta_2d(xx[z_good], yy[z_good],
-                                                zz[z_good], zzunc[z_good],
-                                                xorder, yorder,
-                                                doalpha=doalpha)
+                alpha, beta = _make_alphabeta_2d(
+                    xx[z_good], yy[z_good],
+                    zz[z_good], zzunc[z_good],
+                    xorder, yorder,
+                    doalpha=doalpha)
 
                 coeffs = np.linalg.solve(alpha, beta)
 

@@ -5,7 +5,7 @@ import scipy
 from scipy import signal
 from scipy import interpolate
 
-from pyspextool.fit.polyfit import goodbad_init
+from pyspextool.fit.polyfit import _goodbad_init
 
 
 def robust_savgol(
@@ -69,7 +69,7 @@ def robust_savgol(
 
     # Convert to numpy arrays and do basic things
 
-    goodbad = goodbad_init(y, goodbad=goodbad)
+    goodbad = _goodbad_init(y, goodbad=goodbad)
     ndat = np.size(y)
         
     # Grab the good points

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy
 
-from pyspextool.fit.polyfit import goodbad_init
+from pyspextool.fit.polyfit import _goodbad_init
 from pyspextool.io.check import check_parameter
 from pyspextool.pyspextoolerror import pySpextoolError
 import warnings
@@ -145,7 +145,7 @@ def fit_peak1d(x:npt.ArrayLike,
 
     # Create a goodbad array and clip inputs
 
-    goodbad = goodbad_init(y)
+    goodbad = _goodbad_init(y)
     z_initgood = goodbad == 1
     xx = x[z_initgood]
     yy = y[z_initgood]
@@ -205,7 +205,7 @@ def fit_peak1d(x:npt.ArrayLike,
 
     # Create a goodbad array
 
-    goodbad = goodbad_init(y)
+    goodbad = _goodbad_init(y)
 
     #
     # Fit the data
