@@ -214,7 +214,8 @@ def test_scale_data_stack():
 #
 def test_moments():
 
-    x = 1
-    assert x == 1
+    x = np.array([1,2,-0.5,1.5,0.1,-0.1,10])
+    result = moments(x,robust=4)
+    np.testing.assert_array_equal(result['goodbad'],[1,1,1,1,1,1,0])
     
     
