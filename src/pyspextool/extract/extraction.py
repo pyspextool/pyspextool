@@ -1,10 +1,9 @@
 import numpy as np
 import numpy.typing as npt
-from scipy.interpolate import interp1d
 from astropy.io import fits
 from os.path import basename
-import matplotlib.pyplot as pl
-from pyspextool.utils.interpolate import sinc_interpolation_fft, sinc_interpolation
+#import matplotlib.pyplot as pl
+from pyspextool.utils.interpolate import sinc_interpolation
 
 
 from pyspextool.extract.profiles import make_2d_profile, make_aperture_mask
@@ -12,27 +11,27 @@ from pyspextool.fit.polyfit import polyfit_1d, poly_1d
 from pyspextool.io.check import check_parameter
 from pyspextool.utils.math import moments
 from pyspextool.utils.split_text import split_text
-from pyspextool.utils.arrays import make_image_indices, trim_nan, find_index
+from pyspextool.utils.arrays import make_image_indices, trim_nan
 from pyspextool.utils.loop_progress import loop_progress
 from pyspextool.pyspextoolerror import pySpextoolError
-from pyspextool.utils.for_print import for_print
 
-def extract_1dxd(image:npt.ArrayLike,
-                 variance:npt.ArrayLike,
-                 ordermask:npt.ArrayLike,
-                 wavecal:npt.ArrayLike,
-                 spatcal:npt.ArrayLike,
-                 extract_orders:npt.ArrayLike,
-                 trace_coefficients:npt.ArrayLike,
-                 aperture_radii:npt.ArrayLike,
-                 aperture_signs:npt.ArrayLike,
-                 linmax_bitmask:npt.ArrayLike=None,
-                 bg_annulus:list | npt.ArrayLike=None,
-                 bg_regions:str=None,
-                 bg_fitdegree:int=1,
-                 optimal_info=None,
-                 badpixel_info=None,
-                 progressbar=True):
+def extract_1dxd(
+    image:npt.ArrayLike,
+    variance:npt.ArrayLike,
+    ordermask:npt.ArrayLike,
+    wavecal:npt.ArrayLike,
+    spatcal:npt.ArrayLike,
+    extract_orders:npt.ArrayLike,
+    trace_coefficients:npt.ArrayLike,
+    aperture_radii:npt.ArrayLike,
+    aperture_signs:npt.ArrayLike,
+    linmax_bitmask:npt.ArrayLike=None,
+    bg_annulus:list | npt.ArrayLike=None,
+    bg_regions:str=None,
+    bg_fitdegree:int=1,
+    optimal_info=None,
+    badpixel_info=None,
+    progressbar=True):
     
     """
     To extract spectra from a 1dxd formatted image.  
@@ -74,55 +73,55 @@ def extract_1dxd(image:npt.ArrayLike,
         beyond the linearity maximum.
 
     optimal_info : dict, default None
-        '`images`' : ndarray
+        'images' : ndarray
             An (norders,) array of rectified order dictionaries.  Each entry has
 
-                '`image`': ndarray
+                'image': ndarray
                     An (nangles, nwavelengths) profile array of an rectified 
                     order.
 
-                '`angle`': ndarray
+                'angle': ndarray
                     An (nangles,) array of spatial angles.
 
-                '`wavelength`': ndarray
+                'wavelength': ndarray
                     An (nangles,) array of wavelengths.
                 
-        '`psfradius`' : int or float
+        'psfradius' : int or float
             The radius for the PSF.
 
-        '`usemeanprofile`' : {False, True}    
+        'usemeanprofile' : {False, True}    
              Set to True to use the mean profile for all wavelengths.
 
-        '`mask`' : ndarray
+        'mask' : ndarray
              An (nrows, ncols) array giving the location of bad pixels. 
              1 = good
              0 = bad
 
-        '`thresh`' : float or int
+        'thresh' : float or int
              The sigma threshold to identify bad pixels.
     
     badpixel_info : dict or None, optional
-        '`images`' : ndarray
+        'images' : ndarray
             An (norders,) array of rectified order dictionaries.  Each entry has
-                '`image`': ndarray
+                'image': ndarray
                     An (nangles, nwavelengths) profile array of an rectified 
                     order.
 
-                '`angle`': ndarray
+                'angle': ndarray
                     An (nangles,) array of spatial angles.
 
-                '`wavelength`': ndarray
+                'wavelength': ndarray
                     An (nangles,) array of wavelengths.
 
-        '`usemeanprofile`' : {False, True}    
+        'usemeanprofile' : {False, True}    
              Set to True to use the mean profile for all wavelengths.
 
-        '`mask`' : ndarray
+        'mask' : ndarray
              An (nrows, ncols) array giving the location of bad pixels. 
              1 = good
              0 = bad
 
-        '`thresh`' : float or int
+        'thresh' : float or int
              The sigma threshold to identify bad pixels.    
 
     verbose : {True, False}, optional
@@ -143,41 +142,50 @@ def extract_1dxd(image:npt.ArrayLike,
     # Check parameters
     #
 
-    check_parameter('extract_1dxd', 'image', image, 'ndarray')
+    check_parameter('extract_1dxd', 'image', 
+                    image, 'ndarray')
 
-    check_parameter('extract_1dxd', 'variance', variance, 'ndarray')
+    check_parameter('extract_1dxd', 'variance', 
+                    variance, 'ndarray')
 
-    check_parameter('extract_1dxd', 'ordermask', ordermask, 'ndarray')
+    check_parameter('extract_1dxd', 'ordermask', 
+                    ordermask, 'ndarray')
 
-    check_parameter('extract_1dxd', 'wavecal', wavecal, 'ndarray')
+    check_parameter('extract_1dxd', 'wavecal', 
+                    wavecal, 'ndarray')
 
-    check_parameter('extract_1dxd', 'spatcal', spatcal, 'ndarray')
+    check_parameter('extract_1dxd', 'spatcal', 
+                    spatcal, 'ndarray')
 
-    check_parameter('extract_1dxd', 'extract_orders', extract_orders, 'ndarray')
+    check_parameter('extract_1dxd', 'extract_orders', 
+                    extract_orders, 'ndarray')
     
-    check_parameter('extract_1dxd', 'trace_coefficients', trace_coefficients,
-                    'ndarray')
+    check_parameter('extract_1dxd', 'trace_coefficients', 
+                    trace_coefficients, 'ndarray')
 
-    check_parameter('extract_1dxd', 'aperture_radii', aperture_radii, 'ndarray')
+    check_parameter('extract_1dxd', 'aperture_radii', 
+                    aperture_radii, 'ndarray')
     
-    check_parameter('extract_1dxd', 'aperture_signs', aperture_signs, 'ndarray')
+    check_parameter('extract_1dxd', 'aperture_signs', 
+                    aperture_signs, 'ndarray')
 
-    check_parameter('extract_1dxd', 'linmax_bitmask', linmax_bitmask,
-                    ['ndarray','NoneType'])
+    check_parameter('extract_1dxd', 'linmax_bitmask', 
+                    linmax_bitmask, ['ndarray','NoneType'])
 
-    check_parameter('extract_1dxd', 'bg_annulus', bg_annulus,
-                    ['ndarray', 'list','NoneType'])    
+    check_parameter('extract_1dxd', 'bg_annulus', 
+                    bg_annulus, ['ndarray', 'list','NoneType'])    
 
-    check_parameter('extract_1dxd', 'bg_regions', bg_regions,
-                    ['str','NoneType'])    
+    check_parameter('extract_1dxd', 'bg_regions', 
+                    bg_regions, ['str','NoneType'])    
     
-    check_parameter('extract_1dxd', 'optimal_info', optimal_info,
-                    ['dict','NoneType'])
+    check_parameter('extract_1dxd', 'optimal_info', 
+                    optimal_info, ['dict','NoneType'])
 
-    check_parameter('extract_1dxd', 'badpixel_info', badpixel_info,
-                    ['dict','NoneType'])
+    check_parameter('extract_1dxd', 'badpixel_info', 
+                    badpixel_info, ['dict','NoneType'])
 
-    check_parameter('extract_1dxd', 'verbose',progressbar, 'bool')
+    check_parameter('extract_1dxd', 'verbose',
+                    progressbar, 'bool')
 
     #
     # Get basic information
@@ -212,7 +220,6 @@ def extract_1dxd(image:npt.ArrayLike,
 
         badpixel_mask = np.ones((nrows, ncols)).astype(int)
         use_profile = False
-        text = 'Sum extracting '
 
     else:
 
@@ -223,7 +230,6 @@ def extract_1dxd(image:npt.ArrayLike,
         if badpixel_info is not None:
 
             info = badpixel_info
-            text = 'Sum extracting '
                                  
         if optimal_info is not None:
 
@@ -236,31 +242,29 @@ def extract_1dxd(image:npt.ArrayLike,
 
             
             info = optimal_info            
-            text = 'Optimally extracting '
             
         badpixel_mask = info['mask']
         rectified_orders = info['images']
         atmosphere = info['atmosphere']
         thresh = info['thresh']
         use_meanprofile = info['usemeanprofile']
-
         
     #
     # Start the loop!
     #
                   
     spectrum_list = []
-    background_list = []
 
     for i in range(norders):
 
         if use_profile is True:
             
-            r = make_2d_profile(rectified_orders[i],
-                                trace_coefficients[i*naps:i*naps+naps],
-                                aperture_radii[i,:],
-                                atmospheric_transmission=atmosphere,
-                                use_mean_profile=False)
+            r = make_2d_profile(
+                rectified_orders[i],
+                trace_coefficients[i*naps:i*naps+naps],
+                aperture_radii[i,:],
+                atmospheric_transmission=atmosphere,
+                use_mean_profile=False or use_meanprofile)
             
             profile_angles = r[0]
             profile_map = r[1]
@@ -291,9 +295,9 @@ def extract_1dxd(image:npt.ArrayLike,
 
             spectrum_wave[j] = wavecal[zslit, xmin + j][0]
 
+
             # Carve out the slit values            
 
-            slit_pix = yy[zslit, xmin + j]
             slit_arc = spatcal[zslit, xmin + j]
             slit_img = image[zslit, xmin + j]
             slit_var = variance[zslit, xmin + j]
@@ -302,14 +306,18 @@ def extract_1dxd(image:npt.ArrayLike,
             
             if use_profile is True:
 
-#                function = interp1d(profile_angles,
-#                                    profile_map[:,j],
-#                                    fill_value=0.0,
-#                                    bounds_error=False,kind='quadratic')
-#            
+#                function = interp1d(
+#                    profile_angles,
+#                    profile_map[:,j],
+#                    fill_value=0.0,
+#                    bounds_error=False,kind='quadratic')
+            
 #                slit_prof = function(slit_arc)
                 
-                slit_prof = sinc_interpolation(profile_map[:,j],profile_angles, slit_arc)
+                slit_prof = sinc_interpolation(
+                    profile_map[:,j],
+                    profile_angles, 
+                    slit_arc)
 
             # Gernerate the aperture positions using the tracecoeffs
         
@@ -317,26 +325,28 @@ def extract_1dxd(image:npt.ArrayLike,
 
             for k in range(naps):
 
-                l = i * naps + k
+                idx = i * naps + k
                 wave = np.array(spectrum_wave[j], dtype='float', ndmin=1)
-                aperture_positions[k] = poly_1d(wave, trace_coefficients[l])[0]
+                aperture_positions[k] = poly_1d(wave, trace_coefficients[idx])[0]
 
             # Generate the aperture mask
 
-            aperture_mask = make_aperture_mask(slit_arc,
-                                               aperture_positions,
-                                               aperture_radii[i,:],
-                                               bg_annulus=bg_annulus,
-                                               bg_regions=bg_regions)
-
+            aperture_mask = make_aperture_mask(
+                slit_arc,
+                aperture_positions,
+                aperture_radii[i,:],
+                bg_annulus=bg_annulus,
+                bg_regions=bg_regions)
+            
             # Generate the psf mask
 
             if optimal_info is not None:
 
                 psf_radii = np.full(naps, optimal_info['psfradius'])
-                psf_mask = make_aperture_mask(slit_arc,
-                                              aperture_positions,
-                                              psf_radii)
+                psf_mask = make_aperture_mask(
+                    slit_arc,
+                    aperture_positions,
+                    psf_radii)
             
             #
             # Do the background subtraction
@@ -347,32 +357,36 @@ def extract_1dxd(image:npt.ArrayLike,
                 # Fit the background
 
                 z_background = (aperture_mask == -1)
-
+                
                 if bg_fitdegree == 0:
 
-                    result = moments(slit_img[z_background],
-                                     robust=4,
-                                     goodbad=slit_bpm[z_background],
-                                     silent=True)
+                    result = moments(
+                        slit_img[z_background],
+                        robust=3,
+                        goodbad=slit_bpm[z_background],
+                        silent=True)
+
                     slit_bg = np.full_like(slit_img, result['mean'])
 
                     slit_bgvar = np.full_like(slit_bg, result['stderr']**2)
 
                 else:
 
-                    result = polyfit_1d(slit_arc[z_background],
-                                        slit_img[z_background],
-                                        bg_fitdegree,
-                                        goodbad=slit_bpm[z_background],
-                                        yunc=np.sqrt(slit_var[z_background]),
-                                        robust={'thresh': 4, 'eps': 0.1},
-                                        silent=True)
+                    result = polyfit_1d(
+                        slit_arc[z_background],
+                        slit_img[z_background],
+                        bg_fitdegree,
+                        goodbad=slit_bpm[z_background],
+                        yunc=np.sqrt(slit_var[z_background]),
+                        robust={'thresh': 4, 'eps': 0.01},
+                        silent=True)
 
                     # Generate a background slit 
 
-                    slit_bg, slit_bgvar = poly_1d(slit_arc, result['coeffs'],
-                                                   covar=result['coeffs_covar'],
-                                                   talk=False)
+                    slit_bg, slit_bgvar = poly_1d(
+                        slit_arc, result['coeffs'],
+                        covar=result['coeffs_covar'],
+                        talk=False)
 
                 # Subtract the background and propagate the uncertainties
 
@@ -380,11 +394,11 @@ def extract_1dxd(image:npt.ArrayLike,
                 slit_var += slit_bgvar
 
 
-#                if j > 150:
-#                    print(j, slit_bpm)
+#                if spectrum_wave[j] > 2.06:
+##                    print(j, slit_bpm)
 #                    z = np.where(slit_bpm == 0)[0]
-#                    fig = pl.figure(figsize=(15,10))    
-#                    axes1 = pl.subplot(2,1,1)
+#                    fig = pl.figure(figsize=(7,5))    
+#                    axes1 = pl.subplot(1,1,1)
 #                    
 #                    axes1.step(slit_arc, slit_img,where='mid',label='data')
 #                    axes1.plot(slit_arc[z], slit_img[z],'or')
@@ -393,9 +407,9 @@ def extract_1dxd(image:npt.ArrayLike,
 #                    axes1.set_title(str(j)+' '+str(spectrum_wave[j]))
 #                    axes1.legend()
 #                    pl.pause(0.1)
-#                    pl.clf()
-                    
-#                pl.show()
+#
+#                   
+#                    pl.show()
                 
                 
             #
@@ -412,27 +426,31 @@ def extract_1dxd(image:npt.ArrayLike,
 #
 #                    silent = True
 
-                fit_img = polyfit_1d(slit_prof,
-                                     slit_img,
-                                     1,
-                                     goodbad=slit_bpm,
-                                     robust={'thresh':thresh, 'eps':0.1},
-                                     silent=True)
+                fit_img = polyfit_1d(
+                    slit_prof,
+                    slit_img,
+                    1,
+                    goodbad=slit_bpm,
+                    robust={'thresh':thresh, 'eps':0.1},
+                    silent=True)
 
-                z = np.where(fit_img['goodbad'] == 0)[0]
+#                z = np.where(fit_img['goodbad'] == 0)[0]
 
-#                if j > 192:
+#                zgood = np.where(fit_img['goodbad'] == 1)[0]
+#                if spectrum_wave[j] > 2.06:
 #
-#                    fig = pl.figure(figsize=(15,10))    
+#                    fig = pl.figure(figsize=(7,5))    
 ##                    fig = pl.figure(figsize=(15,10))    
 ##                    print(slit_bpm)
 ##                    print(z)
 ##                    print(xmin+j)
-#                    axes1 = pl.subplot(2,1,1)
+#                    axes1 = pl.subplot(1,1,1)
 #
 #                    scaled = poly_1d(slit_prof, fit_img['coeffs'])
-#                    min = np.min([scaled,slit_img])
-#                    max = np.max([scaled,slit_img])
+#
+#                    tmp = np.concatenate((scaled,slit_img[zgood]))
+#                    min = np.min(tmp)
+#                    max = np.max(tmp)
 #                    axes1.step(slit_arc, slit_img,where='mid',label='data')
 #                    axes1.step(slit_arc, scaled,where='mid',color='green',
 #                               label='profile')
@@ -455,11 +473,13 @@ def extract_1dxd(image:npt.ArrayLike,
 
                 # We fit the variances.  Is this good?
                 
-                fit_var = polyfit_1d(np.abs(slit_prof),
-                                     slit_var, 1,
-                                     goodbad=slit_bpm,
-                                     robust={'thresh':thresh, 'eps':0.1})
-
+                fit_var = polyfit_1d(
+                    np.abs(slit_prof),
+                    slit_var, 
+                    1,
+                    goodbad=slit_bpm,
+                    robust={'thresh':thresh, 'eps':0.1})
+                
                 z_badpixels = fit_img['goodbad']*slit_bpm == 0
 
                 if sum(z_badpixels) >= 1:
@@ -511,16 +531,14 @@ def extract_1dxd(image:npt.ArrayLike,
                         
                         vals = slit_img[z_aperture]/aperture_psf[z_aperture]
 
-                        vals2 = slit_img[z_aperture]
-
- #                       if j > 480 and k == 0:
- #
- #                           axes2 = pl.subplot(2,1,2,sharex=axes1)
- #                           axes2.plot(slit_arc[z_aperture],vals,'or')        
- #
- #                           #pl.draw()
- #                           #pl.pause(0.5)
- #                           #pl.clf()
+#                       if j > 480 and k == 0:
+#
+#                           axes2 = pl.subplot(2,1,2,sharex=axes1)
+#                           axes2.plot(slit_arc[z_aperture],vals,'or')        
+#
+#                           #pl.draw()
+#                           #pl.pause(0.5)
+#                           #pl.clf()
                             
 
                         vars = slit_var[z_aperture]/aperture_psf[z_aperture]**2
@@ -606,11 +624,12 @@ def extract_1dxd(image:npt.ArrayLike,
 
         for k in range(naps):
 
-            spectrum = np.stack((spectrum_wave[nonan],
-                                 spectrum_flux[k, nonan],
-                                 spectrum_unc[k, nonan],
-                                 spectrum_mask[k, nonan]))
-
+            spectrum = np.stack(
+                (spectrum_wave[nonan],
+                 spectrum_flux[k, nonan],
+                 spectrum_unc[k, nonan],
+                 spectrum_mask[k, nonan]))
+            
             spectrum_list.append(spectrum)
 
         if progressbar is True:
@@ -763,10 +782,10 @@ def write_apertures_fits(spectra,
 
     # Now fill in the arrays
 
-    l = 0
+    idx = 0
     for slice in spectra:
-        array[l, :, 0:npixels[l]] = slice
-        l += 1
+        array[idx, :, 0:npixels[idx]] = slice
+        idx += 1
 
     #
     # Now write the file(s) to disk
@@ -794,11 +813,7 @@ def write_apertures_fits(spectra,
     
     for i in range(len(keys)):
 
-        if keys[i] == 'COMMENT':
-
-            junk = 1
-
-        else:
+        if keys[i] != 'COMMENT':
 
             hdr[keys[i]] = (header_info[keys[i]][0], header_info[keys[i]][1])
 

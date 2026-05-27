@@ -428,8 +428,12 @@ def mean_data_stack(
 
             for i in range(shape[1]):
                         
-                submask = find_outliers(data[:,i], robust, leave_nans=False,
-                                        silent=True)
+                submask = find_outliers(
+                    data[:,i], 
+                    robust, 
+                    leave_nans=False,
+                    silent=True)
+
                 goodbad[~submask,i] = 0                
 
         else:  #  This is an image stack
@@ -438,8 +442,12 @@ def mean_data_stack(
 
                 for j in range(shape[2]):
                         
-                    submask = find_outliers(data[:,i,j], robust,
-                                            leave_nans=False, silent=True)
+                    submask = find_outliers(
+                        data[:,i,j], 
+                        robust,
+                        leave_nans=False, 
+                        silent=True)
+
                     goodbad[~submask,i,j] = 0            
 
     #
@@ -506,15 +514,15 @@ def median_data_stack(
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data : ndarray
         either a stack of spectra (nspec, npoints) or a stack of images
         (nimgs, nrows, ncols).
 
-    mask : numpy.ndarray, optional
+    mask : ndarray, optional
         a mask array with the same shape as `data`.  
         0 = bad, 1=good
 
-    stderr : {True, False}, optional
+    stderr : {True, False}
         Set to return 1.4826*MAD/sqrt(n) instead of just 1.4826*MAD 
         (see Procedure)
 
@@ -625,6 +633,19 @@ def median_data_stack(
 
     """
 
+    #
+    # Check the parameters
+    #
+
+    check_parameter('median_data_stack', 'data', 
+                    data, 'ndarray', [2, 3])
+
+    check_parameter('median_data_stack', 'mask', 
+                    mask, ['ndarray','NoneType'], [2, 3])
+
+    check_parameter('median_data_stack', 'stderr', 
+                    stderr, 'bool')        
+
     # Get array dimensions
 
     ndimen = np.ndim(data)
@@ -675,10 +696,11 @@ def median_data_stack(
     return (med, unc)
 
 
-def moments(data:npt.ArrayLike,
-            goodbad:npt.ArrayLike=False,
-            robust:int | float=None,
-            silent:bool=True):
+def moments(
+    data:npt.ArrayLike,
+    goodbad:npt.ArrayLike=False,
+    robust:int | float=None,
+    silent:bool=True):
 
     """
     (Robustly) computes basic statistics
@@ -702,31 +724,31 @@ def moments(data:npt.ArrayLike,
     --------
     dict
         A dict where with the following entries:
-        ndat : int
+        'ndat' : int
             The numger of data points used in the calculation.
 
-        mean : float
+        'mean' : float
             The mean of the (non-NaN, good) data points.
 
-        variance : float
+        'variance' : float
             Estimate of the variance of the (non-NaN, good) data points.
             That is, the denominator is 1/(ndat-1).
 
-        stddev : float
+        'stddev' : float
             Estimate of the standard deviation of the (non-NaN, good)
             data points.  That is, the denominator is 1/(ndat-1).
 
-        stderr : float
+        'stderr' : float
             The standard error of the (non-NaN, good) data points.
             `stddev`/sqrt(ndat)
 
-        skewness : float
+        'skewness' : float
             The skewness of the (non-NaN, good) data points.
 
-        kurtosis : float
+        'kurtosis' : float
             The kurtosis of the (non-NaN, good) data points.
 
-        goodbad : numpy.ndarray of int
+        'goodbad' : numpy.ndarray of int
             An array with the same shape as `data` that identifies good and
             bad data points.  0=bad, 1=good, 2=NaN
     Notes
@@ -761,6 +783,22 @@ def moments(data:npt.ArrayLike,
 
     """
 
+    #
+    # Check parameters
+    #
+
+    check_parameter('moments', 'data', 
+                    data, 'ndarray')
+
+    check_parameter('moments', 'goodbad', 
+                    goodbad, ['ndarray','bool'])
+
+    check_parameter('moments', 'robust', 
+                    robust, ['int','float','NoneType'])
+
+    check_parameter('moments', 'silent', 
+                    silent, 'bool')
+
     # Set up goodbad array if need be
 
     if goodbad is False:
@@ -787,10 +825,10 @@ def moments(data:npt.ArrayLike,
 
         med = np.median(sample)
         gmad = np.median(np.abs(sample - med))
-
+        
         #  Generate the mask
 
-        mask = ((sample - med) / gmad) <= robust
+        mask = np.abs(((sample - med) / gmad)) <= robust
 
     elif robust is None:
 
@@ -831,7 +869,8 @@ def moments(data:npt.ArrayLike,
             'stderr': stderr, 'skewness': skewness, 'kurtosis': kurtosis,
             'goodbad': goodbad}
 
-def round(x):
+def round(
+    x:npt.ArrayLike):
 
     """
     To round numbers in a numpy array
@@ -840,10 +879,10 @@ def round(x):
     Parameters
     ----------
     x : ndarray
-
+       An (ndat,) array of numbers.
 
     Returns
-    --------
+    -------
     ndarray like `x`
         The numbers are rounded to the nearest integer, and tied away \
         from zero.
@@ -870,10 +909,11 @@ def round(x):
 
 
 
-def scale_data_stack(stack:npt.ArrayLike,
-                     var:npt.ArrayLike,
-                     mask:npt.ArrayLike=None,
-                     index=None):
+def scale_data_stack(
+    stack:npt.ArrayLike,
+    var:npt.ArrayLike,
+    mask:npt.ArrayLike=None,
+    index=None):
 
     """
     Scales a stack of spectra or images to a common intensity level.
@@ -995,13 +1035,17 @@ def scale_data_stack(stack:npt.ArrayLike,
     #  Check parameters
     #
 
-    check_parameter('scale_data_stack', 'stack', stack, 'ndarray')
+    check_parameter('scale_data_stack', 'stack', 
+                    stack, 'ndarray')
 
-    check_parameter('scale_data_stack', 'var', var, ['ndarray', 'NoneType'])
+    check_parameter('scale_data_stack', 'var', 
+                    var, ['ndarray', 'NoneType'])
 
-    check_parameter('scale_data_stack', 'var', mask, ['ndarray', 'NoneType'])
+    check_parameter('scale_data_stack', 'var', 
+                    mask, ['ndarray', 'NoneType'])
 
-    check_parameter('scale_data_stack', 'index', index, ['int', 'NoneType'])            
+    check_parameter('scale_data_stack', 'index', 
+                    index, ['int', 'NoneType'])            
     
     # Get array dimensions
 
