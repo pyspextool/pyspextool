@@ -198,7 +198,7 @@ def make_wavecal(
             sky_files,
             setup.state['nint'],
             setup.state['suffix'],
-            setup.state['search_extension'])
+            setup.state['input_suffix'])
 
         skys_fullpath = result[0]
 
