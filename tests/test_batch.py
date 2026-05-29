@@ -5,7 +5,7 @@ import pandas as pd
 import logging
 
 
-testdatafold = os.path.join(batch.CODEDIR,"../../tests/test_data/")
+testdatafold = os.path.join('tests','test_data/')
 if os.path.exists(testdatafold)==False: testdatafold = os.path.join(batch.CODEDIR,"tests","test_data/")
 if os.path.exists(testdatafold)==False: 
     raise ValueError('Cannot find test data in {} or {}'.format(os.path.join(batch.CODEDIR,"../../tests/test_data/"),os.path.join(batch.CODEDIR,"tests","test_data/")))
