@@ -103,6 +103,8 @@ BATCH_PARAMETERS = {
 	'CALS_FOLDER': '',
 	'PROC_FOLDER': '',
 	'QA_FOLDER': '',
+	'QA_IMAGE_FOLDER': 'images',
+	'QA_SPECTRA_FOLDER': 'spectra',
 	'FLAT_FILE_PREFIX': 'flat',
 	'ARC_FILE_PREFIX': 'arc',
 	'SCIENCE_FILE_PREFIX': 'spc',
@@ -2149,9 +2151,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],
 		qa_show=False,qa_showblock=False,qa_write=True,verbose=parameters['VERBOSE'])
 # make sure qa image and spectra folders are in place
-	for x in [QA_IMAGE_FOLDER,QA_SPECTRA_FOLDER]:
-		if os.path.exists(os.path.join(parameters['QA_FOLDER'],x))==False:
-			os.mkdir(os.path.join(parameters['QA_FOLDER'],x))
+	for x in ['QA_IMAGE_FOLDER','QA_SPECTRA_FOLDER']:
+		if os.path.exists(os.path.join(parameters['QA_FOLDER'],parameters[x]))==False:
+			os.mkdir(os.path.join(parameters['QA_FOLDER'],parameters[x]))
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
