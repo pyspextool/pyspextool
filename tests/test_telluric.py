@@ -52,6 +52,7 @@ def test_telluric_postextraction(setup_name, postextraction_setup):
         'tcspectra_object',
         verbose=False,
         qa_show=False,
+        qa_showblock=False,
         qa_write=False
     )
     
@@ -90,6 +91,7 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
         instrument=setup_dict["instrument"],
         proc_path=proc_path,
         qa_extension='.png',
+        qa_show=False,
         qa_showblock=False,
         verbose=False
     )
@@ -106,6 +108,7 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
         'tcspectra_combined',
         verbose=False,
         qa_show=False,
+        qa_showblock=False,
         qa_write=False
     )
     
@@ -122,6 +125,7 @@ def test_telluric_precomputed(setup_name, postextraction_setup):
         'tcspectra_individual',
         verbose=False,
         qa_show=False,
+        qa_showblock=False,
         qa_write=False
     )
     
