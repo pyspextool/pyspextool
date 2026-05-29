@@ -42,7 +42,7 @@ from pyspextool.io.files import extract_filestring,make_full_path
 from pyspextool.io.read_spectra_fits import read_spectra_fits
 from pyspextool.utils.arrays import numberList
 
-VERSION = '2026 Apr 21'
+VERSION = '2026 May 19'
 
 ERROR_CHECKING = True
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -698,7 +698,7 @@ def processFolder(folder,verbose=False):
 			ref = ''
 			for ii in HEADER_DATA[k]:
 				if ii in list(header.keys()) and ref=='': ref=ii
-			if ref!='': dp.loc[i,k] = header[ref]
+			if ref!='': dp.loc[i,k] = str(header[ref])
 			if ref=='' and verbose==True and i==0:
 				logging.info('Could not find keywords {} in file {}'.format(HEADER_DATA[k],f))
 # update some of the mode names
@@ -961,7 +961,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.degree,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
 						dp_match.sort_values('SIMBAD_SEP',inplace=True,ignore_index=True)
 						for x in list(SIMBAD_COLS.keys()):
-							dpout.loc[dpout['TARGET_NAME']==tnm,x] = dp_match.loc[0,SIMBAD_COLS[x][1]]
+							dpout.loc[dpout['TARGET_NAME']==tnm,x] = str(dp_match.loc[0,SIMBAD_COLS[x][1]])
 						dpout.loc[dpout['TARGET_NAME']==tnm,'SIMBAD_SEP'] = '{:.2f}'.format(dp_match.loc[0,'SIMBAD_SEP'])
 				# t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
 			# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
@@ -2149,9 +2149,9 @@ def batchReduce(parameters,verbose=ERROR_CHECKING):
 		proc_path=parameters['PROC_FOLDER'], qa_path=parameters['QA_FOLDER'],qa_extension=parameters['PLOT_TYPE'],
 		qa_show=False,qa_showblock=False,qa_write=True,verbose=parameters['VERBOSE'])
 # make sure qa image and spectra folders are in place
-	for x in ['QA_IMAGE_FOLDER','QA_SPECTRA_FOLDER']:
-		if os.path.exists(os.path.join(parameters['DATA_FOLDER'],x))==False:
-			os.mkdir(os.path.join(parameters['DATA_FOLDER'],x))
+	for x in [QA_IMAGE_FOLDER,QA_SPECTRA_FOLDER]:
+		if os.path.exists(os.path.join(parameters['QA_FOLDER'],x))==False:
+			os.mkdir(os.path.join(parameters['QA_FOLDER'],x))
 
 # reduce all calibrations
 	cal_sets = parameters['CAL_SETS'].split(',')
