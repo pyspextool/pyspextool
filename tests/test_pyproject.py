@@ -13,10 +13,9 @@ def test_numpy_not_pinned_below_2():
     pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
 
     dependencies = pyproject["project"]["dependencies"]
+    requirements = [Requirement(dependency) for dependency in dependencies]
     numpy_requirements = [
-        Requirement(dependency)
-        for dependency in dependencies
-        if Requirement(dependency).name == "numpy"
+        requirement for requirement in requirements if requirement.name == "numpy"
     ]
 
     assert numpy_requirements, "Expected numpy in project dependencies."
