@@ -46,6 +46,7 @@ bibliography: paper.bib
 ---
 
 # Summary
+
 <!--
 The forces on stars, galaxies, and dark matter under external gravitational
 fields lead to the dynamical evolution of structures in the universe. The orbits
@@ -57,7 +58,9 @@ Aside from toy problems and demonstrations, the majority of problems require
 efficient numerical tools, many of which require the same base code (e.g., for
 performing numerical orbit integration).
 -->
+
 # Statement of need
+
 <!--
 `Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
 enables wrapping low-level languages (e.g., C) for speed without losing
@@ -80,6 +83,8 @@ scientific explorations of forthcoming data releases from the *Gaia* mission
 [@gaia] by students and experts alike.
 -->
 # State of the field                                                                                                                  
+
+pySpextool is based on 
 
 <!--
 Several tools exist for galactic dynamics computations:                                                     
@@ -106,6 +111,8 @@ transformations) while maintaining both performance through C implementations
 and usability through its Python interface.  
 -->
 # Software design
+
+pySpextool's design philosophy is based on two core principles: (1) to provide a user-friendly reduction package 
 
 <!--
 `Gala`'s design philosophy is based on three core principles: (1) to provide a
