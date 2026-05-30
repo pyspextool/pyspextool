@@ -16,6 +16,13 @@ authors:
     orcid: 0000-0002-1821-0650
     equal-contrib: true
     affiliation: 3
+  - name: Chris Theissen
+    equal-contrib: true
+    affiliation: 2
+  - name: Dino Chih-Chun Hsu
+    orcid: 0000-0002-5370-7494
+    equal-contrib: true
+    affiliation: 4
 
 #    affiliation: "1, 2" # (Multiple affiliations must be quoted)
 #  - name: Author Without ORCID
@@ -32,22 +39,26 @@ affiliations:
  - name: Ritter Astrophysical Research Center, Department of Physics and Astronomy, University of Toledo, 2801 W. Bancroft Street, Toledo, OH 43606, USA
    index: 1
    ror: 01pbdzh19
- - name: University of California San Diego, La Jolla, CA 92093, USA
+ - name: Department of Astronomy and Astrophysics, University of California San Diego, La Jolla, CA 92093, USA
    index: 2
    ror: 0168r3w48
  - name: Hunter College, New York, NY, US
    index: 3
    ror: 00g2xk477
+ - name: Center for Interdisciplinary Exploration and Research in Astrophysics, Northwesten University, 1800 Sherman Ave, Evanston IL, 60201
+   index: 4
+   ror: 000e0be47 
 date: 30 May 2026
 bibliography: paper.bib
 
 # Optional fields if submitting to a AAS journal too, see this blog post:
 # https://blog.joss.theoj.org/2018/12/a-new-collaboration-with-aas-publishing
-aas-doi: 10.3847/xxxxx <- update this with the DOI from AAS once you know it.
-aas-journal: Astrophysical Journal <- The name of the AAS journal.
+#aas-doi: 10.3847/xxxxx <- update this with the DOI from AAS once you know it.
+#aas-journal: Astrophysical Journal <- The name of the AAS journal.
 ---
 
 # Summary
+
 
 
 
