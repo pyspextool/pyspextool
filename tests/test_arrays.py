@@ -15,6 +15,10 @@ def test_find_index():
     result_single = find_index(array, single_point)
     assert result_single == 1./3.
 
+    numpy_single_point = np.int64(2)
+    numpy_result_single = find_index(array, numpy_single_point)
+    assert numpy_result_single == 0.6666666666666666
+
     x = [1, 2.5, 3, 5.5]
     x_want = [-0.1, 1.5, 3.1, 6]
     result = find_index(x, x_want, ends_to_nan=True)
