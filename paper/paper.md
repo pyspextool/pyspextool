@@ -23,18 +23,6 @@ authors:
     orcid: 0000-0002-5370-7494
     equal-contrib: true
     affiliation: 4
-
-#    affiliation: "1, 2" # (Multiple affiliations must be quoted)
-#  - name: Author Without ORCID
-#    equal-contrib: true # (This is how you can denote equal contributions between multiple authors)
-#    affiliation: 2
-#  - name: Author with no affiliation
-#    corresponding: true # (This is how to denote the corresponding author)
-#    affiliation: 3
-#  - given-names: Ludwig
-#    dropping-particle: van
-#    surname: Beethoven
-#    affiliation: 3
 affiliations:
  - name: Ritter Astrophysical Research Center, Department of Physics and Astronomy, University of Toledo, 2801 W. Bancroft Street, Toledo, OH 43606, USA
    index: 1
@@ -58,10 +46,7 @@ bibliography: paper.bib
 ---
 
 # Summary
-
-
-
-
+<!--
 The forces on stars, galaxies, and dark matter under external gravitational
 fields lead to the dynamical evolution of structures in the universe. The orbits
 of these bodies are therefore key to understanding the formation, history, and
@@ -71,9 +56,9 @@ is now well-established, commonly taught, and frequently used in astronomy.
 Aside from toy problems and demonstrations, the majority of problems require
 efficient numerical tools, many of which require the same base code (e.g., for
 performing numerical orbit integration).
-
+-->
 # Statement of need
-
+<!--
 `Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
 enables wrapping low-level languages (e.g., C) for speed without losing
 flexibility or ease-of-use in the user-interface. The API for `Gala` was
@@ -93,9 +78,10 @@ visualizations of textbook material [@Binney:2008]. The combination of speed,
 design, and support for Astropy functionality in `Gala` will enable exciting
 scientific explorations of forthcoming data releases from the *Gaia* mission
 [@gaia] by students and experts alike.
-
+-->
 # State of the field                                                                                                                  
 
+<!--
 Several tools exist for galactic dynamics computations:                                                     
 `galpy` [@Bovy:2015] is a Python package with similar goals,
 providing orbit integration and potential classes for galactic dynamics.                                                              
@@ -118,9 +104,10 @@ like `Gadget` [@Springel:2005] – it focuses on the common tasks in galactic
 dynamics research (orbit integration, potential evaluation, coordinate                                                                
 transformations) while maintaining both performance through C implementations                                                         
 and usability through its Python interface.  
-
+-->
 # Software design
 
+<!--
 `Gala`'s design philosophy is based on three core principles: (1) to provide a
 user-friendly, modular, object-oriented API, (2) to use community tools and
 standards (e.g., Astropy for coordinates and units handling), and (3) to use
@@ -139,36 +126,37 @@ Python layer handles unit conversions and prepares data to dispatch to the C
 layer appropriately.Within the coordinates subpackage, we extend Astropy's
 coordinate classes to add more specialized coordinate frames and
 transformations that are relevant for Galactic dynamics and Milky Way research.
+-->
 
 # Research impact statement
 The IDL-based Spextool papers 
+<!--
+`Gala` has demonstrated significant research impact and grown both its user base
+and contributor community since its initial release. The package has evolved
+through contributions from over 18 developers beyond the original core developer
+(@adrn), with community members adding new features, reporting bugs, and
+suggesting new features.
 
-#`Gala` has demonstrated significant research impact and grown both its user base
-#and contributor community since its initial release. The package has evolved
-#through contributions from over 18 developers beyond the original core developer
-#(@adrn), with community members adding new features, reporting bugs, and
-#suggesting new features.
+While `Gala` started as a tool primarily to support the core developer's
+research, it has expanded organically to support a range of applications across
+domains in astrophysics related to Milky Way and galactic dynamics. The package
+has been used in over 400 publications (according to Google Scholar) spanning
+topics in galactic dynamics such as modeling stellar streams [@Pearson:2017],
+Milky Way mass modeling, and interpreting kinematic and stellar population
+trends in the Galaxy. `Gala` is integrated within the Astropy ecosystem as an
+affiliated package and has built functionality that extends the widely-used
+`astropy.units` and `astropy.coordinates` subpackages. `Gala`'s impact extends
+beyond citations in research: Because of its focus on usability and user
+interface design, `Gala` has also been incorporated into graduate-level galactic
+dynamics curricula at multiple institutions.
 
-#While `Gala` started as a tool primarily to support the core developer's
-#research, it has expanded organically to support a range of applications across
-#domains in astrophysics related to Milky Way and galactic dynamics. The package
-#has been used in over 400 publications (according to Google Scholar) spanning
-#topics in galactic dynamics such as modeling stellar streams [@Pearson:2017],
-#Milky Way mass modeling, and interpreting kinematic and stellar population
-#trends in the Galaxy. `Gala` is integrated within the Astropy ecosystem as an
-#affiliated package and has built functionality that extends the widely-used
-#`astropy.units` and `astropy.coordinates` subpackages. `Gala`'s impact extends
-#beyond citations in research: Because of its focus on usability and user
-#interface design, `Gala` has also been incorporated into graduate-level galactic
-#dynamics curricula at multiple institutions.
-
-#`Gala` has been downloaded over 100,000 times from PyPI and conda-forge yearly
-#(or ~2,000 downloads per week) over the past few years, demonstrating a broad
-#and active user community. Users span career stages from graduate students to
-#faculty and other established researchers and represent institutions around the
-#world. This broad adoption and active participation validate `Gala`'s role as
-#core community infrastructure for galactic dynamics research.
-
+`Gala` has been downloaded over 100,000 times from PyPI and conda-forge yearly
+(or ~2,000 downloads per week) over the past few years, demonstrating a broad
+and active user community. Users span career stages from graduate students to
+faculty and other established researchers and represent institutions around the
+world. This broad adoption and active participation validate `Gala`'s role as
+core community infrastructure for galactic dynamics research.
+-->
 # Mathematics
 
 Single dollars ($) are required for inline mathematics e.g. $f(x) = e^{\pi/x}$
