@@ -124,8 +124,8 @@ def find_index(
 
     ndat = len(x)
 
-    # Deal with array_like versus int/float and convert to array
-    if isinstance(x_want, int) or isinstance(x_want, float) is True:
+    # Deal with scalar versus array_like and convert to array
+    if np.isscalar(x_want):
         try:
             x_want = np.asarray([x_want], dtype='float')
             single = True
