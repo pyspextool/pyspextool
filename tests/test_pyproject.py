@@ -1,15 +1,27 @@
-import re
 from pathlib import Path
+
+from packaging.requirements import Requirement
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib
 
 
 def test_numpy_not_pinned_below_2():
     pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
-    pyproject = pyproject_path.read_text(encoding="utf-8")
+    pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
 
-    numpy_requirements = re.findall(
-        r'["\']numpy(?:\s*(?:[<>=!~].*)?)?["\']',
-        pyproject,
+    dependencies = pyproject["project"]["dependencies"]
+    numpy_requirements = [
+        Requirement(dependency)
+        for dependency in dependencies
+        if Requirement(dependency).name == "numpy"
+    ]
+
+    assert numpy_requirements, "Expected numpy in project dependencies."
+    assert all(
+        specifier.operator not in {"<", "<="}
+        for requirement in numpy_requirements
+        for specifier in requirement.specifier
     )
-
-    assert numpy_requirements
-    assert all("<" not in requirement for requirement in numpy_requirements)
