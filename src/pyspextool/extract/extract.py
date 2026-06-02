@@ -28,7 +28,6 @@ def extract(
     flat_field=True,
     linearity_correction=True,
     detector_info:dict=None,
-    rectification_method:str='cubic',
     write_rectified_orders:bool=False,
     seeing_fwhm:int | float=0.8,
     profile_ybuffer:int=3,
@@ -115,13 +114,6 @@ def extract(
     detector_info : dict, optional
         A dictionary with any information that needs to be passed to the
         instrument specific readfits program.  
-
-    'rectification_method' : setup.state['rectification_methods']
-        If 'linear', then bi-linear interpolation is used.  See 
-        scipy.interpolate.RegularGridInterpolator.
-
-        If 'cubic', k=3 tensor-product spline is used.  See
-        scipy.interpolate.RegularGridInterpolator.
 
     write_rectified_orders: {False, True}
         If False, then the rectified orders are not written to disk.
@@ -256,10 +248,6 @@ def extract(
 
     check_parameter('extract', 'detector_info', 
                     detector_info, ['dict','NoneType'])
-
-    check_parameter('extract', 'rectification_method', 
-                    rectification_method, 'str', 
-                    possible_values=setup.state['rectification_methods'])
 
     check_parameter('extract', 'write_rectified_orders', 
                     write_rectified_orders, 'bool')
@@ -462,7 +450,6 @@ def extract(
             flat_field=flat_field,
             linearity_correction=linearity_correction,
             detector_info=detector_info,
-            rectification_method=rectification_method,
             write_rectified_orders=write_rectified_orders,
             do_all_steps=do_all_steps,
             verbose=qa['verbose'],
@@ -470,7 +457,6 @@ def extract(
             qa_showscale=qa['showscale'],
             qa_showblock=qa['showblock'],
             qa_write=qa['write'])
-
 
         # Make the profile
 
@@ -480,7 +466,8 @@ def extract(
             qa_showscale=qa['showscale'],
             qa_showblock=qa['showblock'],
             qa_write=qa['write'])
-        
+        return
+
         # Identify apertures
 
         identify_apertures(

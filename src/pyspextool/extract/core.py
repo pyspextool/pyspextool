@@ -10,7 +10,6 @@ from pyspextool.utils.loop_progress import loop_progress
 def rectify_orders(    
     image:npt.ArrayLike,
     indices:list,
-    interpolation_method:str='cubic',
     variance:npt.ArrayLike=None,
     badpixel_mask:npt.ArrayLike=None,
     flag_mask:npt.ArrayLike=None,
@@ -55,11 +54,7 @@ def rectify_orders(
             An (nwavelengths, nangles) array of zero-based y positions in `image`
             at which to interpolate.
 
-    interpolation_method : {'cubic', 'linear'}
-        A string giving the interpolation method passed to 
-        sci.interpolate.RegularGridInterpolator.  
-
-    badpixel_mask : ndarray
+    badpixel_mask : ndarray 
         An (nrows, ncols) bad pixel mask.  Good=1, bad=0.
 
     flag_mask : ndarray
@@ -101,6 +96,12 @@ def rectify_orders(
             An (nangles, nwavelengths) array of interpolated values from 
             `flagmask_mask` at positions indices['xidx'] and indices['yidx'].  
 
+    Notes
+    -----
+    uses scipy.interpolate.RegularGridInterpolator with method='linear' for the 
+    interpolation.  Using method ='cubic' causes issues with the variance 
+    interpolation and so currently we are limited to using 'linear'.
+
     """
 
     #
@@ -112,9 +113,6 @@ def rectify_orders(
 
     check_parameter('rectify_orders','indices', 
                     indices, 'list', 2)
-
-    check_parameter('rectify_orders','interpolation_method', 
-                    interpolation_method, 'str', possible_values=['linear', 'cubic'])
 
     check_parameter('rectify_orders','variance', 
                     variance, ['NoneType', 'ndarray'])
@@ -142,25 +140,25 @@ def rectify_orders(
     # Get the functions defined first
     #
 
-
     image_function = interpolate.RegularGridInterpolator(
         points, 
         image,
-        method=interpolation_method)
+        method='linear')
 
     if variance is not None:
 
         variance_function = interpolate.RegularGridInterpolator(
             points, 
             variance,
-            method=interpolation_method)
+            method='linear')
 
     if badpixel_mask is not None:
 
         badpixel_function = interpolate.RegularGridInterpolator(
             points, 
             badpixel_mask,
-            fill_value=1)
+            fill_value=1,
+            method='linear')
 
     if flag_mask is not None:
 
@@ -174,7 +172,9 @@ def rectify_orders(
     
             f = interpolate.RegularGridInterpolator(
                 points, 
-                set, fill_value=0)
+                set, 
+                fill_value=0,
+                method='linear')
             
             flag_function.append(f)
 
@@ -218,10 +218,13 @@ def rectify_orders(
             # The interpolation alone will give values between [0,1] because
             # the original mask has just zeros or ones.  So we floor the values
             # to convert any number that isn't zero to zero.
+
+            rbp = badpixel_function(
+                    (order['yidx'],order['xidx']))
         
-            rbp = np.floor(
-                badpixel_function(
-                    (order['yidx'],order['xidx']))).astype('uint8')
+#            rbp = np.floor(
+#                badpixel_function(
+#                    (order['yidx'],order['xidx']))).astype('uint8')
 
         # Do the flag mask if requested.
 
@@ -241,6 +244,7 @@ def rectify_orders(
 
         # Store the results for return
 
+    
         rectorders.append(
             {'wavelengths':order['w'],
              'angles':order['a'],

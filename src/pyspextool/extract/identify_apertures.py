@@ -11,14 +11,15 @@ from pyspextool.plot.plot_profiles import plot_profiles
 from pyspextool.pyspextoolerror import pySpextoolError
 
 
-def identify_apertures(method_info:list,
-                       seeing_fwhm:int | float=0.8,
-                       ybuffer:int=3,
-                       verbose:bool=None,
-                       qa_show:bool=None,
-                       qa_showscale:float | int=None,
-                       qa_showblock:bool=None,
-                       qa_write:bool=None):
+def identify_apertures(
+    method_info:list,
+    seeing_fwhm:int | float=0.8,
+    ybuffer:int=3,
+    verbose:bool=None,
+    qa_show:bool=None,
+    qa_showscale:float | int=None,
+    qa_showblock:bool=None,
+    qa_write:bool=None):
     
     """
     To determine the locations of spectral extraction apertures
@@ -28,6 +29,9 @@ def identify_apertures(method_info:list,
     ----------
     method_info : list
         A (2,) list if
+
+        list[0] = '2ap' then list[1] is the fraction of profile pixels
+        
 
         list[0] = 'auto' then list[1] is the number of apertures to
         search for.
@@ -45,7 +49,7 @@ def identify_apertures(method_info:list,
         as sometimes there is a downturn that can mess with the finding
         routine.
        
-    qa_show : {None, True, False}, optional
+    qa_show : {None, True, False}
         Set to True/False to override config.state['qa_show'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be interactively generated.
@@ -54,12 +58,12 @@ def identify_apertures(method_info:list,
         A (2,) tuple giving the plot size that is passed to matplotlib as,
         pl.figure(figsize=(qa_showsize)) for the interactive plot.
 
-    qa_write : {None, True, False}, optional
+    qa_write : {None, True, False}
         Set to True/False to override config.state['qa_write'] in the
         pyspextool config file.  If set to True, quality assurance
         plots will be written to disk.
 
-    verbose : {None, True, False}, optional
+    verbose : {None, True, False}
         Set to True/False to override config.state['verbose'] in the
         pyspextool config file.
 
@@ -108,11 +112,12 @@ def identify_apertures(method_info:list,
     check_parameter('identify_apertures', 'qa_showblock', qa_showblock,
                     ['NoneType', 'bool'])
 
-    qa = check_qakeywords(verbose=verbose,
-                          show=qa_show,
-                          showscale=qa_showscale,
-                          showblock=qa_showblock,
-                          write=qa_write)
+    qa = check_qakeywords(
+        verbose=verbose,
+        show=qa_show,
+        showscale=qa_showscale,
+        showblock=qa_showblock,
+        write=qa_write)
 
     # Check the method_info 
 
@@ -190,16 +195,17 @@ def identify_apertures(method_info:list,
     
     if qa['show'] is True:
                
-        plot_profiles(extract.state['profiles'],
-                      extract.state['slith_arc'],
-                      doorders,
-                      aperture_positions=aperture_positions,
-                      plot_number=setup.plots['profiles'],
-                      profilestack_max=setup.plots['profilestack_max'],
-                      profile_size=setup.plots['profile_size'],
-                      font_size=setup.plots['font_size'],
-                      showscale=qa['showscale'],
-                      showblock=qa['showblock'])
+        plot_profiles(
+            extract.state['profiles'],
+            extract.state['slith_arc'],
+            doorders,
+            aperture_positions=aperture_positions,
+            plot_number=setup.plots['profiles'],
+            profilestack_max=setup.plots['profilestack_max'],
+            profile_size=setup.plots['profile_size'],
+            font_size=setup.plots['font_size'],
+            showscale=qa['showscale'],
+            showblock=qa['showblock'])
 
     if qa['write'] is True:
 
@@ -207,28 +213,29 @@ def identify_apertures(method_info:list,
             setup.state['qa_extension']
         fullpath = osjoin(setup.state['qa_path'],filename)
 
-        plot_profiles(extract.state['profiles'],
-                      extract.state['slith_arc'],
-                      doorders,
-                      aperture_positions=aperture_positions,
-                      profilestack_max=setup.plots['profilestack_max'],
-                      profile_size=setup.plots['profile_size'],
-                      font_size=setup.plots['font_size'],
-                      output_fullpath=fullpath)
+        plot_profiles(
+            extract.state['profiles'],
+            extract.state['slith_arc'],
+            doorders,
+            aperture_positions=aperture_positions,
+            profilestack_max=setup.plots['profilestack_max'],
+            profile_size=setup.plots['profile_size'],
+            font_size=setup.plots['font_size'],
+            output_fullpath=fullpath)
 
         filename = extract.state['qafilename'] + '_extractedprofiles' + \
             setup.state['qa_extension']
         fullpath = osjoin(setup.state['qa_path'],filename)
 
-        plot_profiles(extract.state['profiles'],
-                      extract.state['slith_arc'],
-                      doorders,
-                      aperture_positions=aperture_positions,
-                      profilestack_max=setup.plots['profilestack_max'],
-                      profile_size=setup.plots['profile_size'],
-                      font_size=setup.plots['font_size'],
-                      output_fullpath=fullpath)
-
+        plot_profiles(
+            extract.state['profiles'],
+            extract.state['slith_arc'],
+            doorders,
+            aperture_positions=aperture_positions,
+            profilestack_max=setup.plots['profilestack_max'],
+            profile_size=setup.plots['profile_size'],
+            font_size=setup.plots['font_size'],
+            output_fullpath=fullpath)
 
     #
     # Set continue variable
@@ -236,52 +243,6 @@ def identify_apertures(method_info:list,
 
     extract.state['apertures_done'] = True
     extract.state['select_done'] = True
-
-
-    #
-    # Now select the orders to obtain the aperture positions 
-    #
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#    extract.state['aperture_positions'] = aperture_positions
-#    extract.state['aperture_signs'] = aperture_signs
-#
-#
-#
-#    #
-#    # Select the orders
-#    #
-#
-#    select_orders(verbose=qa['verbose'],
-#                  qa_show=qa['show'],
-#                  qa_showscale=qa['showscale'],
-#                  qa_showblock=qa['showblock'],
-#                  qa_write=qa['write'])
-#                  
-#    #
-#    # Set continue variable
-#    #
-#
-#    extract.state['select_done'] = True
 
 
 

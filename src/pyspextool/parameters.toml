@@ -1,0 +1,33 @@
+[extract.make_flat]
+
+linearity_correction=true
+normalize=true
+
+[extract.make_wavecal]
+linearity_correction=true
+saturation_fraction=0.3
+ignore_saturation_error=false
+
+[extract.load_image]
+input_suffix='.fits*'
+flat_field=true
+linearity_correction=true
+rectification_method='cubic'
+write_rectified_orders=false
+
+[extract.identify_apertures]
+snr_threshold=10
+pixel_fraction=0.15
+
+[extract.trace_apertures]
+step_size=5
+summation_width=5
+centroid_threshold=2
+
+[combine]
+statistic='robust weighted mean'
+robust_sigma=8
+
+[telluric]
+output_units='W m-2 um-1'
+

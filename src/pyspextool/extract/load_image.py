@@ -38,7 +38,6 @@ def load_image(
     flat_field=True,
     linearity_correction=True,
     detector_info:dict=None,
-    rectification_method='cubic',
     write_rectified_orders:bool=False,
     do_all_steps:bool=False,
     verbose:bool=None,
@@ -581,17 +580,27 @@ def load_image(
     # Rectify the orders
     #
 
-    logging.info(' Rectifying the orders.  Method='+rectification_method)
+    logging.info(' Rectifying the orders.')
             
 #    start = time.perf_counter()
  
+#    fits.writeto('image.fits',img,overwrite=True)
+#    fits.writeto('variance.fits',var,overwrite=True)
+
     extract.state['rectorders'] = rectify_orders(            
         img,
         extract.state['rectindices'],
         variance=var,
         badpixel_mask=bad_pixel_mask,
-        flag_mask=flag_mask,
-        interpolation_method=rectification_method)
+        flag_mask=flag_mask)
+
+#    fits.writeto('rimage.fits',extract.state['rectorders'][1]['image'],overwrite=True)
+#    fits.writeto('rvariance.fits',extract.state['rectorders'][1]['variance'],overwrite=True)
+
+#    fits.writeto('rbdpxmask.fits',extract.state['rectorders'][1]['badpixel_mask'],overwrite=True)
+
+    
+
 
 #    rectorders = []
 #    for i in range(extract.state['norders']):

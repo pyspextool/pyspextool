@@ -320,9 +320,10 @@ def combine_aperturesigns(aperture_signs:npt.ArrayLike):
     return average_aperturesigns, label
 
     
-def make_1d_profile(rectified_order:dict,
-                    atmospheric_transmission:dict=None,
-                    robust_threshold:int=5):
+def make_1d_profile(
+    rectified_order:dict,
+    atmospheric_transmission:dict=None,
+    robust_threshold:int=5):
 
     """
     To create a mean spatial profile for a rectified order
@@ -385,6 +386,8 @@ def make_1d_profile(rectified_order:dict,
     # Unpack the data
     
     img = rectified_order['image']
+    var = rectified_order['variance']
+    bdpxmask = rectified_order['badpixel_mask']
     angles = rectified_order['angles']
     wavelengths = rectified_order['wavelengths']
     
@@ -425,14 +428,18 @@ def make_1d_profile(rectified_order:dict,
     # Collapse the profile using a mean, weighted by `weights`.
     
     mean, unc, mask = mean_data_stack(np.fliplr(np.rot90(img, 3)),
-                                       weights=weights,
+                                      weights=np.fliplr(np.rot90(1/var*bdpxmask, 3)),
+                                      goodbad=np.fliplr(np.rot90(bdpxmask, 3)),
+#                                       weights=weights,
                                        robust=robust_threshold)
     
     # Normalize by the total absolute flux and return the results
 
-    mean /= np.sum(np.abs(mean))    
+    scale = np.sum(np.abs(mean))    
+    mean /= scale
+    unc /=scale
 
-    return angles, mean
+    return angles, mean, unc
 
 
 

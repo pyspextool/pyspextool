@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 from os.path import join
+from astropy.io import fits
 
 from pyspextool import config as setup
 from pyspextool.extract import config as extract
@@ -103,9 +104,13 @@ def make_profiles(verbose:bool=None,
         
         angles = result[0]
         profile = result[1]
+        unc = result[2]
        
         profiles.append({'order': extract.state['orders'][i], 'angles': angles,
-                         'profile': profile})
+                         'profile': profile, 'uncertainty':unc})
+
+        stack = np.column_stack((angles, profile,unc))
+        np.savetxt('profile'+str(i)+'.dat',stack)
 
     # Store the results
         
