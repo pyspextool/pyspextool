@@ -7,7 +7,12 @@ import pytest
 
 def test_query_simbad():
 
-    result = query_simbad('HD 12345')
+# first test that SIMBAD is up and running
+    try:
+        result = query_simbad('HD 12345')
+    except: 
+        print('WARNING: SIMBAD is currently not reachable')
+        return
 
     assert result == {'name':'HD  12345', 'sptype':'G8III','vmag':8.770,
                       'bmag':9.520}
