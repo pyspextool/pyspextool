@@ -926,45 +926,45 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 				if verbose==True: logging.info('Replaced target names with coordinate short names')
 
 # add in SIMBAD information using astroquery.simbad
-# try statement to catch cases where simbad is not accessible
+# try statement to catch cases where simbad is not accessible <-- added back in since SIMBAD failed
 	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
 	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
-#	try:
+	try:
 	sb = Simbad()
-	for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
-	if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
-		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
-		dpouts.reset_index(inplace=True)
-		tnames = list(set(list(dpouts['TARGET_NAME'])))
-		tnames = [str(x) for x in tnames]
-		for i,tnm in enumerate(tnames):
-			dpsel = dpout[dpout['TARGET_NAME']==tnm]
-			dpsel.reset_index(inplace=True)
-			if len(dpsel)>0:
-				src_coord = SkyCoord(dpsel.loc[0,'RA']+' '+dpsel.loc[0,'DEC'],unit=(u.hourangle, u.deg))
-				t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
-				if isinstance(t_match,type(None))==False:
-					dp_match = t_match.to_pandas()
-					if len(t_match)>0:
-# astroquery fix: ==0.4.7 was upper case, >0.4.7 was lower case 
-						if 'otype' in list(dp_match.columns):
-							swap = {}
-							for x in list(dp_match.columns): swap[x] = x.upper()
-							dp_match.rename(columns=swap,inplace=True)
-# astroquery fix: ==0.4.7 was FLUX_B, >0.4.7 was B 
-						if 'V' in list(dp_match.columns):
-							swap = {}
-							for x in list(SIMBAD_COLS.keys()): 
-								if 'MAG' in x: swap[SIMBAD_COLS[x][1].replace('FLUX_','')] = SIMBAD_COLS[x][1]
-							dp_match.rename(columns=swap,inplace=True)
-						for x in SIMBAD_EXCLUDE: dp_match = dp_match[dp_match['OTYPE']!=x]
-					if len(dp_match)>0:
-						dp_match.reset_index(inplace=True)
-						dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.degree,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
-						dp_match.sort_values('SIMBAD_SEP',inplace=True,ignore_index=True)
-						for x in list(SIMBAD_COLS.keys()):
-							dpout.loc[dpout['TARGET_NAME']==tnm,x] = str(dp_match.loc[0,SIMBAD_COLS[x][1]])
-						dpout.loc[dpout['TARGET_NAME']==tnm,'SIMBAD_SEP'] = '{:.2f}'.format(dp_match.loc[0,'SIMBAD_SEP'])
+		for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
+		if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
+			dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
+			dpouts.reset_index(inplace=True)
+			tnames = list(set(list(dpouts['TARGET_NAME'])))
+			tnames = [str(x) for x in tnames]
+			for i,tnm in enumerate(tnames):
+				dpsel = dpout[dpout['TARGET_NAME']==tnm]
+				dpsel.reset_index(inplace=True)
+				if len(dpsel)>0:
+					src_coord = SkyCoord(dpsel.loc[0,'RA']+' '+dpsel.loc[0,'DEC'],unit=(u.hourangle, u.deg))
+					t_match = sb.query_region(src_coord,radius=SIMBAD_RADIUS)
+					if isinstance(t_match,type(None))==False:
+						dp_match = t_match.to_pandas()
+						if len(t_match)>0:
+	# astroquery fix: ==0.4.7 was upper case, >0.4.7 was lower case 
+							if 'otype' in list(dp_match.columns):
+								swap = {}
+								for x in list(dp_match.columns): swap[x] = x.upper()
+								dp_match.rename(columns=swap,inplace=True)
+	# astroquery fix: ==0.4.7 was FLUX_B, >0.4.7 was B 
+							if 'V' in list(dp_match.columns):
+								swap = {}
+								for x in list(SIMBAD_COLS.keys()): 
+									if 'MAG' in x: swap[SIMBAD_COLS[x][1].replace('FLUX_','')] = SIMBAD_COLS[x][1]
+								dp_match.rename(columns=swap,inplace=True)
+							for x in SIMBAD_EXCLUDE: dp_match = dp_match[dp_match['OTYPE']!=x]
+						if len(dp_match)>0:
+							dp_match.reset_index(inplace=True)
+							dp_match['SIMBAD_SEP'] = [src_coord.separation(SkyCoord(str(dp_match.loc[lp,'RA']),str(dp_match.loc[lp,'DEC']),unit=(u.degree,u.degree))).arcsecond for lp in np.arange(len(dp_match))]
+							dp_match.sort_values('SIMBAD_SEP',inplace=True,ignore_index=True)
+							for x in list(SIMBAD_COLS.keys()):
+								dpout.loc[dpout['TARGET_NAME']==tnm,x] = str(dp_match.loc[0,SIMBAD_COLS[x][1]])
+							dpout.loc[dpout['TARGET_NAME']==tnm,'SIMBAD_SEP'] = '{:.2f}'.format(dp_match.loc[0,'SIMBAD_SEP'])
 				# t = Table([[src_coord.ra.deg],[src_coord.dec.deg]],names=('ra','dec'))
 			# t_match = XMatch.query(t,u'simbad',SIMBAD_RADIUS,colRA1='ra',colDec1='dec',columns=["**", "+_r"])
 			# t_match.sort(['angDist'])
@@ -975,7 +975,8 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 			# if len(t_match)>0:
 			# 	for x in list(SIMBAD_COLS.keys()):
 				# 		dpout.loc[dpout['TARGET_NAME']==tnm,x] = t_match[SIMBAD_COLS[x]][0]
-#	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
+
+	except: logging.info('WARNING: There was a problem in trying to match targets to SIMBAD via astroquery.simbad; check internet connection')
 
 # add on a NOTES column
 	dpout['NOTES'] = ['']*len(dpout)
