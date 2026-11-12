@@ -193,16 +193,23 @@ def load_standard(
     # Load and store the standard's B mag, V mag, and effective temperature.
     #
 
-    result = query_simbad(standard_info)
+    try:
+        result = query_simbad(standard_info)
 
-    output['standard_name'] = result['name']
-    output['standard_sptype'] = result['sptype']
-    output['standard_vmag'] = result['vmag']
-    output['standard_bmag'] = result['bmag']
-    output['standard_teff'] = sptype2teff(result['sptype'])
+        output['standard_name'] = result['name']
+        output['standard_sptype'] = result['sptype']
+        output['standard_vmag'] = result['vmag']
+        output['standard_bmag'] = result['bmag']
+    except:
+        logging.info("  WARNING: SIMBAD not reachable; using default parameters")
+        output['standard_name'] = 'UNKNOWN'
+        output['standard_sptype'] = 'A0V'
+        output['standard_vmag'] = 0.
+        output['standard_bmag'] = 0.
 
     # Set default things
 
+    output['standard_teff'] = sptype2teff(output['standard_sptype'])
     output['standard_rv'] = 0.0
     output['vega_pixelshift'] = 0.0
 
