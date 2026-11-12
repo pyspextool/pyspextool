@@ -930,7 +930,7 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
 	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 	try:
-	sb = Simbad()
+		sb = Simbad()
 		for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
 		if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
 			dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
