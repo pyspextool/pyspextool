@@ -24,7 +24,7 @@ def load_standard(
     standard_fullfilename: str,
     standard_info: list | str | dict,
     output_filename: str,
-    correction_type: list = "A0 V",
+    correction_type: list = "A0V",
     verbose: bool = None):
 
     """
@@ -202,10 +202,10 @@ def load_standard(
         output['standard_bmag'] = result['bmag']
     except:
         logging.info("  WARNING: SIMBAD not reachable; using default parameters")
-        output['standard_name'] = 'UNKNOWN'
-        output['standard_sptype'] = 'A0V'
-        output['standard_vmag'] = 0.
-        output['standard_bmag'] = 0.
+        # output['standard_name'] = 'UNKNOWN'
+        # output['standard_sptype'] = 'A0V'
+        # output['standard_vmag'] = 0.
+        # output['standard_bmag'] = 0.
 
     # Set default things
 
