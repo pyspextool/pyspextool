@@ -1,12 +1,13 @@
 import pytest
-
-from pyspextool.io.simbad_mirrors import select_simbad_mirror
+from pyspextool.io.query_simbad import find_simbad_mirror
 
 
 def pytest_collection_modifyitems(config, items):
-    """Pick a working SIMBAD mirror (Strasbourg, Harvard, IDIA); skip `simbad` tests if none respond."""
+    """Choose the fastest SIMBAD mirror once for the whole run; skip `simbad` tests if no mirror responds."""
     simbad_items = [item for item in items if item.get_closest_marker("simbad")]
-    if simbad_items and select_simbad_mirror() is None:  # pragma: no cover (only when all mirrors are down)
+    if not simbad_items:
+        return
+    if not find_simbad_mirror():  # pragma: no cover (only when all mirrors are down)
         for item in simbad_items:
             item.add_marker(pytest.mark.skip(reason="No SIMBAD mirror is reachable"))
 

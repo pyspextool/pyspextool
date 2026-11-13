@@ -7,8 +7,44 @@ from astroquery.exceptions import NoResultsWarning
 import warnings
 
 from pyspextool.io.check import check_parameter
-from pyspextool.io.simbad_mirrors import simbad_available
 from pyspextool.pyspextoolerror import pySpextoolError
+
+# True once a SIMBAD mirror has been chosen in this Python session
+_simbad_mirror_found = False
+
+
+def find_simbad_mirror():
+
+    """
+    Point the shared astroquery `Simbad` at the fastest mirror, once per session.
+
+    The first successful check is remembered, so later calls return at once
+    and keep using that mirror. A failed check is not remembered, so the next
+    call tries again.
+
+    Returns
+    -------
+    bool
+        True if a SIMBAD mirror is available.
+
+    """
+
+    global _simbad_mirror_found
+
+    if not _simbad_mirror_found:
+
+        try:
+
+            Simbad.find_mirror()
+
+        except RuntimeError:
+
+            return False
+
+        _simbad_mirror_found = True
+
+    return True
+
 
 def query_simbad(
     info:str | list | dict):
@@ -68,10 +104,10 @@ def query_simbad(
     check_parameter("_query_simbad", "info", info, ["str", "list", "dict"])
 
     #
-    # Make sure a SIMBAD mirror is reachable if we need to query it
+    # Make sure a SIMBAD mirror is available if we need to query it
     #
 
-    if not isinstance(info, dict) and not simbad_available():
+    if not isinstance(info, dict) and not find_simbad_mirror():
 
         message = (
             "SIMBAD is not reachable (tried all known mirrors). Provide a "
