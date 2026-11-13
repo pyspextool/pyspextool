@@ -14,7 +14,7 @@ def make_correction_spectra(
     standard_filename:str,
     standard_info:list | str | dict,
     correction_filename:str,
-    correction_type:str='A0 V',
+    correction_type:str='A0V',
     output_units:str='W m-2 um-1',
     write_model_spectra:bool=False,                        
     verbose:bool=None,
