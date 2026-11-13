@@ -18,7 +18,7 @@ from astropy.time import Time
 from astropy.table import Table
 from astroquery.xmatch import XMatch
 from astroquery.simbad import Simbad
-from pyspextool.io.simbad_mirrors import simbad_available
+from pyspextool.io.query_simbad import find_simbad_mirror
 from astropy.utils.exceptions import AstropyWarning
 import astropy.units as u
 import copy
@@ -932,11 +932,10 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 #	try:
 	use_simbad = 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns)
-	if use_simbad and not simbad_available():
+	if use_simbad and not find_simbad_mirror():
 		logging.warning('SIMBAD is not reachable (tried all known mirrors); SIMBAD columns will be left blank')
 		use_simbad = False
-	sb = Simbad()
-	sb.server = Simbad.server  # use the mirror chosen by simbad_available()
+	sb = Simbad(simbad_server=Simbad.server)  # use the mirror chosen by find_simbad_mirror()
 	for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
 	if use_simbad:
 		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']

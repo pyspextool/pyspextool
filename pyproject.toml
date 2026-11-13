@@ -17,7 +17,7 @@ dependencies = [
     "pandas",
     "importlib_resources; python_version < '3.11'",
     "git-lfs",
-    "astroquery >0.4.8",
+    "astroquery @ git+https://github.com/astropy/astroquery.git",  # dev version: needs Simbad.find_mirror (astropy/astroquery#3701)
     "specutils",
     "regions",
     "dust_extinction",
