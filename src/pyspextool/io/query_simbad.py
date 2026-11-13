@@ -7,6 +7,7 @@ from astroquery.exceptions import NoResultsWarning
 import warnings
 
 from pyspextool.io.check import check_parameter
+from pyspextool.io.simbad_mirrors import simbad_available
 from pyspextool.pyspextoolerror import pySpextoolError
 
 def query_simbad(
@@ -65,6 +66,19 @@ def query_simbad(
     #
 
     check_parameter("_query_simbad", "info", info, ["str", "list", "dict"])
+
+    #
+    # Make sure a SIMBAD mirror is reachable if we need to query it
+    #
+
+    if not isinstance(info, dict) and not simbad_available():
+
+        message = (
+            "SIMBAD is not reachable (tried all known mirrors). Provide a "
+            'dictionary containing keys "id", "sptype", "bmag", and "vmag" '
+            "instead, or try again when SIMBAD is available.")
+
+        raise pySpextoolError(message)
 
     warnings.filterwarnings('error')
 

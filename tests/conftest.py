@@ -1,5 +1,15 @@
 import pytest
 
+from pyspextool.io.simbad_mirrors import select_simbad_mirror
+
+
+def pytest_collection_modifyitems(config, items):
+    """Pick a working SIMBAD mirror (Strasbourg, Harvard, IDIA); skip `simbad` tests if none respond."""
+    simbad_items = [item for item in items if item.get_closest_marker("simbad")]
+    if simbad_items and select_simbad_mirror() is None:  # pragma: no cover (only when all mirrors are down)
+        for item in simbad_items:
+            item.add_marker(pytest.mark.skip(reason="No SIMBAD mirror is reachable"))
+
 
 @pytest.fixture
 def raw_setup():
