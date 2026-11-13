@@ -5,6 +5,7 @@ import pytest
 
 
 
+@pytest.mark.simbad
 def test_query_simbad():
 
     result = query_simbad('HD 12345')
@@ -27,3 +28,18 @@ def test_query_simbad():
 
     assert result == {'name':'HD  12345', 'sptype':'G8III','vmag':8.770,'bmag':9.520}
 
+
+
+def test_query_simbad_dict_does_not_need_simbad(monkeypatch):
+    # A dictionary input never touches SIMBAD, so it works even when SIMBAD is down
+    import pyspextool.io.query_simbad as qs
+    monkeypatch.setattr(qs, "simbad_available", lambda: False)
+    result = query_simbad({'id':'HD  12345','sptype':'G8III','vmag':8.77, 'bmag':9.52})
+    assert result['name'] == 'HD  12345'
+
+
+def test_query_simbad_raises_when_simbad_down(monkeypatch):
+    import pyspextool.io.query_simbad as qs
+    monkeypatch.setattr(qs, "simbad_available", lambda: False)
+    with pytest.raises(pySpextoolError, match="SIMBAD is not reachable"):
+        query_simbad('HD 12345')

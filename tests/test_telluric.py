@@ -5,6 +5,9 @@ import pytest
 import os
 import glob
 
+# the standard star information is looked up in SIMBAD
+pytestmark = pytest.mark.simbad
+
 
 @pytest.mark.parametrize("setup_name", [
     "spex_prism",

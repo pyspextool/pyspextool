@@ -18,6 +18,7 @@ from astropy.time import Time
 from astropy.table import Table
 from astroquery.xmatch import XMatch
 from astroquery.simbad import Simbad
+from pyspextool.io.simbad_mirrors import simbad_available
 from astropy.utils.exceptions import AstropyWarning
 import astropy.units as u
 import copy
@@ -209,14 +210,14 @@ QA_PARAMETERS = {
 SIMBAD_COLS = {
 #	'SIMBAD_SEP': ['angDist','SEP'], # not returned by SIMBAD; added in later
 	'SIMBAD_NAME': ['main_id','MAIN_ID'],
-	'SIMBAD_TYPE': ['sptype','SP_TYPE'],
+	'SIMBAD_TYPE': ['sp_type','SP_TYPE'],
 	'SIMBAD_CLASS': ['otype','OTYPE'],
-	'SIMBAD_BMAG': ['fluxdata(B)','FLUX_B'],
-	'SIMBAD_VMAG': ['fluxdata(V)','FLUX_V'],
-	'SIMBAD_GMAG': ['fluxdata(G)','FLUX_G'],
-	'SIMBAD_JMAG': ['fluxdata(J)','FLUX_J'],
-	'SIMBAD_HMAG': ['fluxdata(H)','FLUX_H'],
-	'SIMBAD_KMAG': ['fluxdata(K)','FLUX_K'],
+	'SIMBAD_BMAG': ['B','FLUX_B'],
+	'SIMBAD_VMAG': ['V','FLUX_V'],
+	'SIMBAD_GMAG': ['G','FLUX_G'],
+	'SIMBAD_JMAG': ['J','FLUX_J'],
+	'SIMBAD_HMAG': ['H','FLUX_H'],
+	'SIMBAD_KMAG': ['K','FLUX_K'],
 }
 
 # what to exclude when searching for standard information
@@ -930,9 +931,14 @@ def writeLog(dp,log_file='',options={},verbose=ERROR_CHECKING):
 	dpout.loc[:,'SIMBAD_SEP'] = ['']*len(dpout)
 	for x in list(SIMBAD_COLS.keys()): dpout.loc[:,x] = ['']*len(dpout)
 #	try:
+	use_simbad = 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns)
+	if use_simbad and not simbad_available():
+		logging.warning('SIMBAD is not reachable (tried all known mirrors); SIMBAD columns will be left blank')
+		use_simbad = False
 	sb = Simbad()
+	sb.server = Simbad.server  # use the mirror chosen by simbad_available()
 	for x in SIMBAD_COLS.keys(): sb.add_votable_fields(SIMBAD_COLS[x][0])
-	if 'RA' in list(dpout.columns) and 'DEC' in list(dpout.columns):
+	if use_simbad:
 		dpouts = dpout[dpout['TARGET_TYPE'] != 'calibration']
 		dpouts.reset_index(inplace=True)
 		tnames = list(set(list(dpouts['TARGET_NAME'])))

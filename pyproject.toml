@@ -45,6 +45,7 @@ include-package-data = true
 [tool.pytest.ini_options]
 markers = [
     "slow: mark test as slow",
+    "simbad: test needs a live connection to SIMBAD (skipped if no mirror is reachable)",
 ]
 
 [tool.coverage.run]
